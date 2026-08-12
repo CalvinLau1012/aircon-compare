@@ -16,7 +16,7 @@
   --line:#D8E1EB; --alt:#EEF4FA; --warn:#B03A2E; --ok:#1E8E5A;
 }
 *{box-sizing:border-box; margin:0; padding:0;}
-html{scroll-behavior:smooth; scroll-padding-top:64px;}
+html{scroll-padding-top:64px;}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
   background:var(--bg); color:var(--text); line-height:1.7;}
 .wrap{max-width:1080px; margin:0 auto; padding:0 16px;}
@@ -2464,19 +2464,98 @@ document.addEventListener('DOMContentLoaded', ()=>{
       w.appendChild(t);
     }
   });
-  // 為 md 章節標題加 id（配合頂部導覽錨點）
+  // GitHub 風格 slug（同 md 目錄錨點一致）：移除非文字/emoji，空格→-
+  function slugify(t){
+    return t.toLowerCase()
+      .replace(/[^\p{Script=Han}A-Za-z0-9\s-]/gu, '')
+      .replace(/\s+/g, '-');
+  }
+  // 導覽用 id（頂部導覽列）
   const navMap={'統合對比總表':'table','官方驗證結果':'verify','能源標籤分析':'energy',
     '排名':'rank','最終推薦':'recommend','獨立價格驗證':'price','資料來源':'source',
     '定頻 vs 變頻':'compare-base'};
-  document.querySelectorAll('.md-content h2,.md-content h3').forEach(h=>{
+  // 為所有章節標題加 slug id（md 目錄超鏈接用）+ 導覽 id（雙錨點並存）
+  const used = new Set();
+  document.querySelectorAll('.md-content h1,.md-content h2,.md-content h3').forEach(h=>{
     const t=h.textContent.trim();
-    for(const [k,id] of Object.entries(navMap)){
-      if(t.includes(k)){ h.id=id; }
+    let slug = slugify(t);
+    let base = slug, k = 1;
+    while(used.has(slug)){ slug = base + '-' + (k++); }
+    used.add(slug);
+    // 搵導覽 id
+    let navId = null;
+    for(const [kw,id] of Object.entries(navMap)){
+      if(t.includes(kw)){ navId = id; }
+    }
+    if(navId && navId !== slug){
+      // 標題用導覽 id，前面加 slug 錨點 span（md 目錄可跳）
+      h.id = navId;
+      const sp = document.createElement('span');
+      sp.id = slug;
+      sp.style.cssText = 'display:block; position:relative; top:-70px; height:0;';
+      h.parentNode.insertBefore(sp, h);
+    } else {
+      h.id = slug;
+    }
+    h.style.scrollMarginTop = '70px';
+  });
+  // 修正 md 目錄連結：手寫 anchor 同實際 slug 有出入時自動匹配最接近 id
+  function findCloseId(hashId){
+    const key = hashId.replace(/-/g, '').toLowerCase();
+    const allIds = [...document.querySelectorAll('[id]')].map(e=>e.id).filter(Boolean);
+    const exact = allIds.find(id => id.replace(/-/g,'').toLowerCase() === key);
+    if(exact) return exact;
+    // 反向前綴：實際 id 以連結 key 開頭（連結文字係標題簡寫）
+    const pre = allIds.filter(id => id.replace(/-/g,'').toLowerCase().startsWith(key));
+    if(pre.length) return pre[0];
+    return null;
+  }
+  document.querySelectorAll('.md-content a[href^="#"]').forEach(a=>{
+    const id=(a.getAttribute('href')||'').slice(1);
+    if(id && !document.getElementById(id)){
+      const fixed = findCloseId(id);
+      if(fixed) a.setAttribute('href', '#' + fixed);
     }
   });
-  // 錨點連結平滑定位
+  // 自製平滑捲動（rAF 動畫，所有環境可靠）
+  function smoothScrollTo(y){
+    const start = window.scrollY;
+    const diff = y - start;
+    if(Math.abs(diff) < 2) return;
+    const dur = Math.min(600, Math.max(250, Math.abs(diff) * 0.3));
+    const t0 = performance.now();
+    function step(t){
+      const p = Math.min(1, (t - t0) / dur);
+      const e = p < .5 ? 2*p*p : 1 - Math.pow(-2*p+2, 2)/2;
+      window.scrollTo({top: start + diff * e, behavior:'instant'});
+      if(p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  // 錨點連結平滑定位（md 內容內嘅 # 連結統一處理，確保任何環境都可跳轉）
+  document.addEventListener('click', (e)=>{
+    const a = e.target.closest('.md-content a[href^="#"]');
+    if(!a) return;
+    const id = (a.getAttribute('href')||'').slice(1);
+    let el = document.getElementById(id);
+    if(!el) return;
+    e.preventDefault();
+    // 若係零高度錨點 span，改為捲動到後面實際標題
+    if(el.offsetHeight === 0 && el.nextElementSibling) el = el.nextElementSibling;
+    const y = el.getBoundingClientRect().top + window.scrollY - 70;
+    smoothScrollTo(Math.max(0, y));
+    try{ history.replaceState(null, '', '#'+id); }catch(_){}
+  });
+  // 頂部導覽列：同樣用自製平滑捲動
   document.querySelectorAll('.topnav a').forEach(a=>{
-    a.addEventListener('click',()=>{
+    a.addEventListener('click', (e)=>{
+      const href = a.getAttribute('href')||'';
+      if(!href.startsWith('#')) return;
+      const el = document.getElementById(href.slice(1));
+      if(!el) return;
+      e.preventDefault();
+      const y = el.getBoundingClientRect().top + window.scrollY - 58;
+      smoothScrollTo(Math.max(0, y));
       document.querySelectorAll('.topnav a').forEach(x=>x.style.color='');
       a.style.color='var(--accent)';
     });
