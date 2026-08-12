@@ -1,0 +1,12 @@
+# 臨時檢查圖片
+_check_*.png
+_v3*.png
+*.jpe
+
+# Python
+__pycache__/
+*.pyc
+
+# 系統
+Thumbs.db
+desktop.ini

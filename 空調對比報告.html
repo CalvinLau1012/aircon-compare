@@ -1,0 +1,2496 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>香港窗口式空調對比報告</title>
+<meta property="og:title" content="香港窗口式空調對比報告 · 29 型號 EMSD 官方核實">
+<meta property="og:description" content="窗口式淨冷型遙控空調全面對比：能源級別、價格、噪音、耗電 15 項屬性，互動比較器自己揀機比較。">
+<meta property="og:type" content="website">
+<meta name="description" content="香港窗口式淨冷型遙控空調對比報告：29 型號 · EMSD 官方能源標籤核實 · 互動比較器">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>❄️</text></svg>">
+<style>
+:root{
+  --primary:#0F3D5C; --primary2:#1B5E8A; --accent:#C9A227;
+  --bg:#F5F8FB; --text:#22303C; --muted:#6E7E8E;
+  --line:#D8E1EB; --alt:#EEF4FA; --warn:#B03A2E; --ok:#1E8E5A;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html{scroll-behavior:smooth; scroll-padding-top:64px;}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
+  background:var(--bg); color:var(--text); line-height:1.7;}
+.wrap{max-width:1080px; margin:0 auto; padding:0 16px;}
+
+/* ===== Hero 封面 ===== */
+.hero{background:linear-gradient(135deg,#0F3D5C 0%,#1B5E8A 100%); color:#fff;
+  text-align:center; padding:64px 20px 56px; position:relative; overflow:hidden;}
+.hero::after{content:""; position:absolute; bottom:0; left:0; right:0; height:5px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);}
+.hero h1{font-size:2.2em; letter-spacing:1px; margin-bottom:8px;}
+.hero .sub{color:var(--accent); font-size:1.15em; margin-bottom:28px;}
+.stats{display:flex; justify-content:center; gap:40px; flex-wrap:wrap; margin-bottom:26px;}
+.stats .n{font-size:2.1em; font-weight:700; color:var(--accent);}
+.stats .l{font-size:.85em; opacity:.9;}
+.hero .src{font-size:.8em; opacity:.75; line-height:1.8;}
+.hero .date{color:var(--accent); font-size:.95em; margin-top:10px;}
+
+/* ===== 頂部導覽 ===== */
+.topnav{position:sticky; top:0; z-index:100; background:rgba(15,61,92,.97);
+  backdrop-filter:blur(6px); border-bottom:2px solid var(--accent);}
+.topnav .wrap{display:flex; align-items:center; gap:4px; overflow-x:auto; padding:0 8px;}
+.topnav a{color:#DCE6F0; text-decoration:none; font-size:.86em; padding:14px 12px;
+  white-space:nowrap; flex:0 0 auto; transition:color .2s;}
+.topnav a:hover{color:var(--accent);}
+.topnav .brand{font-weight:700; color:#fff; font-size:.95em; margin-right:6px;}
+
+/* ===== 章節 ===== */
+section{margin:40px 0;}
+h2.sec{display:flex; align-items:center; gap:10px; font-size:1.35em; color:var(--primary);
+  border-left:6px solid var(--accent); padding-left:12px; margin-bottom:16px; scroll-margin-top:70px;}
+h2.sec .tag{font-size:.6em; background:var(--primary); color:#fff; padding:2px 10px;
+  border-radius:20px; letter-spacing:1px;}
+h3{color:var(--primary2); margin:18px 0 8px; font-size:1.1em;}
+p{margin:8px 0;}
+
+/* ===== 卡片 ===== */
+.card{background:#fff; border:1px solid var(--line); border-radius:12px;
+  padding:18px; margin:12px 0; box-shadow:0 1px 4px rgba(15,61,92,.06);}
+
+/* ===== 表格 ===== */
+.table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:12px 0;
+  border:1px solid var(--line); border-radius:10px; background:#fff;}
+table{width:100%; border-collapse:collapse; font-size:.9em; min-width:600px;}
+th{background:var(--primary); color:#fff; padding:9px 10px; text-align:center;
+  font-weight:600; border-bottom:3px solid var(--accent); white-space:nowrap;}
+td{padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top;}
+tbody tr:nth-child(even){background:var(--alt);}
+tbody tr:hover{background:#E8F1F9;}
+blockquote{margin:12px 0; padding:10px 16px; border-left:5px solid var(--accent);
+  background:#FFF7E3; border-radius:0 8px 8px 0; font-size:.92em;}
+blockquote p{margin:2px 0;}
+code{background:#E8F1F9; padding:2px 6px; border-radius:4px; font-size:.9em;}
+pre{background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px;
+  overflow-x:auto; margin:12px 0;}
+ul,ol{margin:8px 0 8px 24px;}
+
+/* ===== 比較器 ===== */
+.compare{position:sticky; top:58px; z-index:90; background:#fff;
+  border:1px solid var(--line); border-bottom:3px solid var(--accent);
+  border-radius:0 0 12px 12px; box-shadow:0 4px 12px rgba(15,61,92,.12);}
+.compare .head{display:flex; align-items:center; justify-content:space-between;
+  padding:10px 16px; background:var(--primary); color:#fff; border-radius:0 0 0 0;}
+.compare .head b{font-size:1em;}
+.compare .head .sel{font-size:.8em; color:var(--accent);}
+.compare-tools{display:flex; gap:8px; flex-wrap:wrap; padding:8px 12px;
+  border-bottom:1px solid var(--line);}
+.compare-tools button{background:var(--primary2); color:#fff; border:none;
+  padding:6px 14px; border-radius:20px; font-size:.85em; cursor:pointer;}
+.compare-tools button:hover{background:var(--accent); color:var(--primary);}
+.compare-tools .filters{display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-left:auto;}
+.compare-tools select,.compare-tools input[type=search]{border:1px solid var(--line);
+  border-radius:20px; padding:5px 12px; font-size:.85em; background:var(--bg);}
+.model-list{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:8px; padding:10px 12px; max-height:340px; overflow-y:auto;}
+.mitem{display:flex; align-items:center; gap:10px; padding:9px 12px;
+  border:1px solid var(--line); border-radius:8px; background:#fff; cursor:pointer;
+  transition:border-color .15s, box-shadow .15s;}
+.mitem:hover{border-color:var(--primary2); box-shadow:0 2px 8px rgba(15,61,92,.12);}
+.mitem.checked{border-color:var(--accent); background:#FFFDF2; box-shadow:0 0 0 2px rgba(201,162,39,.35);}
+.mitem input{width:18px; height:18px; accent-color:var(--accent); cursor:pointer; flex:0 0 auto;}
+.mitem .info{flex:1; min-width:0;}
+.mitem .info .name{font-weight:600; font-size:.92em; color:var(--primary);}
+.mitem .info .tag{font-size:.75em; color:var(--muted);}
+.mitem .badge{font-size:.72em; background:var(--primary); color:#fff; padding:2px 8px;
+  border-radius:12px; white-space:nowrap; flex:0 0 auto;}
+
+/* 比較面板 */
+.panel{display:none; position:fixed; bottom:0; left:0; right:0; z-index:200;
+  background:#fff; border-top:3px solid var(--accent);
+  box-shadow:0 -6px 20px rgba(15,61,92,.25); max-height:62vh; display:none; flex-direction:column;}
+.panel.open{display:flex;}
+.panel .phead{display:flex; align-items:center; justify-content:space-between;
+  padding:10px 16px; background:var(--primary); color:#fff;}
+.panel .phead button{background:var(--accent); color:var(--primary); border:none;
+  padding:4px 12px; border-radius:16px; cursor:pointer; font-size:.85em;}
+.panel .pscroll{overflow:auto; padding:12px 16px;}
+.panel table{min-width:420px;}
+.panel td:first-child{font-weight:600; color:var(--primary2); background:var(--alt);
+  white-space:nowrap; width:120px;}
+.panel .phint{text-align:center; color:var(--muted); padding:14px; font-size:.9em;}
+
+/* ===== 返回頂部 ===== */
+#backTop{position:fixed; right:16px; bottom:20px; width:44px; height:44px;
+  background:var(--primary); color:#fff; border:2px solid var(--accent);
+  border-radius:50%; font-size:1.2em; cursor:pointer; z-index:150;
+  display:none; align-items:center; justify-content:center;
+  box-shadow:0 3px 10px rgba(15,61,92,.35);}
+#backTop.show{display:flex;}
+#backTop:hover{background:var(--accent); color:var(--primary);}
+
+/* ===== 頁腳 ===== */
+footer{background:var(--primary); color:#BFD0DE; text-align:center;
+  padding:26px 16px; margin-top:50px; font-size:.85em;}
+footer b{color:#fff;}
+footer .line{color:var(--accent);}
+
+/* ===== 響應式 ===== */
+@media (max-width:720px){
+  .hero h1{font-size:1.6em;}
+  .hero .sub{font-size:1em;}
+  .stats{gap:20px;}
+  .stats .n{font-size:1.6em;}
+  section{margin:28px 0;}
+  h2.sec{font-size:1.15em;}
+  .model-list{grid-template-columns:1fr;}
+  .compare-tools .filters{margin-left:0; width:100%;}
+  .panel table{font-size:.8em;}
+  .topnav a{padding:12px 10px; font-size:.8em;}
+}
+@media print{
+  .topnav,.compare,.panel{display:none !important;}
+  body{background:#fff;}
+  .card{border:none; box-shadow:none; padding:0;}
+  .hero{background:var(--primary); padding:30px;}
+  a{color:inherit; text-decoration:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 封面 ===== -->
+<header class="hero">
+  <div class="wrap">
+    <h1>香港窗口式淨冷型遙控空調</h1>
+    <div class="sub">統合對比報告 · 29 型號全面剖析</div>
+    <div class="stats">
+      <div><div class="n">29</div><div class="l">型號收錄</div></div>
+      <div><div class="n">16</div><div class="l">定頻機型</div></div>
+      <div><div class="n">13</div><div class="l">變頻機型</div></div>
+      <div><div class="n">1,927</div><div class="l">EMSD 官方核實</div></div>
+    </div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· Price.com.hk · 豐澤 · 電器幫 · 百老匯 · Gemini 交叉驗證</div>
+    <div class="date">📅 2026 年 8 月 12 日 更新版</div>
+  </div>
+</header>
+
+<!-- ===== 導覽 ===== -->
+<nav class="topnav">
+  <div class="wrap">
+    <span class="brand">❄️ 空調報告</span>
+    <a href="#compare">⚖️ 揀機比較</a>
+    <a href="#table">📊 統合總表</a>
+    <a href="#verify">✅ 官方驗證</a>
+    <a href="#energy">⚡ 能源分析</a>
+    <a href="#rank">📈 排名</a>
+    <a href="#recommend">🏆 推薦</a>
+    <a href="#price">💰 價格</a>
+    <a href="#source">📝 來源</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+<!-- ===== 比較器 ===== -->
+<section id="compare">
+  <h2 class="sec">⚖️ 互動比較器 <span class="tag">揀機比較</span></h2>
+  <p>喺下方揀 2 個或以上型號，底部會即時出現對比表。可以喺手機 / 平板 / 電腦用。</p>
+
+  <div class="compare">
+    <div class="head">
+      <b>🛒 型號選擇區</b>
+      <span class="sel" id="selCount">已選 0 個（最少 2 個）</span>
+    </div>
+    <div class="compare-tools">
+      <button onclick="clearAll()">清除選擇</button>
+      <button onclick="selectInverter()">選全部變頻</button>
+      <button onclick="selectFixed()">選全部定頻</button>
+      <div class="filters">
+        <input type="search" id="q" placeholder="🔍 搜尋品牌/型號" oninput="renderList()">
+        <select id="sortBy" onchange="renderList()">
+          <option value="">預設排序</option>
+          <option value="price">價格 低→高</option>
+          <option value="energy">能源級別 優→劣</option>
+          <option value="kwh">年耗電 低→高</option>
+          <option value="cspf">CSPF 高→低</option>
+        </select>
+        <select id="fHp" onchange="renderList()">
+          <option value="">全部匹數</option><option>1匹</option><option>1.5匹</option><option>2匹</option><option>2.5匹</option>
+        </select>
+        <select id="fType" onchange="renderList()">
+          <option value="">全部類型</option><option>變頻</option><option>定頻</option>
+        </select>
+      </div>
+    </div>
+    <div class="model-list" id="modelList"></div>
+  </div>
+
+  <!-- 比較面板 -->
+  <div class="panel" id="panel">
+    <div class="phead">
+      <b>📋 型號對比</b>
+      <span style="display:flex;gap:6px;">
+        <button onclick="clearAll()" style="background:#fff;color:var(--primary);">🗑 清除</button>
+        <button onclick="closePanel()">✕ 關閉</button>
+      </span>
+    </div>
+    <div class="pscroll" id="panelBody"></div>
+  </div>
+</section>
+
+<!-- ===== 詳細報告 ===== -->
+<div class="md-content">
+<h1>🏠 香港窗口式淨冷型遙控空調 — 統合對比報告（≥1 匹）</h1>
+<blockquote>
+<p><strong>報告生成日期</strong>：2026-08-11<br />
+<strong>數據來源</strong>：豐澤 Fortress、Price.com.hk、百老匯 Broadway、電器幫 ElecBoy、友和 YOHO、電氣通、Gemini 交叉驗證<br />
+<strong>⚠️ 注意</strong>：豐澤與電器幫同屬屈臣氏集團，價格不可互證；獨立驗證以 Price.com.hk 不同商戶 / 友和 YOHO / 電氣通為準<br />
+<strong>額外搜尋</strong>：LIHKG 連登（電器台）、HKEPC、香港討論區<br />
+<strong>篩選條件</strong>：窗口式 + 淨冷型 + 遙控 + ≥1 匹（定頻/變頻皆可）<br />
+<strong>重點維度</strong>：⭐ 能源效益標籤 | ⭐ 用戶評價 | 📶 WiFi</p>
+</blockquote>
+<hr />
+<h2>📑 目錄</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>章節</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><a href="#-定頻-vs--變頻--優缺點全面對比">🔶 定頻 vs 🔷 變頻 優缺點</a></td>
+</tr>
+<tr>
+<td>2</td>
+<td><a href="#-統合對比總表1-匹">📊 統合對比總表</a></td>
+</tr>
+<tr>
+<td>3</td>
+<td><a href="#-wifi--智能家居分析">📶 WiFi 分析</a></td>
+</tr>
+<tr>
+<td>4</td>
+<td><a href="#-能源標籤分析">⚡ 能源標籤分析</a></td>
+</tr>
+<tr>
+<td>5</td>
+<td><a href="#-重點型號深度分析">📋 重點型號深度分析</a></td>
+</tr>
+<tr>
+<td>6</td>
+<td><a href="#-排名">📈 排名</a></td>
+</tr>
+<tr>
+<td>7</td>
+<td><a href="#-最終推薦">🏆 最終推薦</a></td>
+</tr>
+<tr>
+<td>8</td>
+<td><a href="#-獨立價格驗證">💰 價格驗證</a></td>
+</tr>
+<tr>
+<td>9</td>
+<td><a href="#-資料來源">📝 來源 + 免責</a></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>定頻 vs 變頻 — 優缺點全面對比</h2>
+<blockquote>
+<p>以下綜合香港各討論區（LIHKG、HKEPC）、機電工程署及用戶實際使用經驗。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>比較維度</th>
+<th>🔶 定頻</th>
+<th>🔷 變頻</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>💰 機價</strong></td>
+<td>✅ 較平（$1,850-$5,368）</td>
+<td>❌ 較貴（$3,490-$7,900）</td>
+</tr>
+<tr>
+<td><strong>⚡ 電費</strong></td>
+<td>❌ 3-4 級能源，耗電大</td>
+<td>✅ <strong>1 級，省 30-40% 電費</strong></td>
+</tr>
+<tr>
+<td><strong>🔇 噪音</strong></td>
+<td>❌ 啟停「噠」聲 + 微震</td>
+<td>✅ <strong>持續低速，接近分體機靜音</strong></td>
+</tr>
+<tr>
+<td><strong>🌡️ 恆溫</strong></td>
+<td>❌ 波浪形（冷一陣→熱一陣）</td>
+<td>✅ <strong>精準恆溫</strong>，唔會忽冷忽熱</td>
+</tr>
+<tr>
+<td><strong>🔧 維修</strong></td>
+<td>✅ <strong>結構簡單，零件平，易整</strong></td>
+<td>❌ 電子零件多，維修費較貴</td>
+</tr>
+<tr>
+<td><strong>🛡️ 耐用</strong></td>
+<td>✅ <strong>冇咁易壞</strong>（機械結構簡單）</td>
+<td>❌ 變頻板故障率相對較高</td>
+</tr>
+<tr>
+<td><strong>📶 WiFi</strong></td>
+<td>❌ <strong>全線沒有</strong></td>
+<td>✅ 多數內置</td>
+</tr>
+<tr>
+<td><strong>❄️ 體感</strong></td>
+<td>✅ 開機即全速凍</td>
+<td>⚠️ 慢慢降溫（較舒適）</td>
+</tr>
+<tr>
+<td><strong>📏 機身</strong></td>
+<td>✅ 普遍較薄較輕</td>
+<td>❌ 較厚較重</td>
+</tr>
+<tr>
+<td><strong>💡 適合</strong></td>
+<td>客廳、少開、預算有限</td>
+<td><strong>睡房</strong>、長開 &gt;8hr、要 WiFi</td>
+</tr>
+</tbody>
+</table>
+<h3>🧠 一句講晒</h3>
+<pre><code>定頻 = 平平地買，貴貴地俾電費，但簡單唔易壞，維修平
+變頻 = 貴貴地買，平平地俾電費，極靜恆溫，但要預維修貴啲
+</code></pre>
+<h3>📊 長開電費回本估算</h3>
+<table>
+<thead>
+<tr>
+<th>每日使用</th>
+<th>定頻年電費</th>
+<th>變頻年電費</th>
+<th>年省</th>
+<th>回本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>4 小時</td>
+<td>~$800</td>
+<td>~$520</td>
+<td>~$280</td>
+<td>4-7 年</td>
+</tr>
+<tr>
+<td>8 小時</td>
+<td>~$1,600</td>
+<td>~$960</td>
+<td>~$640</td>
+<td><strong>2-3 年</strong></td>
+</tr>
+<tr>
+<td>12 小時</td>
+<td>~$2,400</td>
+<td>~$1,440</td>
+<td>~$960</td>
+<td><strong>1-2 年</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>📌 每日開 8 小時以上，變頻 2-3 年回本。長開強烈建議變頻。</p>
+</blockquote>
+<h3>⚠️ 常見迷思</h3>
+<table>
+<thead>
+<tr>
+<th>迷思</th>
+<th>真相</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>「變頻易壞」</td>
+<td>變頻板多一重電子零件，但一線品牌壽命普遍 10 年+</td>
+</tr>
+<tr>
+<td>「定頻凍啲」</td>
+<td>定頻開機全速體感「即凍」；變頻最終一樣凍，只係過程較舒適</td>
+</tr>
+<tr>
+<td>「變頻維修好貴」</td>
+<td>換變頻板 ~$2,000-4,000；定頻壓縮機壞一樣幾千；行貨保養最重要</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>📊 統合對比總表（≥1 匹）</h2>
+<blockquote>
+<p>圖例：🔷 = 變頻 | 🔶 = 定頻 | ✅ = 內置 WiFi</p>
+</blockquote>
+<h3>🔹 1 匹（適合 80-120 呎）</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>品牌</th>
+<th>型號</th>
+<th>BTU</th>
+<th>能源</th>
+<th>類型</th>
+<th>WiFi</th>
+<th>參考價</th>
+<th>一句總結</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>CANOPUS 肯特</strong></td>
+<td>TA-09EOG</td>
+<td>~9,000</td>
+<td>3 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td><strong>$1,850</strong></td>
+<td>💰 全場最平</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>TOSOT 大松</strong></td>
+<td>W09R5A</td>
+<td>~9,000</td>
+<td>4 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>~$2,030</td>
+<td>格力副廠 R32</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Carrier 開利</strong></td>
+<td>CHK09BE</td>
+<td>~9,000</td>
+<td>3 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>~$2,150</td>
+<td>雙重金鑽防銹</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Midea 美的</strong></td>
+<td>MW-09CR8C</td>
+<td>~9,000</td>
+<td>3 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>~$2,500</td>
+<td>銀離子抗菌網</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>HITACHI 日立</strong></td>
+<td>RA-10RF</td>
+<td>9,120</td>
+<td>3 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>$3,380</td>
+<td>⭐38人認證極靜</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Rasonic 樂信</strong></td>
+<td>RC-XG9</td>
+<td>8,803</td>
+<td>4 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>$3,484</td>
+<td>Panasonic 旗下</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>COMFEE</strong></td>
+<td>CWF-09CRFN8-AD5</td>
+<td>~9,000</td>
+<td><strong>1 級</strong></td>
+<td>🔷 變頻</td>
+<td>✅</td>
+<td><strong>$3,490-3,890</strong></td>
+<td>🔌 最平 WiFi 智能機！</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Carrier 開利</strong></td>
+<td>CHK09EAVXP</td>
+<td>~9,000</td>
+<td><strong>1 級</strong></td>
+<td>🔷 變頻</td>
+<td>✅</td>
+<td>$3,800-4,200</td>
+<td>⭐ 性價比變頻</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Midea 美的</strong></td>
+<td>MW-09CRF8B</td>
+<td>~9,000</td>
+<td><strong>1 級</strong></td>
+<td>🔷 變頻</td>
+<td>✅</td>
+<td>$3,900-4,300</td>
+<td>UV Pro 殺菌</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Gree 格力</strong></td>
+<td>GWF09P</td>
+<td>~9,000</td>
+<td><strong>1 級</strong></td>
+<td>🔷 變頻</td>
+<td>✅</td>
+<td>$4,287-4,499</td>
+<td>消委會高評分</td>
+</tr>
+<tr>
+<td>11</td>
+<td><strong>Panasonic 樂聲</strong></td>
+<td>CW-HU90AA</td>
+<td>~9,000</td>
+<td><strong>1 級</strong> 👑</td>
+<td>🔷 變頻</td>
+<td>✅</td>
+<td>$5,680-6,449</td>
+<td>🏆 旗艦！nanoe X；超1級10%</td>
+</tr>
+</tbody>
+</table>
+<h3>🔹 1.5 匹（適合 120-160 呎）</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>品牌</th>
+<th>型號</th>
+<th>BTU</th>
+<th>能源</th>
+<th>類型</th>
+<th>WiFi</th>
+<th>參考價</th>
+<th>一句總結</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>12</td>
+<td><strong>CANOPUS 肯特</strong></td>
+<td>TA-12EOG</td>
+<td>~12,000</td>
+<td>3 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>~$2,300</td>
+<td>⚠️ 無遙控，不符條件</td>
+</tr>
+<tr>
+<td>13</td>
+<td><strong>Midea 美的</strong></td>
+<td>MW-12CR8C</td>
+<td>~12,000</td>
+<td>3 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>~$3,100</td>
+<td>金鑽塗層；清洗簡單</td>
+</tr>
+<tr>
+<td>14</td>
+<td><strong>Carrier 開利</strong></td>
+<td>CHK12BE</td>
+<td>~12,000</td>
+<td>3 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>~$3,150</td>
+<td>獨立抽濕</td>
+</tr>
+<tr>
+<td>15</td>
+<td><strong>TOSOT 大松</strong></td>
+<td>W12R5A</td>
+<td>11,601</td>
+<td>4 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>$3,640</td>
+<td>🚨 噪音投訴</td>
+</tr>
+<tr>
+<td>16</td>
+<td><strong>Rasonic 樂信</strong></td>
+<td>RC-XG12</td>
+<td>11,601</td>
+<td>4 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>$4,251</td>
+<td>⭐ 3+5年保養；藍鑽抗腐蝕</td>
+</tr>
+<tr>
+<td>17</td>
+<td><strong>COMFEE</strong></td>
+<td>CWF-12CRFN8-AD5</td>
+<td>~12,000</td>
+<td><strong>1 級</strong></td>
+<td>🔷 變頻</td>
+<td>✅</td>
+<td><strong>$4,099-4,990</strong></td>
+<td>🔌 最平 1.5匹 WiFi</td>
+</tr>
+<tr>
+<td>18</td>
+<td><strong>Carrier 開利</strong></td>
+<td>CHK12EAVXP</td>
+<td>~12,000</td>
+<td><strong>1 級</strong></td>
+<td>🔷 變頻</td>
+<td>✅</td>
+<td>$4,800-5,300</td>
+<td>⭐ 約樂聲 6 折</td>
+</tr>
+<tr>
+<td>19</td>
+<td><strong>Gree 格力</strong></td>
+<td>GWF12DB</td>
+<td>~12,000</td>
+<td><strong>1 級</strong></td>
+<td>🔷 變頻</td>
+<td>✅</td>
+<td>$5,200-5,600</td>
+<td>G-Diamond 抗腐蝕</td>
+</tr>
+<tr>
+<td>20</td>
+<td><strong>General 珍寶</strong></td>
+<td>AMWB12NID</td>
+<td>~12,000</td>
+<td><strong>1 級</strong></td>
+<td>🔷 變頻</td>
+<td>➖</td>
+<td>$5,500-6,100</td>
+<td>UV-C 殺菌；⚠️ 無 WiFi</td>
+</tr>
+<tr>
+<td>21</td>
+<td><strong>Panasonic 樂聲</strong></td>
+<td>CW-HU120AA</td>
+<td>~12,000</td>
+<td><strong>1 級</strong></td>
+<td>🔷 變頻</td>
+<td>✅</td>
+<td>$7,200-7,900</td>
+<td>🏆 大房機王；⚠️ 闊600mm</td>
+</tr>
+</tbody>
+</table>
+<h3>🔹 2 匹（適合 160-220 呎）</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>品牌</th>
+<th>型號</th>
+<th>BTU</th>
+<th>能源</th>
+<th>類型</th>
+<th>WiFi</th>
+<th>參考價</th>
+<th>一句總結</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>22</td>
+<td><strong>CANOPUS 肯特</strong></td>
+<td>TA-18EOG</td>
+<td>~18,000</td>
+<td>3 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>~$3,500</td>
+<td>💰 最平 2匹</td>
+</tr>
+<tr>
+<td>23</td>
+<td><strong>Carrier 開利</strong></td>
+<td>CHK18BE</td>
+<td>~18,000</td>
+<td>3 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>~$3,920</td>
+<td>定頻中 3 級能源</td>
+</tr>
+<tr>
+<td>24</td>
+<td><strong>TOSOT 大松</strong></td>
+<td>W18R5A</td>
+<td>17,572</td>
+<td>4 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>$4,461</td>
+<td>香港製 R32</td>
+</tr>
+<tr>
+<td>25</td>
+<td><strong>FUJI 富士電機</strong></td>
+<td>RFR18FNTN</td>
+<td>17,400</td>
+<td>4 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>$4,528-5,368</td>
+<td>日系抗菌防霉</td>
+</tr>
+<tr>
+<td>26</td>
+<td><strong>COMFEE</strong></td>
+<td>CWF-18CRFN8-AD5</td>
+<td>~18,000</td>
+<td><strong>1 級</strong></td>
+<td>🔷 變頻</td>
+<td>✅</td>
+<td>$5,600-6,200</td>
+<td>🔌 最平 2匹 WiFi</td>
+</tr>
+<tr>
+<td>27</td>
+<td><strong>Carrier 開利</strong></td>
+<td>CHK18EAVX</td>
+<td>~18,000</td>
+<td><strong>1 級</strong></td>
+<td>🔷 變頻</td>
+<td>✅</td>
+<td>$6,600-7,200</td>
+<td>⭐ 解決 2匹電費痛點</td>
+</tr>
+<tr>
+<td>28</td>
+<td><strong>Rasonic 樂信</strong></td>
+<td>RC-TS18UV</td>
+<td>~18,000</td>
+<td><strong>1 級</strong></td>
+<td>🔷 變頻</td>
+<td>✅</td>
+<td>$6,800-7,500</td>
+<td>R32 + WiFi + 抽濕</td>
+</tr>
+</tbody>
+</table>
+<h3>🔹 2.5 匹（適合 220-300 呎）</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>品牌</th>
+<th>型號</th>
+<th>BTU</th>
+<th>能源</th>
+<th>類型</th>
+<th>WiFi</th>
+<th>參考價</th>
+<th>備註</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>29</td>
+<td><strong>TOSOT 大松</strong></td>
+<td>W24R5A</td>
+<td>22,314</td>
+<td>4 級</td>
+<td>🔶 定頻</td>
+<td>➖</td>
+<td>$4,618</td>
+<td>唯一 2.5 匹選擇</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>📶 WiFi / 智能家居分析</h2>
+<table>
+<thead>
+<tr>
+<th>壓縮機類型</th>
+<th>WiFi 狀況</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🔶 <strong>定頻（16 型號）</strong></td>
+<td>❌ <strong>全線沒有</strong> WiFi</td>
+</tr>
+<tr>
+<td>🔷 <strong>變頻（13 型號）</strong></td>
+<td>✅ <strong>11/13 內置</strong> WiFi（僅 General AMWB12NID 及部分入門款沒有）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>💡 若 WiFi/智能家居為必須，只有變頻機可選。COMFEE $3,490 起就有。</p>
+<p>⚠️ <strong>註</strong>：Gemini 第二版資料指 Rasonic RC-TS18UV「不支援 WiFi」（見下方補充章節），與本表「內置 WiFi」有出入，需以官網為準。</p>
+</blockquote>
+<hr />
+<h2>⚡ 能源標籤分析</h2>
+<table>
+<thead>
+<tr>
+<th>能源級別</th>
+<th>型號數</th>
+<th>類型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1 級</strong></td>
+<td>13</td>
+<td>🔷 全部為變頻</td>
+</tr>
+<tr>
+<td>3 級</td>
+<td>9</td>
+<td>🔶 定頻（CANOPUS×3、Carrier BE×3、Midea CR8C×2、HITACHI）</td>
+</tr>
+<tr>
+<td>4 級</td>
+<td>7</td>
+<td>🔶 定頻（TOSOT×4、Rasonic XG×2、FUJI）</td>
+</tr>
+<tr>
+<td>2 級</td>
+<td>0</td>
+<td>—</td>
+</tr>
+<tr>
+<td>5 級</td>
+<td>0</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>🎯 想慳電 → 只能選變頻（1級）。定頻最高只有 3 級，長期開冷氣電費差距 30-40%。</p>
+<p>✅ <strong>2026-08-12 已用機電署（EMSD）能源標籤官方資料庫逐個核實</strong>（1,927 個空調型號全量下載比對），本表能源級別全部確認無誤。</p>
+</blockquote>
+<hr />
+<h2>📋 重點型號深度分析</h2>
+<h3>⭐ Rasonic 樂信 RC-XG12（用戶指定關注）</h3>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>詳情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>類型</td>
+<td>🔶 定頻</td>
+</tr>
+<tr>
+<td>能源</td>
+<td>4 級（CSPF: 3.0835 / 年耗 558kWh）</td>
+</tr>
+<tr>
+<td>製冷量</td>
+<td>11,601 BTU/h</td>
+</tr>
+<tr>
+<td>尺寸</td>
+<td>375 × 560 × <strong>668 mm</strong> ⚠️ 較深</td>
+</tr>
+<tr>
+<td>保養</td>
+<td>🏆 <strong>3年全機 + 5年壓縮機</strong>（信興，全市場最穩健）</td>
+</tr>
+<tr>
+<td>售價</td>
+<td>$4,251（豐澤）</td>
+</tr>
+<tr>
+<td>評分</td>
+<td>⭐5.0（「十分安靜、制冷很快」）</td>
+</tr>
+<tr>
+<td>注意</td>
+<td>定頻壓縮機啟動「噠」聲，不建議睡房；藍鑽抗腐蝕獲沿海用家好評</td>
+</tr>
+</tbody>
+</table>
+<h3>🏆 Panasonic CW-HU90AA（1匹終極旗艦）</h3>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>詳情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>類型</td>
+<td>🔷 變頻</td>
+</tr>
+<tr>
+<td>能源</td>
+<td><strong>1 級</strong> 👑 超 1 級標準 10%</td>
+</tr>
+<tr>
+<td>WiFi</td>
+<td>✅ Comfort Cloud App</td>
+</tr>
+<tr>
+<td>空氣淨化</td>
+<td>nanoe X Mark 3</td>
+</tr>
+<tr>
+<td>售價</td>
+<td>$5,680-6,449</td>
+</tr>
+<tr>
+<td>適合</td>
+<td>睡房首選（極靜音 + 空氣淨化）</td>
+</tr>
+</tbody>
+</table>
+<h3>🔌 COMFEE CWF-09CRFN8-AD5（WiFi 入場首選）</h3>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>詳情</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>類型</td>
+<td>🔷 變頻</td>
+</tr>
+<tr>
+<td>能源</td>
+<td><strong>1 級</strong></td>
+</tr>
+<tr>
+<td>WiFi</td>
+<td>✅ 智能控制</td>
+</tr>
+<tr>
+<td>售價</td>
+<td><strong>$3,490-3,890</strong>（快閃可低至 $2,957）</td>
+</tr>
+<tr>
+<td>定位</td>
+<td>最平 WiFi 窗口機，比部分定頻機仲平</td>
+</tr>
+</tbody>
+</table>
+<h3>⭐ Carrier EAVXP 系列（性價比變頻）</h3>
+<table>
+<thead>
+<tr>
+<th>型號</th>
+<th>匹數</th>
+<th>參考價</th>
+<th>定位</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CHK09EAVXP</td>
+<td>1匹</td>
+<td>$3,800-4,200</td>
+<td>約 Panasonic 6-7 折</td>
+</tr>
+<tr>
+<td>CHK12EAVXP</td>
+<td>1.5匹</td>
+<td>$4,800-5,300</td>
+<td>獨立抽濕力強</td>
+</tr>
+<tr>
+<td>CHK18EAVX</td>
+<td>2匹</td>
+<td>$6,600-7,200</td>
+<td>解決大匹數電費痛點</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>📈 排名</h2>
+<h3>⚡ 能源效益 TOP 5</h3>
+<table>
+<thead>
+<tr>
+<th>排名</th>
+<th>型號</th>
+<th>能源</th>
+<th>類型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>👑</td>
+<td>Panasonic CW-HU90AA / HU120AA</td>
+<td>1 級（超標準 10%）</td>
+<td>🔷 變頻</td>
+</tr>
+<tr>
+<td>🥇</td>
+<td>全線變頻機</td>
+<td>1 級</td>
+<td>🔷 變頻</td>
+</tr>
+<tr>
+<td>🥈</td>
+<td>HITACHI RA-10RF</td>
+<td>3 級（422kWh）</td>
+<td>🔶 定頻</td>
+</tr>
+<tr>
+<td>🥈</td>
+<td>Carrier CHK09BE / CHK12BE / CHK18BE</td>
+<td>3 級</td>
+<td>🔶 定頻</td>
+</tr>
+<tr>
+<td>🥉</td>
+<td>RC-XG12 / TOSOT / FUJI / CANOPUS</td>
+<td>4 級</td>
+<td>🔶 定頻</td>
+</tr>
+</tbody>
+</table>
+<h3>⭐ 用戶評價</h3>
+<table>
+<thead>
+<tr>
+<th>排名</th>
+<th>型號</th>
+<th>評分</th>
+<th>評價數</th>
+<th>關鍵詞</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🥇</td>
+<td>Rasonic RC-XG12</td>
+<td>⭐5.0</td>
+<td>1</td>
+<td>十分安靜；⚠️ 定頻噠聲不宜睡房</td>
+</tr>
+<tr>
+<td>🥇</td>
+<td>Rasonic RC-XG9</td>
+<td>⭐5.0</td>
+<td>1</td>
+<td>夠凍夠靜</td>
+</tr>
+<tr>
+<td>🥈</td>
+<td>HITACHI RA-10RF</td>
+<td>⭐4.6</td>
+<td><strong>38</strong> ✅✅</td>
+<td>極靜、夠冷、耐用</td>
+</tr>
+<tr>
+<td>⚠️</td>
+<td>TOSOT W12R5A</td>
+<td>⭐3.0</td>
+<td>1</td>
+<td>🚨 風聲鶴淚！非常吵耳</td>
+</tr>
+<tr>
+<td>—</td>
+<td>其餘型號</td>
+<td>暫無</td>
+<td>—</td>
+<td>待用戶評價</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>🏆 最終推薦</h2>
+<h3>🛏️ 睡房（需要靜音）</h3>
+<table>
+<thead>
+<tr>
+<th>預算</th>
+<th>推薦</th>
+<th>價格</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~$3,500</td>
+<td>COMFEE CWF-09CRFN8-AD5（變頻 + WiFi）</td>
+<td>$3,490-3,890</td>
+</tr>
+<tr>
+<td>~$4,000</td>
+<td>Carrier CHK09EAVXP（變頻 + WiFi）</td>
+<td>$3,800-4,200</td>
+</tr>
+<tr>
+<td>不限</td>
+<td>🏆 <strong>Panasonic CW-HU90AA</strong>（nanoe X + 極靜）</td>
+<td>$5,680-6,449</td>
+</tr>
+</tbody>
+</table>
+<h3>📺 客廳 / 少開（開機即凍）</h3>
+<table>
+<thead>
+<tr>
+<th>預算</th>
+<th>推薦</th>
+<th>價格</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~$2,000</td>
+<td>CANOPUS TA-09EOG（定頻最平）</td>
+<td>$1,850</td>
+</tr>
+<tr>
+<td>~$2,200</td>
+<td>Carrier CHK09BE（定頻 3 級）</td>
+<td>$2,150</td>
+</tr>
+<tr>
+<td>~$3,400</td>
+<td>HITACHI RA-10RF（定頻極靜 + 38人認證）</td>
+<td>$3,380</td>
+</tr>
+</tbody>
+</table>
+<h3>🔌 必須有 WiFi</h3>
+<table>
+<thead>
+<tr>
+<th>預算</th>
+<th>推薦</th>
+<th>價格</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>最平</td>
+<td>COMFEE CWF-09CRFN8-AD5</td>
+<td>$3,490-3,890</td>
+</tr>
+<tr>
+<td>性價比</td>
+<td>Carrier CHK09EAVXP</td>
+<td>$3,800-4,200</td>
+</tr>
+<tr>
+<td>終極</td>
+<td>Panasonic CW-HU90AA</td>
+<td>$5,680-6,449</td>
+</tr>
+</tbody>
+</table>
+<h3>🏷️ 必須有最長保養</h3>
+<table>
+<thead>
+<tr>
+<th>推薦</th>
+<th>保養</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>⭐ <strong>Rasonic RC-XG12</strong>（定頻 1.5匹）</td>
+<td>3年全機 + 5年壓縮機（信興）</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>💰 獨立價格驗證（Price.com.hk 非屈臣氏商戶）</h2>
+<table>
+<thead>
+<tr>
+<th>型號</th>
+<th>豐澤價</th>
+<th>Price 獨立商戶</th>
+<th>驗證</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Carrier CHK09BE</td>
+<td>—</td>
+<td>~$2,150</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>HITACHI RA-10RF</td>
+<td>$3,380</td>
+<td>$3,380</td>
+<td>✅ 一致</td>
+</tr>
+<tr>
+<td>Carrier CHK12BE</td>
+<td>—</td>
+<td>~$3,150</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>Midea MW-12CR8C</td>
+<td>—</td>
+<td>~$3,100</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>RC-XG12</td>
+<td>$4,251</td>
+<td>待查</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>✅ 官方驗證結果（2026-08-12 全量核實）</h2>
+<blockquote>
+<p><strong>方法</strong>：從<strong>機電署（EMSD）能源標籤官方資料庫</strong>全量下載 <strong>1,927 個空調機型號</strong>，逐個比對本報告 29 個型號；另以 <strong>Price.com.hk</strong> 獨立格價抽查重點型號。</p>
+</blockquote>
+<h3>🎯 EMSD 官方確認（能源級別 / 年耗電 / 雪種 / 變頻）</h3>
+<blockquote>
+<p>以下為 <strong>EMSD 表列型號紀錄冊</strong>（政府官方、最權威）數據，取代此前所有 Gemini/電商估算。</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>型號</th>
+<th>能源</th>
+<th>年耗電 (kWh)</th>
+<th>製冷量 (kW)</th>
+<th>CSPF</th>
+<th>雪種</th>
+<th>變頻</th>
+<th>參考編號</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CANOPUS TA-09EOG</td>
+<td><strong>3 級</strong></td>
+<td>394</td>
+<td>2.73</td>
+<td>3.4011</td>
+<td>R32</td>
+<td>否</td>
+<td>U2-C250108</td>
+</tr>
+<tr>
+<td>CANOPUS TA-12EOG</td>
+<td><strong>3 級</strong></td>
+<td>542</td>
+<td>3.52</td>
+<td>3.2809</td>
+<td>R32</td>
+<td>否</td>
+<td>U2-C250106</td>
+</tr>
+<tr>
+<td>CANOPUS TA-18EOG</td>
+<td><strong>3 級</strong></td>
+<td>814</td>
+<td>5.34</td>
+<td>3.2764</td>
+<td>R32</td>
+<td>否</td>
+<td>U2-C250107</td>
+</tr>
+<tr>
+<td>TOSOT W09R5A</td>
+<td><strong>4 級</strong></td>
+<td>429</td>
+<td>2.68</td>
+<td>3.0396</td>
+<td>R32</td>
+<td>否</td>
+<td>U2-C250252</td>
+</tr>
+<tr>
+<td>TOSOT W12R5A</td>
+<td>4 級</td>
+<td>560</td>
+<td>3.55</td>
+<td>3.0725</td>
+<td>R32</td>
+<td>否</td>
+<td>U2-C250253</td>
+</tr>
+<tr>
+<td>TOSOT W18R5A</td>
+<td>4 級</td>
+<td>861</td>
+<td>5.37</td>
+<td>3.0237</td>
+<td>R32</td>
+<td>否</td>
+<td>U2-C250237</td>
+</tr>
+<tr>
+<td>TOSOT W24R5A</td>
+<td>4 級</td>
+<td>1,057</td>
+<td>6.63</td>
+<td>3.1288</td>
+<td>R32</td>
+<td>否</td>
+<td>U2-C250254</td>
+</tr>
+<tr>
+<td>Carrier CHK09BE</td>
+<td>3 級</td>
+<td>394</td>
+<td>2.73</td>
+<td>3.4011</td>
+<td>R32</td>
+<td>否</td>
+<td>U2-C250012</td>
+</tr>
+<tr>
+<td>Carrier CHK12BE</td>
+<td>3 級</td>
+<td>542</td>
+<td>3.52</td>
+<td>3.2809</td>
+<td>R32</td>
+<td>否</td>
+<td>U2-C250013</td>
+</tr>
+<tr>
+<td>Carrier CHK18BE</td>
+<td>3 級</td>
+<td>814</td>
+<td>5.34</td>
+<td>3.2764</td>
+<td>R32</td>
+<td>否</td>
+<td>U2-C250014</td>
+</tr>
+<tr>
+<td>Midea MW-09CR8C</td>
+<td>3 級</td>
+<td>396</td>
+<td>2.75</td>
+<td>3.3693</td>
+<td>R32</td>
+<td>否</td>
+<td>U2-C220230</td>
+</tr>
+<tr>
+<td>Midea MW-12CR8C</td>
+<td>3 級</td>
+<td>549</td>
+<td>3.56</td>
+<td>3.2432</td>
+<td>R32</td>
+<td>否</td>
+<td>U2-C220231</td>
+</tr>
+<tr>
+<td>HITACHI RA-10RF</td>
+<td>3 級</td>
+<td>422</td>
+<td>2.62</td>
+<td>3.2045</td>
+<td><strong>R32</strong></td>
+<td>否</td>
+<td>U2-C210053</td>
+</tr>
+<tr>
+<td>Rasonic RC-XG9</td>
+<td>4 級</td>
+<td>435</td>
+<td>2.65</td>
+<td>2.9978</td>
+<td>R32</td>
+<td>否</td>
+<td>U2-C250158</td>
+</tr>
+<tr>
+<td>Rasonic RC-XG12</td>
+<td>4 級</td>
+<td>558</td>
+<td>3.57</td>
+<td>3.0835</td>
+<td>R32</td>
+<td>否</td>
+<td>U2-C250159</td>
+</tr>
+<tr>
+<td>FUJI RFR18FNTN</td>
+<td>4 級</td>
+<td>850</td>
+<td>5.21</td>
+<td>3.0323</td>
+<td><strong>R410A</strong></td>
+<td>否</td>
+<td>U2-C180076</td>
+</tr>
+<tr>
+<td>COMFEE CWF-09CRFN8-AD5</td>
+<td>1 級</td>
+<td>290</td>
+<td>2.57</td>
+<td>4.5994</td>
+<td>R32</td>
+<td>是</td>
+<td>U2-C240034</td>
+</tr>
+<tr>
+<td>COMFEE CWF-12CRFN8-AD5</td>
+<td>1 級</td>
+<td>380</td>
+<td>3.50</td>
+<td>4.6849</td>
+<td>R32</td>
+<td>是</td>
+<td>U2-C240035</td>
+</tr>
+<tr>
+<td>COMFEE CWF-18CRFN8-AD5</td>
+<td>1 級</td>
+<td>578</td>
+<td>5.35</td>
+<td>4.6392</td>
+<td>R32</td>
+<td>是</td>
+<td>U2-C240036</td>
+</tr>
+<tr>
+<td>Carrier CHK09EAVXP</td>
+<td>1 級</td>
+<td>272</td>
+<td>2.63</td>
+<td>4.7797</td>
+<td>R32</td>
+<td>是</td>
+<td>U2-C250029</td>
+</tr>
+<tr>
+<td>Carrier CHK12EAVXP</td>
+<td>1 級</td>
+<td>380</td>
+<td>3.50</td>
+<td>4.6849</td>
+<td>R32</td>
+<td>是</td>
+<td>U2-C230141</td>
+</tr>
+<tr>
+<td>Carrier CHK18EAVX ⚠️</td>
+<td>1 級</td>
+<td>546</td>
+<td>5.28</td>
+<td>4.7763</td>
+<td>R32</td>
+<td>是</td>
+<td>U2-C230028</td>
+</tr>
+<tr>
+<td>Midea MW-09CRF8B</td>
+<td>1 級</td>
+<td>290</td>
+<td>2.57</td>
+<td>4.5994</td>
+<td>R32</td>
+<td>是</td>
+<td>U2-C220142</td>
+</tr>
+<tr>
+<td>Gree GWF09P</td>
+<td>1 級</td>
+<td>280</td>
+<td>2.50</td>
+<td>4.5066</td>
+<td>R32</td>
+<td>是</td>
+<td>U2-C250048</td>
+</tr>
+<tr>
+<td>Gree GWF12DB</td>
+<td>1 級</td>
+<td>365</td>
+<td>3.62</td>
+<td>4.8539</td>
+<td>R32</td>
+<td>是</td>
+<td>U2-C220167</td>
+</tr>
+<tr>
+<td>General AMWB12NID</td>
+<td>1 級</td>
+<td>359</td>
+<td>3.56</td>
+<td>4.9263</td>
+<td>R32</td>
+<td>是</td>
+<td>U2-C240160</td>
+</tr>
+<tr>
+<td>Panasonic CW-HU90AA</td>
+<td>1 級</td>
+<td>269</td>
+<td>2.62</td>
+<td>5.0130</td>
+<td>R32</td>
+<td>是</td>
+<td>U2-C230209</td>
+</tr>
+<tr>
+<td>Panasonic CW-HU120AA</td>
+<td>1 級</td>
+<td>362</td>
+<td>3.54</td>
+<td>5.0219</td>
+<td>R32</td>
+<td>是</td>
+<td>U2-C230220</td>
+</tr>
+<tr>
+<td>Rasonic RC-TS18UV</td>
+<td>1 級</td>
+<td>548</td>
+<td>5.36</td>
+<td>4.7795</td>
+<td>R32</td>
+<td>是</td>
+<td>U2-C260028</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>⚠️ <strong>CHK18EAVX</strong>：EMSD 資料庫<strong>冇「CHK18EAVXP」</strong>，只有 <strong>CHK18EAVX</strong>（1 級 / 546kWh）——本報告已更正型號名。1 匹/1.5 匹則確實係 CHK09EAVXP / CHK12EAVXP。</p>
+</blockquote>
+<h3>🔧 由此修正嘅錯誤（以 EMSD 為準）</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>修正項目</th>
+<th>舊值</th>
+<th>官方正確值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>CANOPUS TA-09/12/18EOG 能源</td>
+<td>4 級</td>
+<td><strong>3 級</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td>TOSOT W09R5A 能源</td>
+<td>3 級</td>
+<td><strong>4 級</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td>HITACHI RA-10RF 雪種</td>
+<td>R410A</td>
+<td><strong>R32</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td>FUJI RFR18FNTN 雪種</td>
+<td>R32</td>
+<td><strong>R410A</strong></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Carrier CHK18EAVXP 型號</td>
+<td>CHK18EAVXP</td>
+<td><strong>CHK18EAVX</strong>（EMSD 無此型號）</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Gemini 稱全線定頻 1 級</td>
+<td>❌ 錯誤</td>
+<td>定頻實為 <strong>3-4 級</strong>（EMSD 確認）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>✅ <strong>29 個型號中 28 個確認存在於 EMSD 官方紀錄冊</strong>，能源級別、雪種、變頻全部有官方參考編號。</p>
+</blockquote>
+<h3>💰 Price.com.hk 獨立格價抽查（2026-08-12）</h3>
+<table>
+<thead>
+<tr>
+<th>型號</th>
+<th>本報告標價</th>
+<th>Price 獨立實價</th>
+<th>結論</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HITACHI RA-10RF</td>
+<td>$3,380（豐澤）</td>
+<td><strong>HK$2,140 - 3,380</strong></td>
+<td>✅ 報告為上限，Price 有更低價</td>
+</tr>
+<tr>
+<td>Panasonic CW-HU90AA</td>
+<td>$5,680-6,449</td>
+<td><strong>HK$4,570 起</strong></td>
+<td>⚠️ Price 明顯更平</td>
+</tr>
+<tr>
+<td>COMFEE CWF-09CRFN8-AD5</td>
+<td>$3,490-3,890</td>
+<td><strong>HK$3,100 起</strong></td>
+<td>⚠️ Price 更平</td>
+</tr>
+<tr>
+<td>LG W3NQ09RSAD0（新確認）</td>
+<td>未收錄</td>
+<td>✅ 存在（1匹變頻）</td>
+<td>🆕 加入待核實</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>💡 <strong>結論</strong>：報告標價取自豐澤等連鎖（定價較高），<strong>Price.com.hk 獨立商戶普遍低 $300-1,000</strong>。買之前建議用 Price 格價。</p>
+</blockquote>
+<h3>🆕 遺漏型號 EMSD 確認結果</h3>
+<table>
+<thead>
+<tr>
+<th>Gemini 建議型號</th>
+<th>EMSD 實際結果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Panasonic CW-HU180AA</td>
+<td>✅ 存在（1級 / 498kWh / 2匹變頻）</td>
+</tr>
+<tr>
+<td>Rasonic RC-HU90A/120A/180A</td>
+<td>✅ 存在（1級，與 Panasonic CW-HU90AA/120AA/180AA 數據完全相同 = 確認雙生機）</td>
+</tr>
+<tr>
+<td>Gree GWF18DB</td>
+<td>✅ 存在（1級 / 561kWh / 2匹變頻）</td>
+</tr>
+<tr>
+<td>Panasonic CW-N921JA / CW-N1221VA</td>
+<td>✅ 存在（3級 / 定頻）</td>
+</tr>
+<tr>
+<td><strong>LG W3-Q0918D0 / W3-Q1218D0</strong></td>
+<td>⚠️ <strong>型號名錯</strong> — EMSD 實為 <strong>W3NQ09RSBD0 / W3NQ12RSBD0</strong>（1級 / 279kWh / 379kWh / 變頻），市場亦見 W3NQ09RSAD0 等</td>
+</tr>
+<tr>
+<td><strong>Whirlpool AWB090CR / AWB120CR</strong></td>
+<td>⚠️ <strong>型號名錯</strong> — EMSD 實為 <strong>AWV09300R / AWV12300R</strong>（1級 / 279kWh / 381kWh / 變頻）；定頻為 AWA 系列（4級）</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>🆕 <strong>新增 2 個重要遺漏品牌</strong>：<strong>LG W3NQ 系列</strong>（1 匹 $2,xxx-3,xxx 變頻 1 級）及 <strong>Whirlpool AWV 系列</strong>（1 級變頻）均為香港市場主流選擇，建議後續補入主表。</p>
+</blockquote>
+<hr />
+<h2>🤖 Gemini AI 補充資料（2026-08-12 · 第二版）</h2>
+<blockquote>
+<h3>⚠️ 可信度說明（必讀）</h3>
+<p>本版為用戶於 Gemini 網頁版取得之<strong>第二版回覆</strong>，宣稱整合自<strong>機電工程署（EMSD）能源標籤、品牌官方目錄及香港主流經銷商</strong>。
+<strong>⚠️ 已於 2026-08-12 用 EMSD 官方資料庫全量核實</strong>，結論：
+- ❌ <strong>能源標籤嚴重錯誤</strong>：Gemini 將 TOSOT / Carrier BE / Midea CR8C / Rasonic XG 系列<strong>定頻機全部標為「1 級」</strong>——<strong>EMSD 官方實為 3-4 級</strong>（定頻機冇可能 1 級），此欄完全不可信，<strong>以官方驗證章節為準</strong>
+- ✅ <strong>雪種正確</strong>：Gemini 標 FUJI 為 R410A（官方確認 R410A）、其餘 R32（官方確認）
+- ⚠️ <strong>年耗電 kWh 多為估算</strong>：與官方有差距（如 COMFEE 09 標 240，官方 290；Panasonic CW-HU90AA 標 225，官方 269）——<strong>以官方為準</strong>
+- ⚠️ <strong>噪音 dB / 尺寸 mm / 重量</strong>：屬參考級，無官方文件核實
+- ✅ <strong>保養年期</strong>（3 年/5 年 主流）、<strong>WiFi App 兼容</strong>（MSmartHome / Carrier / Gree+ / Comfort Cloud，支援 Google/Alexa）合理
+- ⚠️ Rasonic RC-TS18UV 標「不支援 WiFi」與本報告「內置 WiFi」有出入，需以官網為準</p>
+</blockquote>
+<h3>📋 全型號補充欄位總表（Gemini 第二版）</h3>
+<h4>🔶 定頻機型（全線不支援 WiFi）</h4>
+<table>
+<thead>
+<tr>
+<th>型號</th>
+<th>尺寸 H×W×D (mm)</th>
+<th>重量 (kg)</th>
+<th>噪音 (dB)</th>
+<th>年耗電 (kWh)</th>
+<th>保養 全機/壓縮機</th>
+<th>雪種</th>
+<th>產地</th>
+<th>參考價 (HKD)</th>
+<th>能源*</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CANOPUS TA-09EOG</td>
+<td>346×450×585</td>
+<td>~30</td>
+<td>待查</td>
+<td>待查</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>$2,100-2,500</td>
+<td>4 級 ✅</td>
+</tr>
+<tr>
+<td>CANOPUS TA-12EOG</td>
+<td>375×560×668</td>
+<td>~40</td>
+<td>待查</td>
+<td>待查</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>$2,600-3,100</td>
+<td>4 級 ✅</td>
+</tr>
+<tr>
+<td>CANOPUS TA-18EOG</td>
+<td>428×660×770</td>
+<td>~58</td>
+<td>待查</td>
+<td>待查</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>$4,200-4,800</td>
+<td>4 級 ✅</td>
+</tr>
+<tr>
+<td>TOSOT W09R5A</td>
+<td>350×450×535</td>
+<td>~30</td>
+<td>待查</td>
+<td>~320</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>$2,000-2,400</td>
+<td>1 級 ⚠️</td>
+</tr>
+<tr>
+<td>TOSOT W12R5A</td>
+<td>375×560×668</td>
+<td>~38</td>
+<td>待查</td>
+<td>~430</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>$2,600-3,000</td>
+<td>1 級 ⚠️</td>
+</tr>
+<tr>
+<td>TOSOT W18R5A</td>
+<td>428×660×770</td>
+<td>~55</td>
+<td>待查</td>
+<td>~650</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>$4,100-4,600</td>
+<td>1 級 ⚠️</td>
+</tr>
+<tr>
+<td>TOSOT W24R5A</td>
+<td>428×660×770</td>
+<td>~65</td>
+<td>待查</td>
+<td>~850</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>$5,200-5,800</td>
+<td>1 級 ⚠️</td>
+</tr>
+<tr>
+<td>Carrier CHK09BE</td>
+<td>346×450×585</td>
+<td>~31</td>
+<td>45-49</td>
+<td>~315</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>$2,200-2,600</td>
+<td>1 級 ⚠️</td>
+</tr>
+<tr>
+<td>Carrier CHK12BE</td>
+<td>375×560×668</td>
+<td>~40</td>
+<td>47-51</td>
+<td>~420</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>$2,800-3,300</td>
+<td>1 級 ⚠️</td>
+</tr>
+<tr>
+<td>Carrier CHK18BE</td>
+<td>428×660×770</td>
+<td>~56</td>
+<td>50-54</td>
+<td>~640</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>$4,300-4,900</td>
+<td>1 級 ⚠️</td>
+</tr>
+<tr>
+<td>Midea MW-09CR8C</td>
+<td>346×450×585</td>
+<td>~30</td>
+<td>45-49</td>
+<td>~310</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>$2,100-2,500</td>
+<td>1 級 ⚠️</td>
+</tr>
+<tr>
+<td>Midea MW-12CR8C</td>
+<td>375×560×668</td>
+<td>~39</td>
+<td>47-51</td>
+<td>~415</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>$2,700-3,200</td>
+<td>1 級 ⚠️</td>
+</tr>
+<tr>
+<td>HITACHI RA-10RF</td>
+<td>345×470×600</td>
+<td>~32</td>
+<td>44-48</td>
+<td>待查</td>
+<td>2 / 5</td>
+<td>R32 ✅</td>
+<td>中國</td>
+<td>$3,100-3,600</td>
+<td>3 級 ✅</td>
+</tr>
+<tr>
+<td>Rasonic RC-XG9</td>
+<td>346×450×640</td>
+<td>~29</td>
+<td>待查</td>
+<td>~325</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>$2,500-2,900</td>
+<td>1 級 ⚠️</td>
+</tr>
+<tr>
+<td>Rasonic RC-XG12</td>
+<td>375×560×710</td>
+<td>~38</td>
+<td>待查</td>
+<td>~430</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>$3,100-3,600</td>
+<td>1 級 ⚠️</td>
+</tr>
+<tr>
+<td>FUJI RFR18FNTN</td>
+<td>428×660×770</td>
+<td>~56</td>
+<td>待查</td>
+<td>待查</td>
+<td>2 / 5</td>
+<td>R410A ✅</td>
+<td>中國</td>
+<td>$4,000-4,600</td>
+<td>4 級 ✅</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><em>能源欄：</em><em>⚠️ Gemini 原值（定頻全標 1 級）已被 EMSD 官方證實錯誤</em>*——正確級別請以「官方驗證結果」章節為準（CANOPUS 3級、TOSOT 4級、Carrier BE 3級、Midea CR8C 3級、HITACHI 3級、Rasonic XG 4級、FUJI 4級）。本表能源欄僅保留作對照。</p>
+</blockquote>
+<h4>🔷 變頻機型</h4>
+<table>
+<thead>
+<tr>
+<th>型號</th>
+<th>尺寸 H×W×D (mm)</th>
+<th>重量 (kg)</th>
+<th>噪音 (dB)</th>
+<th>年耗電 (kWh)</th>
+<th>保養 全機/壓縮機</th>
+<th>雪種</th>
+<th>產地</th>
+<th>WiFi App 兼容</th>
+<th>參考價 (HKD)</th>
+<th>能源</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>COMFEE CWF-09CRFN8-AD5</td>
+<td>346×450×585</td>
+<td>~28</td>
+<td>42-46</td>
+<td>~240</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>MSmartHome (Google/Alexa)</td>
+<td>$2,300-2,800</td>
+<td>1 級</td>
+</tr>
+<tr>
+<td>COMFEE CWF-12CRFN8-AD5</td>
+<td>375×560×668</td>
+<td>~35</td>
+<td>44-48</td>
+<td>~320</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>MSmartHome (Google/Alexa)</td>
+<td>$2,900-3,400</td>
+<td>1 級</td>
+</tr>
+<tr>
+<td>COMFEE CWF-18CRFN8-AD5</td>
+<td>428×660×770</td>
+<td>~50</td>
+<td>46-50</td>
+<td>~490</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>MSmartHome (Google/Alexa)</td>
+<td>$4,500-5,200</td>
+<td>1 級</td>
+</tr>
+<tr>
+<td>Carrier CHK09EAVXP</td>
+<td>346×450×585</td>
+<td>~29</td>
+<td>41-45</td>
+<td>~235</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>Carrier App / MSmart (Google/Alexa)</td>
+<td>$2,800-3,300</td>
+<td>1 級</td>
+</tr>
+<tr>
+<td>Carrier CHK12EAVXP</td>
+<td>375×560×668</td>
+<td>~36</td>
+<td>43-47</td>
+<td>~315</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>Carrier App / MSmart (Google/Alexa)</td>
+<td>$3,500-4,100</td>
+<td>1 級</td>
+</tr>
+<tr>
+<td>Carrier CHK18EAVX</td>
+<td>428×660×770</td>
+<td>~52</td>
+<td>45-49</td>
+<td>~485</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>Carrier App / MSmart (Google/Alexa)</td>
+<td>$5,200-5,900</td>
+<td>1 級</td>
+</tr>
+<tr>
+<td>Midea MW-09CRF8B</td>
+<td>346×450×585</td>
+<td>~29</td>
+<td>41-45</td>
+<td>~235</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>MSmartHome (Google/Alexa)</td>
+<td>$2,700-3,200</td>
+<td>1 級</td>
+</tr>
+<tr>
+<td>Gree GWF09P</td>
+<td>350×450×535</td>
+<td>~28</td>
+<td>待查</td>
+<td>~245</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>Gree+ (Google/Alexa)</td>
+<td>$2,800-3,300</td>
+<td>1 級</td>
+</tr>
+<tr>
+<td>Gree GWF12DB</td>
+<td>375×560×668</td>
+<td>~36</td>
+<td>待查</td>
+<td>~325</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>Gree+ (Google/Alexa)</td>
+<td>$3,600-4,200</td>
+<td>1 級</td>
+</tr>
+<tr>
+<td>General AMWB12NID</td>
+<td>375×560×705</td>
+<td>~38</td>
+<td>43-48</td>
+<td>~330</td>
+<td>2 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>不支援</td>
+<td>$4,800-5,500</td>
+<td>1 級</td>
+</tr>
+<tr>
+<td>Panasonic CW-HU90AA</td>
+<td>346×450×640</td>
+<td>~30</td>
+<td>39-44</td>
+<td>~225</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>菲律賓</td>
+<td>Comfort Cloud (Google/Alexa)</td>
+<td>$4,200-4,800</td>
+<td>1 級</td>
+</tr>
+<tr>
+<td>Panasonic CW-HU120AA</td>
+<td>375×560×710</td>
+<td>~39</td>
+<td>41-45</td>
+<td>~310</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>菲律賓</td>
+<td>Comfort Cloud (Google/Alexa)</td>
+<td>$5,200-5,900</td>
+<td>1 級</td>
+</tr>
+<tr>
+<td>Rasonic RC-TS18UV</td>
+<td>428×660×770</td>
+<td>~52</td>
+<td>待查</td>
+<td>~490</td>
+<td>3 / 5</td>
+<td>R32</td>
+<td>中國</td>
+<td>不支援 ⚠️</td>
+<td>$5,800-6,600</td>
+<td>1 級</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>📌 <strong>WiFi 兼容要點</strong>：COMFEE / Midea / Carrier 變頻均以 <strong>Midea 平台（MSmartHome）</strong> 為底（多為美的 OEM），可連 Google Home + Alexa；<strong>Apple Home 通常不支援</strong>（需 Homebridge）。Panasonic 用自家 Comfort Cloud，支援 Google/Alexa。Gree 用 Gree+ App。</p>
+</blockquote>
+<h3>A. CANOPUS 肯特三款詳細規格（Gemini 第二版，未獨立驗證）</h3>
+<table>
+<thead>
+<tr>
+<th>型號</th>
+<th>製冷量</th>
+<th>雪種</th>
+<th>過濾網</th>
+<th>抽濕量</th>
+<th>其他功能</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>TA-09EOG</td>
+<td>~9,000 BTU/h</td>
+<td>R32</td>
+<td>銀離子抗菌過濾網 + 高密度初效濾網</td>
+<td>~1.0 L/h</td>
+<td>無線遙控器、24小時定時、睡眠模式、自動重啟</td>
+</tr>
+<tr>
+<td>TA-12EOG</td>
+<td>~12,000 BTU/h</td>
+<td>R32</td>
+<td>銀離子抗菌過濾網</td>
+<td>~1.4 L/h</td>
+<td>多段風級調節、廣角送風擺動、藍鑽防銹翅片</td>
+</tr>
+<tr>
+<td>TA-18EOG</td>
+<td>~18,000 BTU/h</td>
+<td>R32</td>
+<td>銀離子抗菌及防霉過濾網</td>
+<td>~2.0 L/h</td>
+<td>大風量快速製冷、LED 溫度顯示遙控器、防銹底盤</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>⚠️ 注意：本報告早前已驗證 <strong>TA-12EOG 無遙控</strong>，不符合「必須遙控」篩選條件，僅供參考。</p>
+</blockquote>
+<h3>B. Gemini 建議補入的遺漏型號（第二版，未驗證僅列出待查）</h3>
+<table>
+<thead>
+<tr>
+<th>品牌</th>
+<th>型號</th>
+<th>說明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Panasonic</td>
+<td><strong>CW-HU180AA</strong></td>
+<td>2 匹變頻淨冷 R32 + nanoe-X + Wi-Fi，旗艦 2 匹</td>
+</tr>
+<tr>
+<td>Rasonic 樂信</td>
+<td><strong>RC-HU90A / RC-HU120A / RC-HU180A</strong></td>
+<td>1匹/1.5匹/2匹 變頻，與 Panasonic 同廠雙生機型</td>
+</tr>
+<tr>
+<td>LG</td>
+<td><strong>W3-Q0918D0 / W3-Q1218D0</strong></td>
+<td>1匹/1.5匹 <strong>DUAL Inverter 雙轉子變頻</strong> R32，香港熱賣極靜音，ThinQ App 支援 Google Home</td>
+</tr>
+<tr>
+<td>Gree 格力</td>
+<td><strong>GWF18DB</strong></td>
+<td>2 匹變頻淨冷 R32 主力</td>
+</tr>
+<tr>
+<td>Whirlpool 惠而浦</td>
+<td><strong>AWB090CR / AWB120CR</strong></td>
+<td>1匹/1.5匹 平價窗口機系列</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>📌 <strong>優先核實</strong>：<strong>LG DUAL Inverter</strong> 為香港熱賣型號，屬重要遺漏；Rasonic RC-HU 系列為樂信變頻主力。以上型號需另行上網核實規格與售價後，方可加入主對比表。</p>
+</blockquote>
+<h3>C. LIHKG / 香港討論區用戶評價摘要（Gemini 第二版轉述，未附原帖）</h3>
+<table>
+<thead>
+<tr>
+<th>品牌/系列</th>
+<th>優點</th>
+<th>缺點</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Panasonic CW-HU 系列</strong></td>
+<td>連登公認<strong>最安靜窗口機之一</strong>；變頻恆溫佳，冇定頻「忽冷忽熱」；nanoe-X 去味有感</td>
+<td>價格貴（1匹已需 $4,000+）；底盤水平唔好積水聲明顯</td>
+</tr>
+<tr>
+<td><strong>Carrier EAVXP / Midea CRF8B / COMFEE CRFN8</strong>（網民拆解同屬美的代工，機芯架構重疊）</td>
+<td><strong>性價比極高</strong>：兩三千蚊有齊變頻 + 1級 + 內置 WiFi；冷房快；Google Home 聯動方便</td>
+<td>QC 稍遜日系；高頻運轉外殼共振聲較明顯；用 2-3 年後機身噪音有機會增加</td>
+</tr>
+<tr>
+<td><strong>Gree GWF 系列</strong></td>
+<td>被譽「<strong>凍到打冷震</strong>」耐用之選；壓縮機馬力足、散熱好、高 CP 值</td>
+<td>外觀較傳統；變頻調速偶爾有輕微高頻電流聲</td>
+</tr>
+<tr>
+<td><strong>HITACHI RA 系列</strong></td>
+<td>傳統「金剛機」，舊型號耐用度高</td>
+<td>討論區近期<strong>普遍建議避開定頻舊款</strong>：噪音過大，R32 變頻世代下省電及價格優勢已不如美的/開利</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>⚠️ 以上為 Gemini 轉述的討論區印象，<strong>無原始連結</strong>，僅作輔助參考。</p>
+</blockquote>
+<hr />
+<h2>📝 資料來源</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>來源</th>
+<th>類型</th>
+<th>狀態</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>豐澤 Fortress</td>
+<td>屈臣氏集團</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Price.com.hk</td>
+<td>格價平台（獨立商戶）</td>
+<td>✅ 已抽查 4 型號</td>
+</tr>
+<tr>
+<td>3</td>
+<td>百老匯 Broadway</td>
+<td>獨立連鎖</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>4</td>
+<td>電器幫 ElecBoy</td>
+<td>⚠️ 屈臣氏集團</td>
+<td>僅參考</td>
+</tr>
+<tr>
+<td>5</td>
+<td>友和 YOHO</td>
+<td>獨立電商</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>6</td>
+<td>電氣通 Electric Tung</td>
+<td>獨立商戶</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>7</td>
+<td>電器世紀</td>
+<td>獨立商戶</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Gemini AI 交叉驗證</td>
+<td>AI 搜尋</td>
+<td>⚠️ 能源欄證實錯誤</td>
+</tr>
+<tr>
+<td>9</td>
+<td>LIHKG 連登（電器台）</td>
+<td>論壇</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>機電工程署 EMSD 能源標籤網</strong></td>
+<td><strong>官方資料庫</strong></td>
+<td>✅✅ <strong>已全量下載 1,927 型號逐個核實（2026-08-12）</strong></td>
+</tr>
+<tr>
+<td>11</td>
+<td>HKEPC 電腦領域</td>
+<td>論壇</td>
+<td>⚠️ 需登入</td>
+</tr>
+<tr>
+<td>12</td>
+<td>BBE</td>
+<td>獨立商戶</td>
+<td>✅ Gemini</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>📌 <strong>權威性排序</strong>：EMSD 官方資料庫（能源/雪種/變頻）＞ Price.com.hk 獨立格價（價格）＞ 豐澤/電器幫（同集團僅參考）＞ Gemini（僅參考，能源欄已證實錯誤）＞ 論壇（主觀評價）</p>
+</blockquote>
+<hr />
+<h2>⚠️ 免責聲明</h2>
+<ol>
+<li>所有價格及評分取自 <strong>2026-08-11 / 2026-08-12</strong>，實際數字可能隨時間變動</li>
+<li><strong>能源級別、雪種、年耗電</strong>已於 <strong>2026-08-12 用機電署 EMSD 官方資料庫全量核實</strong>（1,927 型號），為本報告最可靠數據</li>
+<li>CANOPUS TA-12EOG 無遙控，不符合本報告篩選條件（僅供參考）</li>
+<li>Gemini AI 提供嘅資料（尺寸/噪音/價格/能源）<strong>僅供參考</strong>——其能源欄（全線定頻 1 級）已被 EMSD 證實錯誤，切勿採用</li>
+<li>部分型號評價數較少，統計意義有限</li>
+<li>定頻機壓縮機啟動聲為物理特性，非個別型號缺陷</li>
+<li>Carrier 2 匹變頻型號經 EMSD 確認應為 <strong>CHK18EAVX</strong>（報告原文 CHK18EAVXP 為誤）</li>
+<li>本報告僅供選購參考，不構成任何購買建議</li>
+</ol>
+</div>
+
+</main>
+
+<footer>
+  <b>香港窗口式空調對比報告</b><br>
+  能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實（2026-08-12）<br>
+  <span class="line">──────</span><br>
+  本報告僅供選購參考，不構成購買建議 · 價格隨時變動
+</footer>
+
+<button id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="返回頂部">↑</button>
+
+<script>
+const MODELS = [{"brand": "CANOPUS 肯特", "model": "TA-09EOG", "hp": "1匹", "btu": "~9,000", "type": "定頻", "energy": "3級", "wifi": "➖", "price": "$1,850-2,500", "kwh": "394", "cspf": "3.4011", "kw": "2.73", "gas": "R32", "noise": "待查", "size": "346×450×585", "weight": "~30kg", "warranty": "3/5年", "note": "💰 全場最平"}, {"brand": "TOSOT 大松", "model": "W09R5A", "hp": "1匹", "btu": "~9,000", "type": "定頻", "energy": "4級", "wifi": "➖", "price": "$2,000-2,400", "kwh": "429", "cspf": "3.0396", "kw": "2.68", "gas": "R32", "noise": "待查", "size": "350×450×535", "weight": "~30kg", "warranty": "3/5年", "note": "格力副廠 R32"}, {"brand": "Carrier 開利", "model": "CHK09BE", "hp": "1匹", "btu": "~9,000", "type": "定頻", "energy": "3級", "wifi": "➖", "price": "$2,150-2,600", "kwh": "394", "cspf": "3.4011", "kw": "2.73", "gas": "R32", "noise": "45-49dB", "size": "346×450×585", "weight": "~31kg", "warranty": "3/5年", "note": "雙重金鑽防銹"}, {"brand": "Midea 美的", "model": "MW-09CR8C", "hp": "1匹", "btu": "~9,000", "type": "定頻", "energy": "3級", "wifi": "➖", "price": "$2,100-2,500", "kwh": "396", "cspf": "3.3693", "kw": "2.75", "gas": "R32", "noise": "45-49dB", "size": "346×450×585", "weight": "~30kg", "warranty": "3/5年", "note": "銀離子抗菌網"}, {"brand": "HITACHI 日立", "model": "RA-10RF", "hp": "1匹", "btu": "9,120", "type": "定頻", "energy": "3級", "wifi": "➖", "price": "$2,140-3,380", "kwh": "422", "cspf": "3.2045", "kw": "2.62", "gas": "R32", "noise": "44-48dB", "size": "345×470×600", "weight": "~32kg", "warranty": "2/5年", "note": "⭐ 38人認證極靜"}, {"brand": "Rasonic 樂信", "model": "RC-XG9", "hp": "1匹", "btu": "8,803", "type": "定頻", "energy": "4級", "wifi": "➖", "price": "$2,500-2,900", "kwh": "435", "cspf": "2.9978", "kw": "2.65", "gas": "R32", "noise": "待查", "size": "346×450×640", "weight": "~29kg", "warranty": "3/5年", "note": "Panasonic 旗下"}, {"brand": "CANOPUS 肯特", "model": "TA-12EOG", "hp": "1.5匹", "btu": "~12,000", "type": "定頻", "energy": "3級", "wifi": "➖", "price": "$2,300-3,100", "kwh": "542", "cspf": "3.2809", "kw": "3.52", "gas": "R32", "noise": "待查", "size": "375×560×668", "weight": "~40kg", "warranty": "3/5年", "note": "⚠️ 無遙控"}, {"brand": "Midea 美的", "model": "MW-12CR8C", "hp": "1.5匹", "btu": "~12,000", "type": "定頻", "energy": "3級", "wifi": "➖", "price": "$2,700-3,200", "kwh": "549", "cspf": "3.2432", "kw": "3.56", "gas": "R32", "noise": "47-51dB", "size": "375×560×668", "weight": "~39kg", "warranty": "3/5年", "note": "金鑽塗層"}, {"brand": "Carrier 開利", "model": "CHK12BE", "hp": "1.5匹", "btu": "~12,000", "type": "定頻", "energy": "3級", "wifi": "➖", "price": "$2,800-3,300", "kwh": "542", "cspf": "3.2809", "kw": "3.52", "gas": "R32", "noise": "47-51dB", "size": "375×560×668", "weight": "~40kg", "warranty": "3/5年", "note": "獨立抽濕"}, {"brand": "TOSOT 大松", "model": "W12R5A", "hp": "1.5匹", "btu": "11,601", "type": "定頻", "energy": "4級", "wifi": "➖", "price": "$2,600-3,000", "kwh": "560", "cspf": "3.0725", "kw": "3.55", "gas": "R32", "noise": "待查", "size": "375×560×668", "weight": "~38kg", "warranty": "3/5年", "note": "🚨 噪音投訴"}, {"brand": "Rasonic 樂信", "model": "RC-XG12", "hp": "1.5匹", "btu": "11,601", "type": "定頻", "energy": "4級", "wifi": "➖", "price": "$3,100-3,600", "kwh": "558", "cspf": "3.0835", "kw": "3.57", "gas": "R32", "noise": "待查", "size": "375×560×710", "weight": "~38kg", "warranty": "3/5年", "note": "⭐ 3+5年保養"}, {"brand": "CANOPUS 肯特", "model": "TA-18EOG", "hp": "2匹", "btu": "~18,000", "type": "定頻", "energy": "3級", "wifi": "➖", "price": "$3,500-4,800", "kwh": "814", "cspf": "3.2764", "kw": "5.34", "gas": "R32", "noise": "待查", "size": "428×660×770", "weight": "~58kg", "warranty": "3/5年", "note": "💰 最平 2匹"}, {"brand": "Carrier 開利", "model": "CHK18BE", "hp": "2匹", "btu": "~18,000", "type": "定頻", "energy": "3級", "wifi": "➖", "price": "$3,920-4,900", "kwh": "814", "cspf": "3.2764", "kw": "5.34", "gas": "R32", "noise": "50-54dB", "size": "428×660×770", "weight": "~56kg", "warranty": "3/5年", "note": "定頻中 3 級"}, {"brand": "TOSOT 大松", "model": "W18R5A", "hp": "2匹", "btu": "17,572", "type": "定頻", "energy": "4級", "wifi": "➖", "price": "$4,100-4,600", "kwh": "861", "cspf": "3.0237", "kw": "5.37", "gas": "R32", "noise": "待查", "size": "428×660×770", "weight": "~55kg", "warranty": "3/5年", "note": "香港製 R32"}, {"brand": "FUJI 富士", "model": "RFR18FNTN", "hp": "2匹", "btu": "17,400", "type": "定頻", "energy": "4級", "wifi": "➖", "price": "$4,000-4,600", "kwh": "850", "cspf": "3.0323", "kw": "5.21", "gas": "R410A", "noise": "待查", "size": "428×660×770", "weight": "~56kg", "warranty": "2/5年", "note": "日系抗菌防霉"}, {"brand": "TOSOT 大松", "model": "W24R5A", "hp": "2.5匹", "btu": "22,314", "type": "定頻", "energy": "4級", "wifi": "➖", "price": "$4,618-5,800", "kwh": "1,057", "cspf": "3.1288", "kw": "6.63", "gas": "R32", "noise": "待查", "size": "428×660×770", "weight": "~65kg", "warranty": "3/5年", "note": "唯一 2.5 匹"}, {"brand": "COMFEE", "model": "CWF-09CRFN8-AD5", "hp": "1匹", "btu": "~9,000", "type": "變頻", "energy": "1級", "wifi": "✅", "price": "$3,100-3,890", "kwh": "290", "cspf": "4.5994", "kw": "2.57", "gas": "R32", "noise": "42-46dB", "size": "346×450×585", "weight": "~28kg", "warranty": "3/5年", "note": "🔌 最平 WiFi 智能機"}, {"brand": "Carrier 開利", "model": "CHK09EAVXP", "hp": "1匹", "btu": "~9,000", "type": "變頻", "energy": "1級", "wifi": "✅", "price": "$2,800-4,200", "kwh": "272", "cspf": "4.7797", "kw": "2.63", "gas": "R32", "noise": "41-45dB", "size": "346×450×585", "weight": "~29kg", "warranty": "3/5年", "note": "⭐ 性價比變頻"}, {"brand": "Midea 美的", "model": "MW-09CRF8B", "hp": "1匹", "btu": "~9,000", "type": "變頻", "energy": "1級", "wifi": "✅", "price": "$2,700-4,300", "kwh": "290", "cspf": "4.5994", "kw": "2.57", "gas": "R32", "noise": "41-45dB", "size": "346×450×585", "weight": "~29kg", "warranty": "3/5年", "note": "UV Pro 殺菌"}, {"brand": "Gree 格力", "model": "GWF09P", "hp": "1匹", "btu": "~9,000", "type": "變頻", "energy": "1級", "wifi": "✅", "price": "$2,800-4,499", "kwh": "280", "cspf": "4.5066", "kw": "2.50", "gas": "R32", "noise": "待查", "size": "350×450×535", "weight": "~28kg", "warranty": "3/5年", "note": "消委會高評分"}, {"brand": "Panasonic 樂聲", "model": "CW-HU90AA", "hp": "1匹", "btu": "~9,000", "type": "變頻", "energy": "1級", "wifi": "✅", "price": "$4,570-6,449", "kwh": "269", "cspf": "5.0130", "kw": "2.62", "gas": "R32", "noise": "39-44dB", "size": "346×450×640", "weight": "~30kg", "warranty": "3/5年", "note": "🏆 旗艦 nanoe X"}, {"brand": "COMFEE", "model": "CWF-12CRFN8-AD5", "hp": "1.5匹", "btu": "~12,000", "type": "變頻", "energy": "1級", "wifi": "✅", "price": "$2,900-4,990", "kwh": "380", "cspf": "4.6849", "kw": "3.50", "gas": "R32", "noise": "44-48dB", "size": "375×560×668", "weight": "~35kg", "warranty": "3/5年", "note": "🔌 最平 1.5匹 WiFi"}, {"brand": "Carrier 開利", "model": "CHK12EAVXP", "hp": "1.5匹", "btu": "~12,000", "type": "變頻", "energy": "1級", "wifi": "✅", "price": "$3,500-5,300", "kwh": "380", "cspf": "4.6849", "kw": "3.50", "gas": "R32", "noise": "43-47dB", "size": "375×560×668", "weight": "~36kg", "warranty": "3/5年", "note": "⭐ 約樂聲 6 折"}, {"brand": "Gree 格力", "model": "GWF12DB", "hp": "1.5匹", "btu": "~12,000", "type": "變頻", "energy": "1級", "wifi": "✅", "price": "$3,600-5,600", "kwh": "365", "cspf": "4.8539", "kw": "3.62", "gas": "R32", "noise": "待查", "size": "375×560×668", "weight": "~36kg", "warranty": "3/5年", "note": "G-Diamond 抗腐蝕"}, {"brand": "General 珍寶", "model": "AMWB12NID", "hp": "1.5匹", "btu": "~12,000", "type": "變頻", "energy": "1級", "wifi": "➖", "price": "$4,500-6,100", "kwh": "359", "cspf": "4.9263", "kw": "3.56", "gas": "R32", "noise": "43-48dB", "size": "375×560×705", "weight": "~38kg", "warranty": "2/5年", "note": "UV-C 殺菌；⚠️ 無 WiFi"}, {"brand": "Panasonic 樂聲", "model": "CW-HU120AA", "hp": "1.5匹", "btu": "~12,000", "type": "變頻", "energy": "1級", "wifi": "✅", "price": "$5,200-7,900", "kwh": "362", "cspf": "5.0219", "kw": "3.54", "gas": "R32", "noise": "41-45dB", "size": "375×560×710", "weight": "~39kg", "warranty": "3/5年", "note": "🏆 大房機王"}, {"brand": "COMFEE", "model": "CWF-18CRFN8-AD5", "hp": "2匹", "btu": "~18,000", "type": "變頻", "energy": "1級", "wifi": "✅", "price": "$4,500-6,200", "kwh": "578", "cspf": "4.6392", "kw": "5.35", "gas": "R32", "noise": "46-50dB", "size": "428×660×770", "weight": "~50kg", "warranty": "3/5年", "note": "🔌 最平 2匹 WiFi"}, {"brand": "Carrier 開利", "model": "CHK18EAVX", "hp": "2匹", "btu": "~18,000", "type": "變頻", "energy": "1級", "wifi": "✅", "price": "$5,200-7,200", "kwh": "546", "cspf": "4.7763", "kw": "5.28", "gas": "R32", "noise": "45-49dB", "size": "428×660×770", "weight": "~52kg", "warranty": "3/5年", "note": "⭐ 解決 2匹電費痛點"}, {"brand": "Rasonic 樂信", "model": "RC-TS18UV", "hp": "2匹", "btu": "~18,000", "type": "變頻", "energy": "1級", "wifi": "✅", "price": "$5,800-7,500", "kwh": "548", "cspf": "4.7795", "kw": "5.36", "gas": "R32", "noise": "待查", "size": "428×660×770", "weight": "~52kg", "warranty": "3/5年", "note": "R32 + WiFi + 抽濕"}];
+const FIELDS = [["hp", "匹數"], ["btu", "製冷量 (BTU)"], ["type", "類型"], ["energy", "能源級別"], ["wifi", "WiFi"], ["price", "參考價"], ["kwh", "年耗電 (kWh)"], ["cspf", "CSPF"], ["kw", "製冷量 (kW)"], ["gas", "雪種"], ["noise", "噪音"], ["size", "尺寸 (mm)"], ["weight", "重量"], ["warranty", "保養 (全機/壓縮機)"], ["note", "特點"]];
+let selected = new Set();
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function matches(m){
+  const q=document.getElementById('q').value.trim().toLowerCase();
+  const hp=document.getElementById('fHp').value;
+  const ty=document.getElementById('fType').value;
+  if(hp && m.hp!==hp) return false;
+  if(ty && m.type!==ty) return false;
+  if(q && !(m.brand.toLowerCase().includes(q)||m.model.toLowerCase().includes(q))) return false;
+  return true;
+}
+
+function priceMin(m){
+  const ms=String(m.price).match(/\$([\d,]+)/g)||['$999999'];
+  return parseInt(ms[0].replace(/[$,]/g,''));
+}
+function energyVal(m){return parseInt(m.energy)||9;}
+
+function sortModels(arr){
+  const v=document.getElementById('sortBy').value;
+  const a=[...arr];
+  if(v==='price') a.sort((x,y)=>priceMin(x)-priceMin(y));
+  else if(v==='energy') a.sort((x,y)=>energyVal(x)-energyVal(y));
+  else if(v==='kwh') a.sort((x,y)=>(parseInt(x.kwh)||9999)-(parseInt(y.kwh)||9999));
+  else if(v==='cspf') a.sort((x,y)=>(parseFloat(y.cspf)||0)-(parseFloat(x.cspf)||0));
+  return a;
+}
+
+function renderList(){
+  const list=document.getElementById('modelList');
+  let arr=sortModels(MODELS.filter(matches));
+  list.innerHTML=arr.map((m)=>{
+    const id=m.brand+'|'+m.model;
+    const on=selected.has(id);
+    return `<label class="mitem ${on?'checked':''}">
+      <input type="checkbox" ${on?'checked':''} onchange="toggle('${esc(id)}',this)">
+      <span class="info">
+        <span class="name">${esc(m.brand)} ${esc(m.model)}</span><br>
+        <span class="tag">${esc(m.hp)} · ${esc(m.btu)} BTU · ${esc(m.type)} · ${esc(m.energy)} · ${esc(m.price)}</span>
+      </span>
+      <span class="badge">${m.type==='變頻'?'🔷':'🔶'} ${esc(m.energy)}</span>
+    </label>`;
+  }).join('')||'<div class="phint">冇符合嘅型號</div>';
+}
+
+function toggle(id,el){
+  if(el.checked) selected.add(id); else selected.delete(id);
+  document.getElementById('selCount').textContent=`已選 ${selected.size} 個（最少 2 個）`;
+  const lab=el.closest('.mitem');
+  if(lab) lab.classList.toggle('checked', el.checked);
+  const panel=document.getElementById('panel');
+  if(selected.size>=2){ buildPanel(); panel.classList.add('open'); }
+  else panel.classList.remove('open');
+}
+
+function updateUI(){
+  document.getElementById('selCount').textContent=`已選 ${selected.size} 個（最少 2 個）`;
+  const panel=document.getElementById('panel');
+  if(selected.size>=2){ buildPanel(); panel.classList.add('open'); }
+  else panel.classList.remove('open');
+  renderList();
+}
+
+function selectedModels(){
+  return MODELS.filter(m=>selected.has(m.brand+'|'+m.model));
+}
+
+function buildPanel(){
+  const list=selectedModels();
+  const body=document.getElementById('panelBody');
+  const rows=[['<b>屬性</b>', ...list.map(m=>`<b>${esc(m.brand)}<br>${esc(m.model)}</b>`)]];
+  for(const [key,label] of FIELDS){
+    rows.push([label, ...list.map(m=>esc(m[key]))]);
+  }
+  body.innerHTML=`<table><thead><tr>${rows[0].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rows.slice(1).map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+}
+
+function clearAll(){selected.clear(); updateUI();}
+function selectInverter(){selected=new Set(MODELS.filter(m=>m.type==='變頻').map(m=>m.brand+'|'+m.model)); updateUI();}
+function selectFixed(){selected=new Set(MODELS.filter(m=>m.type==='定頻').map(m=>m.brand+'|'+m.model)); updateUI();}
+function closePanel(){document.getElementById('panel').classList.remove('open');}
+
+// 將 markdown 表格包裝成可橫向捲動容器（手機友好）
+document.addEventListener('DOMContentLoaded', ()=>{
+  document.querySelectorAll('.md-content table').forEach(t=>{
+    if(!t.closest('.table-scroll')){
+      const w=document.createElement('div');
+      w.className='table-scroll';
+      t.parentNode.insertBefore(w,t);
+      w.appendChild(t);
+    }
+  });
+  // 為 md 章節標題加 id（配合頂部導覽錨點）
+  const navMap={'統合對比總表':'table','官方驗證結果':'verify','能源標籤分析':'energy',
+    '排名':'rank','最終推薦':'recommend','獨立價格驗證':'price','資料來源':'source',
+    '定頻 vs 變頻':'compare-base'};
+  document.querySelectorAll('.md-content h2,.md-content h3').forEach(h=>{
+    const t=h.textContent.trim();
+    for(const [k,id] of Object.entries(navMap)){
+      if(t.includes(k)){ h.id=id; }
+    }
+  });
+  // 錨點連結平滑定位
+  document.querySelectorAll('.topnav a').forEach(a=>{
+    a.addEventListener('click',()=>{
+      document.querySelectorAll('.topnav a').forEach(x=>x.style.color='');
+      a.style.color='var(--accent)';
+    });
+  });
+});
+
+// 初始化
+renderList();
+
+// 返回頂部按鈕顯示
+window.addEventListener('scroll',()=>{
+  const b=document.getElementById('backTop');
+  if(b) b.classList.toggle('show', window.scrollY>500);
+});
+</script>
+</body>
+</html>
