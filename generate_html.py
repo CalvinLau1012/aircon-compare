@@ -293,7 +293,7 @@ ul,ol{margin:8px 0 8px 24px;}
 .compare-tools .filters{display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-left:auto;}
 .compare-tools select,.compare-tools input[type=search]{border:1px solid var(--line);
   border-radius:20px; padding:5px 12px; font-size:.85em; background:var(--bg);}
-.model-list{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+.model-list{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
   gap:8px; padding:10px 12px; max-height:340px; overflow-y:auto;}
 .mitem{display:flex; align-items:center; gap:10px; padding:9px 12px;
   border:1px solid var(--line); border-radius:8px; background:#fff; cursor:pointer;
@@ -319,7 +319,9 @@ ul,ol{margin:8px 0 8px 24px;}
 .panel .pscroll{overflow:auto; padding:12px 16px;}
 .panel table{min-width:420px;}
 .panel td:first-child{font-weight:600; color:var(--primary2); background:var(--alt);
-  white-space:nowrap; width:120px;}
+  white-space:nowrap; width:120px;
+  position:sticky; left:0; z-index:2; box-shadow:2px 0 3px rgba(15,61,92,.08);}
+.panel thead th:first-child{position:sticky; left:0; z-index:3;}
 .panel .phint{text-align:center; color:var(--muted); padding:14px; font-size:.9em;}
 
 /* ===== 格價連結 + 顯示更多 ===== */
@@ -357,7 +359,7 @@ footer .line{color:var(--accent);}
 @media (max-width:720px){
   .hero h1{font-size:1.6em;}
   .hero .sub{font-size:1em;}
-  .stats{gap:20px;}
+  .stats{display:grid; grid-template-columns:1fr 1fr; gap:14px 20px;}
   .stats .n{font-size:1.6em;}
   section{margin:28px 0;}
   h2.sec{font-size:1.15em;}
