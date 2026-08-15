@@ -666,7 +666,7 @@ function copyCompare(){
 
 function clearAll(){selected.clear(); updateUI();}
 function selectType(ty){
-  const arr=sortModels(ALL.filter(matches)).filter(m=>m.type===ty).slice(0,30);
+  const arr=sortModels(ALL.filter(matches)).filter(m=>m.type===ty);
   selected=new Set(arr.map(m=>m.brand+'|'+m.model));
   updateUI();
 }
