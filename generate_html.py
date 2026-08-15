@@ -389,7 +389,7 @@ def load_specs_emsd():
 
 
 def update_status():
-    """讀取 meta 生成更新狀態文字（網站自動顯示有冇更新/暫停中）"""
+    """讀取 meta 生成更新狀態文字（網站自動顯示有冇更新）"""
     p = os.path.join(BASE, 'prices_meta.json')
     meta = {}
     try:
@@ -398,13 +398,45 @@ def update_status():
     except Exception:
         pass
     last_run = meta.get('last_run') or '2026-08-15'
-    blocked = meta.get('blocked_until')
-    if blocked and time.time() < blocked:
-        t = time.strftime('%Y-%m-%d %H:%M', time.localtime(blocked))
-        return ('📅 2026 年 8 月 15 日 更新 · v1.0.0 · 🕐 自動更新暫停中',
-                f'🕐 自動更新暫停中：將於 {t} 自動恢復 · 最後成功更新 {last_run}')
-    return ('📅 2026 年 8 月 15 日 更新 · v1.0.0 · 🔄 每日自動更新',
-            f'🔄 每日自動更新：GitHub Actions 香港時間每日 00:30 抓取 → 驗證閘門 → 自動部署 · 最後成功更新 {last_run}')
+    return ('📅 2026 年 8 月 15 日 更新 · v1.0.0 · 🔄 每日偵測新機 · 有機先更新',
+            f'🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 價錢為 2026-08-15 快照僅供參考 · 最後更新 {last_run}')
+
+
+def load_new_models():
+    """讀取新機偵測記錄（new_models.json）"""
+    p = os.path.join(BASE, 'new_models.json')
+    try:
+        with open(p, encoding='utf-8') as f:
+            rec = json.load(f)
+        return rec.get('models', [])
+    except Exception:
+        return []
+
+
+def new_models_hint():
+    """生成新上市型號提示行（最近 30 日）"""
+    models = load_new_models()
+    if not models:
+        return ''
+    cutoff = time.time() - 30 * 86400
+    recent = []
+    for m in models:
+        try:
+            ts = time.mktime(time.strptime(m.get('first_seen', ''), '%Y-%m-%d'))
+        except Exception:
+            ts = 0
+        if ts >= cutoff:
+            recent.append(m)
+    if not recent:
+        return ''
+    # 顯示最近 8 個（新發現排前）
+    recent.sort(key=lambda m: m.get('first_seen', ''), reverse=True)
+    items = recent[:8]
+    parts = [f"{m['brand']} {m['model']}（{m.get('energy', '?')}）" for m in items]
+    more = f' 等 {len(recent)} 個' if len(recent) > len(items) else ''
+    return ('<div class="chint" style="border-left-color:#2EA06E">'
+            f'🆕 最近新上市：{" · ".join(parts)}{more}'
+            '（新機偵測自 EMSD 官方資料庫，每週一自動更新）</div>')
 
 
 def load_emsd_models():
@@ -470,6 +502,7 @@ def build_html():
         md_text = f.read()
     content_html = md_to_html(md_text)
     date_status, foot_status = update_status()
+    new_hint = new_models_hint()
 
     # 套用雙源確認規格 + 填核心型號 Price 產品 ID（做價格連結）
     apply_specs_override()
@@ -491,7 +524,8 @@ def build_html():
                         .replace('__EMSD_JSON__', emsd_json) \
                         .replace('__FIELDS_JSON__', fields_json) \
                         .replace('__DATE_STATUS__', date_status) \
-                        .replace('__FOOT_STATUS__', foot_status)
+                        .replace('__FOOT_STATUS__', foot_status) \
+                        .replace('__NEW_HINT__', new_hint)
     out = os.path.join(BASE, '空調對比報告.html')
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html)
@@ -794,6 +828,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       </div>
     </div>
     <div class="chint">提示：Gree/TOSOT 保養為零售商規格（交叉核實），其餘品牌為官網核實</div>
+    __NEW_HINT__
     <div class="model-list" id="modelList"></div>
     <div class="more-wrap"><button id="btnMore" onclick="showMore()">顯示更多型號</button></div>
   </div>

@@ -1,8 +1,8 @@
-name: 每日自動更新數據
+name: 每日偵測 · 新機分批更新
 
 on:
   schedule:
-    # 香港時間每日 00:30（UTC 16:30）自動執行
+    # 每日香港時間 00:30（UTC 16:30）輕量偵測；有新機先觸發分批更新
     - cron: '30 16 * * *'
   # 亦可以喺 GitHub Actions 頁面手動觸發
   workflow_dispatch: {}
@@ -13,54 +13,71 @@ permissions:
 
 # 防止重疊執行
 concurrency:
-  group: daily-update
+  group: weekly-update
   cancel-in-progress: true
 
 jobs:
-  # 先偵測今日係「全量日」（每週一次）定「每日補缺」，再決定用邊條超時策略
-  detect:
-    name: 偵測刷新模式
+  update:
     runs-on: ubuntu-latest
-    outputs:
-      mode: ${{ steps.mode.outputs.mode }}
+    timeout-minutes: 60
     steps:
       - name: 取出代碼
         uses: actions/checkout@v4
+
       - name: 設定 Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: 判斷全量定補缺
-        id: mode
+
+      - name: 安裝依賴
+        run: pip install -r requirements.txt
+
+      # 每日輕量偵測：EMSD 官方資料庫 + 新機 diff（有新機自動入隊列）
+      - name: 抓取 EMSD + 新機偵測
+        run: python fetch_emsd.py
+        continue-on-error: true
+
+      - name: 讀取更新階段
+        id: stage
         run: |
-          MODE=$(python -c "from fetch_prices import detect_mode; print(detect_mode())")
-          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
-          echo "今日模式：$MODE"
+          STAGE=$(python -c "import json;print(json.load(open('update_queue.json',encoding='utf-8')).get('stage',0))" 2>/dev/null || echo 0)
+          echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
+          echo "今日批次階段：$STAGE"
 
-  # 全量日：全量抓取 + 全量鏈接驗證（超時策略喺可重用工作流內部：150 分鐘）
-  full-refresh:
-    name: 全量刷新
-    needs: detect
-    if: needs.detect.outputs.mode == 'full'
-    uses: ./.github/workflows/update-data.yml
-    with:
-      mode: full
+      # 新機後第 1 日：官網核實第一批（Panasonic/HITACHI/COMFEE + 信興 + 樂信網店）
+      - name: 官網核實第一批
+        if: steps.stage.outputs.stage == '1'
+        run: |
+          python fetch_official.py || true
+          python fetch_shew.py || true
+          python fetch_rasonic.py || true
+          python advance_queue.py
 
-  # 每日補缺：補缺抓取 + 分批鏈接驗證（超時策略：30 分鐘）
-  daily-refresh:
-    name: 每日補缺
-    needs: detect
-    if: needs.detect.outputs.mode == 'daily'
-    uses: ./.github/workflows/update-data.yml
-    with:
-      mode: daily
+      # 新機後第 2 日：官網核實第二批（世紀開利 + 珍寶 + 規格）
+      - name: 官網核實第二批
+        if: steps.stage.outputs.stage == '2'
+        run: |
+          python fetch_carrier.py || true
+          python fetch_general.py || true
+          python fetch_specs.py || true
+          python advance_queue.py
 
-  # 冷卻期：被限流後 48 小時內自動跳過，等官方解除限流先再執行
-  cooldown:
-    name: 冷卻期跳過
-    needs: detect
-    if: needs.detect.outputs.mode == 'cooldown'
-    runs-on: ubuntu-latest
-    steps:
-      - name: 冷卻中
-        run: echo "Price.com.hk 限流冷卻中，48 小時後自動恢復執行"
+      - name: 數據驗證（防壞數據上線）
+        run: python validate_data.py
+
+      - name: 重新生成網頁
+        run: |
+          python generate_html.py
+          cp 空調對比報告.html index.html
+
+      - name: 提交並推送（有變更先提交）
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "無變更，跳過提交"
+          else
+            git commit -m "自動更新：新機偵測及規格同步（$(date -u +%F)）"
+            git push
+          fi
