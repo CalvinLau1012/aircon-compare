@@ -169,9 +169,18 @@ ul,ol{margin:8px 0 8px 24px;}
 
 /* ===== 頁腳 ===== */
 footer{background:var(--primary); color:#BFD0DE; text-align:center;
-  padding:26px 16px; margin-top:50px; font-size:.85em;}
+  padding:36px 16px 30px; margin-top:50px; font-size:.88em;}
 footer b{color:#fff;}
 footer .line{color:var(--accent);}
+footer .blk{max-width:780px; margin:18px auto 0; text-align:left;
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
+  border-radius:8px; padding:14px 18px;}
+footer .blk h3{color:var(--accent); font-size:.95em; margin-bottom:6px;}
+footer .blk p{font-size:.84em; line-height:1.8; margin:0;}
+footer .blk a{color:#8FD3FF; text-decoration:none;}
+footer .blk a:hover{text-decoration:underline;}
+footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
+  border:1px dashed var(--accent); border-radius:20px; font-size:.8em; color:#E8D9A0;}
 
 /* ===== 響應式 ===== */
 @media (max-width:640px){
@@ -2671,8 +2680,29 @@ footer .line{color:var(--accent);}
 </main>
 
 <footer>
-  <b>香港窗口式空調對比報告</b><br>
-  能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實（2026-08-12）<br>
+  <b>香港空調對比報告</b><br>
+  能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 282 型號
+
+  <div class="blk">
+    <h3>🔓 開源項目說明</h3>
+    <p>本項目為開源內容，完整原始碼及數據公開於
+      <a href="https://github.com/CalvinLau1012/aircon-compare" target="_blank" rel="noopener">GitHub：CalvinLau1012/aircon-compare</a>。<br>
+      歡迎 Star ⭐、Fork、提交 Issue 或 Pull Request；數據庫（EMSD CSV / JSON）可自由下載使用，轉載請註明出處。</p>
+  </div>
+
+  <div class="blk">
+    <h3>🙏 資料來源鳴謝</h3>
+    <p>· 機電工程署 EMSD 能源標籤資料庫（官方能源/雪種/耗電數據）<br>
+      · 品牌官網及總代理：信興集團、樂信網店、Panasonic、世紀開利、GENERAL 第一電業、HITACHI、COMFEE、美的<br>
+      · Price.com.hk（市場實價）· 豐澤 / 百老匯 / 友和 · LIHKG 電器台用戶評價</p>
+  </div>
+
+  <div class="blk">
+    <h3>🤖 AI 製作提示</h3>
+    <p>本網頁由 <b style="color:#8FD3FF">DeepSeek AI</b> 輔助製作，配合多輪官方資料核實；所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證，AI 生成內容（如 Gemini 補充資料）已單獨標註可信度。</p>
+  </div>
+
+  <span class="ai">🤖 Powered by DeepSeek AI</span><br>
   <span class="line">──────</span><br>
   本報告僅供選購參考，不構成購買建議 · 價格隨時變動
 </footer>
