@@ -1,0 +1,25 @@
+﻿import json
+urls = [
+"https://www.rasonicshop.hk/products/panasonic-cw-hz70aa-inverter-pro-wi-fi-inverter-window-type-heatpump-air-conditioner-34-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-hz90aa-inverter-pro-wi-fi-inverter-window-type-heatpump-air-conditioner-1-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-hz120aa-inverter-pro-wi-fi-inverter-window-type-heatpump-air-conditioner-1-12hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-hz180aa-inverter-pro-wi-fi-inverter-window-type-heatpump-air-conditioner-2-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-hz240aa-inverter-pro-wi-fi-inverter-window-type-heatpump-air-conditioner-2-12-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-hu70aa-inverter-pro-inverter-window-type-cooling-only-air-conditioner-34-hp-with-remote-control",
+"https://www.rasonicshop.hk/products/panasonic-cw-hu90aa-inverter-pro-inverter-window-type-cooling-only-air-conditioner-1-hp-with-remote-control-1",
+"https://www.rasonicshop.hk/products/panasonic-cw-hu120aa-inverter-pro-inverter-window-type-cooling-only-air-conditioner-1-12-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-hu180aa-inverter-pro-inverter-window-type-cooling-only-air-conditioner-2-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-hu240aa-inverter-pro-inverter-window-type-cooling-only-air-conditioner-2-12-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-su70aa-inverter-lite-inverter-window-type-cooling-only-air-conditioner-34-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-su90aa-inverter-lite-inverter-window-type-cooling-only-air-conditioner-1-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-su120aa-inverter-lite-inverter-window-type-cooling-only-air-conditioner-1-12-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-su180aa-inverter-lite-inverter-window-type-cooling-only-air-conditioner-2-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-su240aa-inverter-lite-inverter-window-type-cooling-only-air-conditioner-2-12-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-n721ja-r32-window-type-air-conditioner-34-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-n921ja-r32-window-type-air-conditioner-1-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-n1221va-r32-window-type-air-conditioner-15-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-n1821ea-r32-window-type-air-conditioner-2-hp",
+"https://www.rasonicshop.hk/products/panasonic-cw-n2421ea-r32-window-type-air-conditioner-25-hp",
+]
+json.dump(urls, open(r'd:\香港窗口式空調查找\pana_urls.json','w',encoding='utf-8'), ensure_ascii=False, indent=1)
+print('saved', len(urls))
