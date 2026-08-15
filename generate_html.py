@@ -9,6 +9,7 @@
 import json
 import os
 import csv
+import time
 import markdown
 import re
 
@@ -387,6 +388,25 @@ def load_specs_emsd():
         return json.load(f)
 
 
+def update_status():
+    """讀取 meta 生成更新狀態文字（網站自動顯示有冇更新/暫停中）"""
+    p = os.path.join(BASE, 'prices_meta.json')
+    meta = {}
+    try:
+        with open(p, encoding='utf-8') as f:
+            meta = json.load(f)
+    except Exception:
+        pass
+    last_run = meta.get('last_run') or '2026-08-15'
+    blocked = meta.get('blocked_until')
+    if blocked and time.time() < blocked:
+        t = time.strftime('%Y-%m-%d %H:%M', time.localtime(blocked))
+        return ('📅 2026 年 8 月 15 日 更新 · v1.0.0 · 🕐 自動更新暫停中',
+                f'🕐 自動更新暫停中：將於 {t} 自動恢復 · 最後成功更新 {last_run}')
+    return ('📅 2026 年 8 月 15 日 更新 · v1.0.0 · 🔄 每日自動更新',
+            f'🔄 每日自動更新：GitHub Actions 香港時間每日 00:30 抓取 → 驗證閘門 → 自動部署 · 最後成功更新 {last_run}')
+
+
 def load_emsd_models():
     """讀取 EMSD 官方 CSV，轉為比較器數據（核心 29 型號去重）"""
     csv_path = os.path.join(BASE, 'emsd_空調能源標籤.csv')
@@ -449,6 +469,7 @@ def build_html():
     with open(os.path.join(BASE, '空調對比報告.md'), encoding='utf-8') as f:
         md_text = f.read()
     content_html = md_to_html(md_text)
+    date_status, foot_status = update_status()
 
     # 套用雙源確認規格 + 填核心型號 Price 產品 ID（做價格連結）
     apply_specs_override()
@@ -468,7 +489,9 @@ def build_html():
     html = HTML_TEMPLATE.replace('__CONTENT__', content_html) \
                         .replace('__MODELS_JSON__', models_json) \
                         .replace('__EMSD_JSON__', emsd_json) \
-                        .replace('__FIELDS_JSON__', fields_json)
+                        .replace('__FIELDS_JSON__', fields_json) \
+                        .replace('__DATE_STATUS__', date_status) \
+                        .replace('__FOOT_STATUS__', foot_status)
     out = os.path.join(BASE, '空調對比報告.html')
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html)
@@ -705,7 +728,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
     <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · Price.com.hk 實價 1,847 型號 · LIHKG 連登討論摘錄</div>
-    <div class="date">📅 2026 年 8 月 15 日 更新 · v1.0.0 · 🔄 每日自動更新</div>
+    <div class="date">__DATE_STATUS__</div>
   </div>
 </header>
 
@@ -821,7 +844,7 @@ __CONTENT__
 
   <span class="ai">🤖 Powered by DeepSeek AI</span><br>
   <span class="line">──────</span><br>
-  🔄 每日自動更新：GitHub Actions 香港時間每日 00:30 抓取 EMSD/Price/官網 → 數據驗證閘門 → 自動重新部署<br>
+  __FOOT_STATUS__<br>
   本報告僅供選購參考，不構成購買建議 · 價格及供應隨時變動，請以商戶實時報價為準
 </footer>
 
