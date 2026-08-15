@@ -6,6 +6,7 @@ _v3*.png
 # Python
 __pycache__/
 *.pyc
+.venv/
 
 # 系統
 Thumbs.db
