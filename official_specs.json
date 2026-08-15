@@ -10,7 +10,7 @@
  "CW-SUL70BA": {
   "size": "346×450×640",
   "weight": "28kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640",
+  "warranty": "壓縮機5年",
   "wifi": false,
   "remote": true,
   "heat": false,
@@ -21,7 +21,7 @@
  "CW-SUL90BA": {
   "size": "346×450×640",
   "weight": "28kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640",
+  "warranty": "壓縮機5年",
   "wifi": false,
   "remote": true,
   "heat": false,
@@ -32,7 +32,7 @@
  "CW-HZ70AA": {
   "size": "346×450×640",
   "weight": "30kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640 *以 3/4 匹",
+  "warranty": "壓縮機5年",
   "wifi": true,
   "remote": true,
   "heat": true,
@@ -43,7 +43,7 @@
  "CW-HZ90AA": {
   "size": "346×450×640",
   "weight": "30kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640 *以 3/4 匹",
+  "warranty": "壓縮機5年",
   "wifi": true,
   "remote": true,
   "heat": true,
@@ -54,7 +54,7 @@
  "CW-HZ120AA": {
   "size": "400×600×710",
   "weight": "48kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 400 x 600 x 710 *以 3/4 匹",
+  "warranty": "壓縮機5年",
   "wifi": true,
   "remote": true,
   "heat": true,
@@ -65,7 +65,7 @@
  "CW-HZ180AA": {
   "size": "428×660×800",
   "weight": "61kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800 *以 3/4 匹",
+  "warranty": "壓縮機5年",
   "wifi": true,
   "remote": true,
   "heat": true,
@@ -76,7 +76,7 @@
  "CW-HZ240AA": {
   "size": "428×660×800",
   "weight": "65kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800 *以 3/4 匹",
+  "warranty": "壓縮機5年",
   "wifi": true,
   "remote": true,
   "heat": true,
@@ -87,7 +87,7 @@
  "CW-HU70AA": {
   "size": "346×450×640",
   "weight": "29kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640 *以 3/4 匹",
+  "warranty": "壓縮機5年",
   "wifi": true,
   "remote": true,
   "heat": false,
@@ -98,7 +98,7 @@
  "CW-HU90AA": {
   "size": "346×450×640",
   "weight": "29kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640 *以 3/4 匹",
+  "warranty": "壓縮機5年",
   "wifi": true,
   "remote": true,
   "heat": false,
@@ -109,7 +109,7 @@
  "CW-HU120AA": {
   "size": "400×600×710",
   "weight": "47kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 400 x 600 x 710 *以 3/4 匹",
+  "warranty": "壓縮機5年",
   "wifi": true,
   "remote": true,
   "heat": false,
@@ -120,7 +120,7 @@
  "CW-HU180AA": {
   "size": "428×660×800",
   "weight": "60kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800 *以 3/4 匹變頻",
+  "warranty": "壓縮機5年",
   "wifi": true,
   "remote": true,
   "heat": false,
@@ -131,7 +131,7 @@
  "CW-HU240AA": {
   "size": "428×660×800",
   "weight": "64kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800 *以 3/4 匹",
+  "warranty": "壓縮機5年",
   "wifi": true,
   "remote": true,
   "heat": false,
@@ -142,7 +142,7 @@
  "CW-SU70AA": {
   "size": "346×450×640",
   "weight": "29kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640",
+  "warranty": "壓縮機5年",
   "wifi": false,
   "remote": true,
   "heat": false,
@@ -153,7 +153,7 @@
  "CW-SU90AA": {
   "size": "346×450×640",
   "weight": "29kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640",
+  "warranty": "壓縮機5年",
   "wifi": false,
   "remote": true,
   "heat": false,
@@ -164,7 +164,7 @@
  "CW-SU120AA": {
   "size": "346×560×655",
   "weight": "39kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 560 x 655",
+  "warranty": "壓縮機5年",
   "wifi": false,
   "remote": true,
   "heat": false,
@@ -175,7 +175,7 @@
  "CW-SU180AA": {
   "size": "428×660×800",
   "weight": "60kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800",
+  "warranty": "壓縮機5年",
   "wifi": false,
   "remote": true,
   "heat": false,
@@ -186,7 +186,7 @@
  "CW-SU240AA": {
   "size": "428×660×800",
   "weight": "64kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800",
+  "warranty": "壓縮機5年",
   "wifi": false,
   "remote": true,
   "heat": false,
@@ -197,7 +197,7 @@
  "CW-SUL120BA": {
   "size": "346×560×655",
   "weight": "39kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 560 x 655",
+  "warranty": "壓縮機5年",
   "wifi": false,
   "remote": true,
   "heat": false,
@@ -208,7 +208,7 @@
  "CW-SUL180BA": {
   "size": "428×660×800",
   "weight": "60kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800",
+  "warranty": "壓縮機5年",
   "wifi": false,
   "remote": true,
   "heat": false,
@@ -219,7 +219,7 @@
  "CW-SUL240BA": {
   "size": "428×660×800",
   "weight": "64kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800",
+  "warranty": "壓縮機5年",
   "wifi": false,
   "remote": true,
   "heat": false,
@@ -230,7 +230,7 @@
  "CW-N721JA": {
   "size": "346×450×590",
   "weight": "30kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 590",
+  "warranty": "壓縮機5年",
   "wifi": false,
   "remote": false,
   "heat": false,
@@ -241,7 +241,7 @@
  "CW-N921JA": {
   "size": "346×450×640",
   "weight": "32kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640",
+  "warranty": "壓縮機5年",
   "wifi": false,
   "remote": false,
   "heat": false,
@@ -252,7 +252,7 @@
  "CW-N1221VA": {
   "size": "346×560×655",
   "weight": "36kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 560 x 655",
+  "warranty": "壓縮機5年",
   "wifi": false,
   "remote": false,
   "heat": false,
@@ -263,7 +263,7 @@
  "CW-N1821EA": {
   "size": "428×660×800",
   "weight": "59kg",
-  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800",
+  "warranty": "壓縮機5年",
   "wifi": false,
   "remote": false,
   "heat": false,

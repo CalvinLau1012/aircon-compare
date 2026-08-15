@@ -211,13 +211,19 @@ SPECS_OVERRIDE = {
 
 
 def load_official():
-    """載入品牌官網核實數據（official_specs.json + rasonic_official.json）"""
+    """載入品牌官網核實數據（多個 JSON 逐欄位合併，互不覆蓋）"""
     out = {}
     for fname in ('official_specs.json', 'rasonic_official.json', 'pana_official.json', 'midea_official.json', 'shew_official.json', 'general_official.json', 'carrier_official.json'):
         p = os.path.join(BASE, fname)
-        if os.path.exists(p):
-            with open(p, encoding='utf-8') as f:
-                out.update(json.load(f))
+        if not os.path.exists(p):
+            continue
+        with open(p, encoding='utf-8') as f:
+            data = json.load(f)
+        for k, v in data.items():
+            if k in out:
+                out[k].update(v)   # 保留已載入欄位（如官方價），只補充新欄位
+            else:
+                out[k] = v
     # 型號變體映射（官網寫法 vs EMSD 寫法）
     variants = {'MW12CM8C': 'MW-12CM8C'}
     for k, v in variants.items():
@@ -238,7 +244,7 @@ def apply_official(m):
         m['size'] = of['size'].replace('x', '×').replace('*', '').strip()
     if of.get('weight'):
         m['weight'] = of['weight'].replace('公斤', 'kg').strip()
-    if of.get('warranty'):
+    if of.get('warranty') and not m.get('warranty'):
         m['warranty'] = of['warranty'].strip()
     if of.get('energy') and m.get('energy') in ('待查', '', None):
         m['energy'] = of['energy']
