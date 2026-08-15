@@ -274,7 +274,6 @@
  "RA-08RF": {
   "size": "345×470×640",
   "weight": "32kg",
-  "energy": "能源標籤 主要特點 全新瑰麗紫色徽章 R32環保雪",
   "gas": "雪種 PM2.5 WASABI納米鈦空氣過濾網 納米鈦不銹鋼塗層前置",
   "wifi": false,
   "remote": false,
@@ -285,7 +284,6 @@
  "RA-10RF": {
   "size": "345×470×640",
   "weight": "34kg",
-  "energy": "能源標籤 主要特點 全新瑰麗紫色徽章 R32環保雪",
   "gas": "雪種 PM2.5 WASABI 納米鈦空氣過濾網 納米鈦不銹鋼塗層前",
   "wifi": false,
   "remote": false,
@@ -296,7 +294,6 @@
  "RA-13RF": {
   "size": "375×560×709",
   "weight": "46kg",
-  "energy": "能源標籤 主要特點 全新瑰麗紫色徽章 R32環保雪",
   "gas": "雪種 PM2.5 WASABI 納米鈦空氣過濾網 納米鈦不銹鋼塗層前",
   "wifi": false,
   "remote": false,
@@ -307,7 +304,6 @@
  "RAW-XH07CA": {
   "size": "350×450×640",
   "weight": "31kg",
-  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
   "gas": "雪種 主要特點 All DC Inverter 變頻技術",
   "wifi": false,
   "remote": true,
@@ -318,7 +314,6 @@
  "RAW-XH07CDK": {
   "size": "350×450×640",
   "weight": "29kg",
-  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
   "gas": "雪種 主要特點 All DC Inverter 變頻技術",
   "wifi": false,
   "remote": true,
@@ -329,7 +324,6 @@
  "RAW-XH10CA": {
   "size": "350×450×640",
   "weight": "31kg",
-  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
   "gas": "雪種 主要特點 All DC Inverter 變頻技術",
   "wifi": false,
   "remote": true,
@@ -340,7 +334,6 @@
  "RAW-XH10CDK": {
   "size": "350×450×640",
   "weight": "29kg",
-  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
   "gas": "雪種 主要特點 All DC Inverter 變頻技術",
   "wifi": false,
   "remote": true,
@@ -351,7 +344,6 @@
  "RAW-XH13CA": {
   "size": "375×560×708",
   "weight": "39kg",
-  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
   "gas": "雪種 主要特點 All DC Inverter 變頻技術",
   "wifi": false,
   "remote": true,
@@ -362,7 +354,6 @@
  "RAW-XH13CDK": {
   "size": "375×560×708",
   "weight": "39kg",
-  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
   "gas": "雪種 主要特點 All DC Inverter 變頻技術",
   "wifi": false,
   "remote": true,
@@ -373,7 +364,6 @@
  "RAW-XH18CA": {
   "size": "428×660×800",
   "weight": "53kg",
-  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
   "gas": "雪種 主要特點 All DC Inverter 變頻技術",
   "wifi": false,
   "remote": true,
@@ -384,7 +374,6 @@
  "RAW-XH18CDK": {
   "size": "428×660×800",
   "weight": "53kg",
-  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
   "gas": "雪種 主要特點 All DC Inverter 變頻技術",
   "wifi": false,
   "remote": true,
@@ -395,7 +384,6 @@
  "RAW-XH24CA": {
   "size": "428×660×800",
   "weight": "54.5kg",
-  "energy": "能源標籤 R32環保雪種 主要特點 All DC In",
   "gas": "雪種 主要特點 All DC Inverter 變頻技",
   "wifi": false,
   "remote": true,
@@ -406,7 +394,6 @@
  "RAW-XH24CDK": {
   "size": "428×660×800",
   "weight": "54.5kg",
-  "energy": "能源標籤 R32環保雪種 主要特點 All DC In",
   "gas": "雪種 主要特點 All DC Inverter 變頻技",
   "wifi": false,
   "remote": true,
@@ -417,7 +404,6 @@
  "RAW-ZH07CCK": {
   "size": "345×470×640",
   "weight": "29kg",
-  "energy": "能源標籤 R32環保雪種 主要特點 左右出風口 P",
   "gas": "雪種 主要特點 左右出風口 PM2.5 Wasab",
   "wifi": true,
   "remote": false,
@@ -428,7 +414,6 @@
  "RAW-ZH10CCK": {
   "size": "345×470×640",
   "weight": "29kg",
-  "energy": "能源標籤 R32環保雪種 主要特點 左右出風口 P",
   "gas": "雪種 主要特點 左右出風口 PM2.5 Wasab",
   "wifi": true,
   "remote": false,
@@ -439,7 +424,6 @@
  "RAW-ZH13CCK": {
   "size": "375×560×709",
   "weight": "38kg",
-  "energy": "能源標籤 R32環保雪種 主要特點 左右出風口",
   "gas": "雪種 主要特點 左右出風口 PM2.5 Wasa",
   "wifi": true,
   "remote": false,
@@ -453,7 +437,6 @@
   "gas": "雪種 液晶顯示遙控",
   "wifi": true,
   "remote": true,
-  "energy": "能源標籤 級 1 尺寸 (闊x深x高) 毫米",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cwf-07crfn8-ad5"
  },
  "CWF-09CRFN8-AD5": {
@@ -462,7 +445,6 @@
   "gas": "雪種 液晶顯示遙控",
   "wifi": true,
   "remote": true,
-  "energy": "能源標籤 級 1 尺寸 (闊x深x高) 毫米",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cwf-09crfn8-ad5"
  },
  "CWF-12CRFN8-AD5": {
@@ -471,7 +453,6 @@
   "gas": "雪種 液晶顯示遙控",
   "wifi": true,
   "remote": true,
-  "energy": "能源標籤 級 1 尺寸 (闊x深x高) 毫米",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cwf-12crfn8-ad5"
  },
  "CWF-18CRFN8-AD5": {
@@ -480,7 +461,6 @@
   "gas": "雪種 液晶顯示遙控",
   "wifi": true,
   "remote": true,
-  "energy": "能源標籤 級 1 尺寸 (闊x深x高) 毫米",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cwf-18crfn8-ad5"
  },
  "CFW-07FF-M": {
@@ -489,7 +469,6 @@
   "gas": "雪種 雙重黃金防鏽塗層",
   "wifi": false,
   "remote": false,
-  "energy": "能源標籤 級 3 尺寸 (高x闊x深) 毫米",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfw-07ff-m"
  },
  "CFW-09FF-M": {
@@ -498,7 +477,6 @@
   "gas": "雪種 雙重黃金防鏽塗層",
   "wifi": false,
   "remote": false,
-  "energy": "能源標籤 級 3 尺寸 (高x闊x深) 毫米",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfw-09ff-m"
  },
  "CFW-12FF-M": {
@@ -507,7 +485,6 @@
   "gas": "雪種 雙重黃金防鏽塗層",
   "wifi": false,
   "remote": false,
-  "energy": "能源標籤 級 3 尺寸 (高x闊x深) 毫米",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfw-12ff-m"
  },
  "CFW-18FF-M": {
@@ -516,7 +493,6 @@
   "gas": "雪種 雙重黃金防鏽塗層",
   "wifi": false,
   "remote": false,
-  "energy": "能源標籤 級 3 尺寸 (高x闊x深) 毫米",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfw-18ff-m"
  },
  "CAFB-12CRN8-PC2": {
@@ -525,7 +501,6 @@
   "gas": "雪種 R32",
   "wifi": false,
   "remote": true,
-  "energy": "能源標籤 級 不適用 電力資料 相/赫/伏特",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cafb-12crn8-pc2"
  },
  "CAFC-18CRN8-QC3": {
@@ -534,7 +509,6 @@
   "gas": "雪種 R32",
   "wifi": false,
   "remote": true,
-  "energy": "能源標籤 級 不適用 電力資料 相/赫/伏特",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cafc-18crn8-qc3"
  },
  "CAFA-09CRN8PC2": {
@@ -543,7 +517,6 @@
   "gas": "雪種 R32",
   "wifi": false,
   "remote": true,
-  "energy": "能源標籤 級 不適用 電力資料 相/赫/伏特",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cafa-09crn8pc2"
  },
  "CF-09VAGF-H": {
@@ -552,7 +525,6 @@
   "gas": "雪種 R410A",
   "wifi": false,
   "remote": true,
-  "energy": "能源標籤 級 1 電力資料 相/赫/伏特",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cf-09vagf-h"
  },
  "CF-12VAGF-H": {
@@ -561,7 +533,6 @@
   "gas": "雪種 R410A",
   "wifi": false,
   "remote": true,
-  "energy": "能源標籤 級 1 電力資料 相/赫/伏特",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cf-12vagf-h"
  },
  "CF-18VAGF-H": {
@@ -570,7 +541,6 @@
   "gas": "雪種 R410A",
   "wifi": false,
   "remote": true,
-  "energy": "能源標籤 級 1 電力資料 相/赫/伏特",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cf-18vagf-h"
  },
  "CFS-10VGPF": {
@@ -579,7 +549,6 @@
   "gas": "雪種 手機應用程式控制",
   "wifi": false,
   "remote": true,
-  "energy": "能源標籤 級 1 室內機尺寸 (闊x深x高) 毫米",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfs-10vgpf"
  },
  "CFS-13VGPF": {
@@ -588,7 +557,6 @@
   "gas": "雪種 手機應用程式控制",
   "wifi": false,
   "remote": true,
-  "energy": "能源標籤 級 1 室內機尺寸 (闊x深x高) 毫米",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfs-13vgpf"
  },
  "CFS-18VGPF": {
@@ -597,7 +565,6 @@
   "gas": "雪種 手機應用程式控制",
   "wifi": false,
   "remote": true,
-  "energy": "能源標籤 級 1 室內機尺寸 (闊x深x高) 毫米",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfs-18vgpf"
  },
  "CFS-25VGPF": {
@@ -606,7 +573,6 @@
   "gas": "雪種 手機應用程式控制",
   "wifi": false,
   "remote": true,
-  "energy": "能源標籤 級 1 室內機尺寸 (闊x深x高) 毫米",
   "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfs-25vgpf"
  }
 }

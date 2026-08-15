@@ -35,7 +35,7 @@ MODELS = [
          size='346×450×585', weight='~30kg', warranty='3/5年', note='銀離子抗菌網'),
     dict(brand='HITACHI 日立', model='RA-10RF', hp='1匹', btu='9,120', type='定頻', energy='3級', wifi='➖',
          price='$2,140-3,380', kwh='422', cspf='3.2045', kw='2.62', gas='R32', noise='44-48dB',
-         size='345×470×600', weight='~32kg', warranty='2/5年', note='⭐ 38人認證極靜'),
+         size='345×470×640', weight='34kg', warranty='3/5年', remote='➖', note='⭐ 38人認證極靜 · 無遙控（面板操控）'),
     dict(brand='Rasonic 樂信', model='RC-XG9', hp='1匹', btu='8,803', type='定頻', energy='4級', wifi='➖',
          price='$2,500-2,900', kwh='435', cspf='2.9978', kw='2.65', gas='R32', noise='待查',
          size='346×450×640', weight='~29kg', warranty='3/5年', note='Panasonic 旗下'),
@@ -240,7 +240,7 @@ def apply_official(m):
         m['weight'] = of['weight'].replace('公斤', 'kg').strip()
     if of.get('warranty'):
         m['warranty'] = of['warranty'].strip()
-    if of.get('energy') and m.get('energy', '').startswith(('待', '')):
+    if of.get('energy') and m.get('energy') in ('待查', '', None):
         m['energy'] = of['energy']
     if of.get('gas') and not m.get('gas'):
         m['gas'] = of['gas']
@@ -257,6 +257,8 @@ def apply_official(m):
         m['wifi'] = '✅'
     if of.get('remote') in (True, '✅'):
         m['remote'] = '✅'
+    elif of.get('remote') is False:
+        m['remote'] = '➖'
     if of.get('heat') is True:
         m['mode'] = '冷暖'
     elif of.get('mode') in ('淨冷', '冷暖'):
