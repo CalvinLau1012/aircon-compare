@@ -5,9 +5,11 @@
 來源：https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php
 """
 import urllib.request
+import urllib.error
 import re
 import csv
 import os
+import random
 import time
 from html.parser import HTMLParser
 
@@ -51,9 +53,23 @@ class TableParser(HTMLParser):
 
 def fetch_page(p):
     url = BASE + str(p)
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-    html = urllib.request.urlopen(req, timeout=30).read().decode('utf-8', 'ignore')
-    return html
+    req = urllib.request.Request(url, headers={
+        'User-Agent': ('Mozilla/5.0 (compatible; AirconCompareBot/1.0; '
+                       '+https://github.com/CalvinLau1012/aircon-compare)'),
+        'Accept-Language': 'zh-HK,zh;q=0.9,en;q=0.5'})
+    last = None
+    for attempt in range(3):
+        try:
+            return urllib.request.urlopen(req, timeout=30).read().decode('utf-8', 'ignore')
+        except urllib.error.HTTPError as e:
+            last = e
+            if e.code in (403, 429):
+                raise SystemExit(f'EMSD 返回 {e.code}（被限流），中止更新以保護來源，唔寫檔案')
+            time.sleep(3 * (attempt + 1))
+        except Exception as e:
+            last = e
+            time.sleep(2 * (attempt + 1))
+    raise last
 
 
 def main():
@@ -84,7 +100,7 @@ def main():
         if len(data_rows) < 50:
             break
         p += 1
-        time.sleep(0.5)
+        time.sleep(random.uniform(1.0, 2.5))  # 分頁隨機抖動，唔畀官方機械式節奏
 
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'emsd_空調能源標籤.csv')
     with open(out, 'w', newline='', encoding='utf-8-sig') as f:

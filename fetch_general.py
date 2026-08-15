@@ -1,12 +1,25 @@
 ﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """GENERAL 珍寶香港總代理 general-aircon.com 窗口機規格抓取"""
-import json, re, ssl, sys, io, os, urllib.request, time
+import json, re, ssl, sys, io, os, urllib.request, urllib.error, time
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 CTX = ssl.create_default_context(); CTX.check_hostname = False; CTX.verify_mode = ssl.CERT_NONE
 def get(u):
-    req = urllib.request.Request(u, headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/148.0 Safari/537.36','Accept-Language':'zh-Hant,zh;q=0.9'})
-    return urllib.request.urlopen(req, timeout=15, context=CTX).read().decode('utf-8','ignore')
+    req = urllib.request.Request(u, headers={'User-Agent':'Mozilla/5.0 (compatible; AirconCompareBot/1.0; +https://github.com/CalvinLau1012/aircon-compare) AppleWebKit/537.36 Chrome/148.0 Safari/537.36','Accept-Language':'zh-Hant,zh;q=0.9'})
+    last = None
+    for attempt in range(3):
+        try:
+            return urllib.request.urlopen(req, timeout=15, context=CTX).read().decode('utf-8','ignore')
+        except urllib.error.HTTPError as e:
+            last = e
+            if e.code in (403, 429) and attempt < 2:
+                time.sleep(int(e.headers.get('Retry-After') or 0) or 10)
+            elif e.code in (403, 429):
+                break
+        except Exception as e:
+            last = e
+            time.sleep(2)
+    raise last
 def txt(html):
     t = re.sub(r'<script.*?</script>|<style.*?</style>', ' ', html, flags=re.S)
     t = re.sub(r'<[^>]+>', ' ', t)
