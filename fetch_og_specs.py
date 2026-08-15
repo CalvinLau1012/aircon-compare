@@ -54,7 +54,9 @@ def fetch_one(pid):
         if '功能' in og:
             out['func'] = og['功能'][:120]
         if '類型' in og:
-            out['type'] = og['類型']
+            out['mount'] = og['類型']  # 窗口式/分體式等
+        if '淨冷/冷暖' in og:
+            out['mode'] = og['淨冷/冷暖']  # 淨冷/冷暖
         return out or None
     except Exception:
         return None
@@ -74,7 +76,10 @@ def main():
         with open(os.path.join(BASE, 'specs_emsd.json'), encoding='utf-8') as f:
             results = json.load(f)
         print(f'已有 {len(results)} 個結果')
-    todo = [(m, p) for m, p in todo if m not in results]
+    # 已有結果但缺新欄位（mount/mode）嘅要重抓
+    need_refetch = [m for m, v in results.items() if 'mount' not in v]
+    print(f'其中 {len(need_refetch)} 個要重抓（補 類型/淨冷）')
+    todo = [(m, p) for m, p in todo if m not in results or m in set(need_refetch)]
     print(f'要抓 {len(todo)} 個')
 
     ok = 0

@@ -166,16 +166,22 @@ SPECS_OVERRIDE = {
 
 
 def apply_specs_override():
-    """用雙源確認嘅規格覆蓋 MODELS"""
+    """用雙源確認嘅規格覆蓋 MODELS；預設機型/淨冷/遙控"""
     for m in MODELS:
+        # 核心 29 型號全部係窗口式 + 淨冷型
+        m.setdefault('mount', '窗口式')
+        m.setdefault('mode', '淨冷')
+        # 遙控：TA-12EOG 已驗證無遙控，其餘都有（篩選條件）
+        m.setdefault('remote', '➖' if m['model'] == 'TA-12EOG' else '✅')
         ov = SPECS_OVERRIDE.get(m['model'])
         if ov:
             m.update(ov)
 
 
 COMPARE_FIELDS = [
-    ('hp', '匹數'), ('btu', '製冷量 (BTU)'), ('type', '類型'), ('energy', '能源級別'),
-    ('wifi', 'WiFi'), ('price', '參考價'), ('kwh', '年耗電 (kWh)'), ('cspf', 'CSPF'),
+    ('hp', '匹數'), ('mount', '機型'), ('btu', '製冷量 (BTU)'), ('mode', '淨冷/冷暖'),
+    ('type', '壓縮機'), ('energy', '能源級別'), ('wifi', 'WiFi'), ('remote', '遙控'),
+    ('price', '參考價'), ('kwh', '年耗電 (kWh)'), ('cspf', 'CSPF'),
     ('kw', '製冷量 (kW)'), ('gas', '雪種'), ('noise', '噪音'), ('size', '尺寸 (mm)'),
     ('weight', '重量'), ('warranty', '保養 (全機/壓縮機)'), ('note', '特點'),
 ]
@@ -253,12 +259,19 @@ def load_emsd_models():
         size = sinfo.get('size') or ''
         func = sinfo.get('func') or ''
         wifi = '✅' if re.search(r'Wi-?Fi|智能|Smart', func, re.I) else ''
+        mount = sinfo.get('mount') or ''
+        if mount not in ('窗口式', '掛牆分體式', '窗口分體式', '座地/移動式', '多聯式', '天花式', '分體式', '流動式'):
+            mount = ''  # 非空調類別（撞名產品）唔採用
+        mode = sinfo.get('mode') or ''
+        if mode not in ('淨冷', '冷暖'):
+            mode = ''
+        remote = ''  # Price 冇提供遙控資料 → 待查
         out.append({
             'brand': brand, 'model': model,
-            'hp': kw_to_hp(kw), 'btu': btu,
+            'hp': kw_to_hp(kw), 'mount': mount, 'btu': btu, 'mode': mode,
             'type': '變頻' if '是' in str(r[14]) else '定頻',
             'energy': (r[4] + '級') if str(r[4]).strip().isdigit() else str(r[4]),
-            'wifi': wifi, 'price': price, 'pid': pid,
+            'wifi': wifi, 'remote': remote, 'price': price, 'pid': pid,
             'kwh': r[5], 'cspf': r[7], 'kw': r[6], 'gas': r[8],
             'noise': '', 'size': size, 'weight': '', 'warranty': '',
             'note': 'EMSD 官方登記 · Price 實價', 'ref': r[2], 'provider': r[13],
@@ -484,16 +497,16 @@ footer .line{color:var(--accent);}
 <!-- ===== 封面 ===== -->
 <header class="hero">
   <div class="wrap">
-    <h1>香港窗口式淨冷型遙控空調</h1>
-    <div class="sub">統合對比報告 · 29 型號全面剖析</div>
+    <h1>香港空調對比報告</h1>
+    <div class="sub">窗口式 · 分體式 · 流動式全面剖析 · 互動比較器</div>
     <div class="stats">
-      <div><div class="n">1,927</div><div class="l">EMSD 官方型號</div></div>
-      <div><div class="n">29</div><div class="l">精選對比型號</div></div>
-      <div><div class="n">16</div><div class="l">定頻機型</div></div>
-      <div><div class="n">13</div><div class="l">變頻機型</div></div>
+      <div><div class="n" id="statTotal">-</div><div class="l">型號庫</div></div>
+      <div><div class="n" id="statPrice">-</div><div class="l">有實價</div></div>
+      <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
+      <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· Price.com.hk · 豐澤 · 電器幫 · 百老匯 · Gemini 交叉驗證</div>
-    <div class="date">📅 2026 年 8 月 12 日 更新版</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（全量核實）· Price.com.hk 實價及規格 · 豐澤規格 · Gemini 交叉驗證</div>
+    <div class="date">📅 2026 年 8 月 15 日 更新版</div>
   </div>
 </header>
 
@@ -541,6 +554,9 @@ footer .line{color:var(--accent);}
         </select>
         <select id="fBrand" onchange="resetShown();renderList()">
           <option value="">全部品牌</option>
+        </select>
+        <select id="fMount" onchange="resetShown();renderList()">
+          <option value="">全部機型</option><option>窗口式</option><option>分體式</option><option>流動式</option>
         </select>
         <select id="fHp" onchange="resetShown();renderList()">
           <option value="">全部匹數</option><option>3/4匹</option><option>1匹</option><option>1.5匹</option><option>2匹</option><option>2.5匹+</option>
@@ -604,10 +620,12 @@ function matches(m){
   const ty=document.getElementById('fType').value;
   const br=document.getElementById('fBrand').value;
   const en=document.getElementById('fEnergy').value;
+  const mo=document.getElementById('fMount').value;
   if(hp && m.hp!==hp) return false;
   if(ty && m.type!==ty) return false;
   if(br && m.brand!==br) return false;
   if(en && m.energy!==en) return false;
+  if(mo && m.mount!==mo) return false;
   if(q && !(m.brand.toLowerCase().includes(q)||m.model.toLowerCase().includes(q))) return false;
   if(document.getElementById('fSelOnly').checked && !selected.has(m.brand+'|'+m.model)) return false;
   return true;
@@ -647,12 +665,15 @@ function renderList(){
       : `<a class="plink" href="https://www.price.com.hk/search.php?g=A&q=${encodeURIComponent(m.model)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💰 格價</a>`;
     const wifiBadge = m.type==='變頻'?'🔷':'🔶';
     const energyTxt = m.energy ? esc(m.energy) : '—';
+    const mountTxt = m.mount ? `${esc(m.mount)} ` : '';
+    const modeTxt = m.mode ? `${esc(m.mode)} ` : '';
+    const remoteTxt = m.remote==='✅' ? '· 有遙控 ' : (m.remote==='➖' ? '· 無遙控 ' : '');
     const extra = (m.gas ? ` · ${esc(m.gas)}` : '') + (m.cspf ? ` · CSPF ${esc(m.cspf)}` : '');
     return `<label class="mitem ${on?'checked':''}">
       <input type="checkbox" ${on?'checked':''} onchange="toggle('${esc(id)}',this)">
       <span class="info">
         <span class="name">${esc(m.brand)} ${esc(m.model)}</span><br>
-        <span class="tag">${esc(m.hp||'?匹')} · ${esc(m.btu)} BTU · ${esc(m.type)} · ${energyTxt}${extra} · ${priceHtml}</span>
+        <span class="tag">${mountTxt}${modeTxt}${esc(m.hp||'?匹')} · ${esc(m.btu)} BTU · ${esc(m.type)} · ${energyTxt} ${remoteTxt}${extra}· ${priceHtml}</span>
       </span>
       <span class="badge">${wifiBadge} ${energyTxt}</span>
     </label>`;
@@ -881,7 +902,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
 });
 
-// 初始化：填充品牌下拉 + 渲染
+// 初始化：填充品牌下拉 + 渲染 + 動態統計
 (function(){
   const brands=[...new Set(ALL.map(m=>m.brand))].sort();
   const sel=document.getElementById('fBrand');
@@ -891,6 +912,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
     sel.appendChild(o);
   });
   document.getElementById('btnCompare').disabled = true;
+  // 動態統計（永遠同數據同步）
+  document.getElementById('statTotal').textContent = ALL.length.toLocaleString();
+  document.getElementById('statPrice').textContent = ALL.filter(m=>m.price).length.toLocaleString();
+  document.getElementById('statSize').textContent = ALL.filter(m=>m.size).length.toLocaleString();
   renderList();
 })();
 
