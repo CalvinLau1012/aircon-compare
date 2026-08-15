@@ -150,9 +150,19 @@ def kw_to_hp(kw):
     return '2.5匹+'
 
 
+def load_prices():
+    """載入 Price.com.hk 價格庫（prices.json：型號 → $X-Y）"""
+    p = os.path.join(BASE, 'prices.json')
+    if not os.path.exists(p):
+        return {}
+    with open(p, encoding='utf-8') as f:
+        return json.load(f)
+
+
 def load_emsd_models():
     """讀取 EMSD 官方 CSV，轉為比較器數據（核心 29 型號去重）"""
     csv_path = os.path.join(BASE, 'emsd_空調能源標籤.csv')
+    prices = load_prices()
     rows = list(csv.reader(open(csv_path, encoding='utf-8-sig')))[1:]
     rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
     core_keys = set(norm_model(m['model']) for m in MODELS)
@@ -169,16 +179,19 @@ def load_emsd_models():
         except (ValueError, TypeError):
             kw = 0.0
         btu = f"{kw*3412:,.0f}" if kw else '待查'
+        price = prices.get(model) or None
         out.append({
             'brand': brand, 'model': model,
             'hp': kw_to_hp(kw), 'btu': btu,
             'type': '變頻' if '是' in str(r[14]) else '定頻',
             'energy': (r[4] + '級') if str(r[4]).strip().isdigit() else str(r[4]),
-            'wifi': '', 'price': None,
+            'wifi': '', 'price': price,
             'kwh': r[5], 'cspf': r[7], 'kw': r[6], 'gas': r[8],
             'noise': '', 'size': '', 'weight': '', 'warranty': '',
-            'note': 'EMSD 官方登記', 'ref': r[2], 'provider': r[13],
+            'note': 'EMSD 官方登記 · Price 實價', 'ref': r[2], 'provider': r[13],
         })
+    priced = sum(1 for m in out if m['price'])
+    print(f'EMSD 型號 {len(out)} 個 · 其中 {priced} 個已有 Price 實價')
     return out
 
 
