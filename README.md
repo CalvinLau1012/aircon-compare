@@ -6,7 +6,7 @@
 
 ## 🚀 立即使用
 
-**線上版**：https://calvinlau1012.github.io/aircon-compare/ （GitHub Pages）
+**線上版**：<https://calvinlau1012.github.io/aircon-compare/> （GitHub Pages）
 
 **離線版**：下載 [`空調對比報告.html`](空調對比報告.html) 或 [`index.html`](index.html)，直接喺瀏覽器打開（單一檔案，可 email / WhatsApp 轉發）。
 
@@ -21,7 +21,7 @@
 ## 📊 數據
 
 | 項目 | 數量 |
-|------|------|
+| ------ | ------ |
 | 收錄型號 | 1,854（核心 29 + EMSD 全量 1,825） |
 | 有價格型號 | 1,847（Price.com.hk 實價連結） |
 | 有尺寸型號 | 1,676 |
@@ -32,7 +32,7 @@
 ## 🏭 品牌官網核實（2026-08-15）
 
 | 品牌 | 官方渠道 | 型號數 |
-|------|---------|-------|
+| ------ | --------- | ------- |
 | Carrier 開利 / Canopus 肯特 | century-carrier.com 世紀開利 | 79 |
 | Rasonic 樂信 | shew.com.hk 信興 + rasonicshop.hk 官方網店 | 50 |
 | Panasonic 樂聲 | panasonic.hk + 信興 eShop | 25 |
@@ -47,24 +47,29 @@
 ## 🔧 自行重建
 
 ```bash
+
 python generate_html.py        # 讀取 .md + JSON 資料庫 → 生成空調對比報告.html
 copy 空調對比報告.html index.html   # 同步 GitHub Pages 入口
+
 ```
 
 資料庫重新抓取（可選）：
+
 ```bash
+
 python fetch_prices.py         # Price.com.hk 實價（1,847 型號）
 python fetch_official.py       # Panasonic/HITACHI/COMFEE 官網規格
 python fetch_shew.py           # 信興官網 Rasonic 規格
 python fetch_carrier.py        # 世紀開利 Carrier/Canopus 規格
 python fetch_general.py        # 珍寶總代理規格
 python fetch_rasonic.py        # 樂信官方網店價格
+
 ```
 
 ## 📁 專案檔案
 
 | 檔案 | 說明 |
-|------|------|
+| ------ | ------ |
 | `index.html` / `空調對比報告.html` | 網頁版報告（self-contained，無外部依賴） |
 | `空調對比報告.md` | Markdown 報告全文 |
 | `需求摘要.md` | 需求元文件 |
@@ -84,7 +89,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 ## 📅 更新日誌
 
 | 日期 | 重點 |
-|------|------|
+| ------ | ------ |
 | 2026-08-15 | 官網核實 220 型號；EMSD 1,854 型號 + Price 1,847 實價；GitHub Pages 上線；「論壇討論精華」章節；機型篩選/導覽列/頁腳多輪優化 |
 | 2026-08-12 | EMSD 官方資料庫全量 1,927 型號核實 |
 | 2026-08-11 | 報告初版（29 型號對比） |
