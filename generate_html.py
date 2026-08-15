@@ -279,7 +279,7 @@ def apply_specs_override():
         # 核心 29 型號全部係窗口式 + 淨冷型
         m.setdefault('mount', '窗口式')
         m.setdefault('mode', '淨冷')
-        # 遙控：TA-12EOG 已驗證無遙控，其餘都有（篩選條件）
+        # 遙控：TA-12EOG 已驗證無遙控，其餘都有（遙控已非硬性篩選條件，僅作標註）
         m.setdefault('remote', '➖' if m['model'] == 'TA-12EOG' else '✅')
         ov = SPECS_OVERRIDE.get(m['model'])
         if ov:
@@ -654,7 +654,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（全量核實）· Price.com.hk 實價及規格 · 豐澤規格 · Gemini 交叉驗證</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（全量核實）· Price.com.hk 實價及規格 · 豐澤規格</div>
     <div class="date">📅 2026 年 8 月 15 日 更新版</div>
   </div>
 </header>
@@ -764,7 +764,7 @@ __CONTENT__
 
   <div class="blk">
     <h3>🤖 AI 製作提示</h3>
-    <p>本網頁由 <b style="color:#8FD3FF">DeepSeek AI</b> 輔助製作，配合多輪官方資料核實；所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證，AI 生成內容（如 Gemini 補充資料）已單獨標註可信度。</p>
+    <p>本網頁由 <b style="color:#8FD3FF">DeepSeek AI</b> 輔助製作，配合多輪官方資料核實；所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證。</p>
   </div>
 
   <span class="ai">🤖 Powered by DeepSeek AI</span><br>
