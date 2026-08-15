@@ -116,6 +116,63 @@ MODELS = [
          size='428×660×770', weight='~52kg', warranty='3/5年', note='R32 + WiFi + 抽濕'),
 ]
 
+# 2026-08-15 規格覆蓋（豐澤產品頁 + Price.com.hk og 規格，雙源交叉確認）
+# size 統一 H×W×D；豐澤係 W×H×D（已轉換）；單源數據喺 note 標註
+SPECS_OVERRIDE = {
+    # ---- CANOPUS（豐澤）----
+    'TA-09EOG': {'size': '350×451×675', 'warranty': '4/5年'},
+    'TA-12EOG': {'size': '380×600×560', 'warranty': '4/5年'},
+    'TA-18EOG': {'size': '428×660×680', 'warranty': '4/5年'},
+    # ---- TOSOT（Price og）----
+    'W09R5A': {'size': '350×450×580'},
+    'W12R5A': {'size': '375×560×668'},
+    'W18R5A': {'size': '428×660×700'},
+    'W24R5A': {'size': '428×660×770'},
+    # ---- Carrier BE（豐澤）----
+    'CHK09BE': {'size': '350×451×675', 'weight': '37.1kg', 'warranty': '4/5年'},
+    'CHK12BE': {'size': '380×600×560', 'weight': '40.3kg', 'warranty': '4/5年'},
+    'CHK18BE': {'size': '428×660×680', 'weight': '57.3kg', 'warranty': '4/5年'},
+    # ---- Midea CR8C（Price og）----
+    'MW-09CR8C': {'size': '350×451×675'},
+    'MW-12CR8C': {'size': '380×560×600'},
+    # ---- HITACHI（豐澤+Price 一致）----
+    'RA-10RF': {'size': '345×470×640', 'weight': '38kg', 'warranty': '3/5年'},
+    # ---- Rasonic XG（豐澤）----
+    'RC-XG9': {'size': '350×450×580', 'weight': '32kg'},
+    'RC-XG12': {'size': '375×560×668', 'weight': '39kg'},
+    # ---- FUJI（Price og）----
+    'RFR18FNTN': {'size': '428×660×705'},
+    # ---- COMFEE（豐澤+Price）----
+    'CWF-09CRFN8-AD5': {'size': '350×451×675'},
+    'CWF-12CRFN8-AD5': {'size': '350×451×675', 'weight': '35.9kg'},
+    'CWF-18CRFN8-AD5': {'size': '428×660×780'},
+    # ---- Carrier EAVXP（Price og）----
+    'CHK09EAVXP': {'size': '350×450×675'},
+    'CHK12EAVXP': {'size': '350×450×675'},
+    'CHK18EAVX': {'size': '428×660×780'},
+    # ---- Midea CRF8B（Price og）----
+    'MW-09CRF8B': {'size': '350×451×675'},
+    # ---- Gree（Price og）----
+    'GWF09P': {'size': '350×450×640'},
+    'GWF12DB': {'size': '375×560×708'},
+    # ---- General（Price og）----
+    'AMWB12NID': {'size': '375×560×708'},
+    # ---- Panasonic（豐澤+Price 一致）----
+    'CW-HU90AA': {'size': '346×450×640', 'weight': '33kg', 'warranty': '3/5年'},
+    'CW-HU120AA': {'size': '400×600×710', 'weight': '40kg'},
+    # ---- Rasonic TS18（Price og）----
+    'RC-TS18UV': {'size': '428×660×780'},
+}
+
+
+def apply_specs_override():
+    """用雙源確認嘅規格覆蓋 MODELS"""
+    for m in MODELS:
+        ov = SPECS_OVERRIDE.get(m['model'])
+        if ov:
+            m.update(ov)
+
+
 COMPARE_FIELDS = [
     ('hp', '匹數'), ('btu', '製冷量 (BTU)'), ('type', '類型'), ('energy', '能源級別'),
     ('wifi', 'WiFi'), ('price', '參考價'), ('kwh', '年耗電 (kWh)'), ('cspf', 'CSPF'),
@@ -151,8 +208,17 @@ def kw_to_hp(kw):
 
 
 def load_prices():
-    """載入 Price.com.hk 價格庫（prices.json：型號 → $X-Y）"""
+    """載入 Price.com.hk 價格庫（prices.json：型號 → {price, pid}）"""
     p = os.path.join(BASE, 'prices.json')
+    if not os.path.exists(p):
+        return {}
+    with open(p, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def load_specs_emsd():
+    """載入 EMSD 型號規格（specs_emsd.json：Price og 規格）"""
+    p = os.path.join(BASE, 'specs_emsd.json')
     if not os.path.exists(p):
         return {}
     with open(p, encoding='utf-8') as f:
@@ -163,6 +229,7 @@ def load_emsd_models():
     """讀取 EMSD 官方 CSV，轉為比較器數據（核心 29 型號去重）"""
     csv_path = os.path.join(BASE, 'emsd_空調能源標籤.csv')
     prices = load_prices()
+    specs = load_specs_emsd()
     rows = list(csv.reader(open(csv_path, encoding='utf-8-sig')))[1:]
     rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
     core_keys = set(norm_model(m['model']) for m in MODELS)
@@ -179,19 +246,26 @@ def load_emsd_models():
         except (ValueError, TypeError):
             kw = 0.0
         btu = f"{kw*3412:,.0f}" if kw else '待查'
-        price = prices.get(model) or None
+        pinfo = prices.get(model) or {}
+        price = pinfo.get('price') or None
+        pid = pinfo.get('pid') or None
+        sinfo = specs.get(model) or {}
+        size = sinfo.get('size') or ''
+        func = sinfo.get('func') or ''
+        wifi = '✅' if re.search(r'Wi-?Fi|智能|Smart', func, re.I) else ''
         out.append({
             'brand': brand, 'model': model,
             'hp': kw_to_hp(kw), 'btu': btu,
             'type': '變頻' if '是' in str(r[14]) else '定頻',
             'energy': (r[4] + '級') if str(r[4]).strip().isdigit() else str(r[4]),
-            'wifi': '', 'price': price,
+            'wifi': wifi, 'price': price, 'pid': pid,
             'kwh': r[5], 'cspf': r[7], 'kw': r[6], 'gas': r[8],
-            'noise': '', 'size': '', 'weight': '', 'warranty': '',
+            'noise': '', 'size': size, 'weight': '', 'warranty': '',
             'note': 'EMSD 官方登記 · Price 實價', 'ref': r[2], 'provider': r[13],
         })
     priced = sum(1 for m in out if m['price'])
-    print(f'EMSD 型號 {len(out)} 個 · 其中 {priced} 個已有 Price 實價')
+    sized = sum(1 for m in out if m['size'])
+    print(f'EMSD 型號 {len(out)} 個 · {priced} 個有價 · {sized} 個有尺寸')
     return out
 
 
@@ -199,6 +273,16 @@ def build_html():
     with open(os.path.join(BASE, '空調對比報告.md'), encoding='utf-8') as f:
         md_text = f.read()
     content_html = md_to_html(md_text)
+
+    # 套用雙源確認規格 + 填核心型號 Price 產品 ID（做價格連結）
+    apply_specs_override()
+    prices = load_prices()
+    for m in MODELS:
+        pinfo = prices.get(m['model'])
+        if isinstance(pinfo, dict) and pinfo.get('pid'):
+            m['pid'] = pinfo['pid']
+        else:
+            m['pid'] = None
 
     emsd_models = load_emsd_models()
     models_json = json.dumps(MODELS, ensure_ascii=False)
@@ -557,7 +641,9 @@ function renderList(){
     const id=m.brand+'|'+m.model;
     const on=selected.has(id);
     const priceHtml = m.price
-      ? esc(m.price)
+      ? (m.pid
+          ? `<a class="plink" href="https://www.price.com.hk/product.php?p=${m.pid}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(m.price)} ↗</a>`
+          : esc(m.price))
       : `<a class="plink" href="https://www.price.com.hk/search.php?g=A&q=${encodeURIComponent(m.model)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💰 格價</a>`;
     const wifiBadge = m.type==='變頻'?'🔷':'🔶';
     const energyTxt = m.energy ? esc(m.energy) : '—';
@@ -648,7 +734,9 @@ function buildPanel(){
       }
       const inner = key==='price' && txt==='待查'
         ? `<a href="https://www.price.com.hk/search.php?g=A&q=${encodeURIComponent(m.model)}" target="_blank" rel="noopener">💰 格價</a>`
-        : esc(txt);
+        : (key==='price' && m.pid
+            ? `<a href="https://www.price.com.hk/product.php?p=${m.pid}" target="_blank" rel="noopener">${esc(txt)} ↗</a>`
+            : esc(txt));
       return `<td${cls}>${inner}</td>`;
     })]);
   }

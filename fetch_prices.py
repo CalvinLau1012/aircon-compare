@@ -25,12 +25,15 @@ def norm_model(s):
 
 
 def fetch_price(model):
-    """查一個型號嘅 Price 價格範圍；失敗/冇結果返回 None"""
+    """查一個型號嘅 Price 價格範圍 + 產品 ID；失敗/冇結果返回 None"""
     url = 'https://www.price.com.hk/search.php?g=A&q=' + urllib.parse.quote(model)
     for attempt in range(2):
         try:
             req = urllib.request.Request(url, headers={'User-Agent': UA})
             html = urllib.request.urlopen(req, timeout=12).read().decode('utf-8', 'ignore')
+            # 產品 ID（第一個 = 最相關）
+            pid_m = re.search(r'product\.php\?p=(\d+)', html)
+            pid = pid_m.group(1) if pid_m else None
             # 搵第一個 listing-price-range
             m = re.search(
                 r'listing-price-range.*?data-price="([\d.]+)".*?'
@@ -39,12 +42,10 @@ def fetch_price(model):
             if m:
                 low = int(float(m.group(1)))
                 high = int(float(m.group(2))) if m.group(2) else None
-                if high and high > low:
-                    return f"${low:,}-{high:,}"
-                return f"${low:,}起"
-            # 有產品但冇價格（可能頁面結構唔同）→ 睇有冇產品連結
-            if 'product.php?p=' in html:
-                return None  # 有產品但攞唔到價
+                price = f"${low:,}-{high:,}" if (high and high > low) else f"${low:,}起"
+                return {'price': price, 'pid': pid}
+            if pid:
+                return {'price': None, 'pid': pid}  # 有產品但攞唔到價
             return None
         except Exception:
             time.sleep(1.5)
@@ -69,7 +70,10 @@ def main():
     results = {}
     if os.path.exists(OUT_PATH):
         with open(OUT_PATH, encoding='utf-8') as f:
-            results = json.load(f)
+            old = json.load(f)
+        # 舊格式（純價錢字串）轉新格式
+        for k, v in old.items():
+            results[k] = v if isinstance(v, dict) else {'price': v, 'pid': None}
         print(f'已有 {len(results)} 個結果，跳過')
 
     todo = [m for m in models if m not in results]
@@ -83,11 +87,11 @@ def main():
         for fut in as_completed(futures):
             m = futures[fut]
             try:
-                price = fut.result()
+                result = fut.result()
             except Exception:
-                price = None
-            if price:
-                results[m] = price
+                result = None
+            if result and result.get('price'):
+                results[m] = result
                 ok += 1
             done_count += 1
             if done_count % 50 == 0:
