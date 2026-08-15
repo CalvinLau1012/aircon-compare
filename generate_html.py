@@ -213,11 +213,16 @@ SPECS_OVERRIDE = {
 def load_official():
     """載入品牌官網核實數據（official_specs.json + rasonic_official.json）"""
     out = {}
-    for fname in ('official_specs.json', 'rasonic_official.json', 'pana_official.json'):
+    for fname in ('official_specs.json', 'rasonic_official.json', 'pana_official.json', 'midea_official.json'):
         p = os.path.join(BASE, fname)
         if os.path.exists(p):
             with open(p, encoding='utf-8') as f:
                 out.update(json.load(f))
+    # 型號變體映射（官網寫法 vs EMSD 寫法）
+    variants = {'MW12CM8C': 'MW-12CM8C'}
+    for k, v in variants.items():
+        if k in out and v not in out:
+            out[v] = out[k]
     return out
 
 
