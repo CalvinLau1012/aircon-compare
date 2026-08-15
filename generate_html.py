@@ -665,7 +665,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
     <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · Price.com.hk 實價 1,847 型號 · LIHKG 連登討論摘錄</div>
-    <div class="date">📅 2026 年 8 月 15 日 更新 · v1.0.0</div>
+    <div class="date">📅 2026 年 8 月 15 日 更新 · v1.0.0 · 🔄 每日自動更新</div>
   </div>
 </header>
 
@@ -781,6 +781,7 @@ __CONTENT__
 
   <span class="ai">🤖 Powered by DeepSeek AI</span><br>
   <span class="line">──────</span><br>
+  🔄 每日自動更新：GitHub Actions 香港時間每日 00:30 抓取 EMSD/Price/官網 → 數據驗證閘門 → 自動重新部署<br>
   本報告僅供選購參考，不構成購買建議 · 價格隨時變動
 </footer>
 
