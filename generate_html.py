@@ -379,6 +379,15 @@ def load_prices():
         return json.load(f)
 
 
+def load_biggo():
+    """載入 BigGo 香港格價快照（biggo_prices.json：型號 → {price, merchants}）"""
+    p = os.path.join(BASE, 'biggo_prices.json')
+    if not os.path.exists(p):
+        return {}
+    with open(p, encoding='utf-8') as f:
+        return json.load(f)
+
+
 def load_specs_emsd():
     """載入 EMSD 型號規格（specs_emsd.json：Price og 規格）"""
     p = os.path.join(BASE, 'specs_emsd.json')
@@ -443,6 +452,7 @@ def load_emsd_models():
     """讀取 EMSD 官方 CSV，轉為比較器數據（核心 29 型號去重）"""
     csv_path = os.path.join(BASE, 'emsd_空調能源標籤.csv')
     prices = load_prices()
+    biggo = load_biggo()
     specs = load_specs_emsd()
     rows = list(csv.reader(open(csv_path, encoding='utf-8-sig')))[1:]
     rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
@@ -463,6 +473,10 @@ def load_emsd_models():
         pinfo = prices.get(model) or {}
         price = pinfo.get('price') or None
         pid = pinfo.get('pid') or None
+        # BigGo 格價快照優先（多商戶實時性更新）；Price 快照做後備
+        bginfo = biggo.get(model) or {}
+        if bginfo.get('price'):
+            price = bginfo['price']
         sinfo = specs.get(model) or {}
         size = sinfo.get('size') or ''
         func = sinfo.get('func') or ''
@@ -507,12 +521,17 @@ def build_html():
     # 套用雙源確認規格 + 填核心型號 Price 產品 ID（做價格連結）
     apply_specs_override()
     prices = load_prices()
+    biggo = load_biggo()
     for m in MODELS:
         pinfo = prices.get(m['model'])
         if isinstance(pinfo, dict) and pinfo.get('pid'):
             m['pid'] = pinfo['pid']
         else:
             m['pid'] = None
+        # BigGo 格價快照優先（多商戶實時性更新）
+        bginfo = biggo.get(m['model'])
+        if bginfo and bginfo.get('price'):
+            m['price'] = bginfo['price']
 
     emsd_models = load_emsd_models()
     models_json = json.dumps(MODELS, ensure_ascii=False)
@@ -761,7 +780,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價格為 2026-08-15 快照（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
     <div class="date">__DATE_STATUS__</div>
   </div>
 </header>
