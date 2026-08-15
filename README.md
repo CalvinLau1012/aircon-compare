@@ -45,12 +45,15 @@
 > ⚠️ Gree/TOSOT 代理官網無窗口機產品頁 → 維持 EMSD/Price 雙源並標註「待查」，**絕不編造**。
 
 ## 🔄 每日自動更新
+
 - **排程**：GitHub Actions 每日 00:30（香港時間）自動抓取 → 驗證 → 重新生成 → 推送，GitHub Pages 自動重新部署
 - **安全**：無需任何密鑰/Token（抓取全為公開網頁）；權限只限 `contents: write`；Action 版本固定（@v4/@v5）；設 concurrency 防重疊
 - **穩定**：抓取後經「數據驗證閘門」(`validate_data.py`) 檢查數量喺安全範圍（EMSD ≥1,700 行、Price ≥1,600、各 JSON 非空）——唔合格就唔提交，保住現有數據；每次成功提交 = 可回溯快照，壞咗可一鍵還原
+- **禮貌**：誠實 Bot UA 標明專案來源、退避重試遵從 Retry-After、隨機抖動延遲；價格每週全量刷新、平日只補缺（大幅降負載）；限流熔斷（成功率低於一半即中止，保留舊數據）
 - 亦可喺 GitHub Actions 頁面手動觸發（workflow_dispatch）
 
 ## 🔧 自行重建
+
 ```bash
 
 python generate_html.py        # 讀取 .md + JSON 資料庫 → 生成空調對比報告.html
@@ -106,6 +109,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 | 日期 | 重點 |
 | ------ | ------ |
+| 2026-08-15 | 防禦性修補（禮貌爬蟲防封）+ 免責聲明全面更新 + markdownlint 全清 |
 | 2026-08-15 | 官網核實 220 型號；EMSD 1,854 型號 + Price 1,847 實價；GitHub Pages 上線；「論壇討論精華」章節；機型篩選/導覽列/頁腳多輪優化；Gree/TOSOT 零售規格核實 + GWF12P/GWF18P 替換補完 |
 | 2026-08-15 | v1.0.0 版本號；GitHub Actions 每日自動更新（驗證閘門 + 低權限 + 無密鑰） |
 | 2026-08-12 | EMSD 官方資料庫全量 1,927 型號核實 |
