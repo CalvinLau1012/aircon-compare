@@ -604,7 +604,7 @@ function buildPanel(){
         if(vals.every(v=>!isNaN(v))) best=Math.max(...vals);
       }
     }
-    rows.push([label, ...list.map(m=>{
+    rows.push([`<td>${label}</td>`, ...list.map(m=>{
       const v=m[key];
       const txt=(v===null||v===undefined||v==='')?'待查':String(v);
       let cls='';
