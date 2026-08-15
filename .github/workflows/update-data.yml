@@ -1,0 +1,73 @@
+name: 更新數據（可重用）
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: 刷新模式（full=全量日，150 分鐘；daily=每日補缺，30 分鐘）
+        required: true
+        type: string
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    # 超時策略：全量日 150 分鐘（全量抓取+全量鏈接驗證）；每日補缺 30 分鐘（補缺+抽樣驗證）
+    timeout-minutes: ${{ inputs.mode == 'full' && 150 || 30 }}
+    steps:
+      - name: 取出代碼
+        uses: actions/checkout@v4
+
+      - name: 設定 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 安裝依賴
+        run: pip install -r requirements.txt
+
+      - name: 抓取 EMSD 官方資料庫
+        run: python fetch_emsd.py
+        continue-on-error: true
+
+      - name: 抓取 Price.com.hk 實價
+        run: python fetch_prices.py
+        continue-on-error: true
+
+      - name: 抓取品牌官網/官方網店規格
+        run: |
+          python fetch_official.py || true
+          python fetch_shew.py || true
+          python fetch_carrier.py || true
+          python fetch_general.py || true
+          python fetch_rasonic.py || true
+          python fetch_specs.py || true
+
+      - name: 鏈接驗證（全量日：逐個核實全部產品鏈接）
+        if: inputs.mode == 'full'
+        run: python verify_links.py
+        continue-on-error: true
+
+      - name: 鏈接驗證（每日：抽樣核實 30 個）
+        if: inputs.mode == 'daily'
+        run: python verify_links.py --sample 30
+        continue-on-error: true
+
+      - name: 數據驗證（防壞數據上線）
+        run: python validate_data.py
+
+      - name: 重新生成網頁
+        run: |
+          python generate_html.py
+          cp 空調對比報告.html index.html
+
+      - name: 提交並推送（有變更先提交）
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "無變更，跳過提交"
+          else
+            git commit -m "自動更新：每日數據同步（$(date -u +%F)）"
+            git push
+          fi

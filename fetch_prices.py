@@ -66,6 +66,20 @@ def fetch_price(model):
     return None
 
 
+def detect_mode():
+    """判斷今日係全量刷新定平日補缺（供 GitHub Actions 偵測 job 呼叫）"""
+    meta = {}
+    if os.path.exists(META_PATH):
+        with open(META_PATH, encoding='utf-8') as f:
+            meta = json.load(f)
+    try:
+        last_full_ts = time.mktime(time.strptime(meta.get('last_full', ''), '%Y-%m-%d'))
+        full_due = (time.time() - last_full_ts) > 6 * 86400
+    except Exception:
+        full_due = True
+    return 'full' if full_due else 'daily'
+
+
 def main():
     rows = list(csv.reader(open(CSV_PATH, encoding='utf-8-sig')))[1:]
     rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
@@ -91,23 +105,14 @@ def main():
         print(f'已有 {len(results)} 個結果，跳過')
 
     # 每週先做一次全量刷新，平日只補缺（降低每日請求量，減少被限流風險）
-    meta = {}
-    if os.path.exists(META_PATH):
-        with open(META_PATH, encoding='utf-8') as f:
-            meta = json.load(f)
-    last_full = meta.get('last_full', '')
-    try:
-        last_full_ts = time.mktime(time.strptime(last_full, '%Y-%m-%d'))
-        full_due = (time.time() - last_full_ts) > 6 * 86400
-    except Exception:
-        full_due = True
+    full_due = (detect_mode() == 'full')
     todo = models if full_due else [m for m in models if m not in results]
     print(('本週全量刷新' if full_due else '平日補缺模式') + f'：{len(todo)} 個要查，開始...')
 
     ok = 0
     touched = 0
     t0 = time.time()
-    with ThreadPoolExecutor(max_workers=3) as ex:
+    with ThreadPoolExecutor(max_workers=4) as ex:
         futures = {ex.submit(fetch_price, m): m for m in todo}
         done_count = 0
         for fut in as_completed(futures):
