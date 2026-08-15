@@ -1,0 +1,792 @@
+{
+ "CHK07UX": {
+  "hp": "",
+  "btu": "7,700",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/214/b_id/1/m_id/1.html"
+ },
+ "CHK09UX": {
+  "hp": "",
+  "btu": "8,800",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/215/b_id/1/m_id/1.html"
+ },
+ "CHK12UX": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/216/b_id/1/m_id/1.html"
+ },
+ "CHK18UX": {
+  "hp": "",
+  "btu": "18,000",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/217/b_id/1/m_id/1.html"
+ },
+ "CHK21UX": {
+  "hp": "",
+  "btu": "21,530",
+  "energy": "1級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/218/b_id/1/m_id/1.html"
+ },
+ "CHK07BE": {
+  "hp": "",
+  "btu": "7,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/232/b_id/1/m_id/1.html"
+ },
+ "CHK09BE": {
+  "hp": "",
+  "btu": "9,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/233/b_id/1/m_id/1.html"
+ },
+ "CHK12BE": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/234/b_id/1/m_id/1.html"
+ },
+ "CHK18BE": {
+  "hp": "",
+  "btu": "18,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/235/b_id/1/m_id/1.html"
+ },
+ "CHK07VFP": {
+  "hp": "",
+  "btu": "7,700",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/227/b_id/1/m_id/1.html"
+ },
+ "CHK09VFPN": {
+  "hp": "",
+  "btu": "8,800",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/228/b_id/1/m_id/1.html"
+ },
+ "CHK12VFP": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/229/b_id/1/m_id/1.html"
+ },
+ "CHK18VFP": {
+  "hp": "",
+  "btu": "18,000",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/230/b_id/1/m_id/1.html"
+ },
+ "CHK7000TP": {
+  "hp": "",
+  "btu": "7,700",
+  "energy": "1級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/223/b_id/1/m_id/1.html"
+ },
+ "CHK9000TP": {
+  "hp": "",
+  "btu": "8,800",
+  "energy": "1級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/224/b_id/1/m_id/1.html"
+ },
+ "CHK12000TP": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "1級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/225/b_id/1/m_id/1.html"
+ },
+ "CHK18000TP": {
+  "hp": "",
+  "btu": "18,000",
+  "energy": "1級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/226/b_id/1/m_id/1.html"
+ },
+ "CKM07VS": {
+  "hp": "",
+  "btu": "7,600",
+  "energy": "1級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/197/b_id/1/m_id/1.html"
+ },
+ "CKM09VS": {
+  "hp": "",
+  "btu": "9,000",
+  "energy": "1級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/199/b_id/1/m_id/1.html"
+ },
+ "CKM12VS": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "1級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/200/b_id/1/m_id/1.html"
+ },
+ "CKM18VS": {
+  "hp": "",
+  "btu": "17,600",
+  "energy": "1級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/201/b_id/1/m_id/1.html"
+ },
+ "CHK07LAN": {
+  "hp": "",
+  "btu": "7,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/236/b_id/1/m_id/1.html"
+ },
+ "CHK09LAN": {
+  "hp": "",
+  "btu": "9,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/237/b_id/1/m_id/1.html"
+ },
+ "CHK12LAN": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/238/b_id/1/m_id/1.html"
+ },
+ "CHK18LAN": {
+  "hp": "",
+  "btu": "18,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/239/b_id/1/m_id/1.html"
+ },
+ "CHK07KM": {
+  "hp": "",
+  "btu": "7,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/265/b_id/1/m_id/1.html"
+ },
+ "CHK09KM": {
+  "hp": "",
+  "btu": "9,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/266/b_id/1/m_id/1.html"
+ },
+ "CHK12KM": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/267/b_id/1/m_id/1.html"
+ },
+ "CHK18KM": {
+  "hp": "",
+  "btu": "18,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/268/b_id/1/m_id/1.html"
+ },
+ "CHK07EAVX": {
+  "hp": "",
+  "btu": "7,600",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/146/b_id/1/m_id/1.html"
+ },
+ "CHK09EX": {
+  "hp": "",
+  "btu": "9,000",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/213/b_id/1/m_id/1.html"
+ },
+ "CHK12EAVXP": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/170/b_id/1/m_id/1.html"
+ },
+ "CHK18EAVX": {
+  "hp": "",
+  "btu": "17,600",
+  "energy": "1級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/149/b_id/1/m_id/1.html"
+ },
+ "CHK21EAVXP": {
+  "hp": "",
+  "btu": "21,530",
+  "energy": "1級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/171/b_id/1/m_id/1.html"
+ },
+ "CHK07LAE": {
+  "hp": "",
+  "btu": "7,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/151/b_id/1/m_id/1.html"
+ },
+ "CHK09LAE": {
+  "hp": "",
+  "btu": "9,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/152/b_id/1/m_id/1.html"
+ },
+ "CHK12LAE": {
+  "hp": "",
+  "btu": "1,2000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/153/b_id/1/m_id/1.html"
+ },
+ "CHK18LAE": {
+  "hp": "",
+  "btu": "1,8000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/154/b_id/1/m_id/1.html"
+ },
+ "CHK07EAE": {
+  "hp": "",
+  "btu": "7,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/156/b_id/1/m_id/1.html"
+ },
+ "CHK09EAE": {
+  "hp": "",
+  "btu": "9,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/157/b_id/1/m_id/1.html"
+ },
+ "CHK12EAE": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/158/b_id/1/m_id/1.html"
+ },
+ "CHK18EAE": {
+  "hp": "",
+  "btu": "18,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/159/b_id/1/m_id/1.html"
+ },
+ "CHK07EAN": {
+  "hp": "",
+  "btu": "7,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/176/b_id/1/m_id/1.html"
+ },
+ "CHK09EAN": {
+  "hp": "",
+  "btu": "9,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/177/b_id/1/m_id/1.html"
+ },
+ "CHK12EAN": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/178/b_id/1/m_id/1.html"
+ },
+ "CHK18EAN": {
+  "hp": "",
+  "btu": "18,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/179/b_id/1/m_id/1.html"
+ },
+ "CHK07VF": {
+  "hp": "",
+  "btu": "7,600",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/172/b_id/1/m_id/1.html"
+ },
+ "CHK09VF": {
+  "hp": "",
+  "btu": "9,000",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/173/b_id/1/m_id/1.html"
+ },
+ "CHK12VF": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "2級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/174/b_id/1/m_id/1.html"
+ },
+ "CHK18VF": {
+  "hp": "",
+  "btu": "17,600",
+  "energy": "1級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/175/b_id/1/m_id/1.html"
+ },
+ "CHK07SBVXP": {
+  "hp": "",
+  "btu": "7,700",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/292/b_id/1/m_id/1.html"
+ },
+ "CHK09SBVXPN": {
+  "hp": "",
+  "btu": "8,800",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/291/b_id/1/m_id/1.html"
+ },
+ "CHK12SBVXP": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/290/b_id/1/m_id/1.html"
+ },
+ "CHK18SBVXP": {
+  "hp": "",
+  "btu": "18,000",
+  "energy": "1級",
+  "wifi": "✅",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/293/b_id/1/m_id/1.html"
+ },
+ "CHK21SBVXPN": {
+  "hp": "",
+  "btu": "21,530",
+  "energy": "1級",
+  "wifi": "",
+  "warranty": "4/5年",
+  "mode": "淨冷",
+  "gas": "R32",
+  "url": "https://www.century-carrier.com/product/info/id/294/b_id/1/m_id/1.html"
+ },
+ "CHK07FPE": {
+  "hp": "",
+  "btu": ",200",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/41/b_id/1/m_id/1.html"
+ },
+ "CHK09FPE": {
+  "hp": "",
+  "btu": "8,800",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/42/b_id/1/m_id/1.html"
+ },
+ "CHK12FPE": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/44/b_id/1/m_id/1.html"
+ },
+ "CHK18FPE": {
+  "hp": "",
+  "btu": "18,000",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/45/b_id/1/m_id/1.html"
+ },
+ "CHK07LPE": {
+  "hp": "",
+  "btu": "7,200",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/37/b_id/1/m_id/1.html"
+ },
+ "CHK09LPE": {
+  "hp": "",
+  "btu": "8,800",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/38/b_id/1/m_id/1.html"
+ },
+ "CHK12LPE": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/39/b_id/1/m_id/1.html"
+ },
+ "CHK18LPE": {
+  "hp": "",
+  "btu": "18,000",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/40/b_id/1/m_id/1.html"
+ },
+ "CHK23LPE": {
+  "hp": "",
+  "btu": "23,000",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/43/b_id/1/m_id/1.html"
+ },
+ "CHK07EPE": {
+  "hp": "",
+  "btu": "7,200",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/50/b_id/1/m_id/1.html"
+ },
+ "CHK09EPE": {
+  "hp": "",
+  "btu": "8,800",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/51/b_id/1/m_id/1.html"
+ },
+ "CHK12EPE": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/52/b_id/1/m_id/1.html"
+ },
+ "CHK07FTE": {
+  "hp": "",
+  "btu": "7,200",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/138/b_id/1/m_id/1.html"
+ },
+ "CHK18EPE": {
+  "hp": "",
+  "btu": "18,000",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/53/b_id/1/m_id/1.html"
+ },
+ "CHK09FTE": {
+  "hp": "",
+  "btu": "8,800",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/139/b_id/1/m_id/1.html"
+ },
+ "CHK12FTE": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/140/b_id/1/m_id/1.html"
+ },
+ "CHK18FTE": {
+  "hp": "",
+  "btu": "18,000",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/141/b_id/1/m_id/1.html"
+ },
+ "CHK07SNE": {
+  "hp": "",
+  "btu": "7,200",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/46/b_id/1/m_id/1.html"
+ },
+ "CHK09SNE": {
+  "hp": "",
+  "btu": "8,800",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/47/b_id/1/m_id/1.html"
+ },
+ "CHK12SNE": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "3級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/48/b_id/1/m_id/1.html"
+ },
+ "CHK18SNE": {
+  "hp": "",
+  "btu": "18,000",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/49/b_id/1/m_id/1.html"
+ },
+ "CHK12EPG": {
+  "hp": "",
+  "btu": "12,000",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/54/b_id/1/m_id/1.html"
+ },
+ "CHK23EPG": {
+  "hp": "",
+  "btu": "22,500",
+  "energy": "4級",
+  "wifi": "",
+  "warranty": "3/5年",
+  "mode": "淨冷",
+  "gas": "R410A",
+  "url": "https://www.century-carrier.com/product/info/id/55/b_id/1/m_id/1.html"
+ },
+ "CHK07LNE": {
+  "hp": "",
+  "btu": "",
+  "energy": "",
+  "wifi": "",
+  "warranty": "",
+  "mode": "",
+  "gas": "",
+  "url": "https://www.century-carrier.com/product/info/id/83/b_id/1/m_id/1.html"
+ }
+}
