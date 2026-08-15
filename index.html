@@ -44,7 +44,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
   border-bottom:2px solid transparent; margin-bottom:-2px;}
 .topnav a:hover{color:var(--accent);}
 .topnav a.active{color:var(--accent); border-bottom-color:var(--accent); font-weight:700;}
-.topnav .brand{font-weight:700; color:#fff; font-size:.95em; margin-right:6px;}
+.topnav .brand{font-weight:700; color:#fff; font-size:.95em; margin-right:6px;
+  white-space:nowrap; flex:0 0 auto;}
 /* VS Code 官方風格 tooltip（Monaco editor hover widget 同款） */
 .topnav a[data-tip]::after{
   content:attr(data-tip);
@@ -188,6 +189,10 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
   .topnav .brand{font-size:.85em;}
 }
 @media (max-width:720px){
+  .topnav .wrap{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;}
+  .topnav .wrap::-webkit-scrollbar{display:none;}
+  .topnav a[data-tip]::after{display:none;}
   .hero h1{font-size:1.6em;}
   .hero .sub{font-size:1em;}
   .stats{display:grid; grid-template-columns:1fr 1fr; gap:14px 20px;}
@@ -2978,6 +2983,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if(top <= y) cur=a;
     }
     navLinks.forEach(a=>a.classList.toggle('active', a===cur));
+    if(cur){
+      const navWrap=document.querySelector('.topnav .wrap');
+      if(navWrap && navWrap.scrollWidth > navWrap.clientWidth){
+        cur.scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'});
+      }
+    }
   }
   let spyTicking=false;
   window.addEventListener('scroll',()=>{
