@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """輸出報告 vs EMSD 官方對比總表"""
-import csv, re
+import csv, os, re
 
-rows = list(csv.reader(open(r'd:\香港窗口式空調查找\emsd_空調能源標籤.csv', encoding='utf-8-sig')))[1:]
+BASE = os.path.dirname(os.path.abspath(__file__))
+rows = list(csv.reader(open(os.path.join(BASE, 'emsd_空調能源標籤.csv'), encoding='utf-8-sig')))[1:]
 rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
 
 

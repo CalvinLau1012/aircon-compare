@@ -7,6 +7,7 @@
 import urllib.request
 import re
 import csv
+import os
 import time
 from html.parser import HTMLParser
 
@@ -85,7 +86,7 @@ def main():
         p += 1
         time.sleep(0.5)
 
-    out = r'd:\香港窗口式空調查找\emsd_空調能源標籤.csv'
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'emsd_空調能源標籤.csv')
     with open(out, 'w', newline='', encoding='utf-8-sig') as f:
         w = csv.writer(f)
         w.writerow(header)

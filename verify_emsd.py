@@ -4,9 +4,10 @@
 對比 EMSD 官方能源標籤數據（用型號關鍵詞搜尋，唔理品牌名稱格式）
 """
 import csv
+import os
 import re
 
-CSV = r'd:\香港窗口式空調查找\emsd_空調能源標籤.csv'
+CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'emsd_空調能源標籤.csv')
 
 # 型號關鍵詞 → (品牌, 報告型號)
 KEYWORDS = [

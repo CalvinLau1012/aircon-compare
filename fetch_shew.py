@@ -19,7 +19,7 @@ def grab(t, kws, n=80):
     return ''
 
 def main():
-    urls = json.load(open(r'd:\香港窗口式空調查找\shew_urls.json', encoding='utf-8'))
+    urls = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shew_urls.json'), encoding='utf-8'))
     out = {}
     for url in urls:
         slug = url.rsplit('/', 1)[-1]
@@ -43,7 +43,7 @@ def main():
         except Exception as e:
             print(f'  {model}: ERR {str(e)[:40]}')
         time.sleep(0.15)
-    out_path = r'd:\香港窗口式空調查找\shew_official.json'
+    out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shew_official.json')
     json.dump(out, open(out_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     print('完成', len(out), '型號')
 

@@ -1,7 +1,7 @@
 ﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """GENERAL 珍寶香港總代理 general-aircon.com 窗口機規格抓取"""
-import json, re, ssl, sys, io, urllib.request, time
+import json, re, ssl, sys, io, os, urllib.request, time
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 CTX = ssl.create_default_context(); CTX.check_hostname = False; CTX.verify_mode = ssl.CERT_NONE
 def get(u):
@@ -51,5 +51,5 @@ for model, url in URLS:
     except Exception as e:
         print(f'{model}: ERR {str(e)[:50]}')
     time.sleep(0.2)
-json.dump(out, open(r'd:\香港窗口式空調查找\general_official.json','w',encoding='utf-8'), ensure_ascii=False, indent=1)
+json.dump(out, open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'general_official.json'),'w',encoding='utf-8'), ensure_ascii=False, indent=1)
 print('完成', len(out))

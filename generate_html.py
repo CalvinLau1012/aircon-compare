@@ -12,7 +12,7 @@ import csv
 import markdown
 import re
 
-BASE = r'd:\香港窗口式空調查找'
+BASE = os.path.dirname(os.path.abspath(__file__))
 
 # ============================================================
 # 型號資料庫（整合報告 + EMSD 官方）

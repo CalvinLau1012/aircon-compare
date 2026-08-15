@@ -16,7 +16,7 @@ import urllib.request
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-BASE = r'd:\香港窗口式空調查找'
+BASE = os.path.dirname(os.path.abspath(__file__))
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/148.0 Safari/537.36'
 CTX = ssl.create_default_context()
 CTX.check_hostname = False

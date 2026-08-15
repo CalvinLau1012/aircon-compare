@@ -13,7 +13,7 @@ import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-BASE = r'd:\香港窗口式空調查找'
+BASE = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE, 'emsd_空調能源標籤.csv')
 OUT_PATH = os.path.join(BASE, 'prices.json')
 

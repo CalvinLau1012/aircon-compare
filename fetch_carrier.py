@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """世紀開利官網 century-carrier.com 窗口機規格抓取（Carrier + Canopus 肯特）"""
-import json, re, ssl, sys, io, urllib.request, time
+import json, re, ssl, sys, io, os, urllib.request, time
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 CTX = ssl.create_default_context(); CTX.check_hostname = False; CTX.verify_mode = ssl.CERT_NONE
 def get(u):
@@ -13,7 +13,7 @@ def txt(html):
     lines = [l.strip() for l in t.split('\n') if l.strip()]
     return '\n'.join(lines), lines
 
-urls = json.load(open(r'd:\香港窗口式空調查找\carrier_urls.json', encoding='utf-8'))
+urls = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'carrier_urls.json'), encoding='utf-8'))
 out = {}
 for url in urls:
     try:
@@ -46,5 +46,5 @@ for url in urls:
     except Exception as e:
         print(f'ERR {url[-20:]}: {str(e)[:40]}')
     time.sleep(0.15)
-json.dump(out, open(r'd:\香港窗口式空調查找\carrier_official.json','w',encoding='utf-8'), ensure_ascii=False, indent=1)
+json.dump(out, open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'carrier_official.json'),'w',encoding='utf-8'), ensure_ascii=False, indent=1)
 print('完成', len(out))

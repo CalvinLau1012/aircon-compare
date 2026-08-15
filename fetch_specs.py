@@ -12,7 +12,7 @@ import re
 import time
 import urllib.request
 
-BASE = r'd:\香港窗口式空調查找'
+BASE = os.path.dirname(os.path.abspath(__file__))
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0 Safari/537.36'
 
 CORE_MODELS = [
