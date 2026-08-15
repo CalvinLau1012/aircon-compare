@@ -431,11 +431,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>香港窗口式空調對比報告</title>
-<meta property="og:title" content="香港窗口式空調對比報告 · 29 型號 EMSD 官方核實">
-<meta property="og:description" content="窗口式淨冷型遙控空調全面對比：能源級別、價格、噪音、耗電 15 項屬性，互動比較器自己揀機比較。">
+<title>香港空調對比報告</title>
+<meta property="og:title" content="香港空調對比報告 · 1,854 型號 · EMSD + 官網核實">
+<meta property="og:description" content="香港市場 1,854 個空調型號全面對比：窗口式 / 分體式 / 流動式，EMSD 官方能源數據 + 8 品牌官網 282 型號核實，18 項屬性互動比較器。">
 <meta property="og:type" content="website">
-<meta name="description" content="香港窗口式淨冷型遙控空調對比報告：29 型號 · EMSD 官方能源標籤核實 · 互動比較器">
+<meta name="description" content="香港空調對比報告：1,854 型號 · EMSD 官方能源標籤全量核實 · 8 品牌官網核實 · 互動比較器">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>❄️</text></svg>">
 <style>
 :root{
