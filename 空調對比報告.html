@@ -243,6 +243,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
     <a href="#price" data-tip="官方網店價 vs Price 實價">💰 價格</a>
     <a href="#official" data-tip="8 品牌官網核實 220 型號">🏭 官網核實</a>
     <a href="#verify" data-tip="EMSD 官方驗證結果">✅ 官方驗證</a>
+    <a href="#forum" data-tip="LIHKG 連登討論摘錄（附原帖連結）">💬 論壇</a>
     <a href="#source" data-tip="資料來源及免責聲明">📝 來源</a>
   </div>
 </nav>
@@ -372,11 +373,11 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </tr>
 <tr>
 <td>11</td>
-<td><a href="#論壇討論精華lihkg-連登-2026-08-15-更新">� 論壇討論精華</a></td>
+<td><a href="#論壇討論精華lihkg-連登-2026-08-15-更新">💬 論壇討論精華</a></td>
 </tr>
 <tr>
 <td>12</td>
-<td><a href="#-資料來源">�📝 來源 + 免責</a></td>
+<td><a href="#-資料來源">📝 來源 + 免責</a></td>
 </tr>
 </tbody>
 </table>
@@ -2222,6 +2223,10 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <td>2026-08-15</td>
 <td>論壇資料更新：直接摘錄 LIHKG 連登 3 個窗口機討論帖（附原帖連結）</td>
 </tr>
+<tr>
+<td>2026-08-15</td>
+<td>「論壇討論精華」加入頂部導覽列（官方驗證 → 論壇 → 來源）</td>
+</tr>
 </tbody>
 </table>
 <hr />
@@ -2483,7 +2488,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
   // 導覽用 id（頂部導覽列）
   const navMap={'統合對比總表':'table','官方驗證結果':'verify','能源標籤分析':'energy',
-    '排名':'rank','最終推薦':'recommend','價格驗證':'price','品牌官網核實':'official','資料來源':'source',
+    '排名':'rank','最終推薦':'recommend','價格驗證':'price','品牌官網核實':'official','論壇討論精華':'forum','資料來源':'source',
     '定頻 vs 變頻':'compare-base'};
   // 為所有章節標題加 slug id（md 目錄超鏈接用）+ 導覽 id（雙錨點並存）
   const used = new Set();
