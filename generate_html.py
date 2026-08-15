@@ -158,6 +158,13 @@ SPECS_OVERRIDE = {
     'GWF12DB': {'size': '375×560×708', 'weight': '39kg', 'warranty': '3年+', 'remote': '✅'},
     # ---- General（Price og）----
     'AMWB12NID': {'size': '375×560×708'},
+    # ---- Gree/TOSOT（零售商規格交叉核實：BUILT-IN PRO + 友和 + Price，2026-08-15）----
+    'W09R5A': {'warranty': '2年全機/5年壓縮機'},
+    'W12R5A': {'warranty': '2年全機/5年壓縮機'},
+    'W18R5A': {'warranty': '2年全機/5年壓縮機'},
+    'W24R5A': {'warranty': '2年全機/5年壓縮機'},
+    'GWF09P': {'warranty': '3年全機/壓縮機永久'},
+    'GWF12DB': {'warranty': '3年全機/壓縮機永久', 'weight': '39kg'},
     # ---- Panasonic（官網確認：90AA 29kg、5年壓縮機；120AA 47kg）----
     'CW-HU90AA': {'size': '346×450×640', 'weight': '29kg', 'warranty': '3/5年'},
     'CW-HU120AA': {'size': '400×600×710', 'weight': '47kg'},
@@ -244,7 +251,7 @@ def apply_official(m):
         m['size'] = of['size'].replace('x', '×').replace('*', '').strip()
     if of.get('weight'):
         m['weight'] = of['weight'].replace('公斤', 'kg').strip()
-    if of.get('warranty') and not m.get('warranty'):
+    if of.get('warranty'):
         m['warranty'] = of['warranty'].strip()
     if of.get('energy') and m.get('energy') in ('待查', '', None):
         m['energy'] = of['energy']
@@ -374,7 +381,9 @@ def load_emsd_models():
         mode = sinfo.get('mode') or ''
         if mode not in ('淨冷', '冷暖'):
             mode = ''
-        remote = ''  # Price 冇提供遙控資料 → 待查
+        weight = sinfo.get('weight') or ''
+        warranty = sinfo.get('warranty') or ''
+        remote = '✅' if sinfo.get('remote') else ''  # 零售商規格有遙控才填
         item = {
             'brand': brand, 'model': model,
             'hp': kw_to_hp(kw), 'mount': mount, 'btu': btu, 'mode': mode,
@@ -382,7 +391,7 @@ def load_emsd_models():
             'energy': (r[4] + '級') if str(r[4]).strip().isdigit() else str(r[4]),
             'wifi': wifi, 'remote': remote, 'price': price, 'pid': pid,
             'kwh': r[5], 'cspf': r[7], 'kw': r[6], 'gas': r[8],
-            'noise': '', 'size': size, 'weight': '', 'warranty': '',
+            'noise': '', 'size': size, 'weight': weight, 'warranty': warranty,
             'note': 'EMSD 官方登記 · Price 實價', 'ref': r[2], 'provider': r[13],
         }
         # 官網核實數據覆蓋
