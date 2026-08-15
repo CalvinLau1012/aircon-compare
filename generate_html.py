@@ -388,6 +388,27 @@ def load_biggo():
         return json.load(f)
 
 
+def load_gemini():
+    """載入 Gemini AI 搜索價（gemini_prices.json：型號 → {price, source}）"""
+    p = os.path.join(BASE, 'gemini_prices.json')
+    if not os.path.exists(p):
+        return {}
+    with open(p, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def best_price(model, biggo, gemini, prices):
+    """價錢優先級：BigGo 實抓 > Gemini AI 搜 > Price 舊快照"""
+    b = biggo.get(model) or {}
+    if b.get('price'):
+        return b['price']
+    g = gemini.get(model) or {}
+    if g.get('price'):
+        return g['price']
+    p = prices.get(model) or {}
+    return p.get('price') or None
+
+
 def load_specs_emsd():
     """載入 EMSD 型號規格（specs_emsd.json：Price og 規格）"""
     p = os.path.join(BASE, 'specs_emsd.json')
@@ -453,6 +474,7 @@ def load_emsd_models():
     csv_path = os.path.join(BASE, 'emsd_空調能源標籤.csv')
     prices = load_prices()
     biggo = load_biggo()
+    gemini = load_gemini()
     specs = load_specs_emsd()
     rows = list(csv.reader(open(csv_path, encoding='utf-8-sig')))[1:]
     rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
@@ -471,12 +493,8 @@ def load_emsd_models():
             kw = 0.0
         btu = f"{kw*3412:,.0f}" if kw else '待查'
         pinfo = prices.get(model) or {}
-        price = pinfo.get('price') or None
+        price = best_price(model, biggo, gemini, prices)
         pid = pinfo.get('pid') or None
-        # BigGo 格價快照優先（多商戶實時性更新）；Price 快照做後備
-        bginfo = biggo.get(model) or {}
-        if bginfo.get('price'):
-            price = bginfo['price']
         sinfo = specs.get(model) or {}
         size = sinfo.get('size') or ''
         func = sinfo.get('func') or ''
@@ -522,16 +540,17 @@ def build_html():
     apply_specs_override()
     prices = load_prices()
     biggo = load_biggo()
+    gemini = load_gemini()
     for m in MODELS:
         pinfo = prices.get(m['model'])
         if isinstance(pinfo, dict) and pinfo.get('pid'):
             m['pid'] = pinfo['pid']
         else:
             m['pid'] = None
-        # BigGo 格價快照優先（多商戶實時性更新）
-        bginfo = biggo.get(m['model'])
-        if bginfo and bginfo.get('price'):
-            m['price'] = bginfo['price']
+        # 價錢優先級：BigGo 實抓 > Gemini AI 搜 > Price 舊快照
+        bp = best_price(m['model'], biggo, gemini, prices)
+        if bp:
+            m['price'] = bp
 
     emsd_models = load_emsd_models()
     models_json = json.dumps(MODELS, ensure_ascii=False)
@@ -780,7 +799,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
     <div class="date">__DATE_STATUS__</div>
   </div>
 </header>
