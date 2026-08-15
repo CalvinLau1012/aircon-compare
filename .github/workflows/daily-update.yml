@@ -79,5 +79,5 @@ jobs:
             echo "無變更，跳過提交"
           else
             git commit -m "自動更新：新機偵測及規格同步（$(date -u +%F)）"
-            git push
+            git push || { git pull --rebase && git push; }
           fi

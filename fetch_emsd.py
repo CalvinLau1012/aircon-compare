@@ -11,6 +11,7 @@ import csv
 import json
 import os
 import random
+import sys
 import time
 from html.parser import HTMLParser
 
@@ -163,6 +164,10 @@ def detect_new_models(all_rows):
 
 
 def main():
+    # Windows 控制台編碼保護（cp950 無法輸出部分字元）
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
     all_rows = []
     p = 1
     while True:
