@@ -62,6 +62,15 @@ jobs:
           python fetch_specs.py || true
           python advance_queue.py
 
+      # 價錢快照分批更新：有新機時每月最多一次，分 7 日分批進行
+      - name: 價錢快照分批更新（每月一次·分七日）
+        run: |
+          if python -c "import sys; from fetch_prices import price_batch_active; sys.exit(0 if price_batch_active() else 1)"; then
+            python fetch_prices.py --price-batch || true
+          else
+            echo "價錢批次未啟動，跳過"
+          fi
+
       - name: 數據驗證（防壞數據上線）
         run: python validate_data.py
 
