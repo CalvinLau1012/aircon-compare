@@ -782,7 +782,7 @@ __CONTENT__
   <span class="ai">🤖 Powered by DeepSeek AI</span><br>
   <span class="line">──────</span><br>
   🔄 每日自動更新：GitHub Actions 香港時間每日 00:30 抓取 EMSD/Price/官網 → 數據驗證閘門 → 自動重新部署<br>
-  本報告僅供選購參考，不構成購買建議 · 價格隨時變動
+  本報告僅供選購參考，不構成購買建議 · 價格及供應隨時變動，請以商戶實時報價為準
 </footer>
 
 <button id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="返回頂部">↑</button>
