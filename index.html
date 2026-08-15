@@ -227,7 +227,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · Price.com.hk 實價 1,847 型號 · LIHKG 連登討論摘錄</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價格為 2026-08-15 快照（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
     <div class="date">📅 2026 年 8 月 15 日 更新 · v1.0.0 · 🔄 每日偵測新機 · 有機先更新</div>
   </div>
 </header>
@@ -319,7 +319,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <blockquote>
 <p><strong>報告生成日期</strong>：2026-08-11 ｜ <strong>最後更新</strong>：2026-08-15 ｜ <strong>版本</strong>：v1.0.0
 <strong>更新機制</strong>：GitHub Actions 每日 00:30（香港時間）自動抓取 → 數據驗證閘門 → 自動重新部署
-<strong>數據來源</strong>：機電署 EMSD 官方資料庫（1,927 型號全量核實）· 8 大品牌官網/總代理（220 型號）· Price.com.hk（1,847 實價）· 豐澤 · 百老匯 · 友和 · LIHKG 連登（3 帖摘錄）
+<strong>數據來源</strong>：機電署 EMSD 官方資料庫（1,927 型號全量核實）· 8 大品牌官網/總代理（220 型號）· 價格快照 Price.com.hk（1,847 型號，2026-08-15，🔍 點擊 Google 搜最新價）· 豐澤 · 百老匯 · 友和 · LIHKG 連登（3 帖摘錄）
 <strong>⚠️ 注意</strong>：豐澤與電器幫同屬屈臣氏集團，價格不可互證；獨立驗證以 Price.com.hk 不同商戶 / 官方網店為準
 <strong>額外搜尋</strong>：LIHKG 連登（電器台）、HKEPC、香港討論區
 <strong>核心篩選</strong>：窗口式 + 淨冷型 + ≥1 匹（定頻/變頻皆可）；<strong>遙控已非硬性條件</strong>（HITACHI RA-10RF / CANOPUS TA-12EOG 無遙控仍以口碑入選並標註）；<strong>全量資料庫 1,854 型號涵蓋分體式/流動式等全類型</strong>
@@ -1413,7 +1413,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </tbody>
 </table>
 <blockquote>
-<p>💡 <strong>結論</strong>：官方網店定價普遍高於 Price.com.hk 獨立商戶 $300-1,400。買之前建議用 Price 格價；官方價可作上限參考。</p>
+<p>💡 <strong>結論</strong>：官方網店定價普遍高於獨立商戶 $300-1,400。報告價格為快照，買之前建議喺瀏覽器自行 Google 搜最新價；官方價可作上限參考。</p>
 </blockquote>
 <hr />
 <h2>🏭 品牌官網核實（2026-08-15）</h2>
@@ -1963,7 +1963,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </tbody>
 </table>
 <blockquote>
-<p>💡 <strong>結論</strong>：報告標價取自豐澤等連鎖（定價較高），<strong>Price.com.hk 獨立商戶普遍低 $300-1,000</strong>。買之前建議用 Price 格價。</p>
+<p>💡 <strong>結論</strong>：報告標價取自豐澤等連鎖（定價較高），<strong>獨立商戶普遍低 $300-1,000</strong>。報告價格為快照，買之前建議喺瀏覽器自行 Google 搜最新價。</p>
 </blockquote>
 <h3>🆕 遺漏型號 EMSD 確認結果</h3>
 <table>
@@ -2258,7 +2258,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
     <h3>🙏 資料來源鳴謝</h3>
     <p>· 機電工程署 EMSD 能源標籤資料庫（官方能源/雪種/耗電數據）<br>
       · 品牌官網及總代理：信興集團、樂信網店、Panasonic、世紀開利、GENERAL 第一電業、HITACHI、COMFEE、美的<br>
-      · Price.com.hk（市場實價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
+      · 價格快照：Price.com.hk 2026-08-15（點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
   </div>
 
   <div class="blk">
@@ -2283,6 +2283,8 @@ let selected = new Set();
 let shown = 60;
 
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+// Google 搜價：完整品牌+型號+價錢，用戶喺自己瀏覽器搜最新價
+function gsearch(m){return 'https://www.google.com/search?q='+encodeURIComponent(m.brand+' '+m.model+' 價錢');}
 function resetShown(){shown = 60;}
 
 function matches(m){
@@ -2330,10 +2332,8 @@ function renderList(){
     const id=m.brand+'|'+m.model;
     const on=selected.has(id);
     const priceHtml = m.price
-      ? (m.pid
-          ? `<a class="plink" href="https://www.price.com.hk/product.php?p=${m.pid}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(m.price)} ↗</a>`
-          : esc(m.price))
-      : `<a class="plink" href="https://www.price.com.hk/search.php?g=A&q=${encodeURIComponent(m.model)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💰 格價</a>`;
+      ? `<a class="plink" href="${gsearch(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(m.price)} 🔍</a>`
+      : `<a class="plink" href="${gsearch(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔍 搜價</a>`;
     const wifiBadge = m.type==='變頻'?'🔷':'🔶';
     const energyTxt = m.energy ? esc(m.energy) : '—';
     const mountTxt = m.mount ? `${esc(m.mount)} ` : '';
@@ -2425,9 +2425,9 @@ function buildPanel(){
         }
       }
       const inner = key==='price' && txt==='待查'
-        ? `<a href="https://www.price.com.hk/search.php?g=A&q=${encodeURIComponent(m.model)}" target="_blank" rel="noopener">💰 格價</a>`
-        : (key==='price' && m.pid
-            ? `<a href="https://www.price.com.hk/product.php?p=${m.pid}" target="_blank" rel="noopener">${esc(txt)} ↗</a>`
+        ? `<a href="${gsearch(m)}" target="_blank" rel="noopener">🔍 搜價</a>`
+        : (key==='price'
+            ? `${esc(txt)} <a href="${gsearch(m)}" target="_blank" rel="noopener">🔍</a>`
             : esc(txt));
       return `<td${cls}>${inner}</td>`;
     })]);

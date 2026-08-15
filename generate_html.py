@@ -761,7 +761,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · Price.com.hk 實價 1,847 型號 · LIHKG 連登討論摘錄</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價格為 2026-08-15 快照（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
     <div class="date">__DATE_STATUS__</div>
   </div>
 </header>
@@ -869,7 +869,7 @@ __CONTENT__
     <h3>🙏 資料來源鳴謝</h3>
     <p>· 機電工程署 EMSD 能源標籤資料庫（官方能源/雪種/耗電數據）<br>
       · 品牌官網及總代理：信興集團、樂信網店、Panasonic、世紀開利、GENERAL 第一電業、HITACHI、COMFEE、美的<br>
-      · Price.com.hk（市場實價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
+      · 價格快照：Price.com.hk 2026-08-15（點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
   </div>
 
   <div class="blk">
@@ -894,6 +894,8 @@ let selected = new Set();
 let shown = 60;
 
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+// Google 搜價：完整品牌+型號+價錢，用戶喺自己瀏覽器搜最新價
+function gsearch(m){return 'https://www.google.com/search?q='+encodeURIComponent(m.brand+' '+m.model+' 價錢');}
 function resetShown(){shown = 60;}
 
 function matches(m){
@@ -941,10 +943,8 @@ function renderList(){
     const id=m.brand+'|'+m.model;
     const on=selected.has(id);
     const priceHtml = m.price
-      ? (m.pid
-          ? `<a class="plink" href="https://www.price.com.hk/product.php?p=${m.pid}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(m.price)} ↗</a>`
-          : esc(m.price))
-      : `<a class="plink" href="https://www.price.com.hk/search.php?g=A&q=${encodeURIComponent(m.model)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💰 格價</a>`;
+      ? `<a class="plink" href="${gsearch(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(m.price)} 🔍</a>`
+      : `<a class="plink" href="${gsearch(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔍 搜價</a>`;
     const wifiBadge = m.type==='變頻'?'🔷':'🔶';
     const energyTxt = m.energy ? esc(m.energy) : '—';
     const mountTxt = m.mount ? `${esc(m.mount)} ` : '';
@@ -1036,9 +1036,9 @@ function buildPanel(){
         }
       }
       const inner = key==='price' && txt==='待查'
-        ? `<a href="https://www.price.com.hk/search.php?g=A&q=${encodeURIComponent(m.model)}" target="_blank" rel="noopener">💰 格價</a>`
-        : (key==='price' && m.pid
-            ? `<a href="https://www.price.com.hk/product.php?p=${m.pid}" target="_blank" rel="noopener">${esc(txt)} ↗</a>`
+        ? `<a href="${gsearch(m)}" target="_blank" rel="noopener">🔍 搜價</a>`
+        : (key==='price'
+            ? `${esc(txt)} <a href="${gsearch(m)}" target="_blank" rel="noopener">🔍</a>`
             : esc(txt));
       return `<td${cls}>${inner}</td>`;
     })]);

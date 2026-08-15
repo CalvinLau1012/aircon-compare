@@ -14,7 +14,7 @@
 
 - ⚖️ **互動比較器**：勾選 2 個或以上型號，即時彈出 18 項屬性對比表（自動高亮最平/最慳電/最高 CSPF）
 - 🔍 搜尋（品牌/型號）+ 篩選（匹數、機型、能源級別、品牌）+ 排序（價格 / 能源 / 年耗電 / CSPF）
-- 🛒 1,847 個型號附 Price.com.hk 實價連結，一撳直達格價頁
+- 🛒 1,847 個型號附價格快照（2026-08-15），點擊 🔍 直接喺你瀏覽器 Google 搜最新價
 - 📱 手機 / 平板 / 桌面全響應式（表格可橫向捲動）
 - 📊 完整報告：定頻 vs 變頻、統合總表、官方驗證、能源分析、深度分析、排名、推薦、價格驗證、論壇討論精華
 
@@ -23,7 +23,7 @@
 | 項目 | 數量 |
 | ------ | ------ |
 | 收錄型號 | 1,854（核心 29 + EMSD 全量 1,825） |
-| 有價格型號 | 1,847（Price.com.hk 實價連結） |
+| 有價格型號 | 1,847（2026-08-15 快照，🔍 點擊搜最新價） |
 | 有尺寸型號 | 1,676 |
 | EMSD 官方核實型號 | 1,927（全量） |
 | 品牌官網核實型號 | 220（8 品牌） |
@@ -66,7 +66,7 @@ copy 空調對比報告.html index.html   # 同步 GitHub Pages 入口
 
 ```bash
 
-python fetch_prices.py         # Price.com.hk 實價（1,847 型號）
+python fetch_prices.py         # Price.com.hk 實價快照（1,847 型號，可選）
 python fetch_official.py       # Panasonic/HITACHI/COMFEE 官網規格
 python fetch_shew.py           # 信興官網 Rasonic 規格
 python fetch_carrier.py        # 世紀開利 Carrier/Canopus 規格
