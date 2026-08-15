@@ -12,10 +12,11 @@
 
 ## ✨ 功能
 
-- ⚖️ **互動比較器**：勾選 2 個或以上型號，即時彈出 18 項屬性對比表
-- 🔍 搜尋（品牌/型號）+ 篩選（匹數、類型、能源、機型）+ 排序（價格 / 能源 / 年耗電 / CSPF）
-- 📱 手機 / 平板 / 桌面全響應式
-- 📊 完整報告：統合總表、官方 EMSD 驗證、品牌官網核實、能源分析、排名、推薦、價格驗證
+- ⚖️ **互動比較器**：勾選 2 個或以上型號，即時彈出 18 項屬性對比表（自動高亮最平/最慳電/最高 CSPF）
+- 🔍 搜尋（品牌/型號）+ 篩選（匹數、機型、能源級別、品牌）+ 排序（價格 / 能源 / 年耗電 / CSPF）
+- 🛒 1,847 個型號附 Price.com.hk 實價連結，一撳直達格價頁
+- 📱 手機 / 平板 / 桌面全響應式（表格可橫向捲動）
+- 📊 完整報告：定頻 vs 變頻、統合總表、官方驗證、能源分析、深度分析、排名、推薦、價格驗證
 
 ## 📊 數據
 
@@ -28,23 +29,56 @@
 | 品牌官網核實型號 | 282（8 品牌） |
 | 對比屬性 | 18 項 |
 
+## 🏭 品牌官網核實（2026-08-15）
+
+| 品牌 | 官方渠道 | 型號數 |
+|------|---------|-------|
+| Carrier 開利 / Canopus 肯特 | century-carrier.com 世紀開利 | 79 |
+| Rasonic 樂信 | shew.com.hk 信興 + rasonicshop.hk 官方網店 | 50 |
+| Panasonic 樂聲 | panasonic.hk + 信興 eShop | 44 |
+| COMFEE | feelcomfee.com | 19 |
+| GENERAL 珍寶 | general-aircon.com 總代理（第一電業） | 16 |
+| HITACHI 日立 | hitachi-homeappliances.com.hk | 16 |
+| Midea 美的 | mideahk.com | 12 |
+| FROSTAR 霜牌 | rasonicshop.hk（信興姊妹品牌） | 4 |
+
+> ⚠️ Gree/TOSOT 代理官網無窗口機產品頁 → 維持 EMSD/Price 雙源並標註「待查」，**絕不編造**。
+
+## 🔧 自行重建
+
+```bash
+python generate_html.py        # 讀取 .md + JSON 資料庫 → 生成空調對比報告.html
+copy 空調對比報告.html index.html   # 同步 GitHub Pages 入口
+```
+
+資料庫重新抓取（可選）：
+```bash
+python fetch_prices.py         # Price.com.hk 實價（1,847 型號）
+python fetch_official.py       # Panasonic/HITACHI/COMFEE 官網規格
+python fetch_shew.py           # 信興官網 Rasonic 規格
+python fetch_carrier.py        # 世紀開利 Carrier/Canopus 規格
+python fetch_general.py        # 珍寶總代理規格
+python fetch_rasonic.py        # 樂信官方網店價格
+```
+
 ## 📁 專案檔案
 
 | 檔案 | 說明 |
 |------|------|
-| `index.html` / `空調對比報告.html` | 網頁版報告（self-contained） |
-| `空調對比報告.md` | Markdown 報告 |
+| `index.html` / `空調對比報告.html` | 網頁版報告（self-contained，無外部依賴） |
+| `空調對比報告.md` | Markdown 報告全文 |
 | `需求摘要.md` | 需求元文件 |
-| `generate_html.py` | 網頁生成器 |
+| `generate_html.py` | 網頁生成器（md + JSON → HTML） |
 | `emsd_空調能源標籤.csv` | EMSD 官方資料庫快照（1,927 型號） |
 | `prices.json` / `specs_emsd.json` | Price 實價 / 規格資料庫 |
-| `official_specs.json` 等 `*_official.json` | 品牌官網核實數據（8 品牌） |
-| `fetch_emsd.py` / `verify_emsd.py` | EMSD 資料下載 / 驗證腳本 |
-| `fetch_prices.py` / `fetch_og_specs.py` | Price.com.hk 抓價 / 規格腳本 |
-| `fetch_official.py` / `fetch_shew.py` / `fetch_carrier.py` 等 | 品牌官網核實腳本 |
+| `official_specs.json` 等 7 個 `*_official.json` | 品牌官網核實數據 |
+| `fetch_*.py` | 各數據源抓取腳本（EMSD/Price/官網） |
 
 ## ⚠️ 免責聲明
 
-價格及供應隨時間變動；本報告僅供選購參考，不構成購買建議。
+1. 價格及供應隨時間變動；官方網店價為 2026-08-15 快照
+2. 能源級別/雪種/年耗電以 EMSD 官方資料庫為準；尺寸/淨重/保養以品牌官網為準
+3. 噪音 dB 為參考級（無官方文件）
+4. 本報告僅供選購參考，不構成購買建議
 
 **更新日期**：2026-08-15
