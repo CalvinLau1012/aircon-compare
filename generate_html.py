@@ -335,6 +335,11 @@ ul,ol{margin:8px 0 8px 24px;}
 /* ===== 比較器完善 ===== */
 .selonly{font-size:.82em; color:var(--muted); display:flex; align-items:center; gap:4px; cursor:pointer;}
 .selonly input{accent-color:var(--accent);}
+.compare-tools .gocompare{background:var(--accent); color:var(--primary); font-weight:700;
+  border:none; padding:7px 18px; border-radius:20px; cursor:pointer; font-size:.9em;
+  box-shadow:0 2px 8px rgba(201,162,39,.45);}
+.compare-tools .gocompare:hover{background:#DDB236;}
+.compare-tools .gocompare:disabled{opacity:.5; cursor:not-allowed; box-shadow:none;}
 .panel td.best{background:#FFF7D6; color:#8A6500; font-weight:700;}
 .panel .rm{background:#C0392B; color:#fff; border:none; border-radius:10px;
   padding:1px 8px; font-size:.72em; cursor:pointer; margin-top:2px;}
@@ -423,6 +428,7 @@ footer .line{color:var(--accent);}
       <span class="sel" id="selCount">已選 0 個（最少 2 個）</span>
     </div>
     <div class="compare-tools">
+      <button class="gocompare" id="btnCompare" onclick="openCompare()">⚖️ 開始比較</button>
       <button onclick="clearAll()">🗑 清除選擇</button>
       <button onclick="selectType('變頻')">選範圍內變頻</button>
       <button onclick="selectType('定頻')">選範圍內定頻</button>
@@ -566,17 +572,27 @@ function toggle(id,el){
   document.getElementById('selCount').textContent=`已選 ${selected.size} 個（最少 2 個）`;
   const lab=el.closest('.mitem');
   if(lab) lab.classList.toggle('checked', el.checked);
+  // 唔自動開面板，等用戶撳「開始比較」
+  document.getElementById('btnCompare').disabled = selected.size < 2;
+  // 若面板開住，即時更新內容
   const panel=document.getElementById('panel');
-  if(selected.size>=2){ buildPanel(); panel.classList.add('open'); }
-  else panel.classList.remove('open');
+  if(panel.classList.contains('open')) buildPanel();
+  if(selected.size<2) panel.classList.remove('open');
 }
 
 function updateUI(){
   document.getElementById('selCount').textContent=`已選 ${selected.size} 個（最少 2 個）`;
+  document.getElementById('btnCompare').disabled = selected.size < 2;
   const panel=document.getElementById('panel');
-  if(selected.size>=2){ buildPanel(); panel.classList.add('open'); }
-  else panel.classList.remove('open');
+  if(panel.classList.contains('open')) buildPanel();
+  if(selected.size<2) panel.classList.remove('open');
   renderList();
+}
+
+function openCompare(){
+  if(selected.size<2){ alert('請先揀至少 2 個型號再撳「開始比較」'); return; }
+  buildPanel();
+  document.getElementById('panel').classList.add('open');
 }
 
 function selectedModels(){
@@ -773,6 +789,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     o.value=b; o.textContent=b;
     sel.appendChild(o);
   });
+  document.getElementById('btnCompare').disabled = true;
   renderList();
 })();
 
