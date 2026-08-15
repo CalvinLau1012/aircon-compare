@@ -46,7 +46,7 @@ jobs:
     with:
       mode: full
 
-  # 每日補缺：補缺抓取 + 抽樣鏈接驗證（超時策略：30 分鐘）
+  # 每日補缺：補缺抓取 + 分批鏈接驗證（超時策略：30 分鐘）
   daily-refresh:
     name: 每日補缺
     needs: detect
@@ -54,3 +54,13 @@ jobs:
     uses: ./.github/workflows/update-data.yml
     with:
       mode: daily
+
+  # 冷卻期：被限流後 48 小時內自動跳過，等官方解除限流先再執行
+  cooldown:
+    name: 冷卻期跳過
+    needs: detect
+    if: needs.detect.outputs.mode == 'cooldown'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 冷卻中
+        run: echo "Price.com.hk 限流冷卻中，48 小時後自動恢復執行"

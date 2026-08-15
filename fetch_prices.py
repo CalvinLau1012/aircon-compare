@@ -20,6 +20,7 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE, 'emsd_空調能源標籤.csv')
 OUT_PATH = os.path.join(BASE, 'prices.json')
 META_PATH = os.path.join(BASE, 'prices_meta.json')
+COOLDOWN_HOURS = 48  # 限流冷卻期：熔斷後 48 小時內唔再試
 
 # 誠實 Bot UA（列明專案來源，方便網站管理員聯絡）
 UA = ('Mozilla/5.0 (compatible; AirconCompareBot/1.0; '
@@ -66,12 +67,36 @@ def fetch_price(model):
     return None
 
 
-def detect_mode():
-    """判斷今日係全量刷新定平日補缺（供 GitHub Actions 偵測 job 呼叫）"""
-    meta = {}
+def load_meta():
+    """讀取 meta（唔存在就空）"""
     if os.path.exists(META_PATH):
-        with open(META_PATH, encoding='utf-8') as f:
-            meta = json.load(f)
+        try:
+            with open(META_PATH, encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+def save_meta(meta):
+    with open(META_PATH, 'w', encoding='utf-8') as f:
+        json.dump(meta, f, ensure_ascii=False)
+
+
+def set_cooldown():
+    """限流熔斷後寫入冷卻期（48 小時內唔再試）"""
+    meta = load_meta()
+    meta['blocked_until'] = int(time.time() + COOLDOWN_HOURS * 3600)
+    save_meta(meta)
+    print(f'🕐 已設冷卻期：{COOLDOWN_HOURS} 小時內唔再抓取（至 ' + time.strftime('%Y-%m-%d %H:%M', time.localtime(meta['blocked_until'])) + '）')
+
+
+def detect_mode():
+    """判斷今日係全量刷新/平日補缺/冷卻期（供 GitHub Actions 偵測 job 呼叫）"""
+    meta = load_meta()
+    blocked = meta.get('blocked_until')
+    if blocked and time.time() < blocked:
+        return 'cooldown'
     try:
         last_full_ts = time.mktime(time.strptime(meta.get('last_full', ''), '%Y-%m-%d'))
         full_due = (time.time() - last_full_ts) > 6 * 86400
@@ -81,6 +106,11 @@ def detect_mode():
 
 
 def main():
+    # 冷卻期：48 小時內唔再抓取（尊重官方限流），直接跳過
+    if detect_mode() == 'cooldown':
+        print('🕐 冷卻期內，跳過 Price 抓取（48 小時後自動恢復）')
+        return
+
     rows = list(csv.reader(open(CSV_PATH, encoding='utf-8-sig')))[1:]
     rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
     models = []
@@ -140,21 +170,24 @@ def main():
                     json.dump(results, f, ensure_ascii=False)
             if done_count >= 40 and consec_fail >= 40:
                 print(f'⚠️ 連續 {consec_fail} 個請求失敗，疑似被官方限流，提早中止，保留現有數據')
+                set_cooldown()
                 sys.exit(1)
 
     # 限流熔斷：大規模抓取但成功率太低 → 疑似被封，放棄本次更新，保留現有數據
     if len(todo) >= 50 and touched < len(todo) * 0.5:
         print(f'⚠️ 疑似被官方限流（成功 {touched}/{len(todo)}），中止更新，保留現有數據')
+        set_cooldown()
         sys.exit(1)
 
     with open(OUT_PATH, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False)
     today = time.strftime('%Y-%m-%d')
+    meta = load_meta()
     meta['last_run'] = today
     if full_due:
         meta['last_full'] = today
-    with open(META_PATH, 'w', encoding='utf-8') as f:
-        json.dump(meta, f, ensure_ascii=False)
+    meta.pop('blocked_until', None)  # 成功抓取：解除冷卻期
+    save_meta(meta)
     el = time.time() - t0
     print(f'完成！{len(todo)} 個中得價 {ok} 個 · 總價庫 {len(results)} 個 · 用咗 {el:.0f}s')
     print('存於', OUT_PATH)
