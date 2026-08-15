@@ -1,0 +1,20 @@
+{
+ "checked": 3,
+ "ok": [],
+ "fixed": [],
+ "cleared": [],
+ "kept": [
+  {
+   "model": "MW-22CRF8E",
+   "pid": "663627"
+  },
+  {
+   "model": "MW-07CRF8E",
+   "pid": "663497"
+  },
+  {
+   "model": "MW-18CRF8E",
+   "pid": "660077"
+  }
+ ]
+}

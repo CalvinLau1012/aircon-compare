@@ -42,14 +42,14 @@ jobs:
           python fetch_rasonic.py || true
           python fetch_specs.py || true
 
-      - name: 鏈接驗證（全量日：逐個核實全部產品鏈接）
+      - name: 鏈接驗證（全量日：分批核實 400 個，幾日完成一輪全量）
         if: inputs.mode == 'full'
-        run: python verify_links.py
+        run: python verify_links.py --batch 400
         continue-on-error: true
 
-      - name: 鏈接驗證（每日：抽樣核實 30 個）
+      - name: 鏈接驗證（每日：分批核實 200 個）
         if: inputs.mode == 'daily'
-        run: python verify_links.py --sample 30
+        run: python verify_links.py --batch 200
         continue-on-error: true
 
       - name: 數據驗證（防壞數據上線）

@@ -111,6 +111,7 @@ def main():
 
     ok = 0
     touched = 0
+    consec_fail = 0
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=4) as ex:
         futures = {ex.submit(fetch_price, m): m for m in todo}
@@ -126,12 +127,20 @@ def main():
                 ok += 1
             if result is not None:
                 touched += 1
+            # 快速熔斷：連續大量失敗（連續 40 個攞唔到嘢）→ 疑似被封，提早中止
+            if result is None:
+                consec_fail += 1
+            else:
+                consec_fail = 0
             done_count += 1
             if done_count % 50 == 0:
                 el = time.time() - t0
                 print(f'  進度 {done_count}/{len(todo)}（得價 {ok}）· 用咗 {el:.0f}s')
                 with open(OUT_PATH, 'w', encoding='utf-8') as f:
                     json.dump(results, f, ensure_ascii=False)
+            if done_count >= 40 and consec_fail >= 40:
+                print(f'⚠️ 連續 {consec_fail} 個請求失敗，疑似被官方限流，提早中止，保留現有數據')
+                sys.exit(1)
 
     # 限流熔斷：大規模抓取但成功率太低 → 疑似被封，放棄本次更新，保留現有數據
     if len(todo) >= 50 and touched < len(todo) * 0.5:
