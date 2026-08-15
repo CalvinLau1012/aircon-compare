@@ -541,6 +541,7 @@ ul,ol{margin:8px 0 8px 24px;}
   padding:6px 14px; border-radius:20px; font-size:.85em; cursor:pointer;}
 .compare-tools button:hover{background:var(--accent); color:var(--primary);}
 .compare-tools .filters{display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-left:auto;}
+.compare .chint{font-size:.72em; color:var(--muted); padding:3px 12px 7px; text-align:center;}
 .compare-tools select,.compare-tools input[type=search]{border:1px solid var(--line);
   border-radius:20px; padding:5px 12px; font-size:.85em; background:var(--bg);}
 .model-list{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
@@ -678,7 +679,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
     <a href="#rank" data-tip="能源效益及用戶評價排名">📈 排名</a>
     <a href="#recommend" data-tip="按場景最終推薦">🏆 推薦</a>
     <a href="#price" data-tip="官方網店價 vs Price 實價">💰 價格</a>
-    <a href="#official" data-tip="8 品牌官網核實 220 型號">🏭 官網核實</a>
+    <a href="#official" data-tip="8 品牌官網核實 220 型號；Gree/TOSOT 零售商交叉核實">🏭 官網核實</a>
     <a href="#verify" data-tip="EMSD 官方驗證結果">✅ 官方驗證</a>
     <a href="#forum" data-tip="LIHKG 連登討論摘錄（附原帖連結）">💬 論壇</a>
     <a href="#source" data-tip="資料來源及免責聲明">📝 來源</a>
@@ -729,6 +730,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
         </select>
       </div>
     </div>
+    <div class="chint">提示：Gree/TOSOT 保養為零售商規格（交叉核實），其餘品牌為官網核實</div>
     <div class="model-list" id="modelList"></div>
     <div class="more-wrap"><button id="btnMore" onclick="showMore()">顯示更多型號</button></div>
   </div>
@@ -769,7 +771,7 @@ __CONTENT__
     <h3>🙏 資料來源鳴謝</h3>
     <p>· 機電工程署 EMSD 能源標籤資料庫（官方能源/雪種/耗電數據）<br>
       · 品牌官網及總代理：信興集團、樂信網店、Panasonic、世紀開利、GENERAL 第一電業、HITACHI、COMFEE、美的<br>
-      · Price.com.hk（市場實價）· 豐澤 / 百老匯 / 友和 · LIHKG 電器台用戶評價</p>
+      · Price.com.hk（市場實價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
   </div>
 
   <div class="blk">
