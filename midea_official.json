@@ -3,72 +3,96 @@
   "price": "HK$6099",
   "mode": "淨冷",
   "name": "CubicCool系列3/4匹變頻淨冷窗口機",
-  "url": "https://www.mideahk.com/"
+  "url": "https://www.mideahk.com/",
+  "size": "350×451×675",
+  "weight": "31.9kg"
  },
  "MW-09CRF8E": {
   "price": "HK$7399",
   "mode": "淨冷",
   "name": "CubicCool系列1匹變頻淨冷窗口機",
-  "url": "https://www.mideahk.com/"
+  "url": "https://www.mideahk.com/",
+  "size": "350×451×675",
+  "weight": "31.9kg"
  },
  "MW-12CRF8E": {
   "price": "HK$9199",
   "mode": "淨冷",
   "name": "CubicCool系列1.5匹變頻淨冷窗口機",
-  "url": "https://www.mideahk.com/"
+  "url": "https://www.mideahk.com/",
+  "size": "350×451×675",
+  "weight": "33.3kg"
  },
  "MW-18CRF8E": {
   "price": "HK$11499",
   "mode": "淨冷",
   "name": "CubicCool系列2匹變頻淨冷窗口機",
-  "url": "https://www.mideahk.com/"
+  "url": "https://www.mideahk.com/",
+  "size": "428×660×780",
+  "weight": "52.3kg"
  },
  "MW-22CRF8E": {
   "price": "HK$14299",
   "mode": "淨冷",
   "name": "CubicCool系列2.5匹變頻淨冷窗口機",
-  "url": "https://www.mideahk.com/"
+  "url": "https://www.mideahk.com/",
+  "size": "428×660×780",
+  "weight": "53.0kg"
  },
  "MW-07HRF8F": {
   "price": "HK$7899",
   "mode": "冷暖",
   "name": "3/4匹變頻冷暖窗口機",
-  "url": "https://www.mideahk.com/"
+  "url": "https://www.mideahk.com/",
+  "size": "375×560×695",
+  "weight": "38.9kg"
  },
  "MW-09HRF8F": {
   "price": "HK$8599",
   "mode": "冷暖",
   "name": "1匹變頻冷暖窗口機",
-  "url": "https://www.mideahk.com/"
+  "url": "https://www.mideahk.com/",
+  "size": "375×560×695",
+  "weight": "38.9kg"
  },
  "MW-12HRF8F": {
   "price": "HK$10199",
   "mode": "冷暖",
   "name": "1.5匹變頻冷暖窗口機",
-  "url": "https://www.mideahk.com/"
+  "url": "https://www.mideahk.com/",
+  "size": "375×560×695",
+  "weight": "38.9kg"
  },
  "MW-07CM8C": {
   "price": "HK$4099",
   "mode": "淨冷",
   "name": "3/4匹定頻淨冷窗口機",
-  "url": "https://www.mideahk.com/"
+  "url": "https://www.mideahk.com/",
+  "size": "350×451×675",
+  "weight": "31.3kg"
  },
  "MW-09CM8C": {
   "price": "HK$5099",
   "mode": "淨冷",
   "name": "1匹定頻淨冷窗口機",
-  "url": "https://www.mideahk.com/"
+  "url": "https://www.mideahk.com/",
+  "size": "350×451×675",
+  "weight": "34.7kg"
  },
  "MW12CM8C": {
   "price": "HK$6499",
   "mode": "淨冷",
   "name": "1.5匹定頻淨冷窗口機",
-  "url": "https://www.mideahk.com/"
+  "url": "https://www.mideahk.com/",
+  "size": "380×600×560",
+  "weight": "37.5kg"
  },
  "MW-18CM8C": {
   "price": "HK$8699",
   "mode": "淨冷",
   "name": "2匹定頻淨冷窗口機",
-  "url": "https://www.mideahk.com/"
+  "url": "https://www.mideahk.com/",
+  "size": "428×660×680",
+  "weight": "53.1kg"
  }
 }
