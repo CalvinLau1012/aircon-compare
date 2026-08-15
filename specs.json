@@ -1,487 +1,118 @@
 {
  "TA-09EOG": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1匹",
-   "淨冷/冷暖": "淨冷",
-   "冷卻效能": "9000BTU/h",
-   "功能": "自動搖擺送風",
-   "雪種": "R32",
-   "室內機尺寸": "451 x 350 x 675mm",
-   "能源標籤": "3級"
-  },
-  "size_price": "451 x 350 x 675mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "TA-12EOG": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1.5匹",
-   "淨冷/冷暖": "淨冷",
-   "冷卻效能": "12000BTU/h",
-   "功能": "自動搖擺送風",
-   "雪種": "R32",
-   "室內機尺寸": "451 x 350 x 675mm",
-   "能源標籤": "3級"
-  },
-  "size_price": "451 x 350 x 675mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "TA-18EOG": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "2匹",
-   "淨冷/冷暖": "淨冷",
-   "冷卻效能": "18000BTU/h",
-   "功能": "自動搖擺送風",
-   "雪種": "R32",
-   "室內機尺寸": "660 x 428 x 680mm",
-   "能源標籤": "3級"
-  },
-  "size_price": "660 x 428 x 680mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "W09R5A": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1匹",
-   "淨冷/冷暖": "淨冷",
-   "製冷量": "2.68千瓦",
-   "冷卻效能": "8803BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "450 x 350 x 580mm",
-   "能源標籤": "4級"
-  },
-  "size_price": "450 x 350 x 580mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "W12R5A": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1.5匹",
-   "淨冷/冷暖": "淨冷",
-   "製冷量": "3.55千瓦",
-   "冷卻效能": "11601BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "560 x 375 x 668mm",
-   "能源標籤": "4級"
-  },
-  "size_price": "560 x 375 x 668mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "W18R5A": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "2匹",
-   "淨冷/冷暖": "淨冷",
-   "製冷量": "5.37千瓦",
-   "冷卻效能": "17572BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "660 x 428 x 700mm",
-   "能源標籤": "4級"
-  },
-  "size_price": "660 x 428 x 700mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "W24R5A": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "2.5匹",
-   "淨冷/冷暖": "淨冷",
-   "製冷量": "6.63千瓦",
-   "冷卻效能": "22314BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "660 x 428 x 770mm",
-   "能源標籤": "4級"
-  },
-  "size_price": "660 x 428 x 770mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "CHK09BE": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1匹",
-   "淨冷/冷暖": "淨冷",
-   "冷卻效能": "9000BTU/h",
-   "功能": "自動搖擺送風",
-   "雪種": "R32",
-   "室內機尺寸": "450 x 350 x 675mm",
-   "能源標籤": "3級"
-  },
-  "size_price": "450 x 350 x 675mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "CHK12BE": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1.5匹",
-   "淨冷/冷暖": "淨冷",
-   "冷卻效能": "12000BTU/h",
-   "功能": "自動搖擺送風",
-   "雪種": "R32",
-   "室內機尺寸": "600 x 380 x 560mm",
-   "能源標籤": "3級"
-  },
-  "size_price": "600 x 380 x 560mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "CHK18BE": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "2匹",
-   "淨冷/冷暖": "淨冷",
-   "冷卻效能": "18000BTU/h",
-   "功能": "自動搖擺送風",
-   "雪種": "R32",
-   "室內機尺寸": "660 x 428 x 680mm",
-   "能源標籤": "3級"
-  },
-  "size_price": "660 x 428 x 680mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "MW-09CR8C": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1匹",
-   "淨冷/冷暖": "淨冷",
-   "製冷量": "2.64千瓦",
-   "冷卻效能": "9000BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "350 x 450.6 x 675mm",
-   "能源標籤": "3級"
-  },
-  "size_price": "350 x 450.6 x 675mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "MW-12CR8C": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1.5匹",
-   "淨冷/冷暖": "淨冷",
-   "製冷量": "3.52千瓦",
-   "冷卻效能": "12000BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "380 x 560 x 600mm",
-   "能源標籤": "3級"
-  },
-  "size_price": "380 x 560 x 600mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "RA-10RF": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1匹",
-   "淨冷/冷暖": "淨冷",
-   "製冷量": "2.673千瓦",
-   "冷卻效能": "9120BTU/h",
-   "功能": "自動搖擺送風",
-   "雪種": "R32",
-   "室內機尺寸": "470 x 345 x 640mm",
-   "能源標籤": "3級"
-  },
-  "size_price": "470 x 345 x 640mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "RC-XG9": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1匹",
-   "淨冷/冷暖": "淨冷",
-   "製冷量": "2.65千瓦",
-   "冷卻效能": "8803BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "450 x 350 x 580mm",
-   "能源標籤": "4級"
-  },
-  "size_price": "450 x 350 x 580mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "RC-XG12": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1.5匹",
-   "淨冷/冷暖": "淨冷",
-   "製冷量": "3.57千瓦",
-   "冷卻效能": "11601BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "560 x 375 x 668mm",
-   "能源標籤": "4級"
-  },
-  "size_price": "560 x 375 x 668mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "RFR18FNTN": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "2匹",
-   "淨冷/冷暖": "淨冷",
-   "製冷量": "5.1千瓦",
-   "冷卻效能": "17400BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R410A",
-   "室內機尺寸": "428 x 660 x 705mm",
-   "能源標籤": "4級"
-  },
-  "size_price": "428 x 660 x 705mm",
-  "gas_price": "R410A",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "CWF-09CRFN8-AD5": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1匹",
-   "淨冷/冷暖": "淨冷",
-   "壓縮機供電頻率": "變頻",
-   "冷卻效能": "9000BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "450.6 x 675 x 350mm",
-   "能源標籤": "1級"
-  },
-  "size_price": "450.6 x 675 x 350mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "CWF-12CRFN8-AD5": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1.5匹",
-   "淨冷/冷暖": "淨冷",
-   "壓縮機供電頻率": "變頻",
-   "冷卻效能": "12000BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "450.6 x 350 x 675mm",
-   "能源標籤": "1級"
-  },
-  "size_price": "450.6 x 350 x 675mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "CWF-18CRFN8-AD5": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "2匹",
-   "淨冷/冷暖": "淨冷",
-   "壓縮機供電頻率": "變頻",
-   "冷卻效能": "18000BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "660 x 780 x 428mm",
-   "能源標籤": "1級"
-  },
-  "size_price": "660 x 780 x 428mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "CHK09EAVXP": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1匹",
-   "淨冷/冷暖": "淨冷",
-   "壓縮機供電頻率": "變頻",
-   "冷卻效能": "9000BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "450 x 350 x 675mm",
-   "能源標籤": "1級"
-  },
-  "size_price": "450 x 350 x 675mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "CHK12EAVXP": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1.5匹",
-   "淨冷/冷暖": "淨冷",
-   "壓縮機供電頻率": "變頻",
-   "冷卻效能": "12000BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "450 x 350 x 675mm",
-   "能源標籤": "2級"
-  },
-  "size_price": "450 x 350 x 675mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "CHK18EAVX": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "2匹",
-   "淨冷/冷暖": "淨冷",
-   "壓縮機供電頻率": "變頻",
-   "冷卻效能": "17600BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "660 x 428 x 780mm",
-   "能源標籤": "1級"
-  },
-  "size_price": "660 x 428 x 780mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "MW-09CRF8B": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1匹",
-   "淨冷/冷暖": "淨冷",
-   "壓縮機供電頻率": "變頻",
-   "製冷量": "2.64千瓦",
-   "冷卻效能": "9000BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "451 x 675 x 350mm",
-   "能源標籤": "1級"
-  },
-  "size_price": "451 x 675 x 350mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "GWF09P": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1匹",
-   "淨冷/冷暖": "淨冷",
-   "壓縮機供電頻率": "變頻",
-   "製冷量": "2.5千瓦",
-   "冷卻效能": "8500BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "Wi-Fi 遙控",
-   "雪種": "R32",
-   "室內機尺寸": "350 x 450 x 640mm",
-   "能源標籤": "1級"
-  },
-  "size_price": "350 x 450 x 640mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "GWF12DB": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1.5匹",
-   "淨冷/冷暖": "淨冷",
-   "壓縮機供電頻率": "變頻",
-   "冷卻效能": "12000BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "375 x 560 x 708mm",
-   "能源標籤": "1級"
-  },
-  "size_price": "375 x 560 x 708mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "AMWB12NID": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1.5匹",
-   "淨冷/冷暖": "淨冷",
-   "壓縮機供電頻率": "變頻",
-   "製冷量": "3.5千瓦",
-   "冷卻效能": "11942BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "375 x 560 x 708mm",
-   "能源標籤": "1級"
-  },
-  "size_price": "375 x 560 x 708mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "CW-HU90AA": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1匹",
-   "淨冷/冷暖": "淨冷",
-   "壓縮機供電頻率": "變頻",
-   "製冷量": "2.67千瓦",
-   "冷卻效能": "9100BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "346 x 450 x 640mm",
-   "能源標籤": "1級"
-  },
-  "size_price": "346 x 450 x 640mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "CW-HU120AA": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "1.5匹",
-   "淨冷/冷暖": "淨冷",
-   "壓縮機供電頻率": "變頻",
-   "製冷量": "3.6千瓦",
-   "冷卻效能": "12200BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "400 x 600 x 710mm",
-   "能源標籤": "1級"
-  },
-  "size_price": "400 x 600 x 710mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  },
  "RC-TS18UV": {
-  "price_og": {
-   "類型": "窗口式",
-   "匹數": "2匹",
-   "淨冷/冷暖": "淨冷",
-   "壓縮機供電頻率": "變頻",
-   "冷卻效能": "17700BTU/h",
-   "功能": "抽濕",
-   "無線遙控": "遙控器",
-   "雪種": "R32",
-   "室內機尺寸": "660 x 428 x 780mm",
-   "能源標籤": "1級"
-  },
-  "size_price": "660 x 428 x 780mm",
-  "gas_price": "R32",
+  "price_error": "HTTP Error 403: Forbidden",
   "error": "HTTP Error 403: Forbidden"
  }
 }
