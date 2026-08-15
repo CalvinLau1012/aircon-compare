@@ -330,6 +330,14 @@ ul,ol{margin:8px 0 8px 24px;}
   border-radius:20px; cursor:pointer; font-size:.9em; box-shadow:0 2px 6px rgba(15,61,92,.2);}
 #btnMore:hover{background:var(--accent); color:var(--primary);}
 
+/* ===== 比較器完善 ===== */
+.selonly{font-size:.82em; color:var(--muted); display:flex; align-items:center; gap:4px; cursor:pointer;}
+.selonly input{accent-color:var(--accent);}
+.panel td.best{background:#FFF7D6; color:#8A6500; font-weight:700;}
+.panel .rm{background:#C0392B; color:#fff; border:none; border-radius:10px;
+  padding:1px 8px; font-size:.72em; cursor:pointer; margin-top:2px;}
+.panel .rm:hover{background:#922B21;}
+
 /* ===== 返回頂部 ===== */
 #backTop{position:fixed; right:16px; bottom:20px; width:44px; height:44px;
   background:var(--primary); color:#fff; border:2px solid var(--accent);
@@ -413,9 +421,10 @@ footer .line{color:var(--accent);}
       <span class="sel" id="selCount">已選 0 個（最少 2 個）</span>
     </div>
     <div class="compare-tools">
-      <button onclick="clearAll()">清除選擇</button>
-      <button onclick="selectInverter()">選全部變頻</button>
-      <button onclick="selectFixed()">選全部定頻</button>
+      <button onclick="clearAll()">🗑 清除選擇</button>
+      <button onclick="selectType('變頻')">選範圍內變頻</button>
+      <button onclick="selectType('定頻')">選範圍內定頻</button>
+      <label class="selonly"><input type="checkbox" id="fSelOnly" onchange="resetShown();renderList()"> 只顯示已選</label>
       <div class="filters">
         <input type="search" id="q" placeholder="🔍 搜尋品牌/型號" oninput="resetShown();renderList()">
         <select id="sortBy" onchange="resetShown();renderList()">
@@ -446,8 +455,9 @@ footer .line{color:var(--accent);}
   <!-- 比較面板 -->
   <div class="panel" id="panel">
     <div class="phead">
-      <b>📋 型號對比</b>
+      <b id="panelTitle">📋 型號對比</b>
       <span style="display:flex;gap:6px;">
+        <button onclick="copyCompare()" style="background:#fff;color:var(--primary);">📋 複製結果</button>
         <button onclick="clearAll()" style="background:#fff;color:var(--primary);">🗑 清除</button>
         <button onclick="closePanel()">✕ 關閉</button>
       </span>
@@ -494,6 +504,7 @@ function matches(m){
   if(br && m.brand!==br) return false;
   if(en && m.energy!==en) return false;
   if(q && !(m.brand.toLowerCase().includes(q)||m.model.toLowerCase().includes(q))) return false;
+  if(document.getElementById('fSelOnly').checked && !selected.has(m.brand+'|'+m.model)) return false;
   return true;
 }
 
@@ -510,6 +521,10 @@ function sortModels(arr){
   else if(v==='energy') a.sort((x,y)=>energyVal(x)-energyVal(y));
   else if(v==='kwh') a.sort((x,y)=>(parseInt(x.kwh)||9999)-(parseInt(y.kwh)||9999));
   else if(v==='cspf') a.sort((x,y)=>(parseFloat(y.cspf)||0)-(parseFloat(x.cspf)||0));
+  // 已選型號永遠排前
+  if(selected.size){
+    a.sort((x,y)=>((selected.has(y.brand+'|'+y.model)?1:0)-(selected.has(x.brand+'|'+x.model)?1:0)));
+  }
   return a;
 }
 
@@ -525,11 +540,12 @@ function renderList(){
       : `<a class="plink" href="https://www.price.com.hk/search.php?g=A&q=${encodeURIComponent(m.model)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💰 格價</a>`;
     const wifiBadge = m.type==='變頻'?'🔷':'🔶';
     const energyTxt = m.energy ? esc(m.energy) : '—';
+    const extra = (m.gas ? ` · ${esc(m.gas)}` : '') + (m.cspf ? ` · CSPF ${esc(m.cspf)}` : '');
     return `<label class="mitem ${on?'checked':''}">
       <input type="checkbox" ${on?'checked':''} onchange="toggle('${esc(id)}',this)">
       <span class="info">
         <span class="name">${esc(m.brand)} ${esc(m.model)}</span><br>
-        <span class="tag">${esc(m.hp||'?匹')} · ${esc(m.btu)} BTU · ${esc(m.type)} · ${energyTxt} · ${priceHtml}</span>
+        <span class="tag">${esc(m.hp||'?匹')} · ${esc(m.btu)} BTU · ${esc(m.type)} · ${energyTxt}${extra} · ${priceHtml}</span>
       </span>
       <span class="badge">${wifiBadge} ${energyTxt}</span>
     </label>`;
@@ -568,23 +584,74 @@ function selectedModels(){
 function buildPanel(){
   const list=selectedModels();
   const body=document.getElementById('panelBody');
-  const rows=[['<b>屬性</b>', ...list.map(m=>`<b>${esc(m.brand)}<br>${esc(m.model)}</b>`)]];
+  document.getElementById('panelTitle').textContent=`📋 型號對比（${list.length} 個）`;
+  const rows=[['<b>屬性</b>', ...list.map(m=>`<b>${esc(m.brand)}<br>${esc(m.model)}<br><button class="rm" onclick="removeSel('${esc(m.brand+'|'+m.model).replace(/'/g,'&#39;')}')">✕ 移除</button></b>`)]];
   for(const [key,label] of FIELDS){
+    // 搵最佳值（最少 2 個先高亮）
+    let best=null;
+    if(list.length>=2){
+      if(key==='price'){
+        const vals=list.map(m=>{const m1=String(m.price||'').match(/\$([\d,]+)/); return m1?parseInt(m1[1].replace(/,/g,'')):NaN;});
+        const ok=vals.filter(v=>!isNaN(v));
+        if(ok.length===list.length) best=Math.min(...ok);
+      }else if(key==='kwh'){
+        const vals=list.map(m=>parseFloat(m.kwh));
+        if(vals.every(v=>!isNaN(v))) best=Math.min(...vals);
+      }else if(key==='cspf'){
+        const vals=list.map(m=>parseFloat(m.cspf));
+        if(vals.every(v=>!isNaN(v))) best=Math.max(...vals);
+      }
+    }
     rows.push([label, ...list.map(m=>{
       const v=m[key];
       const txt=(v===null||v===undefined||v==='')?'待查':String(v);
-      return key==='price' && txt==='待查'
+      let cls='';
+      if(best!==null && !isNaN(best)){
+        if(key==='price'){
+          const m1=String(m.price||'').match(/\$([\d,]+)/);
+          if(m1 && parseInt(m1[1].replace(/,/g,''))===best) cls=' class="best"';
+        }else{
+          const pv=parseFloat(m[key]);
+          if(pv===best) cls=' class="best"';
+        }
+      }
+      const inner = key==='price' && txt==='待查'
         ? `<a href="https://www.price.com.hk/search.php?g=A&q=${encodeURIComponent(m.model)}" target="_blank" rel="noopener">💰 格價</a>`
         : esc(txt);
+      return `<td${cls}>${inner}</td>`;
     })]);
   }
   body.innerHTML=`<table><thead><tr>${rows[0].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
-    <tbody>${rows.slice(1).map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    <tbody>${rows.slice(1).map(r=>`<tr>${r.join('')}</tr>`).join('')}</tbody></table>`;
+}
+
+function removeSel(id){
+  selected.delete(id);
+  const panel=document.getElementById('panel');
+  if(selected.size<2) panel.classList.remove('open');
+  updateUI();
+}
+
+function copyCompare(){
+  const list=selectedModels();
+  if(list.length<2){ alert('請先揀至少 2 個型號'); return; }
+  const lines=['屬性\t'+list.map(m=>m.brand+' '+m.model).join('\t')];
+  for(const [k,l] of FIELDS){
+    lines.push(l+'\t'+list.map(m=>{const v=m[k]; return (v===null||v==='')?'待查':String(v);}).join('\t'));
+  }
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>{
+    alert('✅ 已複製對比結果！可以直接貼去 Excel / WhatsApp / 記事簿');
+  }).catch(()=>{
+    prompt('請手動複製以下內容：', lines.join('\n'));
+  });
 }
 
 function clearAll(){selected.clear(); updateUI();}
-function selectInverter(){selected=new Set(ALL.filter(m=>m.type==='變頻').slice(0,50).map(m=>m.brand+'|'+m.model)); updateUI();}
-function selectFixed(){selected=new Set(ALL.filter(m=>m.type==='定頻').slice(0,50).map(m=>m.brand+'|'+m.model)); updateUI();}
+function selectType(ty){
+  const arr=sortModels(ALL.filter(matches)).filter(m=>m.type===ty).slice(0,30);
+  selected=new Set(arr.map(m=>m.brand+'|'+m.model));
+  updateUI();
+}
 function closePanel(){document.getElementById('panel').classList.remove('open');}
 
 // 將 markdown 表格包裝成可橫向捲動容器（手機友好）
