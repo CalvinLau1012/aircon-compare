@@ -117,52 +117,139 @@ MODELS = [
 ]
 
 # 2026-08-15 規格覆蓋（豐澤產品頁 + Price.com.hk og 規格，雙源交叉確認）
+# 2026-08-15 追加：品牌官網/官方商舖核實（三源確認）
 # size 統一 H×W×D；豐澤係 W×H×D（已轉換）；單源數據喺 note 標註
 SPECS_OVERRIDE = {
     # ---- CANOPUS（豐澤）----
     'TA-09EOG': {'size': '350×451×675', 'warranty': '4/5年'},
     'TA-12EOG': {'size': '380×600×560', 'warranty': '4/5年'},
     'TA-18EOG': {'size': '428×660×680', 'warranty': '4/5年'},
-    # ---- TOSOT（Price og）----
-    'W09R5A': {'size': '350×450×580'},
-    'W12R5A': {'size': '375×560×668'},
+    # ---- TOSOT（官方商舖確認：450×350×580 闊高深、淨重32kg、遙控）----
+    'W09R5A': {'size': '350×450×580', 'weight': '32kg', 'remote': '✅'},
+    'W12R5A': {'size': '375×560×668', 'weight': '39kg', 'remote': '✅'},
     'W18R5A': {'size': '428×660×700'},
     'W24R5A': {'size': '428×660×770'},
     # ---- Carrier BE（豐澤）----
     'CHK09BE': {'size': '350×451×675', 'weight': '37.1kg', 'warranty': '4/5年'},
     'CHK12BE': {'size': '380×600×560', 'weight': '40.3kg', 'warranty': '4/5年'},
     'CHK18BE': {'size': '428×660×680', 'weight': '57.3kg', 'warranty': '4/5年'},
-    # ---- Midea CR8C（Price og）----
+    # ---- Midea CR8C（官方商舖確認 600×560×380 闊深高、37.8kg、39個月）----
     'MW-09CR8C': {'size': '350×451×675'},
-    'MW-12CR8C': {'size': '380×560×600'},
-    # ---- HITACHI（豐澤+Price 一致）----
-    'RA-10RF': {'size': '345×470×640', 'weight': '38kg', 'warranty': '3/5年'},
-    # ---- Rasonic XG（豐澤）----
-    'RC-XG9': {'size': '350×450×580', 'weight': '32kg'},
+    'MW-12CR8C': {'size': '380×600×560', 'weight': '37.8kg', 'warranty': '39個月'},
+    # ---- HITACHI（官網三源確認：470×345×640、38kg、3/5年）----
+    'RA-10RF': {'size': '345×470×640', 'weight': '34kg', 'warranty': '3/5年'},
+    # ---- Rasonic XG（官方商舖確認 32.5kg/39kg）----
+    'RC-XG9': {'size': '350×450×580', 'weight': '32.5kg'},
     'RC-XG12': {'size': '375×560×668', 'weight': '39kg'},
-    # ---- FUJI（Price og）----
-    'RFR18FNTN': {'size': '428×660×705'},
-    # ---- COMFEE（豐澤+Price）----
-    'CWF-09CRFN8-AD5': {'size': '350×451×675'},
-    'CWF-12CRFN8-AD5': {'size': '350×451×675', 'weight': '35.9kg'},
-    'CWF-18CRFN8-AD5': {'size': '428×660×780'},
-    # ---- Carrier EAVXP（Price og）----
-    'CHK09EAVXP': {'size': '350×450×675'},
-    'CHK12EAVXP': {'size': '350×450×675'},
-    'CHK18EAVX': {'size': '428×660×780'},
-    # ---- Midea CRF8B（Price og）----
-    'MW-09CRF8B': {'size': '350×451×675'},
-    # ---- Gree（Price og）----
-    'GWF09P': {'size': '350×450×640'},
-    'GWF12DB': {'size': '375×560×708'},
+    # ---- FUJI（豐澤確認「可遙控」）----
+    'RFR18FNTN': {'size': '428×660×705', 'remote': '✅'},
+    # ---- COMFEE（官網 feelcomfee 確認尺寸/液晶遙控/IoT）----
+    'CWF-09CRFN8-AD5': {'size': '350×451×675', 'remote': '✅'},
+    'CWF-12CRFN8-AD5': {'size': '350×451×675', 'weight': '35.9kg', 'remote': '✅'},
+    'CWF-18CRFN8-AD5': {'size': '428×660×780', 'remote': '✅'},
+    # ---- Carrier EAVXP（世紀開利官網確認「淨冷遙控型」）----
+    'CHK09EAVXP': {'size': '350×450×675', 'remote': '✅'},
+    'CHK12EAVXP': {'size': '350×450×675', 'remote': '✅'},
+    'CHK18EAVX': {'size': '428×660×780', 'remote': '✅'},
+    # ---- Midea CRF8B（官方商舖確認 Wi-Fi 遙控變頻淨冷）----
+    'MW-09CRF8B': {'size': '350×451×675', 'remote': '✅'},
+    # ---- Gree（官方商舖確認 GWF12DB：39kg、3年、Wi-Fi、無線遙控）----
+    'GWF09P': {'size': '350×450×640', 'remote': '✅'},
+    'GWF12DB': {'size': '375×560×708', 'weight': '39kg', 'warranty': '3年+', 'remote': '✅'},
     # ---- General（Price og）----
     'AMWB12NID': {'size': '375×560×708'},
-    # ---- Panasonic（豐澤+Price 一致）----
-    'CW-HU90AA': {'size': '346×450×640', 'weight': '33kg', 'warranty': '3/5年'},
-    'CW-HU120AA': {'size': '400×600×710', 'weight': '40kg'},
-    # ---- Rasonic TS18（Price og）----
-    'RC-TS18UV': {'size': '428×660×780'},
+    # ---- Panasonic（官網確認：90AA 29kg、5年壓縮機；120AA 47kg）----
+    'CW-HU90AA': {'size': '346×450×640', 'weight': '29kg', 'warranty': '3/5年'},
+    'CW-HU120AA': {'size': '400×600×710', 'weight': '47kg'},
+    # ---- Rasonic TS18（官方商舖確認 R32 Wi-Fi 變頻淨冷無線遙控）----
+    'RC-TS18UV': {'size': '428×660×780', 'remote': '✅'},
+    # ==== 2026-08-15 品牌官網逐型號核實（official_specs.json）====
+    # Panasonic 官網（panasonic.hk 產品頁：尺寸H×W×D/淨重）
+    'CW-HU70AA': {'size': '346×450×640', 'weight': '29kg'},
+    'CW-HU180AA': {'size': '428×660×800', 'weight': '60kg'},
+    'CW-HU240AA': {'size': '428×660×800', 'weight': '64kg'},
+    'CW-SU70AA': {'size': '346×450×640', 'weight': '29kg'},
+    'CW-SU90AA': {'size': '346×450×640', 'weight': '29kg'},
+    'CW-SU120AA': {'size': '346×560×655', 'weight': '39kg'},
+    'CW-SU180AA': {'size': '428×660×800', 'weight': '60kg'},
+    'CW-SU240AA': {'size': '428×660×800', 'weight': '64kg'},
+    'CW-SUL70BA': {'size': '346×450×640', 'weight': '28kg'},
+    'CW-SUL90BA': {'size': '346×450×640', 'weight': '28kg'},
+    'CW-SUL120BA': {'size': '346×560×655', 'weight': '39kg'},
+    'CW-SUL180BA': {'size': '428×660×800', 'weight': '60kg'},
+    'CW-SUL240BA': {'size': '428×660×800', 'weight': '64kg'},
+    'CW-N721JA': {'size': '346×450×590', 'weight': '30kg'},
+    'CW-N921JA': {'size': '346×450×640', 'weight': '32kg'},
+    'CW-N1221VA': {'size': '346×560×655', 'weight': '36kg'},
+    'CW-N1821EA': {'size': '428×660×800', 'weight': '59kg'},
+    # HITACHI 官網（hitachi-homeappliances.com.hk：尺寸H×W×D/淨重）
+    'RA-08RF': {'size': '345×470×640', 'weight': '32kg'},
+    'RA-13RF': {'size': '375×560×709', 'weight': '46kg'},
+    'RAW-XH07CA': {'size': '350×450×640', 'weight': '31kg'},
+    'RAW-XH07CDK': {'size': '350×450×640', 'weight': '29kg'},
+    'RAW-XH10CA': {'size': '350×450×640', 'weight': '31kg'},
+    'RAW-XH10CDK': {'size': '350×450×640', 'weight': '29kg'},
+    'RAW-XH13CA': {'size': '375×560×708', 'weight': '39kg'},
+    'RAW-XH13CDK': {'size': '375×560×708', 'weight': '39kg'},
+    'RAW-XH18CA': {'size': '428×660×800', 'weight': '53kg'},
+    'RAW-XH18CDK': {'size': '428×660×800', 'weight': '53kg'},
+    'RAW-XH24CA': {'size': '428×660×800', 'weight': '54.5kg'},
+    'RAW-XH24CDK': {'size': '428×660×800', 'weight': '54.5kg'},
+    'RAW-ZH07CCK': {'size': '345×470×640', 'weight': '29kg'},
+    'RAW-ZH10CCK': {'size': '345×470×640', 'weight': '29kg'},
+    'RAW-ZH13CCK': {'size': '375×560×709', 'weight': '38kg'},
+    # COMFEE 官網（feelcomfee.com/hk：尺寸H×W×D/淨重）
+    'CWF-07CRFN8-AD5': {'size': '350×450.6×675', 'weight': '31.9kg', 'remote': '✅'},
+    'CWF-09CRFN8-AD5': {'size': '350×450.6×675', 'weight': '31.9kg', 'remote': '✅'},
+    'CWF-12CRFN8-AD5': {'size': '350×450.6×675', 'weight': '33.3kg', 'remote': '✅'},
+    'CWF-18CRFN8-AD5': {'size': '428×660×780', 'weight': '52.3kg', 'remote': '✅'},
+    'CFW-07FF-M': {'size': '350×450.6×675', 'weight': '31.3kg'},
+    'CFW-09FF-M': {'size': '350×450.6×675', 'weight': '34.7kg'},
+    'CFW-12FF-M': {'size': '380×600×560', 'weight': '37.5kg'},
+    'CFW-18FF-M': {'size': '428×660×680', 'weight': '53.1kg'},
 }
+
+
+def load_official():
+    """載入品牌官網核實數據（official_specs.json + rasonic_official.json）"""
+    out = {}
+    for fname in ('official_specs.json', 'rasonic_official.json'):
+        p = os.path.join(BASE, fname)
+        if os.path.exists(p):
+            with open(p, encoding='utf-8') as f:
+                out.update(json.load(f))
+    return out
+
+
+OFFICIAL = load_official()
+
+
+def apply_official(m):
+    """將官網核實數據合併入單個型號 dict"""
+    of = OFFICIAL.get(m.get('model'))
+    if not of:
+        return
+    if of.get('size'):
+        m['size'] = of['size'].replace('x', '×').replace('*', '').strip()
+    if of.get('weight'):
+        m['weight'] = of['weight'].replace('公斤', 'kg').strip()
+    if of.get('price') and str(of.get('price')).startswith('HK$'):
+        try:
+            v = float(str(of['price'])[3:].replace(',', ''))
+            m['price'] = f"${v:,.0f}"
+            m['price_official'] = True
+        except ValueError:
+            pass
+    if of.get('wifi') in (True, '✅'):
+        m['wifi'] = '✅'
+    if of.get('remote') in (True, '✅'):
+        m['remote'] = '✅'
+    if of.get('heat') is True:
+        m['mode'] = '冷暖'
+    elif of.get('mode') in ('淨冷', '冷暖'):
+        m['mode'] = of['mode']
+    if of.get('mode') == '淨冷' and not of.get('heat'):
+        m['mode'] = '淨冷'
 
 
 def apply_specs_override():
@@ -176,6 +263,7 @@ def apply_specs_override():
         ov = SPECS_OVERRIDE.get(m['model'])
         if ov:
             m.update(ov)
+        apply_official(m)
 
 
 COMPARE_FIELDS = [
@@ -266,7 +354,7 @@ def load_emsd_models():
         if mode not in ('淨冷', '冷暖'):
             mode = ''
         remote = ''  # Price 冇提供遙控資料 → 待查
-        out.append({
+        item = {
             'brand': brand, 'model': model,
             'hp': kw_to_hp(kw), 'mount': mount, 'btu': btu, 'mode': mode,
             'type': '變頻' if '是' in str(r[14]) else '定頻',
@@ -275,7 +363,12 @@ def load_emsd_models():
             'kwh': r[5], 'cspf': r[7], 'kw': r[6], 'gas': r[8],
             'noise': '', 'size': size, 'weight': '', 'warranty': '',
             'note': 'EMSD 官方登記 · Price 實價', 'ref': r[2], 'provider': r[13],
-        })
+        }
+        # 官網核實數據覆蓋
+        apply_official(item)
+        if item.get('price_official'):
+            item['note'] = 'EMSD 官方登記 · 官網價'
+        out.append(item)
     priced = sum(1 for m in out if m['price'])
     sized = sum(1 for m in out if m['size'])
     print(f'EMSD 型號 {len(out)} 個 · {priced} 個有價 · {sized} 個有尺寸')

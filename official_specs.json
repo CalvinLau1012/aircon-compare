@@ -1,0 +1,612 @@
+{
+ "WINDOWTYPEAIRCONDITIONER": {
+  "model_not_found": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/window-type-air-conditioner.html"
+ },
+ "SINGLESPLITTYPEAIRCONDITIONER": {
+  "model_not_found": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/single-split-type-air-conditioner.html"
+ },
+ "CW-SUL70BA": {
+  "size": "346×450×640",
+  "weight": "28kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter LITE - 變頻式淨冷窗口機(左出風) (3/4 匹) - CW-SUL70BA",
+  "url": "https://www.panasonic.hk/zh-cht/item/9592--cw-sul70ba"
+ },
+ "CW-SUL90BA": {
+  "size": "346×450×640",
+  "weight": "28kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter LITE - 變頻式淨冷窗口機(左出風) (1 匹) - CW-SUL90BA",
+  "url": "https://www.panasonic.hk/zh-cht/item/9593--cw-sul90ba"
+ },
+ "CW-HZ70AA": {
+  "size": "346×450×640",
+  "weight": "30kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640 *以 3/4 匹",
+  "wifi": true,
+  "remote": true,
+  "heat": true,
+  "cool": false,
+  "title": "Inverter PRO - Wi-Fi 變頻式冷暖窗口機 (3/4 匹) - CW-HZ70AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6831--cw-hz70aa"
+ },
+ "CW-HZ90AA": {
+  "size": "346×450×640",
+  "weight": "30kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640 *以 3/4 匹",
+  "wifi": true,
+  "remote": true,
+  "heat": true,
+  "cool": false,
+  "title": "Inverter PRO - Wi-Fi 變頻式冷暖窗口機 (1 匹) - CW-HZ90AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6834--cw-hz90aa"
+ },
+ "CW-HZ120AA": {
+  "size": "400×600×710",
+  "weight": "48kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 400 x 600 x 710 *以 3/4 匹",
+  "wifi": true,
+  "remote": true,
+  "heat": true,
+  "cool": false,
+  "title": "Inverter PRO - Wi-Fi 變頻式冷暖窗口機 (1 1/2匹) - CW-HZ120AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6837--cw-hz120aa"
+ },
+ "CW-HZ180AA": {
+  "size": "428×660×800",
+  "weight": "61kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800 *以 3/4 匹",
+  "wifi": true,
+  "remote": true,
+  "heat": true,
+  "cool": false,
+  "title": "Inverter PRO - Wi-Fi 變頻式冷暖窗口機 (2匹) - CW-HZ180AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6840--cw-hz180aa"
+ },
+ "CW-HZ240AA": {
+  "size": "428×660×800",
+  "weight": "65kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800 *以 3/4 匹",
+  "wifi": true,
+  "remote": true,
+  "heat": true,
+  "cool": false,
+  "title": "Inverter PRO - Wi-Fi 變頻式冷暖窗口機 (2 1/2匹) - CW-HZ240AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6843--cw-hz240aa"
+ },
+ "CW-HU70AA": {
+  "size": "346×450×640",
+  "weight": "29kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640 *以 3/4 匹",
+  "wifi": true,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter PRO - Wi-Fi 變頻式淨冷窗口機 (3/4 匹) - CW-HU70AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6846--cw-hu70aa"
+ },
+ "CW-HU90AA": {
+  "size": "346×450×640",
+  "weight": "29kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640 *以 3/4 匹",
+  "wifi": true,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter PRO - Wi-Fi 變頻式淨冷窗口機 (1 匹) - CW-HU90AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6849--cw-hu90aa"
+ },
+ "CW-HU120AA": {
+  "size": "400×600×710",
+  "weight": "47kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 400 x 600 x 710 *以 3/4 匹",
+  "wifi": true,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter PRO - Wi-Fi 變頻式淨冷窗口機 (1 1/2 匹) - CW-HU120AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6852--cw-hu120aa"
+ },
+ "CW-HU180AA": {
+  "size": "428×660×800",
+  "weight": "60kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800 *以 3/4 匹變頻",
+  "wifi": true,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter PRO - Wi-Fi 變頻式淨冷窗口機 (2 匹) - CW-HU180AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6855--cw-hu180aa"
+ },
+ "CW-HU240AA": {
+  "size": "428×660×800",
+  "weight": "64kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800 *以 3/4 匹",
+  "wifi": true,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter PRO - Wi-Fi 變頻式淨冷窗口機 (2 1/2 匹) - CW-HU240AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6858--cw-hu240aa"
+ },
+ "CW-SU70AA": {
+  "size": "346×450×640",
+  "weight": "29kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter LITE - 變頻式淨冷窗口機 (3/4 匹) - CW-SU70AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6861--cw-su70aa"
+ },
+ "CW-SU90AA": {
+  "size": "346×450×640",
+  "weight": "29kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter LITE - 變頻式淨冷窗口機 (1 匹) - CW-SU90AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6864--cw-su90aa"
+ },
+ "CW-SU120AA": {
+  "size": "346×560×655",
+  "weight": "39kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 560 x 655",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter LITE - 變頻式淨冷窗口機 (1 1/2 匹) - CW-SU120AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6867--cw-su120aa"
+ },
+ "CW-SU180AA": {
+  "size": "428×660×800",
+  "weight": "60kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter LITE - 變頻式淨冷窗口機 (2 匹) - CW-SU180AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6870--cw-su180aa"
+ },
+ "CW-SU240AA": {
+  "size": "428×660×800",
+  "weight": "64kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter LITE - 變頻式淨冷窗口機 (2 1/2 匹) - CW-SU240AA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6873--cw-su240aa"
+ },
+ "CW-SUL120BA": {
+  "size": "346×560×655",
+  "weight": "39kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 560 x 655",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter LITE - 變頻式淨冷窗口機(左出風) (1 1/2 匹) - CW-SUL120BA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6876--cw-sul120ba"
+ },
+ "CW-SUL180BA": {
+  "size": "428×660×800",
+  "weight": "60kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter LITE - 變頻式淨冷窗口機(左出風) (2 匹) - CW-SUL180BA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6879--cw-sul180ba"
+ },
+ "CW-SUL240BA": {
+  "size": "428×660×800",
+  "weight": "64kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "title": "Inverter LITE - 變頻式淨冷窗口機(左出風) (2 1/2 匹) - CW-SUL240BA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6882--cw-sul240ba"
+ },
+ "CW-N721JA": {
+  "size": "346×450×590",
+  "weight": "30kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 590",
+  "wifi": false,
+  "remote": false,
+  "heat": false,
+  "cool": true,
+  "title": "定頻淨冷窗口式空調機 (3/4 匹) - CW-N721JA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6885--cw-n721ja"
+ },
+ "CW-N921JA": {
+  "size": "346×450×640",
+  "weight": "32kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 450 x 640",
+  "wifi": false,
+  "remote": false,
+  "heat": false,
+  "cool": true,
+  "title": "定頻淨冷窗口式空調機 (1 匹) - CW-N921JA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6888--cw-n921ja"
+ },
+ "CW-N1221VA": {
+  "size": "346×560×655",
+  "weight": "36kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 346 x 560 x 655",
+  "wifi": false,
+  "remote": false,
+  "heat": false,
+  "cool": true,
+  "title": "定頻淨冷窗口式空調機 (1 1/2 匹) - CW-N1221VA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6891--cw-n1221va"
+ },
+ "CW-N1821EA": {
+  "size": "428×660×800",
+  "weight": "59kg",
+  "warranty": "保用 5 年壓縮機保用 體積(高 x 闊 x 深)毫米 428 x 660 x 800",
+  "wifi": false,
+  "remote": false,
+  "heat": false,
+  "cool": true,
+  "title": "定頻淨冷窗口式空調機 (2 匹) - CW-N1821EA",
+  "url": "https://www.panasonic.hk/zh-cht/item/6894--cw-n1821ea"
+ },
+ "RA-08RF": {
+  "size": "345×470×640",
+  "weight": "32kg",
+  "energy": "能源標籤 主要特點 全新瑰麗紫色徽章 R32環保雪",
+  "gas": "雪種 PM2.5 WASABI納米鈦空氣過濾網 納米鈦不銹鋼塗層前置",
+  "wifi": false,
+  "remote": false,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/ra-08rf.html"
+ },
+ "RA-10RF": {
+  "size": "345×470×640",
+  "weight": "34kg",
+  "energy": "能源標籤 主要特點 全新瑰麗紫色徽章 R32環保雪",
+  "gas": "雪種 PM2.5 WASABI 納米鈦空氣過濾網 納米鈦不銹鋼塗層前",
+  "wifi": false,
+  "remote": false,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/ra-10rf.html"
+ },
+ "RA-13RF": {
+  "size": "375×560×709",
+  "weight": "46kg",
+  "energy": "能源標籤 主要特點 全新瑰麗紫色徽章 R32環保雪",
+  "gas": "雪種 PM2.5 WASABI 納米鈦空氣過濾網 納米鈦不銹鋼塗層前",
+  "wifi": false,
+  "remote": false,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/ra-13rf.html"
+ },
+ "RAW-XH07CA": {
+  "size": "350×450×640",
+  "weight": "31kg",
+  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
+  "gas": "雪種 主要特點 All DC Inverter 變頻技術",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/raw-xh07ca.html"
+ },
+ "RAW-XH07CDK": {
+  "size": "350×450×640",
+  "weight": "29kg",
+  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
+  "gas": "雪種 主要特點 All DC Inverter 變頻技術",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/raw-xh07cdk.html"
+ },
+ "RAW-XH10CA": {
+  "size": "350×450×640",
+  "weight": "31kg",
+  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
+  "gas": "雪種 主要特點 All DC Inverter 變頻技術",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/raw-xh10ca.html"
+ },
+ "RAW-XH10CDK": {
+  "size": "350×450×640",
+  "weight": "29kg",
+  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
+  "gas": "雪種 主要特點 All DC Inverter 變頻技術",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/raw-xh10cdk.html"
+ },
+ "RAW-XH13CA": {
+  "size": "375×560×708",
+  "weight": "39kg",
+  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
+  "gas": "雪種 主要特點 All DC Inverter 變頻技術",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/raw-xh13ca.html"
+ },
+ "RAW-XH13CDK": {
+  "size": "375×560×708",
+  "weight": "39kg",
+  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
+  "gas": "雪種 主要特點 All DC Inverter 變頻技術",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/raw-xh13cdk.html"
+ },
+ "RAW-XH18CA": {
+  "size": "428×660×800",
+  "weight": "53kg",
+  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
+  "gas": "雪種 主要特點 All DC Inverter 變頻技術",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/raw-xh18ca.html"
+ },
+ "RAW-XH18CDK": {
+  "size": "428×660×800",
+  "weight": "53kg",
+  "energy": "能源標籤 R32環保雪種 主要特點 All DC Inv",
+  "gas": "雪種 主要特點 All DC Inverter 變頻技術",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/raw-xh18cdk.html"
+ },
+ "RAW-XH24CA": {
+  "size": "428×660×800",
+  "weight": "54.5kg",
+  "energy": "能源標籤 R32環保雪種 主要特點 All DC In",
+  "gas": "雪種 主要特點 All DC Inverter 變頻技",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/raw-xh24ca.html"
+ },
+ "RAW-XH24CDK": {
+  "size": "428×660×800",
+  "weight": "54.5kg",
+  "energy": "能源標籤 R32環保雪種 主要特點 All DC In",
+  "gas": "雪種 主要特點 All DC Inverter 變頻技",
+  "wifi": false,
+  "remote": true,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/raw-xh24cdk.html"
+ },
+ "RAW-ZH07CCK": {
+  "size": "345×470×640",
+  "weight": "29kg",
+  "energy": "能源標籤 R32環保雪種 主要特點 左右出風口 P",
+  "gas": "雪種 主要特點 左右出風口 PM2.5 Wasab",
+  "wifi": true,
+  "remote": false,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/raw-zh07cck.html"
+ },
+ "RAW-ZH10CCK": {
+  "size": "345×470×640",
+  "weight": "29kg",
+  "energy": "能源標籤 R32環保雪種 主要特點 左右出風口 P",
+  "gas": "雪種 主要特點 左右出風口 PM2.5 Wasab",
+  "wifi": true,
+  "remote": false,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/raw-zh10cck.html"
+ },
+ "RAW-ZH13CCK": {
+  "size": "375×560×709",
+  "weight": "38kg",
+  "energy": "能源標籤 R32環保雪種 主要特點 左右出風口",
+  "gas": "雪種 主要特點 左右出風口 PM2.5 Wasa",
+  "wifi": true,
+  "remote": false,
+  "heat": false,
+  "cool": true,
+  "url": "https://www.hitachi-homeappliances.com.hk/tc/products/raw-zh13cck.html"
+ },
+ "CWF-07CRFN8-AD5": {
+  "size": "350×450.6×675",
+  "weight": "31.9kg",
+  "gas": "雪種 液晶顯示遙控",
+  "wifi": true,
+  "remote": true,
+  "energy": "能源標籤 級 1 尺寸 (闊x深x高) 毫米",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cwf-07crfn8-ad5"
+ },
+ "CWF-09CRFN8-AD5": {
+  "size": "350×450.6×675",
+  "weight": "31.9kg",
+  "gas": "雪種 液晶顯示遙控",
+  "wifi": true,
+  "remote": true,
+  "energy": "能源標籤 級 1 尺寸 (闊x深x高) 毫米",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cwf-09crfn8-ad5"
+ },
+ "CWF-12CRFN8-AD5": {
+  "size": "350×450.6×675",
+  "weight": "33.3kg",
+  "gas": "雪種 液晶顯示遙控",
+  "wifi": true,
+  "remote": true,
+  "energy": "能源標籤 級 1 尺寸 (闊x深x高) 毫米",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cwf-12crfn8-ad5"
+ },
+ "CWF-18CRFN8-AD5": {
+  "size": "428×660×780",
+  "weight": "52.3kg",
+  "gas": "雪種 液晶顯示遙控",
+  "wifi": true,
+  "remote": true,
+  "energy": "能源標籤 級 1 尺寸 (闊x深x高) 毫米",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cwf-18crfn8-ad5"
+ },
+ "CFW-07FF-M": {
+  "size": "350×450.6×675",
+  "weight": "31.3kg",
+  "gas": "雪種 雙重黃金防鏽塗層",
+  "wifi": false,
+  "remote": false,
+  "energy": "能源標籤 級 3 尺寸 (高x闊x深) 毫米",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfw-07ff-m"
+ },
+ "CFW-09FF-M": {
+  "size": "350×450.6×675",
+  "weight": "34.7kg",
+  "gas": "雪種 雙重黃金防鏽塗層",
+  "wifi": false,
+  "remote": false,
+  "energy": "能源標籤 級 3 尺寸 (高x闊x深) 毫米",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfw-09ff-m"
+ },
+ "CFW-12FF-M": {
+  "size": "380×600×560",
+  "weight": "37.5kg",
+  "gas": "雪種 雙重黃金防鏽塗層",
+  "wifi": false,
+  "remote": false,
+  "energy": "能源標籤 級 3 尺寸 (高x闊x深) 毫米",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfw-12ff-m"
+ },
+ "CFW-18FF-M": {
+  "size": "428×660×680",
+  "weight": "53.1kg",
+  "gas": "雪種 雙重黃金防鏽塗層",
+  "wifi": false,
+  "remote": false,
+  "energy": "能源標籤 級 3 尺寸 (高x闊x深) 毫米",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfw-18ff-m"
+ },
+ "CAFB-12CRN8-PC2": {
+  "size": "285×805×194",
+  "weight": "8.4kg",
+  "gas": "雪種 R32",
+  "wifi": false,
+  "remote": true,
+  "energy": "能源標籤 級 不適用 電力資料 相/赫/伏特",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cafb-12crn8-pc2"
+ },
+ "CAFC-18CRN8-QC3": {
+  "size": "302×957×213",
+  "weight": "11.0kg",
+  "gas": "雪種 R32",
+  "wifi": false,
+  "remote": true,
+  "energy": "能源標籤 級 不適用 電力資料 相/赫/伏特",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cafc-18crn8-qc3"
+ },
+ "CAFA-09CRN8PC2": {
+  "size": "285×715×194",
+  "weight": "7.6kg",
+  "gas": "雪種 R32",
+  "wifi": false,
+  "remote": true,
+  "energy": "能源標籤 級 不適用 電力資料 相/赫/伏特",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cafa-09crn8pc2"
+ },
+ "CF-09VAGF-H": {
+  "size": "296×806×200",
+  "weight": "9kg",
+  "gas": "雪種 R410A",
+  "wifi": false,
+  "remote": true,
+  "energy": "能源標籤 級 1 電力資料 相/赫/伏特",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cf-09vagf-h"
+ },
+ "CF-12VAGF-H": {
+  "size": "296×806×200",
+  "weight": "9kg",
+  "gas": "雪種 R410A",
+  "wifi": false,
+  "remote": true,
+  "energy": "能源標籤 級 1 電力資料 相/赫/伏特",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cf-12vagf-h"
+ },
+ "CF-18VAGF-H": {
+  "size": "321×971×226",
+  "weight": "11.5kg",
+  "gas": "雪種 R410A",
+  "wifi": false,
+  "remote": true,
+  "energy": "能源標籤 級 1 電力資料 相/赫/伏特",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cf-18vagf-h"
+ },
+ "CFS-10VGPF": {
+  "size": "286×723×199",
+  "weight": "7.3kg",
+  "gas": "雪種 手機應用程式控制",
+  "wifi": false,
+  "remote": true,
+  "energy": "能源標籤 級 1 室內機尺寸 (闊x深x高) 毫米",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfs-10vgpf"
+ },
+ "CFS-13VGPF": {
+  "size": "289×813×201",
+  "weight": "7.7kg",
+  "gas": "雪種 手機應用程式控制",
+  "wifi": false,
+  "remote": true,
+  "energy": "能源標籤 級 1 室內機尺寸 (闊x深x高) 毫米",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfs-13vgpf"
+ },
+ "CFS-18VGPF": {
+  "size": "308×975×218",
+  "weight": "10.1kg",
+  "gas": "雪種 手機應用程式控制",
+  "wifi": false,
+  "remote": true,
+  "energy": "能源標籤 級 1 室內機尺寸 (闊x深x高) 毫米",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfs-18vgpf"
+ },
+ "CFS-25VGPF": {
+  "size": "330×1055×231",
+  "weight": "12.1kg",
+  "gas": "雪種 手機應用程式控制",
+  "wifi": false,
+  "remote": true,
+  "energy": "能源標籤 級 1 室內機尺寸 (闊x深x高) 毫米",
+  "url": "https://www.feelcomfee.com/hk/products/air-conditioner/cfs-25vgpf"
+ }
+}
