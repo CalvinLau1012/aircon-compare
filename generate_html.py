@@ -1074,6 +1074,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if(p < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
+    // 保險：若 rAF 被節流（如背景分頁）而冇進展，直接跳轉
+    setTimeout(()=>{
+      if(Math.abs(window.scrollY - start) < 2){
+        window.scrollTo({top: y, behavior:'instant'});
+      }
+    }, 400);
   }
   // 錨點連結平滑定位（md 內容內嘅 # 連結統一處理，確保任何環境都可跳轉）
   document.addEventListener('click', (e)=>{
