@@ -1053,7 +1053,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const top=el.getBoundingClientRect().top + window.scrollY;
       if(top <= y) cur=a;
     }
-    navLinks.forEach(a=>a.classList.toggle('active', a===cur));
+    navLinks.forEach(a=>{
+      a.style.color='';
+      a.classList.toggle('active', a===cur);
+    });
     // 只橫向捲動導覽列本身，唔好牽連頁面上下位置
     if(cur && cur!==spyCur){
       const navWrap=document.querySelector('.topnav .wrap');
@@ -1115,8 +1118,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
       e.preventDefault();
       const y = el.getBoundingClientRect().top + window.scrollY - 58;
       smoothScrollTo(Math.max(0, y));
-      document.querySelectorAll('.topnav a').forEach(x=>x.style.color='');
-      a.style.color='var(--accent)';
     });
   });
 });
