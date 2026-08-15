@@ -436,7 +436,7 @@ def new_models_hint():
     more = f' 等 {len(recent)} 個' if len(recent) > len(items) else ''
     return ('<div class="chint" style="border-left-color:#2EA06E">'
             f'🆕 最近新上市：{" · ".join(parts)}{more}'
-            '（新機偵測自 EMSD 官方資料庫，每週一自動更新）</div>')
+            '（新機偵測自 EMSD 官方資料庫，每日 00:30 自動偵測）</div>')
 
 
 def load_emsd_models():
