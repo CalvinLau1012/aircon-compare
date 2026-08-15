@@ -37,9 +37,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
 /* ===== 頂部導覽 ===== */
 .topnav{position:sticky; top:0; z-index:100; background:rgba(15,61,92,.97);
   backdrop-filter:blur(6px); border-bottom:2px solid var(--accent);}
-.topnav .wrap{display:flex; align-items:center; gap:2px; overflow-x:auto; padding:0 8px;
-  scrollbar-width:none; -ms-overflow-style:none;}
-.topnav .wrap::-webkit-scrollbar{display:none;}
+.topnav .wrap{display:flex; align-items:center; gap:2px; flex-wrap:wrap;
+  overflow:visible; padding:0 8px;}
 .topnav a{color:#DCE6F0; text-decoration:none; font-size:.84em; padding:13px 10px;
   white-space:nowrap; flex:0 0 auto; transition:color .2s; position:relative;
   border-bottom:2px solid transparent; margin-bottom:-2px;}
@@ -175,6 +174,10 @@ footer b{color:#fff;}
 footer .line{color:var(--accent);}
 
 /* ===== 響應式 ===== */
+@media (max-width:640px){
+  .topnav a{font-size:.75em; padding:10px 6px;}
+  .topnav .brand{font-size:.85em;}
+}
 @media (max-width:720px){
   .hero h1{font-size:1.6em;}
   .hero .sub{font-size:1em;}
