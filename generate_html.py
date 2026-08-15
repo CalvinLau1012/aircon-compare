@@ -654,7 +654,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（全量核實）· Price.com.hk 實價及規格 · 豐澤規格</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · Price.com.hk 實價 1,847 型號 · LIHKG 連登討論摘錄</div>
     <div class="date">📅 2026 年 8 月 15 日 更新版</div>
   </div>
 </header>
