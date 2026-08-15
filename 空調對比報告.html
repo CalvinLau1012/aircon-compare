@@ -39,9 +39,24 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
   backdrop-filter:blur(6px); border-bottom:2px solid var(--accent);}
 .topnav .wrap{display:flex; align-items:center; gap:4px; overflow-x:auto; padding:0 8px;}
 .topnav a{color:#DCE6F0; text-decoration:none; font-size:.86em; padding:14px 12px;
-  white-space:nowrap; flex:0 0 auto; transition:color .2s;}
+  white-space:nowrap; flex:0 0 auto; transition:color .2s; position:relative;
+  border-bottom:2px solid transparent; margin-bottom:-2px;}
 .topnav a:hover{color:var(--accent);}
+.topnav a.active{color:var(--accent); border-bottom-color:var(--accent); font-weight:700;}
 .topnav .brand{font-weight:700; color:#fff; font-size:.95em; margin-right:6px;}
+/* VS Code 官方風格 tooltip（Monaco editor hover widget 同款） */
+.topnav a[data-tip]::after{
+  content:attr(data-tip);
+  position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%) translateY(2px);
+  background:#252526; color:#cccccc; border:1px solid #454545;
+  border-radius:3px; padding:3px 8px; font-size:12px; line-height:1.4; white-space:nowrap;
+  box-shadow:0 2px 8px rgba(0,0,0,.36);
+  opacity:0; visibility:hidden; pointer-events:none; z-index:200;
+  transition:opacity .12s ease, transform .12s ease;
+}
+.topnav a[data-tip]:hover::after{
+  opacity:1; visibility:visible; transform:translateX(-50%) translateY(0);
+}
 
 /* ===== 章節 ===== */
 section{margin:40px 0;}
@@ -200,14 +215,15 @@ footer .line{color:var(--accent);}
 <nav class="topnav">
   <div class="wrap">
     <span class="brand">❄️ 空調報告</span>
-    <a href="#compare">⚖️ 揀機比較</a>
-    <a href="#table">📊 統合總表</a>
-    <a href="#verify">✅ 官方驗證</a>
-    <a href="#energy">⚡ 能源分析</a>
-    <a href="#rank">📈 排名</a>
-    <a href="#recommend">🏆 推薦</a>
-    <a href="#price">💰 價格</a>
-    <a href="#source">📝 來源</a>
+    <a href="#compare" data-tip="互動比較器：揀機即時對比">⚖️ 揀機比較</a>
+    <a href="#table" data-tip="核心 29 型號統合總表">📊 統合總表</a>
+    <a href="#energy" data-tip="能源標籤級別分析">⚡ 能源分析</a>
+    <a href="#rank" data-tip="能源效益及用戶評價排名">📈 排名</a>
+    <a href="#recommend" data-tip="按場景最終推薦">🏆 推薦</a>
+    <a href="#price" data-tip="官方網店價 vs Price 實價">💰 價格</a>
+    <a href="#official" data-tip="8 品牌官網核實 282 型號">🏭 官網核實</a>
+    <a href="#verify" data-tip="EMSD 官方驗證結果">✅ 官方驗證</a>
+    <a href="#source" data-tip="資料來源及免責聲明">📝 來源</a>
   </div>
 </nav>
 
@@ -328,6 +344,18 @@ footer .line{color:var(--accent);}
 </tr>
 <tr>
 <td>9</td>
+<td><a href="#-品牌官網核實2026-08-15">🏭 品牌官網核實</a></td>
+</tr>
+<tr>
+<td>10</td>
+<td><a href="#-官方驗證結果2026-08-12-全量核實">✅ 官方驗證結果</a></td>
+</tr>
+<tr>
+<td>11</td>
+<td><a href="#-gemini-ai-補充資料2026-08-12--第二版">🤖 Gemini AI 補充資料</a></td>
+</tr>
+<tr>
+<td>12</td>
 <td><a href="#-資料來源">📝 來源 + 免責</a></td>
 </tr>
 </tbody>
@@ -2813,7 +2841,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
   // 導覽用 id（頂部導覽列）
   const navMap={'統合對比總表':'table','官方驗證結果':'verify','能源標籤分析':'energy',
-    '排名':'rank','最終推薦':'recommend','價格驗證':'price','資料來源':'source',
+    '排名':'rank','最終推薦':'recommend','價格驗證':'price','品牌官網核實':'official','資料來源':'source',
     '定頻 vs 變頻':'compare-base'};
   // 為所有章節標題加 slug id（md 目錄超鏈接用）+ 導覽 id（雙錨點並存）
   const used = new Set();
@@ -2858,6 +2886,24 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if(fixed) a.setAttribute('href', '#' + fixed);
     }
   });
+  // Scrollspy：滾動時高亮導覽列當前章節
+  const navLinks=[...document.querySelectorAll('.topnav a[href^="#"]')];
+  function scrollSpy(){
+    const y=window.scrollY + 110;
+    let cur=null;
+    for(const a of navLinks){
+      const el=document.getElementById((a.getAttribute('href')||'').slice(1));
+      if(!el) continue;
+      const top=el.getBoundingClientRect().top + window.scrollY;
+      if(top <= y) cur=a;
+    }
+    navLinks.forEach(a=>a.classList.toggle('active', a===cur));
+  }
+  let spyTicking=false;
+  window.addEventListener('scroll',()=>{
+    if(!spyTicking){ spyTicking=true; requestAnimationFrame(()=>{scrollSpy(); spyTicking=false;}); }
+  },{passive:true});
+  scrollSpy();
   // 自製平滑捲動（rAF 動畫，所有環境可靠）
   function smoothScrollTo(y){
     const start = window.scrollY;
