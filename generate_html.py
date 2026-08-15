@@ -433,7 +433,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>香港空調對比報告</title>
 <meta property="og:title" content="香港空調對比報告 · 1,854 型號 · EMSD + 官網核實">
-<meta property="og:description" content="香港市場 1,854 個空調型號全面對比：窗口式 / 分體式 / 流動式，EMSD 官方能源數據 + 8 品牌官網 282 型號核實，18 項屬性互動比較器。">
+<meta property="og:description" content="香港市場 1,854 個空調型號全面對比：窗口式 / 分體式 / 流動式，EMSD 官方能源數據 + 8 品牌官網 220 型號核實，18 項屬性互動比較器。">
 <meta property="og:type" content="website">
 <meta name="description" content="香港空調對比報告：1,854 型號 · EMSD 官方能源標籤全量核實 · 8 品牌官網核實 · 互動比較器">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>❄️</text></svg>">
@@ -669,7 +669,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
     <a href="#rank" data-tip="能源效益及用戶評價排名">📈 排名</a>
     <a href="#recommend" data-tip="按場景最終推薦">🏆 推薦</a>
     <a href="#price" data-tip="官方網店價 vs Price 實價">💰 價格</a>
-    <a href="#official" data-tip="8 品牌官網核實 282 型號">🏭 官網核實</a>
+    <a href="#official" data-tip="8 品牌官網核實 220 型號">🏭 官網核實</a>
     <a href="#verify" data-tip="EMSD 官方驗證結果">✅ 官方驗證</a>
     <a href="#source" data-tip="資料來源及免責聲明">📝 來源</a>
   </div>
@@ -746,7 +746,7 @@ __CONTENT__
 
 <footer>
   <b>香港空調對比報告</b><br>
-  能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 282 型號
+  能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號
 
   <div class="blk">
     <h3>🔓 開源項目說明</h3>

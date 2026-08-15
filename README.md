@@ -2,7 +2,7 @@
 
 > 香港市場空調（窗口式 / 分體式 / 流動式；淨冷/冷暖、定頻/變頻）全面對比
 > **能源級別、雪種、年耗電已用機電署 EMSD 官方資料庫（1,927 型號）全量核實**
-> **282 個型號已直接經品牌官網/官方網店/總代理逐型號核實（2026-08-15）**
+> **220 個型號已直接經品牌官網/官方網店/總代理逐型號核實（2026-08-15）**
 
 ## 🚀 立即使用
 
@@ -26,7 +26,7 @@
 | 有價格型號 | 1,847（Price.com.hk 實價連結） |
 | 有尺寸型號 | 1,676 |
 | EMSD 官方核實型號 | 1,927（全量） |
-| 品牌官網核實型號 | 282（8 品牌） |
+| 品牌官網核實型號 | 220（8 品牌） |
 | 對比屬性 | 18 項 |
 
 ## 🏭 品牌官網核實（2026-08-15）
@@ -35,8 +35,8 @@
 |------|---------|-------|
 | Carrier 開利 / Canopus 肯特 | century-carrier.com 世紀開利 | 79 |
 | Rasonic 樂信 | shew.com.hk 信興 + rasonicshop.hk 官方網店 | 50 |
-| Panasonic 樂聲 | panasonic.hk + 信興 eShop | 44 |
-| COMFEE | feelcomfee.com | 19 |
+| Panasonic 樂聲 | panasonic.hk + 信興 eShop | 25 |
+| COMFEE | feelcomfee.com | 18 |
 | GENERAL 珍寶 | general-aircon.com 總代理（第一電業） | 16 |
 | HITACHI 日立 | hitachi-homeappliances.com.hk | 16 |
 | Midea 美的 | mideahk.com | 12 |
