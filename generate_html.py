@@ -329,6 +329,46 @@ def kw_to_hp(kw):
     return '2.5匹+'
 
 
+# EMSD CSV 品牌名 → 統一格式（同核心 29 型號一致，避免品牌選項分裂）
+BRAND_MAP = {
+    '開利': 'Carrier 開利',
+    '肯特': 'CANOPUS 肯特',
+    '樂信牌': 'Rasonic 樂信',
+    '格力': 'Gree 格力',
+    '大松': 'TOSOT 大松',
+    'Panasonic': 'Panasonic 樂聲',
+    '美的': 'Midea 美的',
+    '日立牌': 'HITACHI 日立',
+    '珍寶': 'General 珍寶',
+    "Comfee'": 'COMFEE',
+    '富士電機': 'FUJI 富士',
+    '東芝': 'TOSHIBA 東芝',
+    '三菱重工': 'MITSUBISHI HEAVY 三菱重工',
+    '三菱電機': 'MITSUBISHI ELECTRIC 三菱電機',
+    '三星': 'SAMSUNG 三星',
+    '大金': 'DAIKIN 大金',
+    '惠而浦': 'WHIRLPOOL 惠而浦',
+    '伊萊克斯': 'ELECTROLUX 伊萊克斯',
+    '聲寶': 'SHARP 聲寶',
+    '約克': 'YORK 約克',
+    '海爾': 'HAIER 海爾',
+    '奧克斯': 'AUX 奧克斯',
+    '麥克維爾': 'McQUAY 麥克維爾',
+    'Trane': 'TRANE',
+    '韓國現代': 'HYUNDAI 現代',
+    'PHILIPS': 'PHILIPS 飛利浦',
+    '豐澤牌': 'FORTRESS 豐澤牌',
+    'LG': 'LG',
+    'TCL': 'TCL',
+    'White-Westinghouse': 'WHITE-WESTINGHOUSE',
+}
+
+
+def normalize_brand(b):
+    """統一品牌名稱"""
+    return BRAND_MAP.get(b.strip(), b.strip())
+
+
 def load_prices():
     """載入 Price.com.hk 價格庫（prices.json：型號 → {price, pid}）"""
     p = os.path.join(BASE, 'prices.json')
@@ -358,7 +398,7 @@ def load_emsd_models():
     out = []
     seen = set()
     for r in rows:
-        brand, model = r[0].strip(), r[1].strip()
+        brand, model = normalize_brand(r[0]), r[1].strip()
         mk = norm_model(model)
         if not mk or mk in core_keys or mk in seen:
             continue
@@ -717,7 +757,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
           <option value="">全部品牌</option>
         </select>
         <select id="fMount" onchange="resetShown();renderList()">
-          <option value="">全部機型</option><option>窗口式</option><option>掛牆分體式</option><option>窗口分體式</option><option>座地/移動式</option><option>多聯式</option>
+          <option value="">全部機型</option><option>窗口式</option><option>掛牆分體式</option><option>窗口分體式</option><option>座地/移動式</option><option>多聯式</option><option>天花式</option><option>分體式</option><option>流動式</option>
         </select>
         <select id="fHp" onchange="resetShown();renderList()">
           <option value="">全部匹數</option><option>3/4匹</option><option>1匹</option><option>1.5匹</option><option>2匹</option><option>2.5匹+</option>
@@ -1127,11 +1167,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 // 初始化：填充品牌下拉 + 渲染 + 動態統計
 (function(){
+  const counts={};
+  ALL.forEach(m=>counts[m.brand]=(counts[m.brand]||0)+1);
   const brands=[...new Set(ALL.map(m=>m.brand))].sort();
   const sel=document.getElementById('fBrand');
   brands.forEach(b=>{
     const o=document.createElement('option');
-    o.value=b; o.textContent=b;
+    o.value=b; o.textContent=`${b}（${counts[b]}）`;
     sel.appendChild(o);
   });
   document.getElementById('btnCompare').disabled = true;
