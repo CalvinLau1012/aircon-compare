@@ -324,7 +324,7 @@ footer .line{color:var(--accent);}
 </tr>
 <tr>
 <td>8</td>
-<td><a href="#-獨立價格驗證">💰 價格驗證</a></td>
+<td><a href="#price">💰 價格驗證</a></td>
 </tr>
 <tr>
 <td>9</td>
@@ -2794,6 +2794,9 @@ function closePanel(){document.getElementById('panel').classList.remove('open');
 
 // 將 markdown 表格包裝成可橫向捲動容器（手機友好）
 document.addEventListener('DOMContentLoaded', ()=>{
+  // 重置會殘留於 reload 嘅 checkbox（瀏覽器會保留 checked 狀態）
+  const fso = document.getElementById('fSelOnly');
+  if(fso) fso.checked = false;
   document.querySelectorAll('.md-content table').forEach(t=>{
     if(!t.closest('.table-scroll')){
       const w=document.createElement('div');
@@ -2810,7 +2813,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
   // 導覽用 id（頂部導覽列）
   const navMap={'統合對比總表':'table','官方驗證結果':'verify','能源標籤分析':'energy',
-    '排名':'rank','最終推薦':'recommend','獨立價格驗證':'price','資料來源':'source',
+    '排名':'rank','最終推薦':'recommend','價格驗證':'price','資料來源':'source',
     '定頻 vs 變頻':'compare-base'};
   // 為所有章節標題加 slug id（md 目錄超鏈接用）+ 導覽 id（雙錨點並存）
   const used = new Set();
