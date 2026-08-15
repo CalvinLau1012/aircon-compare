@@ -213,7 +213,7 @@ SPECS_OVERRIDE = {
 def load_official():
     """載入品牌官網核實數據（official_specs.json + rasonic_official.json）"""
     out = {}
-    for fname in ('official_specs.json', 'rasonic_official.json', 'pana_official.json', 'midea_official.json'):
+    for fname in ('official_specs.json', 'rasonic_official.json', 'pana_official.json', 'midea_official.json', 'shew_official.json'):
         p = os.path.join(BASE, fname)
         if os.path.exists(p):
             with open(p, encoding='utf-8') as f:
@@ -238,6 +238,8 @@ def apply_official(m):
         m['size'] = of['size'].replace('x', '×').replace('*', '').strip()
     if of.get('weight'):
         m['weight'] = of['weight'].replace('公斤', 'kg').strip()
+    if of.get('warranty'):
+        m['warranty'] = of['warranty'].strip()
     if of.get('price') and str(of.get('price')).startswith('HK$'):
         try:
             v = float(str(of['price'])[3:].replace(',', ''))
