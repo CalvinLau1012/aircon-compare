@@ -8,6 +8,7 @@
 """
 import json
 import os
+import csv
 import markdown
 import re
 
@@ -128,21 +129,77 @@ def md_to_html(md_text):
     return html
 
 
+def norm_model(s):
+    return re.sub(r'[^A-Z0-9]', '', s.upper())
+
+
+def kw_to_hp(kw):
+    """製冷量 kW → 匹數（約算）"""
+    try:
+        k = float(kw)
+    except (ValueError, TypeError):
+        return ''
+    if k < 2.3:
+        return '3/4匹'
+    if k < 3.2:
+        return '1匹'
+    if k < 4.4:
+        return '1.5匹'
+    if k < 6.1:
+        return '2匹'
+    return '2.5匹+'
+
+
+def load_emsd_models():
+    """讀取 EMSD 官方 CSV，轉為比較器數據（核心 29 型號去重）"""
+    csv_path = os.path.join(BASE, 'emsd_空調能源標籤.csv')
+    rows = list(csv.reader(open(csv_path, encoding='utf-8-sig')))[1:]
+    rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
+    core_keys = set(norm_model(m['model']) for m in MODELS)
+    out = []
+    seen = set()
+    for r in rows:
+        brand, model = r[0].strip(), r[1].strip()
+        mk = norm_model(model)
+        if not mk or mk in core_keys or mk in seen:
+            continue
+        seen.add(mk)
+        try:
+            kw = float(r[6])
+        except (ValueError, TypeError):
+            kw = 0.0
+        btu = f"{kw*3412:,.0f}" if kw else '待查'
+        out.append({
+            'brand': brand, 'model': model,
+            'hp': kw_to_hp(kw), 'btu': btu,
+            'type': '變頻' if '是' in str(r[14]) else '定頻',
+            'energy': (r[4] + '級') if str(r[4]).strip().isdigit() else str(r[4]),
+            'wifi': '', 'price': None,
+            'kwh': r[5], 'cspf': r[7], 'kw': r[6], 'gas': r[8],
+            'noise': '', 'size': '', 'weight': '', 'warranty': '',
+            'note': 'EMSD 官方登記', 'ref': r[2], 'provider': r[13],
+        })
+    return out
+
+
 def build_html():
     with open(os.path.join(BASE, '空調對比報告.md'), encoding='utf-8') as f:
         md_text = f.read()
     content_html = md_to_html(md_text)
 
+    emsd_models = load_emsd_models()
     models_json = json.dumps(MODELS, ensure_ascii=False)
+    emsd_json = json.dumps(emsd_models, ensure_ascii=False, separators=(',', ':'))
     fields_json = json.dumps(COMPARE_FIELDS, ensure_ascii=False)
 
     html = HTML_TEMPLATE.replace('__CONTENT__', content_html) \
                         .replace('__MODELS_JSON__', models_json) \
+                        .replace('__EMSD_JSON__', emsd_json) \
                         .replace('__FIELDS_JSON__', fields_json)
     out = os.path.join(BASE, '空調對比報告.html')
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html)
-    print('已生成：', out, f'（{os.path.getsize(out)/1024:.0f} KB）')
+    print('已生成：', out, f'（{os.path.getsize(out)/1024:.0f} KB）· 型號總數 {len(MODELS) + len(emsd_models)}')
 
 
 HTML_TEMPLATE = r"""<!DOCTYPE html>
@@ -265,6 +322,14 @@ ul,ol{margin:8px 0 8px 24px;}
   white-space:nowrap; width:120px;}
 .panel .phint{text-align:center; color:var(--muted); padding:14px; font-size:.9em;}
 
+/* ===== 格價連結 + 顯示更多 ===== */
+.plink{color:var(--primary2); text-decoration:underline; font-size:.82em; white-space:nowrap;}
+.plink:hover{color:var(--accent);}
+.more-wrap{text-align:center; padding:10px 12px; border-top:1px solid var(--line);}
+#btnMore{background:var(--primary); color:#fff; border:none; padding:8px 22px;
+  border-radius:20px; cursor:pointer; font-size:.9em; box-shadow:0 2px 6px rgba(15,61,92,.2);}
+#btnMore:hover{background:var(--accent); color:var(--primary);}
+
 /* ===== 返回頂部 ===== */
 #backTop{position:fixed; right:16px; bottom:20px; width:44px; height:44px;
   background:var(--primary); color:#fff; border:2px solid var(--accent);
@@ -310,10 +375,10 @@ footer .line{color:var(--accent);}
     <h1>香港窗口式淨冷型遙控空調</h1>
     <div class="sub">統合對比報告 · 29 型號全面剖析</div>
     <div class="stats">
-      <div><div class="n">29</div><div class="l">型號收錄</div></div>
+      <div><div class="n">1,927</div><div class="l">EMSD 官方型號</div></div>
+      <div><div class="n">29</div><div class="l">精選對比型號</div></div>
       <div><div class="n">16</div><div class="l">定頻機型</div></div>
       <div><div class="n">13</div><div class="l">變頻機型</div></div>
-      <div><div class="n">1,927</div><div class="l">EMSD 官方核實</div></div>
     </div>
     <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· Price.com.hk · 豐澤 · 電器幫 · 百老匯 · Gemini 交叉驗證</div>
     <div class="date">📅 2026 年 8 月 12 日 更新版</div>
@@ -352,23 +417,30 @@ footer .line{color:var(--accent);}
       <button onclick="selectInverter()">選全部變頻</button>
       <button onclick="selectFixed()">選全部定頻</button>
       <div class="filters">
-        <input type="search" id="q" placeholder="🔍 搜尋品牌/型號" oninput="renderList()">
-        <select id="sortBy" onchange="renderList()">
+        <input type="search" id="q" placeholder="🔍 搜尋品牌/型號" oninput="resetShown();renderList()">
+        <select id="sortBy" onchange="resetShown();renderList()">
           <option value="">預設排序</option>
           <option value="price">價格 低→高</option>
           <option value="energy">能源級別 優→劣</option>
           <option value="kwh">年耗電 低→高</option>
           <option value="cspf">CSPF 高→低</option>
         </select>
-        <select id="fHp" onchange="renderList()">
-          <option value="">全部匹數</option><option>1匹</option><option>1.5匹</option><option>2匹</option><option>2.5匹</option>
+        <select id="fBrand" onchange="resetShown();renderList()">
+          <option value="">全部品牌</option>
         </select>
-        <select id="fType" onchange="renderList()">
+        <select id="fHp" onchange="resetShown();renderList()">
+          <option value="">全部匹數</option><option>3/4匹</option><option>1匹</option><option>1.5匹</option><option>2匹</option><option>2.5匹+</option>
+        </select>
+        <select id="fType" onchange="resetShown();renderList()">
           <option value="">全部類型</option><option>變頻</option><option>定頻</option>
+        </select>
+        <select id="fEnergy" onchange="resetShown();renderList()">
+          <option value="">全部能源級別</option><option>1級</option><option>2級</option><option>3級</option><option>4級</option><option>5級</option>
         </select>
       </div>
     </div>
     <div class="model-list" id="modelList"></div>
+    <div class="more-wrap"><button id="btnMore" onclick="showMore()">顯示更多型號</button></div>
   </div>
 
   <!-- 比較面板 -->
@@ -402,17 +474,25 @@ __CONTENT__
 
 <script>
 const MODELS = __MODELS_JSON__;
+const EMSD_EXTRA = __EMSD_JSON__;
+const ALL = MODELS.concat(EMSD_EXTRA);
 const FIELDS = __FIELDS_JSON__;
 let selected = new Set();
+let shown = 60;
 
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function resetShown(){shown = 60;}
 
 function matches(m){
   const q=document.getElementById('q').value.trim().toLowerCase();
   const hp=document.getElementById('fHp').value;
   const ty=document.getElementById('fType').value;
+  const br=document.getElementById('fBrand').value;
+  const en=document.getElementById('fEnergy').value;
   if(hp && m.hp!==hp) return false;
   if(ty && m.type!==ty) return false;
+  if(br && m.brand!==br) return false;
+  if(en && m.energy!==en) return false;
   if(q && !(m.brand.toLowerCase().includes(q)||m.model.toLowerCase().includes(q))) return false;
   return true;
 }
@@ -435,20 +515,33 @@ function sortModels(arr){
 
 function renderList(){
   const list=document.getElementById('modelList');
-  let arr=sortModels(MODELS.filter(matches));
-  list.innerHTML=arr.map((m)=>{
+  const arr=sortModels(ALL.filter(matches));
+  const vis=arr.slice(0, shown);
+  list.innerHTML=vis.map((m)=>{
     const id=m.brand+'|'+m.model;
     const on=selected.has(id);
+    const priceHtml = m.price
+      ? esc(m.price)
+      : `<a class="plink" href="https://www.price.com.hk/search.php?g=A&q=${encodeURIComponent(m.model)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">💰 格價</a>`;
+    const wifiBadge = m.type==='變頻'?'🔷':'🔶';
+    const energyTxt = m.energy ? esc(m.energy) : '—';
     return `<label class="mitem ${on?'checked':''}">
       <input type="checkbox" ${on?'checked':''} onchange="toggle('${esc(id)}',this)">
       <span class="info">
         <span class="name">${esc(m.brand)} ${esc(m.model)}</span><br>
-        <span class="tag">${esc(m.hp)} · ${esc(m.btu)} BTU · ${esc(m.type)} · ${esc(m.energy)} · ${esc(m.price)}</span>
+        <span class="tag">${esc(m.hp||'?匹')} · ${esc(m.btu)} BTU · ${esc(m.type)} · ${energyTxt} · ${priceHtml}</span>
       </span>
-      <span class="badge">${m.type==='變頻'?'🔷':'🔶'} ${esc(m.energy)}</span>
+      <span class="badge">${wifiBadge} ${energyTxt}</span>
     </label>`;
   }).join('')||'<div class="phint">冇符合嘅型號</div>';
+  const btn=document.getElementById('btnMore');
+  if(btn){
+    if(arr.length>shown){ btn.style.display='block'; btn.textContent=`顯示更多（仲有 ${arr.length-shown} 個）`; }
+    else btn.style.display='none';
+  }
 }
+
+function showMore(){ shown += 100; renderList(); }
 
 function toggle(id,el){
   if(el.checked) selected.add(id); else selected.delete(id);
@@ -469,7 +562,7 @@ function updateUI(){
 }
 
 function selectedModels(){
-  return MODELS.filter(m=>selected.has(m.brand+'|'+m.model));
+  return ALL.filter(m=>selected.has(m.brand+'|'+m.model));
 }
 
 function buildPanel(){
@@ -477,15 +570,21 @@ function buildPanel(){
   const body=document.getElementById('panelBody');
   const rows=[['<b>屬性</b>', ...list.map(m=>`<b>${esc(m.brand)}<br>${esc(m.model)}</b>`)]];
   for(const [key,label] of FIELDS){
-    rows.push([label, ...list.map(m=>esc(m[key]))]);
+    rows.push([label, ...list.map(m=>{
+      const v=m[key];
+      const txt=(v===null||v===undefined||v==='')?'待查':String(v);
+      return key==='price' && txt==='待查'
+        ? `<a href="https://www.price.com.hk/search.php?g=A&q=${encodeURIComponent(m.model)}" target="_blank" rel="noopener">💰 格價</a>`
+        : esc(txt);
+    })]);
   }
   body.innerHTML=`<table><thead><tr>${rows[0].map(h=>`<th>${h}</th>`).join('')}</tr></thead>
     <tbody>${rows.slice(1).map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
 }
 
 function clearAll(){selected.clear(); updateUI();}
-function selectInverter(){selected=new Set(MODELS.filter(m=>m.type==='變頻').map(m=>m.brand+'|'+m.model)); updateUI();}
-function selectFixed(){selected=new Set(MODELS.filter(m=>m.type==='定頻').map(m=>m.brand+'|'+m.model)); updateUI();}
+function selectInverter(){selected=new Set(ALL.filter(m=>m.type==='變頻').slice(0,50).map(m=>m.brand+'|'+m.model)); updateUI();}
+function selectFixed(){selected=new Set(ALL.filter(m=>m.type==='定頻').slice(0,50).map(m=>m.brand+'|'+m.model)); updateUI();}
 function closePanel(){document.getElementById('panel').classList.remove('open');}
 
 // 將 markdown 表格包裝成可橫向捲動容器（手機友好）
@@ -596,8 +695,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
 });
 
-// 初始化
-renderList();
+// 初始化：填充品牌下拉 + 渲染
+(function(){
+  const brands=[...new Set(ALL.map(m=>m.brand))].sort();
+  const sel=document.getElementById('fBrand');
+  brands.forEach(b=>{
+    const o=document.createElement('option');
+    o.value=b; o.textContent=b;
+    sel.appendChild(o);
+  });
+  renderList();
+})();
 
 // 返回頂部按鈕顯示
 window.addEventListener('scroll',()=>{
