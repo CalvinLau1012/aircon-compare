@@ -465,8 +465,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
 /* ===== 頂部導覽 ===== */
 .topnav{position:sticky; top:0; z-index:100; background:rgba(15,61,92,.97);
   backdrop-filter:blur(6px); border-bottom:2px solid var(--accent);}
-.topnav .wrap{display:flex; align-items:center; gap:4px; overflow-x:auto; padding:0 8px;}
-.topnav a{color:#DCE6F0; text-decoration:none; font-size:.86em; padding:14px 12px;
+.topnav .wrap{display:flex; align-items:center; gap:2px; overflow-x:auto; padding:0 8px;
+  scrollbar-width:none; -ms-overflow-style:none;}
+.topnav .wrap::-webkit-scrollbar{display:none;}
+.topnav a{color:#DCE6F0; text-decoration:none; font-size:.84em; padding:13px 10px;
   white-space:nowrap; flex:0 0 auto; transition:color .2s; position:relative;
   border-bottom:2px solid transparent; margin-bottom:-2px;}
 .topnav a:hover{color:var(--accent);}
