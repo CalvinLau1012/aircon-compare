@@ -665,7 +665,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
     <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · Price.com.hk 實價 1,847 型號 · LIHKG 連登討論摘錄</div>
-    <div class="date">📅 2026 年 8 月 15 日 更新版</div>
+    <div class="date">📅 2026 年 8 月 15 日 更新 · v1.0.0</div>
   </div>
 </header>
 
@@ -757,7 +757,7 @@ __CONTENT__
 </main>
 
 <footer>
-  <b>香港空調對比報告</b><br>
+  <b>香港空調對比報告 · v1.0.0</b><br>
   能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號
 
   <div class="blk">
