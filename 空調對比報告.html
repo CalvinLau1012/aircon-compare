@@ -2973,6 +2973,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
   // Scrollspy：滾動時高亮導覽列當前章節
   const navLinks=[...document.querySelectorAll('.topnav a[href^="#"]')];
+  let spyCur=null;
   function scrollSpy(){
     const y=window.scrollY + 110;
     let cur=null;
@@ -2983,12 +2984,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if(top <= y) cur=a;
     }
     navLinks.forEach(a=>a.classList.toggle('active', a===cur));
-    if(cur){
+    // 只橫向捲動導覽列本身，唔好牽連頁面上下位置
+    if(cur && cur!==spyCur){
       const navWrap=document.querySelector('.topnav .wrap');
       if(navWrap && navWrap.scrollWidth > navWrap.clientWidth){
-        cur.scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'});
+        const wr=navWrap.getBoundingClientRect();
+        const cr=cur.getBoundingClientRect();
+        navWrap.scrollTo({left: navWrap.scrollLeft + (cr.left + cr.width/2) - (wr.left + wr.width/2), behavior:'smooth'});
       }
     }
+    spyCur=cur;
   }
   let spyTicking=false;
   window.addEventListener('scroll',()=>{
