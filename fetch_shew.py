@@ -1,11 +1,11 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """信興官網 shew.com.hk Rasonic/FROSTAR/Panasonic 窗口機規格抓取"""
 import json, re, ssl, sys, io, urllib.request, urllib.error, time, os
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+from crawl_utils import BOT_UA
 CTX = ssl.create_default_context(); CTX.check_hostname = False; CTX.verify_mode = ssl.CERT_NONE
 def get(u):
-    req = urllib.request.Request(u, headers={'User-Agent':'Mozilla/5.0 (compatible; AirconCompareBot/1.0; +https://github.com/CalvinLau1012/aircon-compare) AppleWebKit/537.36 Chrome/148.0 Safari/537.36','Accept-Language':'zh-HK,zh;q=0.9'})
+    req = urllib.request.Request(u, headers={'User-Agent':BOT_UA,'Accept-Language':'zh-HK,zh;q=0.9'})
     last = None
     for attempt in range(3):
         try:
@@ -32,6 +32,8 @@ def grab(t, kws, n=80):
     return ''
 
 def main():
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     urls = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shew_urls.json'), encoding='utf-8'))
     out = {}
     for url in urls:

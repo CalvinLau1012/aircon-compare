@@ -18,18 +18,12 @@ import urllib.error
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from crawl_utils import BOT_UA as UA, norm_model
+
 BASE = os.path.dirname(os.path.abspath(__file__))
 PRICES_PATH = os.path.join(BASE, 'prices.json')
 REPORT_PATH = os.path.join(BASE, 'verify_report.json')
 PROGRESS_PATH = os.path.join(BASE, 'verify_progress.json')
-
-UA = ('Mozilla/5.0 (compatible; AirconCompareBot/1.0; '
-      '+https://github.com/CalvinLau1012/aircon-compare) '
-      'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0 Safari/537.36')
-
-
-def norm_model(s):
-    return re.sub(r'[^A-Z0-9]', '', s.upper())
 
 
 def _get(url):

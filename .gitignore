@@ -8,6 +8,19 @@ __pycache__/
 *.pyc
 .venv/
 
+# 測試
+.pytest_cache/
+
+# 生成物（generate_html.py 產生，同 index.html 完全重複；離線版請用 index.html）
+空調對比報告.html
+
+# WSL1 安裝任務嘅臨時腳本/日誌（唔屬於本專案，任務完成後可刪）
+enable-wsl1-admin.ps1
+wsl1-setup-dsh.ps1
+wsl1-dsh-setup.sh
+wsl1-orchestrator.log
+wsl1-setup.log
+
 # 系統
 Thumbs.db
 desktop.ini

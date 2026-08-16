@@ -6,7 +6,6 @@
 """
 import urllib.request
 import urllib.error
-import re
 import csv
 import json
 import os
@@ -14,6 +13,8 @@ import random
 import sys
 import time
 from html.parser import HTMLParser
+
+from crawl_utils import BOT_UA, norm_model
 
 BASE = 'https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50&p='
 
@@ -56,8 +57,7 @@ class TableParser(HTMLParser):
 def fetch_page(p):
     url = BASE + str(p)
     req = urllib.request.Request(url, headers={
-        'User-Agent': ('Mozilla/5.0 (compatible; AirconCompareBot/1.0; '
-                       '+https://github.com/CalvinLau1012/aircon-compare)'),
+        'User-Agent': BOT_UA,
         'Accept-Language': 'zh-HK,zh;q=0.9,en;q=0.5'})
     last = None
     for attempt in range(3):
@@ -101,8 +101,7 @@ def detect_new_models(all_rows):
     csv_path = os.path.join(base, 'emsd_空調能源標籤.csv')
     new_path = os.path.join(base, 'new_models.json')
 
-    def nk(s):
-        return re.sub(r'[^A-Z0-9]', '', str(s).upper())
+    nk = norm_model  # 型號規範化（crawl_utils 共用）
 
     # 舊 CSV 型號集合
     old_keys = set()

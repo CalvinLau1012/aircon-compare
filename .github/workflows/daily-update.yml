@@ -32,6 +32,12 @@ jobs:
       - name: 安裝依賴
         run: pip install -r requirements.txt
 
+      # 代碼回歸測試（早啲 fail，唔好等到後面先發現壞咗）
+      - name: 單元測試
+        run: |
+          pip install pytest -q
+          python -m pytest tests/ -q
+
       # 每日輕量偵測：EMSD 官方資料庫 + 新機 diff（有新機自動入隊列）
       - name: 抓取 EMSD + 新機偵測
         run: python fetch_emsd.py

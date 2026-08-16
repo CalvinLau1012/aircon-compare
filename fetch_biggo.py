@@ -22,15 +22,12 @@ import urllib.error
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from crawl_utils import BOT_UA as UA, norm_model, load_models
+
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT_PATH = os.path.join(BASE, 'biggo_prices.json')
 
 API = 'https://api.biggo.com/api/v1/spa/search/{}/product'
-
-# 誠實 Bot UA（列明專案來源，方便官方聯絡）
-UA = ('Mozilla/5.0 (compatible; AirconCompareBot/1.0; '
-      '+https://github.com/CalvinLau1012/aircon-compare) '
-      'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0 Safari/537.36')
 
 # 冷氣相關關鍵字（排除 LoRa/RF 模組、相機配件等撞名產品）
 # 涵蓋「窗口機 / 分體機 / 流動式 / 淨冷 / 變頻」等唔含「冷氣/空調」嘅同義表述
@@ -42,10 +39,6 @@ AC_RE = re.compile(
 ACC_RE = re.compile(
     r'遙控|濾網|過濾|配件|說明書|支架|擋板|防塵|罩|remote|filter|parts?|cover|bracket',
     re.I)
-
-
-def norm_model(s):
-    return re.sub(r'[^A-Z0-9]', '', str(s).upper())
 
 
 def norm_title(s):
@@ -132,23 +125,6 @@ def fetch_biggo_price(model):
         'url': 'https://biggo.hk/s/?q=' + urllib.parse.quote(model),
         'updated': time.strftime('%Y-%m-%d'),
     }
-
-
-def load_models():
-    """EMSD CSV 型號清單（去重）"""
-    import csv
-    csv_path = os.path.join(BASE, 'emsd_空調能源標籤.csv')
-    rows = list(csv.reader(open(csv_path, encoding='utf-8-sig')))[1:]
-    rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
-    models, seen = [], set()
-    for r in rows:
-        m = r[1].strip()
-        k = norm_model(m)
-        if not k or k in seen:
-            continue
-        seen.add(k)
-        models.append(m)
-    return models
 
 
 def run_price_batch():

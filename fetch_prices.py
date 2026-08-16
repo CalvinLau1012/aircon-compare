@@ -5,7 +5,6 @@
 輸入：emsd_空調能源標籤.csv
 輸出：prices.json {型號: "$X,XXX - Y,YYY"}
 """
-import csv
 import json
 import os
 import random
@@ -16,20 +15,13 @@ import urllib.request
 import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from crawl_utils import BOT_UA as UA, norm_model, load_models
+
 BASE = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE, 'emsd_空調能源標籤.csv')
 OUT_PATH = os.path.join(BASE, 'prices.json')
 META_PATH = os.path.join(BASE, 'prices_meta.json')
 COOLDOWN_HOURS = 48  # 限流冷卻期：熔斷後 48 小時內唔再試
-
-# 誠實 Bot UA（列明專案來源，方便網站管理員聯絡）
-UA = ('Mozilla/5.0 (compatible; AirconCompareBot/1.0; '
-      '+https://github.com/CalvinLau1012/aircon-compare) '
-      'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0 Safari/537.36')
-
-
-def norm_model(s):
-    return re.sub(r'[^A-Z0-9]', '', s.upper())
 
 
 def fetch_price(model):
@@ -133,22 +125,6 @@ def price_batch_active():
     return bool(meta.get('price_batch_start')) and meta.get('price_batch_idx', 0) < PRICE_BATCH_DAYS
 
 
-def load_models():
-    """載入 EMSD CSV 型號清單（去重）"""
-    rows = list(csv.reader(open(CSV_PATH, encoding='utf-8-sig')))[1:]
-    rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
-    models = []
-    seen = set()
-    for r in rows:
-        m = r[1].strip()
-        k = norm_model(m)
-        if not k or k in seen:
-            continue
-        seen.add(k)
-        models.append(m)
-    return models
-
-
 def run_price_batch():
     """執行當日價錢批次（全量分 7 片，每日一片）"""
     meta = load_meta()
@@ -227,17 +203,7 @@ def main():
         print('🕐 冷卻期內，跳過 Price 抓取（48 小時後自動恢復）')
         return
 
-    rows = list(csv.reader(open(CSV_PATH, encoding='utf-8-sig')))[1:]
-    rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
-    models = []
-    seen = set()
-    for r in rows:
-        m = r[1].strip()
-        k = norm_model(m)
-        if not k or k in seen:
-            continue
-        seen.add(k)
-        models.append(m)
+    models = load_models()
     print(f'共 {len(models)} 個型號要查價')
 
     # 載入已有進度（斷點續跑）

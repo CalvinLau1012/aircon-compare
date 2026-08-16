@@ -1,4 +1,4 @@
-# ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/version-v1.1.0-2ea44f)
+# ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/version-v1.1.1-2ea44f)
 
 > 香港市場空調（窗口式 / 分體式 / 流動式；淨冷/冷暖、定頻/變頻）全面對比
 > **能源級別、雪種、年耗電已用機電署 EMSD 官方資料庫（1,927 型號）全量核實**
@@ -9,7 +9,7 @@
 
 **線上版**：<https://calvinlau1012.github.io/aircon-compare/> （GitHub Pages）
 
-**離線版**：下載 [`空調對比報告.html`](空調對比報告.html) 或 [`index.html`](index.html)，直接喺瀏覽器打開（單一檔案，可 email / WhatsApp 轉發）。
+**離線版**：下載 [`index.html`](index.html)，直接喺瀏覽器打開（單一檔案，可 email / WhatsApp 轉發）。
 
 ## ✨ 功能
 
@@ -64,6 +64,7 @@
 
 python generate_html.py        # 讀取 .md + JSON 資料庫 → 生成空調對比報告.html
 copy 空調對比報告.html index.html   # 同步 GitHub Pages 入口
+python -m pytest              # 跑單元測試（先 pip install -r requirements-dev.txt）
 
 ```
 
@@ -85,10 +86,13 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 | 檔案 | 說明 |
 | ------ | ------ |
-| `index.html` / `空調對比報告.html` | 網頁版報告（self-contained，無外部依賴） |
+| `index.html` | 網頁版報告（self-contained，無外部依賴；`空調對比報告.html` 為本機生成物，唔入庫） |
 | `空調對比報告.md` | Markdown 報告全文 |
 | `需求摘要.md` | 需求元文件 |
 | `generate_html.py` | 網頁生成器（md + JSON → HTML） |
+| `crawl_utils.py` | 共用工具（誠實 UA / 型號規範化 / 型號載入 / 退避重試） |
+| `validate_data.py` | 數據驗證閘門（自動更新防壞數據） |
+| `tests/` · `requirements-dev.txt` | 單元測試 + 開發依賴（pytest） |
 | `emsd_空調能源標籤.csv` | EMSD 官方資料庫快照（1,927 型號） |
 | `prices.json` / `specs_emsd.json` | Price 實價 / 規格資料庫 |
 | `biggo_prices.json` | BigGo 官方 JSON API 價錢快照（731 型號） |
@@ -140,6 +144,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 | 版本 | 日期 | 重點 |
 | --- | --- | --- |
+| **v1.1.1** | 2026-08-16 | 修正 TOSOT/Gree 規格被重複 dict key 覆蓋丟失；代碼重構（crawl_utils 共用 + 單元測試 + XSS 加固 + 版本號單一來源） |
 | **v1.1.0** | 2026-08-16 | BigGo 官方 JSON API 全量實抓（731 型號）+ 深海女仆（DeepSeek 鯨魚娘）主題 UI |
 | **v1.0.0** | 2026-08-15 | 正式版：全量 1,854 型號 + 官網核實 220 + 互動比較器 + 論壇討論精華 + GitHub Pages |
 | v0.2.0 | 2026-08-12 | EMSD 全量 1,927 型號核實（能源/雪種/耗電） |
@@ -149,7 +154,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 | 日期 | 重點 |
 | ------ | ------ |
-| 2026-08-16 | BigGo 改用官方 JSON API（`fetch_biggo.py` 重寫）；修復分體機型號斜杠未編碼導致 403；全量實抓 731 型號 |
+| 2026-08-16 | 修正 TOSOT/Gree 尺寸/重量/遙控被重複 dict key 覆蓋丟失；代碼重構（`crawl_utils.py` 統一 UA/型號規範化/型號載入 + 單元測試 + XSS 加固 + 版本號單一來源）；清理 Gemini 廢棄雜物 |
 | 2026-08-16 | 新增**深海女仆（DeepSeek 鯨魚娘）主題 UI**：深海藍紫 + 金色配色、角色立繪、泡泡/海浪氛圍 |
 | 2026-08-16 | 開發困難與決策紀錄寫入 README（價錢源被封、Gemini 全量失敗、快照策略等） |
 | 2026-08-16 | 價錢源新增 **BigGo 香港格價**（多商戶報價，替代被 Cloudflare 攔截嘅 Price.com.hk） |

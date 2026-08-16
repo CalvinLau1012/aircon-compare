@@ -14,7 +14,10 @@ import markdown
 import re
 import base64
 
+from crawl_utils import norm_model
+
 BASE = os.path.dirname(os.path.abspath(__file__))
+VERSION = '1.1.1'  # 單一版本號來源（升級時只改呢度）
 
 # ============================================================
 # 型號資料庫（整合報告 + EMSD 官方）
@@ -126,11 +129,11 @@ SPECS_OVERRIDE = {
     'TA-09EOG': {'size': '350×451×675', 'warranty': '4/5年'},
     'TA-12EOG': {'size': '380×600×560', 'warranty': '4/5年'},
     'TA-18EOG': {'size': '428×660×680', 'warranty': '4/5年'},
-    # ---- TOSOT（官方商舖確認：450×350×580 闊高深、淨重32kg、遙控）----
-    'W09R5A': {'size': '350×450×580', 'weight': '32kg', 'remote': '✅'},
-    'W12R5A': {'size': '375×560×668', 'weight': '39kg', 'remote': '✅'},
-    'W18R5A': {'size': '428×660×700'},
-    'W24R5A': {'size': '428×660×770'},
+    # ---- TOSOT（官方商舖確認：450×350×580 闊高深、淨重32kg、遙控；零售商交叉核實保養 2年全機/5年壓縮機）----
+    'W09R5A': {'size': '350×450×580', 'weight': '32kg', 'remote': '✅', 'warranty': '2年全機/5年壓縮機'},
+    'W12R5A': {'size': '375×560×668', 'weight': '39kg', 'remote': '✅', 'warranty': '2年全機/5年壓縮機'},
+    'W18R5A': {'size': '428×660×700', 'warranty': '2年全機/5年壓縮機'},
+    'W24R5A': {'size': '428×660×770', 'warranty': '2年全機/5年壓縮機'},
     # ---- Carrier BE（豐澤）----
     'CHK09BE': {'size': '350×451×675', 'weight': '37.1kg', 'warranty': '4/5年'},
     'CHK12BE': {'size': '380×600×560', 'weight': '40.3kg', 'warranty': '4/5年'},
@@ -145,28 +148,17 @@ SPECS_OVERRIDE = {
     'RC-XG12': {'size': '375×560×668', 'weight': '39kg'},
     # ---- FUJI（豐澤確認「可遙控」）----
     'RFR18FNTN': {'size': '428×660×705', 'remote': '✅'},
-    # ---- COMFEE（官網 feelcomfee 確認尺寸/液晶遙控/IoT）----
-    'CWF-09CRFN8-AD5': {'size': '350×451×675', 'remote': '✅'},
-    'CWF-12CRFN8-AD5': {'size': '350×451×675', 'weight': '35.9kg', 'remote': '✅'},
-    'CWF-18CRFN8-AD5': {'size': '428×660×780', 'remote': '✅'},
     # ---- Carrier EAVXP（世紀開利官網確認「淨冷遙控型」）----
     'CHK09EAVXP': {'size': '350×450×675', 'remote': '✅'},
     'CHK12EAVXP': {'size': '350×450×675', 'remote': '✅'},
     'CHK18EAVX': {'size': '428×660×780', 'remote': '✅'},
     # ---- Midea CRF8B（官方商舖確認 Wi-Fi 遙控變頻淨冷）----
     'MW-09CRF8B': {'size': '350×451×675', 'remote': '✅'},
-    # ---- Gree（官方商舖確認 GWF12DB：39kg、3年、Wi-Fi、無線遙控）----
-    'GWF09P': {'size': '350×450×640', 'remote': '✅'},
-    'GWF12DB': {'size': '375×560×708', 'weight': '39kg', 'warranty': '3年+', 'remote': '✅'},
+    # ---- Gree（官方商舖確認 GWF12DB：39kg、3年、Wi-Fi、無線遙控；零售商交叉核實壓縮機永久保養）----
+    'GWF09P': {'size': '350×450×640', 'remote': '✅', 'warranty': '3年全機/壓縮機永久'},
+    'GWF12DB': {'size': '375×560×708', 'weight': '39kg', 'warranty': '3年全機/壓縮機永久', 'remote': '✅'},
     # ---- General（Price og）----
     'AMWB12NID': {'size': '375×560×708'},
-    # ---- Gree/TOSOT（零售商規格交叉核實：BUILT-IN PRO + 友和 + Price，2026-08-15）----
-    'W09R5A': {'warranty': '2年全機/5年壓縮機'},
-    'W12R5A': {'warranty': '2年全機/5年壓縮機'},
-    'W18R5A': {'warranty': '2年全機/5年壓縮機'},
-    'W24R5A': {'warranty': '2年全機/5年壓縮機'},
-    'GWF09P': {'warranty': '3年全機/壓縮機永久'},
-    'GWF12DB': {'warranty': '3年全機/壓縮機永久', 'weight': '39kg'},
     # ---- Panasonic（官網確認：90AA 29kg、5年壓縮機；120AA 47kg）----
     'CW-HU90AA': {'size': '346×450×640', 'weight': '29kg', 'warranty': '3/5年'},
     'CW-HU120AA': {'size': '400×600×710', 'weight': '47kg'},
@@ -310,10 +302,6 @@ def md_to_html(md_text):
     return html
 
 
-def norm_model(s):
-    return re.sub(r'[^A-Z0-9]', '', s.upper())
-
-
 def kw_to_hp(kw):
     """製冷量 kW → 匹數（約算）"""
     try:
@@ -429,8 +417,13 @@ def update_status():
     except Exception:
         pass
     last_run = meta.get('last_run') or '2026-08-15'
-    return ('📅 2026 年 8 月 16 日 更新 · v1.1.0 · 🔄 每日偵測新機 · 有機先更新',
-            f'🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 價錢為 2026-08-16 BigGo 實抓快照僅供參考 · 最後更新 {last_run}')
+    try:
+        d = time.strptime(last_run, '%Y-%m-%d')
+        zh_date = f'{d.tm_year} 年 {d.tm_mon} 月 {d.tm_mday} 日'
+    except Exception:
+        zh_date = last_run
+    return (f'📅 {zh_date} 更新 · v{VERSION} · 🔄 每日偵測新機 · 有機先更新',
+            f'🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 價錢為 {last_run} BigGo 實抓快照僅供參考 · 最後更新 {last_run}')
 
 
 def load_new_models():
@@ -560,8 +553,9 @@ def build_html():
             m['price'] = bp
 
     emsd_models = load_emsd_models()
-    models_json = json.dumps(MODELS, ensure_ascii=False)
-    emsd_json = json.dumps(emsd_models, ensure_ascii=False, separators=(',', ':'))
+    # 注入 <script> 前 escape `</`，避免型號名含 `</script>` 時 breakout（XSS 加固）
+    models_json = json.dumps(MODELS, ensure_ascii=False).replace('</', '<\\/')
+    emsd_json = json.dumps(emsd_models, ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/')
     fields_json = json.dumps(COMPARE_FIELDS, ensure_ascii=False)
 
     html = HTML_TEMPLATE.replace('__CONTENT__', content_html) \
