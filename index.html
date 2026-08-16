@@ -330,8 +330,9 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <h1>🏠 香港空調統合對比報告（窗口式精選 + 全量資料庫）</h1>
 <blockquote>
 <p><strong>報告生成日期</strong>：2026-08-11 ｜ <strong>最後更新</strong>：2026-08-16 ｜ <strong>版本</strong>：v1.2.2
-<strong>更新機制</strong>：GitHub Actions 每日 00:30（香港時間）輕量偵測 EMSD 新機；有新機先觸發分批更新（官網核實分兩日）→ 數據驗證閘門 → 自動重新部署；價錢以 BigGo 香港格價快照為主（PricesAPI 核心 29 驗收後備；🔍 點擊 Google 搜最新價）
-<strong>數據來源</strong>：機電署 EMSD 官方資料庫（1,927 型號全量核實）· 8 大品牌官網/總代理（220 型號）· BigGo 官方 JSON API 實抓（731 型號，2026-08-16；主力價錢源）· PricesAPI 核心 29 驗收（後備）· Price.com.hk 舊快照（1,847 型號，2026-08-15，🔍 點擊 Google 搜最新價）· 豐澤 · 百老匯 · 友和 · LIHKG 連登（3 帖摘錄）
+<strong>更新機制</strong>：GitHub Actions 每日 00:30 HKT 自動檢查（EMSD 新機偵測 + <code>last_check</code> 打卡 + 數據驗證閘門 + 自動重新部署）；有新機先官網核實分兩日；BigGo 價錢批次每月最多一次（分 7 日）；PricesAPI 核心 29 驗收為選用後備
+<strong>現況</strong>：BigGo 主力價錢批次 <strong>2/7 日完成</strong>，維持 731 個有效價；線上 GitHub Pages 已同步 v1.2.2
+<strong>數據來源</strong>：機電署 EMSD 官方資料庫（1,927 型號全量核實）· 8 大品牌官網/總代理（220 型號）· BigGo 官方 JSON API 實抓（731 型號，2026-08-16；主力價錢源）· PricesAPI 核心 29 驗收（已配置，選用後備）· Price.com.hk 舊快照（1,847 型號，2026-08-15，🔍 點擊 Google 搜最新價）· 豐澤 · 百老匯 · 友和 · LIHKG 連登（3 帖摘錄）
 <strong>⚠️ 注意</strong>：豐澤與電器幫同屬屈臣氏集團，價格不可互證；獨立驗證以 BigGo 不同商戶 / 官方網店為準
 <strong>額外搜尋</strong>：LIHKG 連登（電器台）、HKEPC、香港討論區
 <strong>核心篩選</strong>：窗口式 + 淨冷型 + ≥1 匹（定頻/變頻皆可）；<strong>遙控已非硬性條件</strong>（HITACHI RA-10RF / CANOPUS TA-12EOG 無遙控仍以口碑入選並標註）；<strong>全量資料庫 1,854 型號涵蓋分體式/流動式等全類型</strong>
@@ -2177,13 +2178,13 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <td>10</td>
 <td><strong>BigGo 香港格價</strong></td>
 <td>格價平台 API（同 MCP Server 同源）</td>
-<td>✅ <strong>731 型號主力價錢快照（2026-08-16）</strong></td>
+<td>✅ <strong>731 型號主力價錢快照（2026-08-16）；批次 2/7 完成</strong></td>
 </tr>
 <tr>
 <td>11</td>
 <td>PricesAPI</td>
 <td>格價 API（核心 29 驗收/後備）</td>
-<td>✅ 選用；每月免費額度內</td>
+<td>✅ 已配置 secret；選用變數 <code>PRICESAPI_CORE_CHECK=1</code> 執行</td>
 </tr>
 <tr>
 <td>12</td>
@@ -2216,6 +2217,15 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </blockquote>
 <hr />
 <h2>📅 更新日誌</h2>
+<h3>2026-08-16 — v1.2.2 現況同步</h3>
+<ul>
+<li>主力價錢源確定用 <strong>BigGo 官方 JSON API</strong>（同 BigGo MCP Server 同源）</li>
+<li>BigGo 價錢批次啟動：分 7 日，現時 <strong>2/7 完成</strong>，保持 731 個有效價</li>
+<li>PricesAPI 改為核心 29 驗收/後備，API key 已配置，按需要執行</li>
+<li>每日 00:30 自動檢查新增 <code>last_check</code> 打卡；網站顯示「檢查日期」同「價錢快照日期」</li>
+<li><code>validate_data.py</code> 加入 BigGo 主力快照驗證、PricesAPI 核心驗證、批次 meta 一致性檢查</li>
+<li>抽取 <code>price_utils.py</code> / <code>crawl_utils</code> 重用工具；所有說明文件同步實際現況</li>
+</ul>
 <h3>2026-08-16 — 策略調整</h3>
 <table>
 <thead>
