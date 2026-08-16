@@ -31,7 +31,7 @@
 | 品牌官網核實型號 | 220（8 品牌） |
 | 對比屬性 | 18 項 |
 
-> 🎨 角色形象：DeepSeek 鯨魚娘「溟月」（原作：上善无形；女仆二创：ZipZipPipe，CC BY-NC-SA 4.0 非商用）
+> 🎨 角色形象：Deepseek whalegirl（SDXL LoRA，作者 yrx0110121，來源 [Civitai](https://civitai.com/models/2595806/deepseek-whalegirl)）
 
 ## 🏭 品牌官網核實（2026-08-15）
 

@@ -536,7 +536,7 @@ def build_html():
     content_html = md_to_html(md_text)
     date_status, foot_status = update_status()
     new_hint = new_models_hint()
-    # 角色立繪（DeepSeek 鯨魚娘 溟月）base64 內嵌，缺失時留空（唔會報錯）
+    # 角色立繪（Deepseek whalegirl）base64 內嵌，缺失時留空（唔會報錯）
     maid_img = ''
     _maid_path = os.path.join(BASE, 'deepseek_maid.webp')
     if os.path.exists(_maid_path):
@@ -805,7 +805,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 
 <!-- ===== 封面 ===== -->
 <header class="hero">
-  <img class="maid" src="__MAID_IMG__" alt="DeepSeek 鯨魚娘 溟月">
+  <img class="maid" src="__MAID_IMG__" alt="Deepseek whalegirl">
   <span class="bubble" style="left:7%;top:30%;">🫧</span>
   <span class="bubble" style="left:15%;top:64%;animation-delay:1.6s;">🫧</span>
   <span class="bubble" style="right:10%;bottom:22%;animation-delay:.8s;">🫧</span>
@@ -933,7 +933,7 @@ __CONTENT__
   <div class="blk">
     <h3>🫧 鯨魚娘 AI 製作提示</h3>
     <p>本網頁由 <b style="color:#C5A468">DeepSeek 鯨魚娘 AI</b> 輔助製作，配合多輪官方資料核實；所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證。<br>
-      <span style="font-size:.8em;color:#6F7C99;">角色形象「溟月」原作：上善无形 · DeepSeek 女仆二创：ZipZipPipe（CC BY-NC-SA 4.0，非商用）</span></p>
+      <span style="font-size:.8em;color:#6F7C99;">角色形象：Deepseek whalegirl（SDXL LoRA · 作者 yrx0110121 · <a href="https://civitai.com/models/2595806/deepseek-whalegirl" target="_blank" rel="noopener">Civitai</a>）</span></p>
   </div>
 
   <span class="ai">🫧 Powered by DeepSeek 鯨魚娘 AI</span><br>
