@@ -59,9 +59,9 @@ def test_best_price_priority():
     biggo = {'RA-10RF': {'price': '$200'}}
     gemini = {'RA-10RF': {'price': '$300'}}
     prices = {'RA-10RF': {'price': '$400'}}
-    # PricesAPI > BigGo 舊快照 > Gemini > Price 舊快照
-    assert generate_html.best_price('RA-10RF', pricesapi, biggo, gemini, prices) == '$100'
-    assert generate_html.best_price('RA-10RF', {}, biggo, gemini, prices) == '$200'
+    # BigGo 主力 > PricesAPI 核心驗收/後備 > Gemini > Price 舊快照
+    assert generate_html.best_price('RA-10RF', pricesapi, biggo, gemini, prices) == '$200'
+    assert generate_html.best_price('RA-10RF', pricesapi, {}, gemini, prices) == '$100'
     assert generate_html.best_price('RA-10RF', {}, {}, gemini, prices) == '$300'
     assert generate_html.best_price('RA-10RF', {}, {}, {}, prices) == '$400'
     assert generate_html.best_price('RA-10RF', {}, {}, {}, {}) is None

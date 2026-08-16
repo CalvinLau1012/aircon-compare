@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-PricesAPI 香港格價快照抓取（取代 BigGo 做主力自動價錢源）
+PricesAPI 香港格價快照抓取（核心 29 型號驗收 + 後備）
+- 主力價錢源已用返 BigGo（fetch_biggo.py）；PricesAPI 只做細規模核心 29 驗收/後備
 - 端點：GET https://api.pricesapi.io/api/v1/products/search
   參數：q=型號、country=hk、limit=5、offers_limit=20
   認證：Authorization: Bearer $PRICESAPI_API_KEY
 - 免費額度：1,000 calls/月、10 req/min；冷查詢需 30–90s，所以 timeout 用 100s
-- 每月最多一次、分 7 日分批（批次進度共用 fetch_prices 嘅 meta）
-  預設每月只查 395 個型號（核心 29 個優先），留 quota 俾 retry 同快取預熱
+- `--core`：直接做一次核心 29 型號驗收（唔經批次 meta，適合人手/選用 workflow）
+- 批次模式仍共用 fetch_prices 嘅 meta，但預設只查核心 29 個型號
 輸出：pricesapi_prices.json {型號: {price, merchants, url, updated, source}}
 過濾規則：型號精確匹配 + 冷氣關鍵字 + 配件排除 + HKD 報價 + 商戶去重
 """
@@ -51,9 +52,9 @@ TIMEOUT = 100        # 冷查詢官方建議 read timeout >= 95s
 MAX_RETRIES = 3
 RATE_LIMIT_INTERVAL = _env_float('PRICESAPI_RATE_LIMIT_INTERVAL', 11)  # 官方 10 req/min；11s 間隔（約 5.5/min）更保守
 
-# 免費版每月 1,000 calls；查 395 個 + retry 會比較穩陣。
-# 付費 plan 可設 PRICESAPI_BATCH_LIMIT=0 取消上限（或改大啲）。
-DEFAULT_BATCH_LIMIT = 395
+# 免費版每月 1,000 calls；核心 29 驗收 + retry 只佔好少 quota。
+# 有需要先設 PRICESAPI_BATCH_LIMIT 調大；0 代表唔設上限。
+DEFAULT_BATCH_LIMIT = 29
 MAX_BATCH_SECONDS = _env_int('PRICESAPI_BATCH_MAX_SECONDS', 50 * 60)
 
 # 冷氣相關關鍵字（排除 LoRa/RF 模組、相機配件等撞名產品）
@@ -386,10 +387,71 @@ def run_price_batch():
     fetch_prices.save_meta(meta)
 
 
+def core_models():
+    """核心 29 型號清單（保持 generate_html.MODELS 次序）"""
+    try:
+        import generate_html
+        return [m['model'] for m in generate_html.MODELS if m.get('model')]
+    except Exception:
+        return []
+
+
+def run_core_check():
+    """PricesAPI 核心 29 型號驗收：唔掂批次 meta，只更新 pricesapi_prices.json"""
+    key = get_api_key()
+    if not key:
+        print('❌ 未設定 PRICESAPI_API_KEY 環境變數')
+        return
+    models = core_models()
+    if not models:
+        print('❌ 讀取核心型號清單失敗（generate_html.MODELS）')
+        return
+    print(f'🔎 PricesAPI 核心 {len(models)} 型號驗收，開始...')
+
+    results = load_results()
+    today = time.strftime('%Y-%m-%d')
+    todo = [m for m in models if not (isinstance(results.get(m), dict) and results[m].get('price')
+                                      and results[m].get('updated') == today)]
+    if not todo:
+        print('✅ 今日核心 29 型號已全部驗收過，唔重複燒 quota')
+        return
+
+    ok = 0
+    consec_fail = 0
+    t0 = time.time()
+    for i, m in enumerate(todo, 1):
+        if MAX_BATCH_SECONDS and time.time() - t0 > MAX_BATCH_SECONDS:
+            print('⏰ 超過時間預算，保存進度後停止')
+            break
+        try:
+            result = fetch_pricesapi_price(m, api_key=key)
+        except Exception:
+            result = None
+        if result:
+            results[m] = result
+            ok += 1
+        if result is None:
+            consec_fail += 1
+        else:
+            consec_fail = 0
+        if i % 5 == 0 or i == len(todo):
+            save_results(results)
+            print(f'  進度 {i}/{len(todo)}（得價 {ok}）· {time.time() - t0:.0f}s', flush=True)
+        if i >= 5 and consec_fail >= 5:
+            print('⚠️ 連續 5 個 API 失敗，停止核心驗收（保留已有結果）', flush=True)
+            save_results(results)
+            return
+
+    save_results(results)
+    print(f'✅ PricesAPI 核心驗收完成：{len(todo)} 個查詢，{ok} 個有價 → {OUT_PATH}')
+
+
 if __name__ == '__main__':
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-    if '--price-batch' in sys.argv:
+    if '--core' in sys.argv:
+        run_core_check()
+    elif '--price-batch' in sys.argv:
         run_price_batch()
     elif len(sys.argv) > 1:
         # 單型號測試：python fetch_pricesapi.py RA-10RF

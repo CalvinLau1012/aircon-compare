@@ -17,7 +17,7 @@ import base64
 from crawl_utils import norm_model
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-VERSION = '1.2.0'  # 單一版本號來源（升級時只改呢度）
+VERSION = '1.2.1'  # 單一版本號來源（升級時只改呢度）
 
 # ============================================================
 # 型號資料庫（整合報告 + EMSD 官方）
@@ -369,7 +369,7 @@ def load_prices():
 
 
 def load_pricesapi():
-    """載入 PricesAPI 香港格價快照（pricesapi_prices.json：型號 → {price, merchants}）"""
+    """載入 PricesAPI 核心 29 驗收快照（pricesapi_prices.json，做 BigGo 後備）"""
     p = os.path.join(BASE, 'pricesapi_prices.json')
     if not os.path.exists(p):
         return {}
@@ -378,7 +378,7 @@ def load_pricesapi():
 
 
 def load_biggo():
-    """載入 BigGo 香港格價舊快照（biggo_prices.json，做 PricesAPI 後備）"""
+    """載入 BigGo 香港格價快照（biggo_prices.json，主力價錢源）"""
     p = os.path.join(BASE, 'biggo_prices.json')
     if not os.path.exists(p):
         return {}
@@ -396,7 +396,7 @@ def load_gemini():
 
 
 def best_price(model, *sources):
-    """價錢優先級：PricesAPI 實抓 > BigGo 舊快照 > Gemini AI 搜 > Price 舊快照
+    """價錢優先級：BigGo 實抓 > PricesAPI 核心驗收/後備 > Gemini AI 搜 > Price 舊快照
 
     兼容舊簽名 best_price(model, biggo, gemini, prices)。
     """
@@ -406,12 +406,12 @@ def best_price(model, *sources):
         pricesapi, biggo, gemini, prices = sources
     else:
         raise TypeError('best_price(model, pricesapi, biggo, gemini, prices)')
-    pa = (pricesapi or {}).get(model) or {}
-    if pa.get('price'):
-        return pa['price']
     b = (biggo or {}).get(model) or {}
     if b.get('price'):
         return b['price']
+    pa = (pricesapi or {}).get(model) or {}
+    if pa.get('price'):
+        return pa['price']
     g = (gemini or {}).get(model) or {}
     if g.get('price'):
         return g['price']
@@ -444,7 +444,7 @@ def update_status():
     except Exception:
         zh_date = last_run
     return (f'📅 {zh_date} 更新 · v{VERSION} · 🔄 每日偵測新機 · 有機先更新',
-            f'🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 價錢為 {last_run} 快照（PricesAPI > BigGo/Price 後備）· 最後更新 {last_run}')
+            f'🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 價錢為 {last_run} BigGo 快照（PricesAPI 核心 29 後備）· 最後更新 {last_run}')
 
 
 def load_new_models():
@@ -570,7 +570,7 @@ def build_html():
             m['pid'] = pinfo['pid']
         else:
             m['pid'] = None
-        # 價錢優先級：PricesAPI 實抓 > BigGo 舊快照 > Gemini AI 搜 > Price 舊快照
+        # 價錢優先級：BigGo 實抓 > PricesAPI 核心驗收 > Gemini AI 搜 > Price 舊快照
         bp = best_price(m['model'], pricesapi, biggo, gemini, prices)
         if bp:
             m['price'] = bp
@@ -837,7 +837,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價錢快照：PricesAPI 香港格價 + BigGo 舊快照 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + PricesAPI 核心 29 驗收 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
     <div class="date">__DATE_STATUS__</div>
   </div>
 </header>
@@ -851,7 +851,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
     <a href="#energy" data-tip="能源標籤級別分析">⚡ 能源分析</a>
     <a href="#rank" data-tip="能源效益及用戶評價排名">📈 排名</a>
     <a href="#recommend" data-tip="按場景最終推薦">🏆 推薦</a>
-    <a href="#price" data-tip="官方網店價 vs PricesAPI 實價">💰 價格</a>
+    <a href="#price" data-tip="官方網店價 vs BigGo 實價">💰 價格</a>
     <a href="#official" data-tip="8 品牌官網核實 220 型號；Gree/TOSOT 零售商交叉核實">🏭 官網核實</a>
     <a href="#verify" data-tip="EMSD 官方驗證結果">✅ 官方驗證</a>
     <a href="#forum" data-tip="LIHKG 連登討論摘錄（附原帖連結）">💬 論壇</a>
@@ -945,7 +945,7 @@ __CONTENT__
     <h3>🙏 資料來源鳴謝</h3>
     <p>· 機電工程署 EMSD 能源標籤資料庫（官方能源/雪種/耗電數據）<br>
       · 品牌官網及總代理：信興集團、樂信網店、Panasonic、世紀開利、GENERAL 第一電業、HITACHI、COMFEE、美的<br>
-      · 價格快照：PricesAPI 香港格價（點擊 🔍 轉跳 Google 搜最新價）· BigGo/Price 舊快照後備 · 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
+      · 價格快照：BigGo 香港格價（點擊 🔍 轉跳 Google 搜最新價）· PricesAPI 核心 29 驗收後備 · 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
   </div>
 
   <div class="blk">

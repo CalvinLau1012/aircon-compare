@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 BigGo 香港格價（官方公開 JSON API）價錢快照抓取
-- ⚠️ 本腳本已由 fetch_pricesapi.py 取代做主力價錢源；保留做手動後備/舊快照維護
+- 主力價錢源（同 BigGo MCP Server 用同一組商品搜索 API）
 - 改用 BigGo 官方 JSON API（api.biggo.com），唔再解析 HTML、唔會撞 Cloudflare
 - 端點：GET https://api.biggo.com/api/v1/spa/search/{型號}/product
   必要 headers：site=biggo.hk、region=hk
