@@ -621,7 +621,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
 .wrap{max-width:1080px; margin:0 auto; padding:0 16px;}
 
 /* ===== Hero 封面 ===== */
-.hero{background:linear-gradient(160deg, rgba(74,95,168,.92) 0%, rgba(100,126,191,.80) 35%, rgba(200,209,235,.55) 100%); color:#fff;
+.hero{background:linear-gradient(160deg,#2c3765 0%,#4a5fa8 42%,#647ebf 100%); color:#fff;
   text-align:center; padding:64px 20px 92px; position:relative; overflow:hidden;}
 .hero .mascot{position:absolute; right:4%; bottom:46px; max-height:300px; max-width:44%;
   border-radius:16px; box-shadow:0 12px 32px rgba(6,14,38,.45);
@@ -632,12 +632,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
   animation:float 6s ease-in-out infinite;}
 @keyframes float{0%,100%{transform:translateY(0);} 50%{transform:translateY(-16px);}}
 .hero h1{font-size:2.2em; letter-spacing:1px; margin-bottom:8px;}
-.hero .sub{color:var(--accent); font-size:1.15em; margin-bottom:28px;}
+.hero .sub{color:#f4e4c1; font-size:1.15em; margin-bottom:28px; text-shadow:0 1px 2px rgba(20,26,43,.35);}
 .stats{display:flex; justify-content:center; gap:40px; flex-wrap:wrap; margin-bottom:26px;}
 .stats .n{font-size:2.1em; font-weight:700; color:var(--accent);}
 .stats .l{font-size:.85em; opacity:.9;}
 .hero .src{font-size:.8em; opacity:.75; line-height:1.8;}
-.hero .date{color:var(--accent); font-size:.95em; margin-top:10px;}
+.hero .date{color:#f4e4c1; font-size:.95em; margin-top:10px; text-shadow:0 1px 2px rgba(20,26,43,.35);}
 
 /* ===== 頂部導覽 ===== */
 .topnav{position:sticky; top:0; z-index:100; background:rgba(42,52,80,.88);
