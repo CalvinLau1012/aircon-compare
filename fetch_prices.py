@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 """
 批量抓取 Price.com.hk 價格範圍（EMSD 型號）
+- ⚠️ Price.com.hk 已被 Cloudflare 封，本腳本只保留做舊快照維護；
+  主力價錢源已改為 fetch_pricesapi.py（批次 meta 仍然由呢度共用）
 輸入：emsd_空調能源標籤.csv
 輸出：prices.json {型號: "$X,XXX - Y,YYY"}
 """

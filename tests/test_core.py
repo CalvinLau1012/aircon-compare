@@ -2,7 +2,7 @@
 """核心純函數單元測試（不碰網絡）
 - norm_model / load_models（crawl_utils）
 - kw_to_hp / normalize_brand / best_price（generate_html）
-- _num_price（fetch_biggo）
+- _num_price / extract_prices（fetch_pricesapi）
 - SPECS_OVERRIDE 重複 key 回歸測試（P0）
 """
 import ast
@@ -12,7 +12,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import crawl_utils
-import fetch_biggo
+import fetch_pricesapi
 import generate_html
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -55,24 +55,95 @@ def test_normalize_brand():
 
 
 def test_best_price_priority():
-    biggo = {'RA-10RF': {'price': '$100'}}
-    gemini = {'RA-10RF': {'price': '$200'}}
-    prices = {'RA-10RF': {'price': '$300'}}
-    # BigGo > Gemini > Price 舊快照
-    assert generate_html.best_price('RA-10RF', biggo, gemini, prices) == '$100'
-    assert generate_html.best_price('RA-10RF', {}, gemini, prices) == '$200'
-    assert generate_html.best_price('RA-10RF', {}, {}, prices) == '$300'
-    assert generate_html.best_price('RA-10RF', {}, {}, {}) is None
+    pricesapi = {'RA-10RF': {'price': '$100'}}
+    biggo = {'RA-10RF': {'price': '$200'}}
+    gemini = {'RA-10RF': {'price': '$300'}}
+    prices = {'RA-10RF': {'price': '$400'}}
+    # PricesAPI > BigGo 舊快照 > Gemini > Price 舊快照
+    assert generate_html.best_price('RA-10RF', pricesapi, biggo, gemini, prices) == '$100'
+    assert generate_html.best_price('RA-10RF', {}, biggo, gemini, prices) == '$200'
+    assert generate_html.best_price('RA-10RF', {}, {}, gemini, prices) == '$300'
+    assert generate_html.best_price('RA-10RF', {}, {}, {}, prices) == '$400'
+    assert generate_html.best_price('RA-10RF', {}, {}, {}, {}) is None
+    # 兼容舊 3 參數簽名（BigGo, Gemini, Price）
+    assert generate_html.best_price('RA-10RF', biggo, gemini, prices) == '$200'
 
 
-# ---------- fetch_biggo ----------
+# ---------- fetch_pricesapi ----------
 
 def test_num_price():
-    assert fetch_biggo._num_price('1234') == 1234
-    assert fetch_biggo._num_price(2999.9) == 3000
-    assert fetch_biggo._num_price('abc') is None
-    assert fetch_biggo._num_price(0) is None
-    assert fetch_biggo._num_price(-5) is None
+    assert fetch_pricesapi._num_price('1234') == 1234
+    assert fetch_pricesapi._num_price(2999.9) == 3000
+    assert fetch_pricesapi._num_price('abc') is None
+    assert fetch_pricesapi._num_price(0) is None
+    assert fetch_pricesapi._num_price(-5) is None
+
+
+def test_extract_prices_filters_and_dedupes():
+    """PricesAPI response 要精確型號 + 冷氣關鍵字 + 排除配件 + 只收 HKD + 商戶去重"""
+    sample = {
+        'data': {'products': [
+            {
+                'title': 'HITACHI RA-10RF 窗口式冷氣機',
+                'currency': 'HKD',
+                'source': 'HKTVmall',
+                'offers': [
+                    {'seller': 'HKTVmall', 'price': 2500, 'currency': 'HKD', 'url': 'https://example.com/1'},
+                    {'seller': 'YOHO', 'price': 2790, 'currency': 'HKD', 'url': 'https://example.com/2'},
+                    {'seller': 'YOHO', 'price': 2790, 'currency': 'HKD', 'url': 'https://example.com/2'},
+                    {'seller': 'US Store', 'price': 100, 'currency': 'USD', 'url': 'https://example.com/3'},
+                    {'seller': '', 'price': 2600, 'currency': 'HKD', 'url': 'https://example.com/4'},
+                ],
+            },
+            {
+                'title': 'RA-10RF 遙控器（配件）',
+                'currency': 'HKD',
+                'source': 'Parts',
+                'offers': [{'seller': 'Parts', 'price': 80, 'currency': 'HKD', 'url': 'https://example.com/parts'}],
+            },
+            {
+                'title': 'RA-10RF LoRa RF 模組',
+                'currency': 'HKD',
+                'source': 'Electronics',
+                'offers': [{'seller': 'Electronics', 'price': 88, 'currency': 'HKD', 'url': 'https://example.com/rf'}],
+            },
+        ]},
+    }
+    out = fetch_pricesapi.extract_prices(sample, 'RA-10RF')
+    assert out['price'] == '$2,500-2,790'
+    assert out['merchants'] == 2
+    assert out['url'] == 'https://example.com/1'
+    assert out['source'] == 'PricesAPI'
+
+
+def test_extract_prices_uses_candidate_when_offers_degraded():
+    sample = {
+        'data': {'products': [
+            {'title': 'RA-10RF 冷氣機', 'currency': 'HKD', 'source': 'HKTVmall',
+             'price': 2500, 'offers': []},
+        ]},
+    }
+    out = fetch_pricesapi.extract_prices(sample, 'RA-10RF')
+    assert out['price'] == '$2,500起'
+    assert out['merchants'] == 1
+
+
+def test_extract_prices_no_match():
+    assert fetch_pricesapi.extract_prices(
+        {'data': {'products': [{'title': 'RC-XG9 冷氣機', 'currency': 'HKD',
+                                'source': 'Shop', 'price': 100}]}},
+        'RA-10RF') is False
+    assert fetch_pricesapi.extract_prices(None, 'RA-10RF') is None
+
+
+def test_extract_prices_english_air_conditioner_title():
+    out = fetch_pricesapi.extract_prices(
+        {'data': {'products': [
+            {'title': 'HITACHI RA-10RF Air Conditioner', 'currency': 'HKD',
+             'source': 'HKTVmall', 'price': 2500, 'offers': []},
+        ]}},
+        'RA-10RF')
+    assert out['price'] == '$2,500起'
 
 
 # ---------- P0 回歸 ----------

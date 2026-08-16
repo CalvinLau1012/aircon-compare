@@ -47,12 +47,20 @@ if isinstance(p, dict):
     priced = sum(1 for v in p.values() if isinstance(v, dict) and v.get('price'))
     check('Price 有價型號數', priced, 1600, 2100)
 
-# 3) specs_emsd.json（基準 1,757）
+# 3) PricesAPI 快照（有檔案先驗證；首批可能只覆蓋核心/部分型號）
+papi_path = os.path.join(BASE, 'pricesapi_prices.json')
+if os.path.exists(papi_path):
+    pa = load_json('pricesapi_prices.json')
+    if isinstance(pa, dict):
+        pa_priced = sum(1 for v in pa.values() if isinstance(v, dict) and v.get('price'))
+        check('PricesAPI 有價型號數', pa_priced, 1, 2000)
+
+# 4) specs_emsd.json（基準 1,757）
 s = load_json('specs_emsd.json')
 if isinstance(s, dict):
     check('specs_emsd 條目數', len(s), 1600, 2100)
 
-# 4) 核心/官網 JSON 唔可以變空
+# 5) 核心/官網 JSON 唔可以變空
 for name in ('specs.json', 'official_specs.json', 'rasonic_official.json',
              'shew_official.json', 'pana_official.json', 'carrier_official.json',
              'general_official.json', 'midea_official.json'):

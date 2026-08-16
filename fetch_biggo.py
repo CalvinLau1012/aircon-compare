@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 BigGo 香港格價（官方公開 JSON API）價錢快照抓取
+- ⚠️ 本腳本已由 fetch_pricesapi.py 取代做主力價錢源；保留做手動後備/舊快照維護
 - 改用 BigGo 官方 JSON API（api.biggo.com），唔再解析 HTML、唔會撞 Cloudflare
 - 端點：GET https://api.biggo.com/api/v1/spa/search/{型號}/product
   必要 headers：site=biggo.hk、region=hk
@@ -32,7 +33,7 @@ API = 'https://api.biggo.com/api/v1/spa/search/{}/product'
 # 冷氣相關關鍵字（排除 LoRa/RF 模組、相機配件等撞名產品）
 # 涵蓋「窗口機 / 分體機 / 流動式 / 淨冷 / 變頻」等唔含「冷氣/空調」嘅同義表述
 AC_RE = re.compile(
-    r'冷氣|空調|air-?con|窗口機|窗口式|分體機|分體式|流動機|流動式|'
+    r'冷氣|空調|air\s*-?\s*con(ditioner)?|窗口機|窗口式|分體機|分體式|流動機|流動式|'
     r'淨冷|制冷|冷暖|定頻|變頻|匹',
     re.I)
 # 配件/服務排除（遙控器、濾網、支架、防塵罩等）

@@ -25,3 +25,7 @@ enable-wsl*.ps1
 # 系統
 Thumbs.db
 desktop.ini
+
+# API 憑證（PricesAPI key 只放環境變數 / GitHub Secrets）
+.env
+.env.*

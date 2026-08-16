@@ -239,8 +239,8 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
-    <div class="date">📅 2026 年 8 月 16 日 更新 · v1.1.1 · 🔄 每日偵測新機 · 有機先更新</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價錢快照：PricesAPI 香港格價 + BigGo 舊快照 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
+    <div class="date">📅 2026 年 8 月 16 日 更新 · v1.2.0 · 🔄 每日偵測新機 · 有機先更新</div>
   </div>
 </header>
 
@@ -253,7 +253,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
     <a href="#energy" data-tip="能源標籤級別分析">⚡ 能源分析</a>
     <a href="#rank" data-tip="能源效益及用戶評價排名">📈 排名</a>
     <a href="#recommend" data-tip="按場景最終推薦">🏆 推薦</a>
-    <a href="#price" data-tip="官方網店價 vs Price 實價">💰 價格</a>
+    <a href="#price" data-tip="官方網店價 vs PricesAPI 實價">💰 價格</a>
     <a href="#official" data-tip="8 品牌官網核實 220 型號；Gree/TOSOT 零售商交叉核實">🏭 官網核實</a>
     <a href="#verify" data-tip="EMSD 官方驗證結果">✅ 官方驗證</a>
     <a href="#forum" data-tip="LIHKG 連登討論摘錄（附原帖連結）">💬 論壇</a>
@@ -329,9 +329,9 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <div class="md-content">
 <h1>🏠 香港空調統合對比報告（窗口式精選 + 全量資料庫）</h1>
 <blockquote>
-<p><strong>報告生成日期</strong>：2026-08-11 ｜ <strong>最後更新</strong>：2026-08-16 ｜ <strong>版本</strong>：v1.1.0
-<strong>更新機制</strong>：GitHub Actions 每日 00:30（香港時間）輕量偵測 EMSD 新機；有新機先觸發分批更新（官網核實分兩日）→ 數據驗證閘門 → 自動重新部署；價錢為 2026-08-16 BigGo 實抓快照（🔍 點擊 Google 搜最新價）
-<strong>數據來源</strong>：機電署 EMSD 官方資料庫（1,927 型號全量核實）· 8 大品牌官網/總代理（220 型號）· BigGo 官方 JSON API 實抓（731 型號，2026-08-16）· Price.com.hk 舊快照（1,847 型號，2026-08-15，🔍 點擊 Google 搜最新價）· 豐澤 · 百老匯 · 友和 · LIHKG 連登（3 帖摘錄）
+<p><strong>報告生成日期</strong>：2026-08-11 ｜ <strong>最後更新</strong>：2026-08-16 ｜ <strong>版本</strong>：v1.2.0
+<strong>更新機制</strong>：GitHub Actions 每日 00:30（香港時間）輕量偵測 EMSD 新機；有新機先觸發分批更新（官網核實分兩日）→ 數據驗證閘門 → 自動重新部署；價錢以 PricesAPI 香港格價快照為主（🔍 點擊 Google 搜最新價）
+<strong>數據來源</strong>：機電署 EMSD 官方資料庫（1,927 型號全量核實）· 8 大品牌官網/總代理（220 型號）· PricesAPI 香港格價（每月最多 395 型號）· BigGo 舊快照（731 型號，2026-08-16）· Price.com.hk 舊快照（1,847 型號，2026-08-15，🔍 點擊 Google 搜最新價）· 豐澤 · 百老匯 · 友和 · LIHKG 連登（3 帖摘錄）
 <strong>⚠️ 注意</strong>：豐澤與電器幫同屬屈臣氏集團，價格不可互證；獨立驗證以 Price.com.hk 不同商戶 / 官方網店為準
 <strong>額外搜尋</strong>：LIHKG 連登（電器台）、HKEPC、香港討論區
 <strong>核心篩選</strong>：窗口式 + 淨冷型 + ≥1 匹（定頻/變頻皆可）；<strong>遙控已非硬性條件</strong>（HITACHI RA-10RF / CANOPUS TA-12EOG 無遙控仍以口碑入選並標註）；<strong>全量資料庫 1,854 型號涵蓋分體式/流動式等全類型</strong>
@@ -2223,7 +2223,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </tr>
 <tr>
 <td>💰 價錢</td>
-<td>價錢源新增 <strong>BigGo 香港格價</strong>（多商戶報價平台）；快照每月最多更新一次（分 7 日分批）；月內再有新機等下個月先更新</td>
+<td>主力價錢源改用 <strong>PricesAPI 香港格價</strong>（免費 1,000 calls/月，核心 29 優先）；BigGo/Price 舊快照做後備；每月最多更新一次（分 7 日分批）；月內再有新機等下個月先更新</td>
 </tr>
 <tr>
 <td>🆕 新機</td>
@@ -2246,7 +2246,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </tr>
 <tr>
 <td>🚀 功能</td>
-<td>GitHub Pages 上線；互動比較器 18 項屬性＋機型篩選修正；導覽列 scrollspy 高亮、tooltip、目錄統一、back-to-top、手機單行橫滑；頁面跳動及 rAF 節流修復；頁腳新增開源說明/來源鳴謝/AI 製作提示；GitHub Actions 每日自動更新（驗證閘門 + 低權限無密鑰 + 禮貌爬蟲防封策略）</td>
+<td>GitHub Pages 上線；互動比較器 18 項屬性＋機型篩選修正；導覽列 scrollspy 高亮、tooltip、目錄統一、back-to-top、手機單行橫滑；頁面跳動及 rAF 節流修復；頁腳新增開源說明/來源鳴謝/AI 製作提示；GitHub Actions 每日自動更新（驗證閘門 + 低權限 + API key 放 Secrets + 禮貌爬蟲防封策略）</td>
 </tr>
 <tr>
 <td>📝 內容</td>
@@ -2283,7 +2283,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </main>
 
 <footer>
-  <b>香港空調對比報告 · v1.1.0</b><br>
+  <b>香港空調對比報告 · v1.2.0</b><br>
   能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號
 
   <div class="blk">
@@ -2297,7 +2297,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
     <h3>🙏 資料來源鳴謝</h3>
     <p>· 機電工程署 EMSD 能源標籤資料庫（官方能源/雪種/耗電數據）<br>
       · 品牌官網及總代理：信興集團、樂信網店、Panasonic、世紀開利、GENERAL 第一電業、HITACHI、COMFEE、美的<br>
-      · 價格快照：Price.com.hk 2026-08-15（點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
+      · 價格快照：PricesAPI 香港格價（點擊 🔍 轉跳 Google 搜最新價）· BigGo/Price 舊快照後備 · 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
   </div>
 
   <div class="blk">
@@ -2308,7 +2308,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 
   <span class="ai">🫧 Powered by DeepSeek 鯨魚娘 AI</span><br>
   <span class="line">──────</span><br>
-  🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 價錢為 2026-08-16 BigGo 實抓快照僅供參考 · 最後更新 2026-08-16<br>
+  🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 價錢為 2026-08-16 快照（PricesAPI > BigGo/Price 後備）· 最後更新 2026-08-16<br>
   本報告僅供選購參考，不構成購買建議 · 價格及供應隨時變動，請以商戶實時報價為準
 </footer>
 
