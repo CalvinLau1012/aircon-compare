@@ -530,12 +530,12 @@ def build_html():
     content_html = md_to_html(md_text)
     date_status, foot_status = update_status()
     new_hint = new_models_hint()
-    # 角色立繪（Deepseek whalegirl）base64 內嵌，缺失時留空（唔會報錯）
-    maid_img = ''
-    _maid_path = os.path.join(BASE, 'deepseek_maid.webp')
-    if os.path.exists(_maid_path):
-        with open(_maid_path, 'rb') as _f:
-            maid_img = 'data:image/webp;base64,' + base64.b64encode(_f.read()).decode('ascii')
+    # 角色立繪（whale-girl / 鯨魚娘）base64 內嵌，缺失時留空（唔會報錯）
+    mascot_img = ''
+    _mascot_path = os.path.join(BASE, 'whale_girl.webp')
+    if os.path.exists(_mascot_path):
+        with open(_mascot_path, 'rb') as _f:
+            mascot_img = 'data:image/webp;base64,' + base64.b64encode(_f.read()).decode('ascii')
 
     # 套用雙源確認規格 + 填核心型號 Price 產品 ID（做價格連結）
     apply_specs_override()
@@ -568,7 +568,7 @@ def build_html():
                         .replace('__FOOT_STATUS__', foot_status) \
                         .replace('__NEW_HINT__', new_hint) \
                         .replace('__VERSION__', VERSION) \
-                        .replace('__MAID_IMG__', maid_img)
+                        .replace('__MASCOT_IMG__', mascot_img)
     out = os.path.join(BASE, '空調對比報告.html')
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html)
@@ -585,7 +585,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <meta property="og:description" content="香港市場 1,854 個空調型號全面對比：窗口式 / 分體式 / 流動式，EMSD 官方能源數據 + 8 品牌官網 220 型號核實，18 項屬性互動比較器。">
 <meta property="og:type" content="website">
 <meta name="description" content="香港空調對比報告：1,854 型號 · EMSD 官方能源標籤全量核實 · 8 品牌官網核實 · 互動比較器">
-<link rel="icon" href="__MAID_IMG__">
+<link rel="icon" href="__MASCOT_IMG__">
 <style>
 :root{
   --primary:#10204D; --primary2:#526AA8; --accent:#C5A468;
@@ -601,7 +601,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
 /* ===== Hero 封面 ===== */
 .hero{background:linear-gradient(160deg,#091333 0%,#10204D 30%,#1C326B 62%,#526AA8 100%); color:#fff;
   text-align:center; padding:64px 20px 92px; position:relative; overflow:hidden;}
-.hero .maid{position:absolute; right:4%; bottom:46px; max-height:300px; max-width:44%;
+.hero .mascot{position:absolute; right:4%; bottom:46px; max-height:300px; max-width:44%;
   border-radius:16px; box-shadow:0 12px 32px rgba(6,14,38,.45);
   transform:rotate(2deg); pointer-events:none; opacity:.96; filter:drop-shadow(0 0 18px rgba(142,165,218,.35));}
 .hero::after{content:""; position:absolute; bottom:-1px; left:0; right:0; height:56px;
@@ -779,7 +779,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
   .topnav a[data-tip]::after{display:none;}
   .hero h1{font-size:1.6em;}
   .hero .sub{font-size:1em;}
-  .hero .maid{display:none;}
+  .hero .mascot{display:none;}
   .stats{display:grid; grid-template-columns:1fr 1fr; gap:14px 20px;}
   .stats .n{font-size:1.6em;}
   section{margin:28px 0;}
@@ -802,7 +802,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 
 <!-- ===== 封面 ===== -->
 <header class="hero">
-  <img class="maid" src="__MAID_IMG__" alt="Deepseek whalegirl">
+  <img class="mascot" src="__MASCOT_IMG__" alt="whale-girl 鯨魚娘">
   <span class="bubble" style="left:7%;top:30%;">🫧</span>
   <span class="bubble" style="left:15%;top:64%;animation-delay:1.6s;">🫧</span>
   <span class="bubble" style="right:10%;bottom:22%;animation-delay:.8s;">🫧</span>
@@ -930,7 +930,7 @@ __CONTENT__
   <div class="blk">
     <h3>🫧 鯨魚娘 AI 製作提示</h3>
     <p>本網頁由 <b style="color:#C5A468">DeepSeek 鯨魚娘 AI</b> 輔助製作，配合多輪官方資料核實；所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證。<br>
-      <span style="font-size:.8em;color:#6F7C99;">角色形象：Deepseek whalegirl（SDXL LoRA · 作者 yrx0110121 · <a href="https://civitai.com/models/2595806/deepseek-whalegirl" target="_blank" rel="noopener">Civitai</a>）</span></p>
+      <span style="font-size:.8em;color:#6F7C99;">角色形象：whale-girl 鯨魚娘（來源：<a href="https://linux.do/t/topic/2751323" target="_blank" rel="noopener">linux.do 相關項目寵物皮膚</a>）</span></p>
   </div>
 
   <span class="ai">🫧 Powered by DeepSeek 鯨魚娘 AI</span><br>
