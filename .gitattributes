@@ -1,0 +1,10 @@
+# 統一換行：所有文字檔一律 LF，避免 Windows/WSL 出現 CRLF 大 diff
+* text=auto eol=lf
+
+# 圖片等二進位檔唔好畀 Git 當文字處理
+*.webp binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
