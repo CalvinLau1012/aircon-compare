@@ -2241,17 +2241,40 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <hr />
 <h2>📅 更新日誌</h2>
 <h3>2026-08-16 — v1.2.2 現況同步</h3>
-<blockquote>
-<p>🙏 特別鳴謝：<strong>powerdog996（DreamSkin 社區）</strong> 提供 Blue Fantasy 皮膚原作；<strong>zhu1090093659/dsh-web-ui</strong> 適配皮膚並提供 whale-girl 鯨魚娘素材；<strong>linux.do 介紹帖</strong> 帶路搵到呢套皮膚。多謝大佬！</p>
-</blockquote>
-<ul>
-<li>主力價錢源確定用 <strong>BigGo 官方 JSON API</strong>（同 BigGo MCP Server 同源）</li>
-<li>BigGo 價錢批次啟動：分 7 日，現時 <strong>2/7 完成</strong>，保持 731 個有效價</li>
-<li>PricesAPI 改為核心 29 驗收/後備，API key 已配置，按需要執行</li>
-<li>每日 00:30 自動檢查新增 <code>last_check</code> 打卡；網站顯示「檢查日期」同「價錢快照日期」</li>
-<li><code>validate_data.py</code> 加入 BigGo 主力快照驗證、PricesAPI 核心驗證、批次 meta 一致性檢查</li>
-<li>抽取 <code>price_utils.py</code> / <code>crawl_utils</code> 重用工具；所有說明文件同步實際現況</li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>類別</th>
+<th>內容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>💰 價錢</td>
+<td>主力價錢源確定用 <strong>BigGo 官方 JSON API</strong>（同 BigGo MCP Server 同源）；BigGo 批次 <strong>2/7 完成</strong>，保持 731 個有效價</td>
+</tr>
+<tr>
+<td>🔄 更新</td>
+<td>PricesAPI 改為核心 29 驗收/後備（key 已配置，選用）；每日 00:30 自動檢查新增 <code>last_check</code> 打卡</td>
+</tr>
+<tr>
+<td>🛡 驗證</td>
+<td><code>validate_data.py</code> 加入 BigGo 主力快照驗證、PricesAPI 核心驗證、批次 meta 一致性檢查</td>
+</tr>
+<tr>
+<td>🧰 工具</td>
+<td>抽取 <code>price_utils.py</code> / <code>crawl_utils</code> 重用工具；全文件同步實際現況</td>
+</tr>
+<tr>
+<td>🎨 皮膚</td>
+<td>套用 dsh-web-ui Blue Fantasy skin；whale-girl 鯨魚娘改用官方 sprite</td>
+</tr>
+<tr>
+<td>🙏 鳴謝</td>
+<td>特別感謝 powerdog996（DreamSkin 社區）Blue Fantasy 皮膚原作、zhu1090093659/dsh-web-ui 適配及鯨魚娘素材、linux.do 介紹帖</td>
+</tr>
+</tbody>
+</table>
 <h3>2026-08-16 — 策略調整</h3>
 <table>
 <thead>
@@ -2303,13 +2326,35 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </tbody>
 </table>
 <h3>2026-08-12 — 官方全量核實</h3>
-<ul>
-<li>EMSD 官方資料庫全量 <strong>1,927 型號</strong>核實（能源/雪種/耗電）；修正 AI 工具能源級別錯誤</li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>類別</th>
+<th>內容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🔢 數據</td>
+<td>EMSD 官方資料庫全量 <strong>1,927 型號</strong>核實（能源/雪種/耗電）；修正 AI 工具能源級別錯誤</td>
+</tr>
+</tbody>
+</table>
 <h3>2026-08-11 — 初版</h3>
-<ul>
-<li>報告初版：29 型號統合對比（定頻/變頻）</li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>類別</th>
+<th>內容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>📝 內容</td>
+<td>報告初版：29 型號統合對比（定頻/變頻）</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2>⚠️ 免責聲明</h2>
 <ol>
