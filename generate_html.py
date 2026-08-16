@@ -930,7 +930,7 @@ __CONTENT__
   <div class="blk">
     <h3>🫧 鯨魚娘 AI 製作提示</h3>
     <p>本網頁由 <b style="color:#C5A468">DeepSeek 鯨魚娘 AI</b> 輔助製作，配合多輪官方資料核實；所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證。<br>
-      <span style="font-size:.8em;color:#6F7C99;">角色形象：whale-girl 鯨魚娘（來源：<a href="https://linux.do/t/topic/2751323" target="_blank" rel="noopener">linux.do 相關項目寵物皮膚</a>）</span></p>
+      <span style="font-size:.8em;color:#6F7C99;">角色形象：whale-girl 鯨魚娘（寵物皮膚：<a href="https://github.com/zhu1090093659/dsh-web-ui" target="_blank" rel="noopener">zhu1090093659/dsh-web-ui</a> · 來源：<a href="https://linux.do/t/topic/2751323" target="_blank" rel="noopener">linux.do 介紹帖</a>）</span></p>
   </div>
 
   <span class="ai">🫧 Powered by DeepSeek 鯨魚娘 AI</span><br>

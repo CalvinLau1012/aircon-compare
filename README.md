@@ -33,7 +33,7 @@
 | 品牌官網核實型號 | 220（8 品牌） |
 | 對比屬性 | 18 項 |
 
-> 🎨 角色形象：whale-girl 鯨魚娘（來源：[linux.do 相關項目寵物皮膚](https://linux.do/t/topic/2751323)）
+> 🎨 角色形象：whale-girl 鯨魚娘（寵物皮膚：[zhu1090093659/dsh-web-ui](https://github.com/zhu1090093659/dsh-web-ui) · 介紹：[linux.do](https://linux.do/t/topic/2751323)）
 
 ## 🏭 品牌官網核實（2026-08-15）
 
@@ -102,7 +102,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | `prices.json` / `specs_emsd.json` | Price 舊快照 / 規格資料庫（後備） |
 | `biggo_prices.json` | BigGo 官方 JSON API 價錢快照（731 型號，主力價錢源） |
 | `pricesapi_prices.json` | PricesAPI 核心 29 驗收快照（後備，需 API key） |
-| `whale_girl.webp` / `whale-girl.ico` | whale-girl 鯨魚娘角色立繪（WebP 內嵌 + 原始 ICO） |
+| `whale_girl.webp` / `whale-girl.ico` | whale-girl 鯨魚娘角色立繪（官方 sprite 高清提取 WebP + 用戶原始 ICO） |
 | `official_specs.json` 等 7 個 `*_official.json` | 品牌官網核實數據 |
 | `fetch_*.py` | 各數據源抓取腳本（EMSD/PricesAPI/Price/官網） |
 
@@ -166,7 +166,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | ------ | ------ |
 | 2026-08-16 | 修正 TOSOT/Gree 尺寸/重量/遙控被重複 dict key 覆蓋丟失；代碼重構（`crawl_utils.py` 統一 UA/型號規範化/型號載入 + 單元測試 + XSS 加固 + 版本號單一來源）；清理 Gemini 廢棄雜物 |
 | 2026-08-16 | 新增**深海女仆（DeepSeek 鯨魚娘）主題 UI**：深海藍紫 + 金色配色、角色立繪、泡泡/海浪氛圍 |
-| 2026-08-16 | 角色形象更換為 **whale-girl 鯨魚娘**（來源：linux.do 相關項目寵物皮膚） |
+| 2026-08-16 | 角色形象更換為 **whale-girl 鯨魚娘**（官方 dsh-web-ui pet sprite 高清提取；介紹來源 linux.do） |
 | 2026-08-16 | 開發困難與決策紀錄寫入 README（價錢源被封、Gemini 全量失敗、快照策略等） |
 | 2026-08-16 | 價錢源新增 **BigGo 香港格價**（多商戶報價，替代被 Cloudflare 攔截嘅 Price.com.hk） |
 | 2026-08-16 | 主力價錢源改用 **PricesAPI**（香港市場、免費 1,000 calls/月）；BigGo/Price 舊快照做後備 |
