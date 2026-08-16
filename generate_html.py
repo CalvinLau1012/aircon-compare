@@ -948,13 +948,14 @@ __CONTENT__
     <h3>🙏 資料來源鳴謝</h3>
     <p>· 機電工程署 EMSD 能源標籤資料庫（官方能源/雪種/耗電數據）<br>
       · 品牌官網及總代理：信興集團、樂信網店、Panasonic、世紀開利、GENERAL 第一電業、HITACHI、COMFEE、美的<br>
-      · 價格快照：BigGo 香港格價（點擊 🔍 轉跳 Google 搜最新價）· PricesAPI 核心 29 驗收後備 · 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
+      · 價格快照：BigGo 香港格價（點擊 🔍 轉跳 Google 搜最新價）· PricesAPI 核心 29 驗收後備 · 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價<br>
+      · 🎨 網站皮膚 Blue Fantasy：原作 <b>powerdog996（DreamSkin 社區）</b>，<b>zhu1090093659/dsh-web-ui</b> 適配；whale-girl 鯨魚娘素材來自同一項目。多謝大佬！</p>
   </div>
 
   <div class="blk">
     <h3>🫧 鯨魚娘 AI 製作提示</h3>
     <p>本網頁由 <b style="color:#C5A468">DeepSeek 鯨魚娘 AI</b> 輔助製作，配合多輪官方資料核實；所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證。<br>
-      <span style="font-size:.8em;color:#6F7C99;">角色形象：whale-girl 鯨魚娘（寵物皮膚：<a href="https://github.com/zhu1090093659/dsh-web-ui" target="_blank" rel="noopener">zhu1090093659/dsh-web-ui</a> · 來源：<a href="https://linux.do/t/topic/2751323" target="_blank" rel="noopener">linux.do 介紹帖</a>）</span></p>
+      <span style="font-size:.8em;color:#6F7C99;">角色形象：whale-girl 鯨魚娘（寵物皮膚：<a href="https://github.com/zhu1090093659/dsh-web-ui" target="_blank" rel="noopener">zhu1090093659/dsh-web-ui</a> · 來源：<a href="https://linux.do/t/topic/2751323" target="_blank" rel="noopener">linux.do 介紹帖</a>）<br>🙏 特別感謝 powerdog996（DreamSkin）Blue Fantasy 皮膚原作、zhu1090093659/dsh-web-ui 適配及鯨魚娘素材！</span></p>
   </div>
 
   <span class="ai">🫧 Powered by DeepSeek 鯨魚娘 AI</span><br>

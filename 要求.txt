@@ -17,6 +17,8 @@
    · 自動化：GitHub Actions 每日 00:30 HKT 自動檢查（EMSD 新機偵測 + last_check 打卡 + 驗證閘門 + 重新部署）；有新機先官網核實分兩日；BigGo 價錢批次每月最多一次（分 7 日）
    · 防禦性修補：誠實 Bot UA、退避重試遵從 Retry-After、抖動延遲、限流熔斷（降低被官方封鎖風險）
    · 工具重用：price_utils.py（價錢過濾）、crawl_utils.py（JSON/HTML/SSL 共用）、fetch_prices.py（批次共用）
+   · 網站皮膚：dsh-web-ui Blue Fantasy（只套皮膚）；whale-girl 鯨魚娘形象來自同一項目
+   · 🙏 特別鳴謝：powerdog996（DreamSkin）皮膚原作、zhu1090093659/dsh-web-ui 適配及鯨魚娘素材、linux.do 介紹帖
 4. 無法核實（Gree/TOSOT 代理無窗口機產品頁）保持「待查」不編造
 
 ════════════════════════════════════════

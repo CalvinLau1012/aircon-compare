@@ -34,6 +34,7 @@
 | 對比屬性 | 18 項 |
 
 > 🎨 角色形象：whale-girl 鯨魚娘（寵物皮膚：[zhu1090093659/dsh-web-ui](https://github.com/zhu1090093659/dsh-web-ui) · 介紹：[linux.do](https://linux.do/t/topic/2751323)）
+> 🙏 **特別鳴謝**：Blue Fantasy 皮膚原作 **powerdog996（DreamSkin 社區）**、dsh-web-ui 適配同鯨魚娘素材提供者 **zhu1090093659**，以及 linux.do 介紹帖大佬
 
 ## 🏭 品牌官網核實（2026-08-15）
 
@@ -169,6 +170,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | 2026-08-16 | 新增**深海女仆（DeepSeek 鯨魚娘）主題 UI**：深海藍紫 + 金色配色、角色立繪、泡泡/海浪氛圍 |
 | 2026-08-16 | 角色形象更換為 **whale-girl 鯨魚娘**（官方 dsh-web-ui pet sprite 高清提取；介紹來源 linux.do） |
 | 2026-08-16 | 套用 **dsh-web-ui Blue Fantasy（藍色幻想）skin**：whale art 背景 + periwinkle 靛藍配色 + 半透明磨砂面板；只要皮膚 |
+| 2026-08-16 | 文件加入特別鳴謝：感謝 powerdog996（DreamSkin）Blue Fantasy 皮膚原作、zhu1090093659/dsh-web-ui 適配及鯨魚娘素材、linux.do 介紹 |
 | 2026-08-16 | 開發困難與決策紀錄寫入 README（價錢源被封、Gemini 全量失敗、快照策略等） |
 | 2026-08-16 | 價錢源新增 **BigGo 香港格價**（多商戶報價，替代被 Cloudflare 攔截嘅 Price.com.hk） |
 | 2026-08-16 | 主力價錢源改用 **PricesAPI**（香港市場、免費 1,000 calls/月）；BigGo/Price 舊快照做後備 |
