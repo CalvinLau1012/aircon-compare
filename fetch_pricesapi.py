@@ -15,7 +15,6 @@ PricesAPI 香港格價快照抓取（核心 29 型號驗收 + 後備）
 import json
 import os
 import random
-import re
 import sys
 import threading
 import time
@@ -23,7 +22,8 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from crawl_utils import BOT_UA as UA, norm_model, load_models
+from crawl_utils import BOT_UA as UA, load_json, norm_model, load_models, save_json
+from price_utils import currency_code, format_price_range, is_ac_title, norm_title, num_price as _num_price
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT_PATH = os.path.join(BASE, 'pricesapi_prices.json')
@@ -57,16 +57,6 @@ RATE_LIMIT_INTERVAL = _env_float('PRICESAPI_RATE_LIMIT_INTERVAL', 11)  # 官方 
 DEFAULT_BATCH_LIMIT = 29
 MAX_BATCH_SECONDS = _env_int('PRICESAPI_BATCH_MAX_SECONDS', 50 * 60)
 
-# 冷氣相關關鍵字（排除 LoRa/RF 模組、相機配件等撞名產品）
-AC_RE = re.compile(
-    r'冷氣|空調|air\s*-?\s*con(ditioner)?|窗口機|窗口式|分體機|分體式|流動機|流動式|'
-    r'淨冷|制冷|冷暖|定頻|變頻|匹',
-    re.I)
-# 配件/服務排除（遙控器、濾網、支架、防塵罩等）
-ACC_RE = re.compile(
-    r'遙控|濾網|過濾|配件|說明書|支架|擋板|防塵|罩|remote|filter|parts?|cover|bracket',
-    re.I)
-
 _request_lock = threading.Lock()
 _last_request_start = 0.0
 
@@ -74,23 +64,6 @@ _last_request_start = 0.0
 def get_api_key():
     """讀取 API key；只放環境變數，唔可以 commit 入 repo"""
     return os.environ.get('PRICESAPI_API_KEY', '').strip()
-
-
-def norm_title(s):
-    return re.sub(r'[^A-Z0-9]', '', str(s).upper())
-
-
-def _num_price(p):
-    """價錢轉 int；非數值/非正數回 None"""
-    try:
-        v = int(round(float(p)))
-    except (TypeError, ValueError):
-        return None
-    return v if v > 0 else None
-
-
-def _currency(v):
-    return re.sub(r'[^A-Z]', '', str(v or '')).upper()
 
 
 def _rate_limit_wait():
@@ -174,14 +147,10 @@ def extract_prices(data, model):
         if not isinstance(cand, dict):
             continue
         title = (cand.get('title') or '').strip()
-        # 型號精確匹配 + 冷氣關鍵字，先排除 RF 模組等撞名產品
-        if nm not in norm_title(title):
+        # 型號精確匹配 + 冷氣關鍵字 + 配件排除（共用 price_utils 規則）
+        if not is_ac_title(title, nm):
             continue
-        if not AC_RE.search(title):
-            continue
-        if ACC_RE.search(title):
-            continue
-        cand_currency = _currency(cand.get('currency'))
+        cand_currency = currency_code(cand.get('currency'))
         source = (cand.get('source') or '').strip()
         offers = cand.get('offers') or []
         if not isinstance(offers, list):
@@ -193,7 +162,7 @@ def extract_prices(data, model):
             if not isinstance(off, dict):
                 continue
             p = _num_price(off.get('price'))
-            cur = _currency(off.get('currency')) or cand_currency
+            cur = currency_code(off.get('currency')) or cand_currency
             seller = (off.get('seller') or '').strip()
             if p is None or cur != 'HKD' or not seller:
                 continue
@@ -213,12 +182,11 @@ def extract_prices(data, model):
 
     if not prices:
         return False
-    lo, hi = min(prices), max(prices)
     url = next((u for u in urls if u), '')
     if not url:
         url = 'https://www.google.com/search?q=' + urllib.parse.quote(model + ' 價錢')
     return {
-        'price': f'${lo:,}-{hi:,}' if hi > lo else f'${lo:,}起',
+        'price': format_price_range(prices),
         'merchants': len(prices),
         'url': url,
         'updated': time.strftime('%Y-%m-%d'),
@@ -275,19 +243,12 @@ def prioritize_models(models, core_keys=None):
 
 
 def load_results():
-    if os.path.exists(OUT_PATH):
-        try:
-            with open(OUT_PATH, encoding='utf-8') as f:
-                data = json.load(f)
-            return data if isinstance(data, dict) else {}
-        except Exception:
-            pass
-    return {}
+    data = load_json(OUT_PATH, {})
+    return data if isinstance(data, dict) else {}
 
 
 def save_results(results):
-    with open(OUT_PATH, 'w', encoding='utf-8') as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
+    save_json(OUT_PATH, results, indent=2)
 
 
 def run_price_batch():
@@ -302,23 +263,19 @@ def run_price_batch():
         return
 
     meta = fetch_prices.load_meta()
-    idx = meta.get('price_batch_idx', 0)
-    if not meta.get('price_batch_start') or idx >= fetch_prices.PRICE_BATCH_DAYS:
-        print('💰 PricesAPI 批次：唔喺進行中，跳過')
-        return
     blocked = meta.get('blocked_until')
     if blocked and time.time() < blocked:
         print('🕐 冷卻期內，跳過本批（之後批次會繼續）')
         return
 
     models = prioritize_models(load_models())
-    limit = get_batch_limit()
-    total = min(len(models), limit) if limit and limit > 0 else len(models)
-    day_cap = (total + fetch_prices.PRICE_BATCH_DAYS - 1) // fetch_prices.PRICE_BATCH_DAYS
-    start = idx * day_cap
-    todo = models[start:min((idx + 1) * day_cap, total)]
+    batch = fetch_prices.get_batch_todo(models, meta, limit=get_batch_limit())
+    if batch is None:
+        print('💰 PricesAPI 批次：唔喺進行中，跳過')
+        return
+    todo, idx, total = batch
     print(f'💰 PricesAPI 批次 {idx + 1}/{fetch_prices.PRICE_BATCH_DAYS}：'
-          f'{len(todo)} 個型號（每月上限 {total} 個），開始...')
+          f'{len(todo)}/{total} 個型號，開始...')
 
     if not todo:
         idx = fetch_prices.PRICE_BATCH_DAYS
@@ -375,15 +332,11 @@ def run_price_batch():
         print('⏰ 本批未完成，唔推進批次；下次同批續跑（已完成嘅唔重查）')
         return
 
-    idx += 1
-    meta['price_batch_idx'] = idx
-    meta['last_run'] = today
-    if idx >= fetch_prices.PRICE_BATCH_DAYS:
-        meta.pop('price_batch_start', None)
-        meta['last_full'] = today
+    finished = fetch_prices.advance_batch(meta, today=today)
+    if finished:
         print(f'🎉 PricesAPI 價錢快照全量更新完成（分 {fetch_prices.PRICE_BATCH_DAYS} 日）')
     else:
-        print(f'💰 本批完成（{idx}/{fetch_prices.PRICE_BATCH_DAYS}），聽日繼續')
+        print(f'💰 本批完成（{meta.get("price_batch_idx")}/{fetch_prices.PRICE_BATCH_DAYS}），聽日繼續')
     fetch_prices.save_meta(meta)
 
 

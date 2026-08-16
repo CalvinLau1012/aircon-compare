@@ -9,9 +9,11 @@
 - EMSD CSV 型號載入 load_models（去重）
 """
 import csv
+import json
 import os
 import random
 import re
+import ssl
 import time
 import urllib.request
 import urllib.error
@@ -61,6 +63,41 @@ def fetch(url, timeout=15, retries=3, extra_headers=None):
             if attempt < retries - 1:
                 time.sleep(2 * (attempt + 1))
     raise last
+
+
+def load_json(path, default=None):
+    """讀 JSON；檔案唔存在或壞檔回 default，唔會整死批次"""
+    try:
+        with open(path, encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return default
+
+
+def save_json(path, data, indent=None):
+    """寫 JSON（ensure_ascii=False），自動建 parent directory"""
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=indent)
+
+
+def html_to_text(html, joiner=' ', keep_lines=False):
+    """HTML 轉純文字：移除 script/style/標籤，壓縮多餘空白"""
+    t = re.sub(r'<script.*?</script>|<style.*?</style>', ' ', html or '', flags=re.S | re.I)
+    t = re.sub(r'<[^>]+>', '\n' if keep_lines else joiner, t)
+    t = re.sub(r'[ \t\r]+', ' ', t)
+    if keep_lines:
+        lines = [ln.strip() for ln in t.split('\n') if ln.strip()]
+        return '\n'.join(lines)
+    return re.sub(r'\s+', joiner, t).strip()
+
+
+def no_verify_ssl_context():
+    """部分香港官網 TLS 憑證鏈唔完整，先提供一個唔驗證憑證嘅 context（同舊行為一致）"""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
 
 
 def load_models(csv_path=None):

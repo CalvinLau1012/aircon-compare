@@ -127,6 +127,47 @@ def price_batch_active():
     return bool(meta.get('price_batch_start')) and meta.get('price_batch_idx', 0) < PRICE_BATCH_DAYS
 
 
+def get_batch_todo(models, meta=None, days=PRICE_BATCH_DAYS, limit=None):
+    """批次共用：計出今日要查嘅型號 slice。
+    回 None 代表批次未啟動/已完成；否則回 (todo, idx, total)。
+    """
+    meta = meta or load_meta()
+    idx = meta.get('price_batch_idx', 0)
+    if not meta.get('price_batch_start') or idx >= days:
+        return None
+    total = min(len(models), limit) if limit and limit > 0 else len(models)
+    day_cap = (total + days - 1) // days
+    start = idx * day_cap
+    todo = models[start:min((idx + 1) * day_cap, total)]
+    return todo, idx, total
+
+
+def advance_batch(meta, days=PRICE_BATCH_DAYS, today=None):
+    """批次共用：完成今日 slice 後推進 idx / 完結清理。
+    回 True 代表 7 日批次全部完成。
+    """
+    today = today or time.strftime('%Y-%m-%d')
+    idx = meta.get('price_batch_idx', 0) + 1
+    meta['price_batch_idx'] = idx
+    meta['last_run'] = today
+    if idx >= days:
+        meta.pop('price_batch_start', None)
+        meta['last_full'] = today
+        return True
+    return False
+
+
+def checkin():
+    """每日檢查打卡：只更新 last_check（俾網頁顯示每日檢查時間），唔當數據更新"""
+    meta = load_meta()
+    today = time.strftime('%Y-%m-%d')
+    meta['last_check'] = today
+    if not meta.get('last_run'):
+        meta['last_run'] = today
+    save_meta(meta)
+    print(f'📅 每日檢查已記錄：{today}')
+
+
 def run_price_batch():
     """執行當日價錢批次（全量分 7 片，每日一片）"""
     meta = load_meta()
@@ -197,6 +238,9 @@ def run_price_batch():
 
 
 def main():
+    if '--checkin' in sys.argv:
+        checkin()
+        return
     if '--price-batch' in sys.argv:
         run_price_batch()
         return

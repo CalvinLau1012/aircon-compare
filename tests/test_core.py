@@ -12,8 +12,11 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import crawl_utils
+import fetch_biggo
+import fetch_prices
 import fetch_pricesapi
 import generate_html
+import price_utils
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -33,6 +36,29 @@ def test_load_models_dedup():
     assert models, 'EMSD CSV 型號清單唔應該係空'
     keys = [crawl_utils.norm_model(m) for m in models]
     assert len(keys) == len(set(keys)), 'load_models 去重失效'
+
+
+def test_load_save_json_roundtrip(tmp_path):
+    p = tmp_path / 'x.json'
+    crawl_utils.save_json(p, {'a': '中文'})
+    assert crawl_utils.load_json(p) == {'a': '中文'}
+    assert crawl_utils.load_json(tmp_path / 'missing.json', {'fallback': 1}) == {'fallback': 1}
+
+
+def test_html_to_text():
+    html = '<html><style>.x{}</style><script>var x;</script><p>Hello <b>World</b></p></html>'
+    assert crawl_utils.html_to_text(html) == 'Hello World'
+
+
+def test_batch_helpers():
+    models = [f'M{i}' for i in range(40)]
+    meta = {'price_batch_start': '2026-08-16', 'price_batch_idx': 1}
+    todo, idx, total = fetch_prices.get_batch_todo(models, meta, days=7, limit=29)
+    assert idx == 1 and total == 29
+    assert todo == models[5:10]
+    meta2 = {'price_batch_start': '2026-08-16', 'price_batch_idx': 6}
+    assert fetch_prices.advance_batch(meta2, days=7, today='2026-08-16') is True
+    assert 'price_batch_start' not in meta2 and meta2['last_full'] == '2026-08-16'
 
 
 # ---------- generate_html ----------
@@ -69,7 +95,19 @@ def test_best_price_priority():
     assert generate_html.best_price('RA-10RF', biggo, gemini, prices) == '$200'
 
 
-# ---------- fetch_pricesapi ----------
+# ---------- price_utils / fetch_pricesapi ----------
+
+def test_price_utils_shared():
+    assert price_utils.num_price('1234') == 1234
+    assert price_utils.num_price('abc') is None
+    assert price_utils.format_price_range([2500, 3680]) == '$2,500-3,680'
+    assert price_utils.format_price_range([2500]) == '$2,500起'
+    assert price_utils.is_ac_title('HITACHI RA-10RF Air Conditioner', 'RA10RF')
+    assert not price_utils.is_ac_title('RA-10RF 遙控器', 'RA10RF')
+    # 兩個 fetch 工具都係同一套規則
+    assert fetch_biggo._num_price is price_utils.num_price
+    assert fetch_pricesapi._num_price is price_utils.num_price
+
 
 def test_num_price():
     assert fetch_pricesapi._num_price('1234') == 1234

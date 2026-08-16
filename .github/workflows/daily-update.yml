@@ -7,7 +7,7 @@ on:
   # 亦可以喺 GitHub Actions 頁面手動觸發
   workflow_dispatch: {}
 
-# 安全：只授予寫內容嘅最低權限，唔需要任何密鑰/Token
+# 安全：只授予寫內容嘅最低權限；BigGo 主力源唔需要密鑰，PricesAPI 後備 key 放 Secrets
 permissions:
   contents: write
 
@@ -83,6 +83,9 @@ jobs:
         env:
           PRICESAPI_API_KEY: ${{ secrets.PRICESAPI_API_KEY }}
         run: python fetch_pricesapi.py --core || true
+
+      - name: 每日檢查打卡（更新 last_check）
+        run: python fetch_prices.py --checkin || true
 
       - name: 數據驗證（防壞數據上線）
         run: python validate_data.py

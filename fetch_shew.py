@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """信興官網 shew.com.hk Rasonic/FROSTAR/Panasonic 窗口機規格抓取"""
-import json, re, ssl, sys, io, urllib.request, urllib.error, time, os
-from crawl_utils import BOT_UA
-CTX = ssl.create_default_context(); CTX.check_hostname = False; CTX.verify_mode = ssl.CERT_NONE
+import json, re, sys, urllib.request, urllib.error, time, os
+from crawl_utils import BOT_UA, html_to_text, no_verify_ssl_context
+CTX = no_verify_ssl_context()
 def get(u):
     req = urllib.request.Request(u, headers={'User-Agent':BOT_UA,'Accept-Language':'zh-HK,zh;q=0.9'})
     last = None
@@ -20,10 +20,6 @@ def get(u):
             last = e
             time.sleep(2)
     raise last
-def txt(html):
-    t = re.sub(r'<script.*?</script>|<style.*?</style>', ' ', html, flags=re.S)
-    t = re.sub(r'<[^>]+>', ' ', t)
-    return re.sub(r'\s+', ' ', t)
 def grab(t, kws, n=80):
     for kw in kws:
         i = t.find(kw)
@@ -41,7 +37,7 @@ def main():
         model = slug.replace('.aspx', '').upper()
         try:
             h = get(url)
-            t = txt(h)
+            t = html_to_text(h)
             m = re.search(r'體積\s*\(高\s*[xX×]\s*闊\s*[xX×]\s*深\)\s*:?\s*([\d.]+)\s*[xX×]\s*([\d.]+)\s*[xX×]\s*([\d.]+)', t) or re.search(r'([\d.]+)\s*[xX×]\s*([\d.]+)\s*[xX×]\s*([\d.]+)\s*毫米', t)
             size = f'{m.group(1)}\u00d7{m.group(2)}\u00d7{m.group(3)}' if m else ''
             mw = re.search(r'淨重\s*([\d.]+)\s*公斤', t)

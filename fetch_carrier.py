@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """世紀開利官網 century-carrier.com 窗口機規格抓取（Carrier + Canopus 肯特）"""
-import json, re, ssl, sys, io, os, urllib.request, urllib.error, time
-from crawl_utils import BOT_UA
+import json, re, sys, os, urllib.request, urllib.error, time
+from crawl_utils import BOT_UA, html_to_text, no_verify_ssl_context
 
-CTX = ssl.create_default_context(); CTX.check_hostname = False; CTX.verify_mode = ssl.CERT_NONE
+CTX = no_verify_ssl_context()
 
 
 def get(u):
@@ -25,13 +25,6 @@ def get(u):
     raise last
 
 
-def txt(html):
-    t = re.sub(r'<script.*?</script>|<style.*?</style>', ' ', html, flags=re.S)
-    t = re.sub(r'<[^>]+>', '\n', t)
-    lines = [l.strip() for l in t.split('\n') if l.strip()]
-    return '\n'.join(lines), lines
-
-
 def main():
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -41,7 +34,8 @@ def main():
     for url in urls:
         try:
             h = get(url)
-            t, lines = txt(h)
+            t = html_to_text(h, keep_lines=True)
+            lines = t.split('\n')
             m = re.search(r'\b((?:CHK|CKM|TA|CAK|CAR)[A-Z0-9]*)\b', t)
             model = m.group(1) if m else 'UNK'
             # 標題行（型號後第一行）

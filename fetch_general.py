@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """GENERAL 珍寶香港總代理 general-aircon.com 窗口機規格抓取"""
-import json, re, ssl, sys, io, os, urllib.request, urllib.error, time
-from crawl_utils import BOT_UA
+import json, re, sys, os, urllib.request, urllib.error, time
+from crawl_utils import BOT_UA, html_to_text, no_verify_ssl_context
 
-CTX = ssl.create_default_context(); CTX.check_hostname = False; CTX.verify_mode = ssl.CERT_NONE
+CTX = no_verify_ssl_context()
 
 
 def get(u):
@@ -23,12 +23,6 @@ def get(u):
             last = e
             time.sleep(2)
     raise last
-
-
-def txt(html):
-    t = re.sub(r'<script.*?</script>|<style.*?</style>', ' ', html, flags=re.S)
-    t = re.sub(r'<[^>]+>', ' ', t)
-    return re.sub(r'\s+', ' ', t)
 
 
 URLS = [
@@ -59,7 +53,7 @@ def main():
     for model, url in URLS:
         try:
             h = get(url)
-            t = txt(h)
+            t = html_to_text(h)
             # 尺寸：尺寸(高x寬x深) 後接三數字
             m = re.search(r'尺寸\s*\(高\s*x\s*寬\s*x\s*深\)[^0-9]*([\d.]+)\s*x\s*([\d.]+)\s*x\s*([\d.]+)', t, re.I)
             size = f'{m.group(1)}\u00d7{m.group(2)}\u00d7{m.group(3)}' if m else ''

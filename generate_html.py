@@ -14,10 +14,10 @@ import markdown
 import re
 import base64
 
-from crawl_utils import norm_model
+from crawl_utils import load_json, norm_model
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-VERSION = '1.2.1'  # 單一版本號來源（升級時只改呢度）
+VERSION = '1.2.2'  # 單一版本號來源（升級時只改呢度）
 
 # ============================================================
 # 型號資料庫（整合報告 + EMSD 官方）
@@ -360,40 +360,20 @@ def normalize_brand(b):
 
 
 def load_prices():
-    """載入 Price.com.hk 價格庫（prices.json：型號 → {price, pid}）"""
-    p = os.path.join(BASE, 'prices.json')
-    if not os.path.exists(p):
-        return {}
-    with open(p, encoding='utf-8') as f:
-        return json.load(f)
-
+    """載入 Price.com.hk 價格庫（prices.json）"""
+    return load_json(os.path.join(BASE, 'prices.json'), {})
 
 def load_pricesapi():
-    """載入 PricesAPI 核心 29 驗收快照（pricesapi_prices.json，做 BigGo 後備）"""
-    p = os.path.join(BASE, 'pricesapi_prices.json')
-    if not os.path.exists(p):
-        return {}
-    with open(p, encoding='utf-8') as f:
-        return json.load(f)
-
+    """載入 PricesAPI 核心 29 驗收快照（pricesapi_prices.json）（後備，需 API key）"""
+    return load_json(os.path.join(BASE, 'pricesapi_prices.json'), {})
 
 def load_biggo():
-    """載入 BigGo 香港格價快照（biggo_prices.json，主力價錢源）"""
-    p = os.path.join(BASE, 'biggo_prices.json')
-    if not os.path.exists(p):
-        return {}
-    with open(p, encoding='utf-8') as f:
-        return json.load(f)
-
+    """載入 BigGo 香港格價快照（biggo_prices.json）（主力價錢源）"""
+    return load_json(os.path.join(BASE, 'biggo_prices.json'), {})
 
 def load_gemini():
-    """載入 Gemini AI 搜索價（gemini_prices.json：型號 → {price, source}）"""
-    p = os.path.join(BASE, 'gemini_prices.json')
-    if not os.path.exists(p):
-        return {}
-    with open(p, encoding='utf-8') as f:
-        return json.load(f)
-
+    """載入 Gemini AI 搜索價（gemini_prices.json）"""
+    return load_json(os.path.join(BASE, 'gemini_prices.json'), {})
 
 def best_price(model, *sources):
     """價錢優先級：BigGo 實抓 > PricesAPI 核心驗收/後備 > Gemini AI 搜 > Price 舊快照
@@ -420,16 +400,19 @@ def best_price(model, *sources):
 
 
 def load_specs_emsd():
-    """載入 EMSD 型號規格（specs_emsd.json：Price og 規格）"""
-    p = os.path.join(BASE, 'specs_emsd.json')
-    if not os.path.exists(p):
-        return {}
-    with open(p, encoding='utf-8') as f:
-        return json.load(f)
+    """載入 EMSD 型號規格（specs_emsd.json）"""
+    return load_json(os.path.join(BASE, 'specs_emsd.json'), {})
+
+def _zh_date(s):
+    try:
+        d = time.strptime(s, '%Y-%m-%d')
+        return f'{d.tm_year} 年 {d.tm_mon} 月 {d.tm_mday} 日'
+    except Exception:
+        return s
 
 
 def update_status():
-    """讀取 meta 生成更新狀態文字（網站自動顯示有冇更新）"""
+    """讀取 meta 生成更新狀態文字（每日檢查日期 vs 價錢快照日期分開顯示）"""
     p = os.path.join(BASE, 'prices_meta.json')
     meta = {}
     try:
@@ -437,14 +420,10 @@ def update_status():
             meta = json.load(f)
     except Exception:
         pass
-    last_run = meta.get('last_run') or '2026-08-15'
-    try:
-        d = time.strptime(last_run, '%Y-%m-%d')
-        zh_date = f'{d.tm_year} 年 {d.tm_mon} 月 {d.tm_mday} 日'
-    except Exception:
-        zh_date = last_run
-    return (f'📅 {zh_date} 更新 · v{VERSION} · 🔄 每日偵測新機 · 有機先更新',
-            f'🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 價錢為 {last_run} BigGo 快照（PricesAPI 核心 29 後備）· 最後更新 {last_run}')
+    last_check = meta.get('last_check') or meta.get('last_run') or '2026-08-16'
+    last_price = meta.get('last_full') or meta.get('last_run') or last_check
+    return (f'📅 {_zh_date(last_check)} 檢查 · 價錢快照 {_zh_date(last_price)} · v{VERSION} · 🔄 每日自動檢查',
+            f'🔄 每日 00:30 自動檢查（EMSD + BigGo 價錢批次）· 價錢快照 {last_price} · 最後檢查 {last_check}')
 
 
 def load_new_models():
@@ -532,7 +511,7 @@ def load_emsd_models():
             'wifi': wifi, 'remote': remote, 'price': price, 'pid': pid,
             'kwh': r[5], 'cspf': r[7], 'kw': r[6], 'gas': r[8],
             'noise': '', 'size': size, 'weight': weight, 'warranty': warranty,
-            'note': 'EMSD 官方登記 · Price 實價', 'ref': r[2], 'provider': r[13],
+            'note': 'EMSD 官方登記 · BigGo/Price 市場價', 'ref': r[2], 'provider': r[13],
         }
         # 官網核實數據覆蓋
         apply_official(item)

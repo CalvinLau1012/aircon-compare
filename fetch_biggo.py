@@ -15,7 +15,6 @@ BigGo 香港格價（官方公開 JSON API）價錢快照抓取
 import json
 import os
 import random
-import re
 import sys
 import time
 import urllib.request
@@ -23,28 +22,13 @@ import urllib.error
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from crawl_utils import BOT_UA as UA, norm_model, load_models
+from crawl_utils import BOT_UA as UA, load_json, norm_model, load_models, save_json
+from price_utils import format_price_range, is_ac_title, norm_title, num_price as _num_price
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT_PATH = os.path.join(BASE, 'biggo_prices.json')
 
 API = 'https://api.biggo.com/api/v1/spa/search/{}/product'
-
-# 冷氣相關關鍵字（排除 LoRa/RF 模組、相機配件等撞名產品）
-# 涵蓋「窗口機 / 分體機 / 流動式 / 淨冷 / 變頻」等唔含「冷氣/空調」嘅同義表述
-AC_RE = re.compile(
-    r'冷氣|空調|air\s*-?\s*con(ditioner)?|窗口機|窗口式|分體機|分體式|流動機|流動式|'
-    r'淨冷|制冷|冷暖|定頻|變頻|匹',
-    re.I)
-# 配件/服務排除（遙控器、濾網、支架、防塵罩等）
-ACC_RE = re.compile(
-    r'遙控|濾網|過濾|配件|說明書|支架|擋板|防塵|罩|remote|filter|parts?|cover|bracket',
-    re.I)
-
-
-def norm_title(s):
-    return re.sub(r'[^A-Z0-9]', '', str(s).upper())
-
 
 def _get(url):
     """帶抖動+退避嘅 GET，回傳解析好嘅 JSON dict；失敗回 None"""
@@ -72,15 +56,6 @@ def _get(url):
     return None
 
 
-def _num_price(p):
-    """價錢轉 int；非數值/非正數回 None"""
-    try:
-        v = int(round(float(p)))
-    except (TypeError, ValueError):
-        return None
-    return v if v > 0 else None
-
-
 def fetch_biggo_price(model):
     """搜一個型號。有價回 dict；查得到但無匹配回 False；網絡/限流錯誤回 None"""
     url = API.format(urllib.parse.quote(model, safe=''))
@@ -98,13 +73,8 @@ def fetch_biggo_price(model):
         if it.get('is_offline') or it.get('is_expired'):
             continue
         title = (it.get('title') or '').strip()
-        # 型號精確匹配 + 冷氣關鍵字（排除 RF 模組等撞名產品）
-        if nm not in norm_title(title):
-            continue
-        if not AC_RE.search(title):
-            continue
-        # 排除配件/服務（遙控器、濾網、支架等）
-        if ACC_RE.search(title):
+        # 型號精確匹配 + 冷氣關鍵字 + 配件排除（共用 price_utils 規則）
+        if not is_ac_title(title, nm):
             continue
         p = _num_price(it.get('price'))
         if p is None:
@@ -118,8 +88,7 @@ def fetch_biggo_price(model):
         prices.append(p)
     if not prices:
         return False
-    lo, hi = min(prices), max(prices)
-    price = f'${lo:,}-{hi:,}' if hi > lo else f'${lo:,}起'
+    price = format_price_range(prices)
     return {
         'price': price,
         'merchants': len(prices),
@@ -132,25 +101,22 @@ def run_price_batch():
     """執行當日 BigGo 價錢批次（每月一次、分 7 日）"""
     import fetch_prices
     meta = fetch_prices.load_meta()
-    idx = meta.get('price_batch_idx', 0)
-    if not meta.get('price_batch_start') or idx >= fetch_prices.PRICE_BATCH_DAYS:
-        print('💰 BigGo 批次：唔喺進行中，跳過')
-        return
     blocked = meta.get('blocked_until')
     if blocked and time.time() < blocked:
         print('🕐 冷卻期內，跳過本批（之後批次會繼續）')
         return
 
     models = load_models()
-    n = len(models)
-    step = (n + fetch_prices.PRICE_BATCH_DAYS - 1) // fetch_prices.PRICE_BATCH_DAYS
-    todo = models[idx * step:(idx + 1) * step]
-    print(f'💰 BigGo 批次 {idx + 1}/{fetch_prices.PRICE_BATCH_DAYS}：{len(todo)} 個型號，開始...')
+    batch = fetch_prices.get_batch_todo(models, meta)
+    if batch is None:
+        print('💰 BigGo 批次：唔喺進行中，跳過')
+        return
+    todo, idx, total = batch
+    print(f'💰 BigGo 批次 {idx + 1}/{fetch_prices.PRICE_BATCH_DAYS}：{len(todo)}/{total} 個型號，開始...')
 
-    results = {}
-    if os.path.exists(OUT_PATH):
-        with open(OUT_PATH, encoding='utf-8') as f:
-            results = json.load(f)
+    results = load_json(OUT_PATH, {})
+    if not isinstance(results, dict):
+        results = {}
 
     ok = 0
     consec_fail = 0
@@ -176,24 +142,19 @@ def run_price_batch():
             if done_count % 50 == 0:
                 el = time.time() - t0
                 print(f'  進度 {done_count}/{len(todo)}（得價 {ok}）· {el:.0f}s', flush=True)
-                with open(OUT_PATH, 'w', encoding='utf-8') as f:
-                    json.dump(results, f, ensure_ascii=False)
+                save_json(OUT_PATH, results)
             if done_count >= 40 and consec_fail >= 40:
                 print('⚠️ 連續 40 個失敗，疑似被限流，中止本批', flush=True)
                 fetch_prices.set_cooldown()
                 sys.exit(1)
 
-    with open(OUT_PATH, 'w', encoding='utf-8') as f:
-        json.dump(results, f, ensure_ascii=False)
+    save_json(OUT_PATH, results)
 
-    idx += 1
-    meta['price_batch_idx'] = idx
-    if idx >= fetch_prices.PRICE_BATCH_DAYS:
-        meta.pop('price_batch_start', None)
-        meta['last_full'] = time.strftime('%Y-%m-%d')
+    finished = fetch_prices.advance_batch(meta)
+    if finished:
         print(f'🎉 BigGo 價錢快照全量更新完成（分 {fetch_prices.PRICE_BATCH_DAYS} 日）')
     else:
-        print(f'💰 本批完成（{idx}/{fetch_prices.PRICE_BATCH_DAYS}），聽日繼續')
+        print(f'💰 本批完成（{meta.get("price_batch_idx")}/{fetch_prices.PRICE_BATCH_DAYS}），聽日繼續')
     fetch_prices.save_meta(meta)
 
 

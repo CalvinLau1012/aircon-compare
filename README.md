@@ -1,4 +1,4 @@
-# ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/version-v1.2.1-2ea44f)
+# ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/version-v1.2.2-2ea44f)
 
 > 香港市場空調（窗口式 / 分體式 / 流動式；淨冷/冷暖、定頻/變頻）全面對比
 > **能源級別、雪種、年耗電已用機電署 EMSD 官方資料庫（1,927 型號）全量核實**
@@ -15,7 +15,7 @@
 
 - ⚖️ **互動比較器**：勾選 2 個或以上型號，即時彈出 18 項屬性對比表（自動高亮最平/最慳電/最高 CSPF）
 - 🔍 搜尋（品牌/型號）+ 篩選（匹數、機型、能源級別、品牌）+ 排序（價格 / 能源 / 年耗電 / CSPF）
-- 🛒 1,847 個型號附價格快照（2026-08-15），點擊 🔍 直接喺你瀏覽器 Google 搜最新價
+- 🛒 1,848 個型號附價格快照（BigGo 2026-08-16 主力 + Price 舊快照後備），點擊 🔍 直接喺你瀏覽器 Google 搜最新價
 - 📱 手機 / 平板 / 桌面全響應式（表格可橫向捲動）
 - 📊 完整報告：定頻 vs 變頻、統合總表、官方驗證、能源分析、深度分析、排名、推薦、價格驗證、論壇討論精華
 
@@ -24,7 +24,7 @@
 | 項目 | 數量 |
 | ------ | ------ |
 | 收錄型號 | 1,854（核心 29 + EMSD 全量 1,825） |
-| 有價格型號 | 1,847（2026-08-15 快照，🔍 點擊搜最新價） |
+| 有價格型號 | 1,848（BigGo 731 主力 + Price 舊快照補 1,117；2026-08-16） |
 | BigGo 香港格價型號 | 731（官方 JSON API 實抓，2026-08-16；主力價錢源） |
 | PricesAPI 核心驗收型號 | 29（選用驗收/後備，每月免費額度內） |
 | 有尺寸型號 | 1,676 |
@@ -54,7 +54,7 @@
 - **排程**：GitHub Actions 每日 00:30（香港時間）輕量偵測 EMSD；**有新機先觸發更新**（官網核實分兩日分批進行），冇新機就唔更新內容
 - **價錢快照**：**BigGo 官方 JSON API**（`api.biggo.com`，多商戶報價，同 BigGo MCP Server 同源）+ PricesAPI 核心 29 驗收/後備 + Price.com.hk 舊快照；有新機時每月最多更新一次（分 7 日分批）；點擊 🔍 喺瀏覽器 Google 搜最新價
 - **新機偵測**：比較 EMSD 官方資料庫新舊型號，新上市型號自動入庫並喺網頁「🆕 最近新上市」顯示
-- **價錢策略**：價格為 2026-08-15 快照（唔頻繁更新，僅供參考）；規格以 EMSD + 品牌官網為準
+- **價錢策略**：價錢快照以 BigGo 2026-08-16 實抓為主（唔頻繁更新，僅供參考）；規格以 EMSD + 品牌官網為準
 - **安全**：PricesAPI key 只放 GitHub Actions Secrets（`PRICESAPI_API_KEY`），唔會 commit 入 repo；權限只限 `contents: write`；Action 版本固定（@v4/@v5）；設 concurrency 防重疊
 - **穩定**：抓取後經「數據驗證閘門」(`validate_data.py`) 檢查數量喺安全範圍——唔合格就唔提交，保住現有數據；每次成功提交 = 可回溯快照，壞咗可一鍵還原
 - 亦可喺 GitHub Actions 頁面手動觸發（workflow_dispatch）
@@ -93,11 +93,12 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | `空調對比報告.md` | Markdown 報告全文 |
 | `需求摘要.md` | 需求元文件 |
 | `generate_html.py` | 網頁生成器（md + JSON → HTML） |
-| `crawl_utils.py` | 共用工具（誠實 UA / 型號規範化 / 型號載入 / 退避重試） |
+| `crawl_utils.py` | 共用工具（誠實 UA / 型號規範化 / JSON 讀寫 / HTML 轉字 / 退避重試） |
+| `price_utils.py` | 價錢過濾共用工具（冷氣關鍵詞 / 配件排除 / 價格範圍格式化） |
 | `validate_data.py` | 數據驗證閘門（自動更新防壞數據） |
 | `tests/` · `requirements-dev.txt` | 單元測試 + 開發依賴（pytest） |
 | `emsd_空調能源標籤.csv` | EMSD 官方資料庫快照（1,927 型號） |
-| `prices.json` / `specs_emsd.json` | Price 實價 / 規格資料庫 |
+| `prices.json` / `specs_emsd.json` | Price 舊快照 / 規格資料庫（後備） |
 | `biggo_prices.json` | BigGo 官方 JSON API 價錢快照（731 型號，主力價錢源） |
 | `pricesapi_prices.json` | PricesAPI 核心 29 驗收快照（後備，需 API key） |
 | `deepseek_maid.webp` | 深海女仆（DeepSeek 鯨魚娘）角色立繪 |
@@ -111,12 +112,12 @@ python fetch_rasonic.py        # 樂信官方網店價格
 - **困難**：Price.com.hk 全站被 Cloudflare「Just a moment…」質疑頁攔截——urllib、Playwright headless、有頭瀏覽器全部被擋；確認唔係限流（等冷卻冇用），而係硬封
 - **決策**：**唔用代理繞過**（保持誠實爬蟲）；探測咗十幾個來源後，改用 **BigGo 香港格價**做主價源（多商戶報價，性質同 Price.com.hk 一致，urllib 直連無 Cloudflare）
 - **升級**：改用 BigGo **官方公開 JSON API**（`api.biggo.com/api/v1/spa/search/{型號}/product`，`site=biggo.hk`、`region=hk`），唔再解析 HTML；商品搜索無需憑證（`client_id/client_secret` 只係規格搜索用）；修復分體機型號斜杠（`/`）未編碼導致 403 嘅 bug
-- **再升級（2026-08-16）**：主力改用 **PricesAPI**（`api.pricesapi.io/api/v1/products/search?country=hk`，官方有香港市場、免費 1,000 calls/月、10 req/min、Retry-After 同明確 error code；我哋實際用 11s 間隔更保守）；API key 經 `PRICESAPI_API_KEY` 環境變數傳入，每月最多查 395 個型號（核心 29 優先），BigGo/Price 舊快照保留做後備
+- **再升級（2026-08-16）**：曾試用 **PricesAPI**（`api.pricesapi.io`，香港市場、免費 1,000 calls/月）；實測 BigGo MCP Server 後，確定主力用返 BigGo，PricesAPI 只保留核心 29 驗收/後備
 
 ### 2. Gemini 人手查價全量失敗
 
 - **困難**：Web 版 Gemini 幫手查價，29 個型號批次成功（21 個有價），但 1,874 型號全量批次幾乎全部空回應（只有舊批次重複答案，Flash-Lite 未登入模式處理唔到）
-- **決策**：放棄 Gemini 全量路線；保留嗰 21 個有價結果做補充源；全量先由 BigGo、之後主力改用 PricesAPI 自動分批負責
+- **決策**：放棄 Gemini 全量路線；保留嗰 21 個有價結果做補充源；主力確定用 BigGo 自動分批負責，PricesAPI 做核心 29 驗收/後備
 
 ### 3. 每日抓價觸發防護
 
@@ -137,7 +138,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 ## ⚠️ 免責聲明
 
-1. 價格及供應隨時間變動；價格為 2026-08-15 快照，僅供參考（以商戶實時報價為準）
+1. 價格及供應隨時間變動；價格以 BigGo 2026-08-16 快照為主，僅供參考（以商戶實時報價為準）
 2. 能源級別/雪種/年耗電以 EMSD 官方資料庫為準；尺寸/淨重/保養以品牌官網為準
 3. Gree/TOSOT 保養等未能官網核實之規格為零售商交叉核實結果，表中標註「零售商規格」
 4. 噪音 dB 為參考級（無官方文件）
@@ -149,6 +150,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 | 版本 | 日期 | 重點 |
 | --- | --- | --- |
+| **v1.2.2** | 2026-08-16 | 全項目說明文件同步、每日檢查打卡（`last_check`）、BigGo 驗證閘門、抽取 `price_utils.py` 重用工具 |
 | **v1.2.1** | 2026-08-16 | 主力價錢源確定用返 **BigGo 官方 JSON API**；PricesAPI 改為核心 29 驗收/後備 |
 | **v1.2.0** | 2026-08-16 | 主力價錢源改用 **PricesAPI 香港格價**（免費 1,000 calls/月、核心 29 優先）；BigGo/Price 舊快照做後備 |
 | **v1.1.1** | 2026-08-16 | 修正 TOSOT/Gree 規格被重複 dict key 覆蓋丟失；代碼重構（crawl_utils 共用 + 單元測試 + XSS 加固 + 版本號單一來源） |
@@ -167,6 +169,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | 2026-08-16 | 價錢源新增 **BigGo 香港格價**（多商戶報價，替代被 Cloudflare 攔截嘅 Price.com.hk） |
 | 2026-08-16 | 主力價錢源改用 **PricesAPI**（香港市場、免費 1,000 calls/月）；BigGo/Price 舊快照做後備 |
 | 2026-08-16 | BigGo MCP Server 實測可用（HK 區域、免憑證）；主力價錢源確定用返 **BigGo**，PricesAPI 改為核心 29 驗收/後備 |
+| 2026-08-16 | v1.2.2 全項目優化：每日檢查打卡、BigGo 驗證、抽取共用價錢過濾工具、同步所有說明/提示 |
 | 2026-08-16 | 策略調整：價錢保持快照（🔍 Google 搜最新價）；每日偵測新機，有新機先分批更新（官網核實分兩日）；網站自動顯示更新狀態 |
 | 2026-08-15 | 防禦性修補（禮貌爬蟲防封）+ 免責聲明全面更新 + markdownlint 全清 |
 | 2026-08-15 | 官網核實 220 型號；EMSD 1,854 型號 + Price 1,847 實價；GitHub Pages 上線；「論壇討論精華」章節；機型篩選/導覽列/頁腳多輪優化；Gree/TOSOT 零售規格核實 + GWF12P/GWF18P 替換補完 |
@@ -174,4 +177,4 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | 2026-08-12 | EMSD 官方資料庫全量 1,927 型號核實 |
 | 2026-08-11 | 報告初版（29 型號對比） |
 
-**更新日期**：2026-08-16 · **版本**：v1.2.1
+**更新日期**：2026-08-16 · **版本**：v1.2.2
