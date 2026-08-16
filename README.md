@@ -1,8 +1,9 @@
-# ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/version-v1.0.0-2ea44f)
+# ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/version-v1.1.0-2ea44f)
 
 > 香港市場空調（窗口式 / 分體式 / 流動式；淨冷/冷暖、定頻/變頻）全面對比
 > **能源級別、雪種、年耗電已用機電署 EMSD 官方資料庫（1,927 型號）全量核實**
 > **220 個型號已直接經品牌官網/官方網店/總代理逐型號核實（2026-08-15）**
+> 🎨 **深海女仆（DeepSeek 鯨魚娘）主題 UI**
 
 ## 🚀 立即使用
 
@@ -24,10 +25,13 @@
 | ------ | ------ |
 | 收錄型號 | 1,854（核心 29 + EMSD 全量 1,825） |
 | 有價格型號 | 1,847（2026-08-15 快照，🔍 點擊搜最新價） |
+| BigGo 香港格價型號 | 731（官方 JSON API 實抓，2026-08-16） |
 | 有尺寸型號 | 1,676 |
 | EMSD 官方核實型號 | 1,927（全量） |
 | 品牌官網核實型號 | 220（8 品牌） |
 | 對比屬性 | 18 項 |
+
+> 🎨 角色形象：DeepSeek 鯨魚娘「溟月」（原作：上善无形；女仆二创：ZipZipPipe，CC BY-NC-SA 4.0 非商用）
 
 ## 🏭 品牌官網核實（2026-08-15）
 
@@ -47,7 +51,7 @@
 ## 🔄 自動更新（新機偵測）
 
 - **排程**：GitHub Actions 每日 00:30（香港時間）輕量偵測 EMSD；**有新機先觸發更新**（官網核實分兩日分批進行），冇新機就唔更新內容
-- **價錢快照**：**BigGo 香港格價**（多商戶報價，同 Price.com.hk 性質一致）+ Price.com.hk 舊快照做後備；有新機時每月最多更新一次（分 7 日分批）；點擊 🔍 喺瀏覽器 Google 搜最新價
+- **價錢快照**：**BigGo 官方 JSON API**（`api.biggo.com`，多商戶報價，無 Cloudflare、唔解析 HTML）+ Price.com.hk 舊快照做後備；有新機時每月最多更新一次（分 7 日分批）；點擊 🔍 喺瀏覽器 Google 搜最新價
 - **新機偵測**：比較 EMSD 官方資料庫新舊型號，新上市型號自動入庫並喺網頁「🆕 最近新上市」顯示
 - **價錢策略**：價格為 2026-08-15 快照（唔頻繁更新，僅供參考）；規格以 EMSD + 品牌官網為準
 - **安全**：無需任何密鑰/Token；權限只限 `contents: write`；Action 版本固定（@v4/@v5）；設 concurrency 防重疊
@@ -68,6 +72,7 @@ copy 空調對比報告.html index.html   # 同步 GitHub Pages 入口
 ```bash
 
 python fetch_prices.py         # Price.com.hk 實價快照（1,847 型號，可選）
+python fetch_biggo.py          # BigGo 官方 JSON API 價錢快照（731 型號）
 python fetch_official.py       # Panasonic/HITACHI/COMFEE 官網規格
 python fetch_shew.py           # 信興官網 Rasonic 規格
 python fetch_carrier.py        # 世紀開利 Carrier/Canopus 規格
@@ -86,6 +91,8 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | `generate_html.py` | 網頁生成器（md + JSON → HTML） |
 | `emsd_空調能源標籤.csv` | EMSD 官方資料庫快照（1,927 型號） |
 | `prices.json` / `specs_emsd.json` | Price 實價 / 規格資料庫 |
+| `biggo_prices.json` | BigGo 官方 JSON API 價錢快照（731 型號） |
+| `deepseek_maid.webp` | 深海女仆（DeepSeek 鯨魚娘）角色立繪 |
 | `official_specs.json` 等 7 個 `*_official.json` | 品牌官網核實數據 |
 | `fetch_*.py` | 各數據源抓取腳本（EMSD/Price/官網） |
 
@@ -95,6 +102,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 - **困難**：Price.com.hk 全站被 Cloudflare「Just a moment…」質疑頁攔截——urllib、Playwright headless、有頭瀏覽器全部被擋；確認唔係限流（等冷卻冇用），而係硬封
 - **決策**：**唔用代理繞過**（保持誠實爬蟲）；探測咗十幾個來源後，改用 **BigGo 香港格價**做主價源（多商戶報價，性質同 Price.com.hk 一致，urllib 直連無 Cloudflare）
+- **升級**：改用 BigGo **官方公開 JSON API**（`api.biggo.com/api/v1/spa/search/{型號}/product`，`site=biggo.hk`、`region=hk`），唔再解析 HTML；商品搜索無需憑證（`client_id/client_secret` 只係規格搜索用）；修復分體機型號斜杠（`/`）未編碼導致 403 嘅 bug
 
 ### 2. Gemini 人手查價全量失敗
 
@@ -132,6 +140,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 | 版本 | 日期 | 重點 |
 | --- | --- | --- |
+| **v1.1.0** | 2026-08-16 | BigGo 官方 JSON API 全量實抓（731 型號）+ 深海女仆（DeepSeek 鯨魚娘）主題 UI |
 | **v1.0.0** | 2026-08-15 | 正式版：全量 1,854 型號 + 官網核實 220 + 互動比較器 + 論壇討論精華 + GitHub Pages |
 | v0.2.0 | 2026-08-12 | EMSD 全量 1,927 型號核實（能源/雪種/耗電） |
 | v0.1.0 | 2026-08-11 | 報告初版（29 型號統合對比） |
@@ -140,6 +149,8 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 | 日期 | 重點 |
 | ------ | ------ |
+| 2026-08-16 | BigGo 改用官方 JSON API（`fetch_biggo.py` 重寫）；修復分體機型號斜杠未編碼導致 403；全量實抓 731 型號 |
+| 2026-08-16 | 新增**深海女仆（DeepSeek 鯨魚娘）主題 UI**：深海藍紫 + 金色配色、角色立繪、泡泡/海浪氛圍 |
 | 2026-08-16 | 開發困難與決策紀錄寫入 README（價錢源被封、Gemini 全量失敗、快照策略等） |
 | 2026-08-16 | 價錢源新增 **BigGo 香港格價**（多商戶報價，替代被 Cloudflare 攔截嘅 Price.com.hk） |
 | 2026-08-16 | 策略調整：價錢保持快照（🔍 Google 搜最新價）；每日偵測新機，有新機先分批更新（官網核實分兩日）；網站自動顯示更新狀態 |
@@ -149,4 +160,4 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | 2026-08-12 | EMSD 官方資料庫全量 1,927 型號核實 |
 | 2026-08-11 | 報告初版（29 型號對比） |
 
-**更新日期**：2026-08-16 · **版本**：v1.0.0
+**更新日期**：2026-08-16 · **版本**：v1.1.0

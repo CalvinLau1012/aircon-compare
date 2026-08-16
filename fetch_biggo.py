@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-BigGo 香港格價（biggo.hk）價錢快照抓取
-- 多商戶報價平台（Price.com.hk 性質一致），公開網頁，無 Cloudflare
+BigGo 香港格價（官方公開 JSON API）價錢快照抓取
+- 改用 BigGo 官方 JSON API（api.biggo.com），唔再解析 HTML、唔會撞 Cloudflare
+- 端點：GET https://api.biggo.com/api/v1/spa/search/{型號}/product
+  必要 headers：site=biggo.hk、region=hk
+  來源：Funmula-Corp/biggo-mcp-server（官方開源客戶端，同一 API）
 - 每月最多一次、分 7 日分批（批次進度共用 fetch_prices 嘅 meta）
-輸出：biggo_prices.json {型號: {price: "$X,XXX-YY,YYY", merchants: N, updated: 日期}}
+輸出：biggo_prices.json {型號: {price, merchants, url, updated}}
+  merchants = 過濾 + 商戶去重後嘅有效報價數
+過濾規則：型號精確匹配 + 冷氣關鍵字 + 配件排除 + 商戶去重（同店同價同名）
 """
 import json
 import os
@@ -20,23 +25,48 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT_PATH = os.path.join(BASE, 'biggo_prices.json')
 
-UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-      '(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36')
+API = 'https://api.biggo.com/api/v1/spa/search/{}/product'
+
+# 誠實 Bot UA（列明專案來源，方便官方聯絡）
+UA = ('Mozilla/5.0 (compatible; AirconCompareBot/1.0; '
+      '+https://github.com/CalvinLau1012/aircon-compare) '
+      'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0 Safari/537.36')
+
+# 冷氣相關關鍵字（排除 LoRa/RF 模組、相機配件等撞名產品）
+# 涵蓋「窗口機 / 分體機 / 流動式 / 淨冷 / 變頻」等唔含「冷氣/空調」嘅同義表述
+AC_RE = re.compile(
+    r'冷氣|空調|air-?con|窗口機|窗口式|分體機|分體式|流動機|流動式|'
+    r'淨冷|制冷|冷暖|定頻|變頻|匹',
+    re.I)
+# 配件/服務排除（遙控器、濾網、支架、防塵罩等）
+ACC_RE = re.compile(
+    r'遙控|濾網|過濾|配件|說明書|支架|擋板|防塵|罩|remote|filter|parts?|cover|bracket',
+    re.I)
 
 
 def norm_model(s):
     return re.sub(r'[^A-Z0-9]', '', str(s).upper())
 
 
+def norm_title(s):
+    return re.sub(r'[^A-Z0-9]', '', str(s).upper())
+
+
 def _get(url):
-    """帶抖動+退避嘅 GET"""
+    """帶抖動+退避嘅 GET，回傳解析好嘅 JSON dict；失敗回 None"""
     for attempt in range(3):
         try:
             time.sleep(random.uniform(0.4, 1.0))
             req = urllib.request.Request(url, headers={
-                'User-Agent': UA, 'Accept-Language': 'zh-HK,zh;q=0.9',
-                'Referer': 'https://biggo.hk/'})
-            return urllib.request.urlopen(req, timeout=15).read().decode('utf-8', 'ignore')
+                'User-Agent': UA,
+                'Accept': 'application/json',
+                'Accept-Language': 'zh-HK,zh;q=0.9',
+                'Referer': 'https://biggo.hk/',
+                'site': 'biggo.hk',
+                'region': 'hk',
+            })
+            raw = urllib.request.urlopen(req, timeout=15).read().decode('utf-8', 'ignore')
+            return json.loads(raw)
         except urllib.error.HTTPError as e:
             if e.code in (403, 429) and attempt < 2:
                 wait = int(e.headers.get('Retry-After') or 0) or 10 * (attempt + 1)
@@ -48,34 +78,52 @@ def _get(url):
     return None
 
 
-def fetch_biggo_price(model):
-    """搜一個型號，回傳 {price, merchants, url} 或 None"""
-    html = _get('https://biggo.hk/s/?q=' + urllib.parse.quote(model))
-    if not html:
+def _num_price(p):
+    """價錢轉 int；非數值/非正數回 None"""
+    try:
+        v = int(round(float(p)))
+    except (TypeError, ValueError):
         return None
+    return v if v > 0 else None
+
+
+def fetch_biggo_price(model):
+    """搜一個型號。有價回 dict；查得到但無匹配回 False；網絡/限流錯誤回 None"""
+    url = API.format(urllib.parse.quote(model, safe=''))
+    data = _get(url)
+    if data is None:
+        return None
+    nm = norm_model(model)
+    if len(nm) < 4:
+        return False
     prices = []
-    # 產品區塊按 product-row 分割；區塊內有 title（產品名）同 data-price（價錢）
-    for b in re.split(r'ProductItemListPC_product-row', html)[1:]:
-        t = re.search(r'title="([^"]+)"', b)
-        p = re.search(r'data-price="true">\$([\d,]+(?:\.\d+)?)', b)
-        if not t or not p:
+    seen = set()
+    for it in data.get('list') or []:
+        if not isinstance(it, dict):
             continue
-        title = t.group(1).strip()
-        # 過濾：產品名必須含型號 + 冷氣相關關鍵字（排除 RF 模組等撞名產品）
-        nm, nt = norm_model(model), norm_model(title)
-        if len(nm) < 4 or nm not in nt:
+        if it.get('is_offline') or it.get('is_expired'):
             continue
-        if not re.search(r'冷氣|空調|air-?con', title, re.I):
+        title = (it.get('title') or '').strip()
+        # 型號精確匹配 + 冷氣關鍵字（排除 RF 模組等撞名產品）
+        if nm not in norm_title(title):
+            continue
+        if not AC_RE.search(title):
             continue
         # 排除配件/服務（遙控器、濾網、支架等）
-        if re.search(r'遙控|濾網|過濾|配件|說明書|支架|擋板|防塵|罩|remote|filter|parts?|cover|bracket', title, re.I):
+        if ACC_RE.search(title):
             continue
-        try:
-            prices.append(int(p.group(1).replace(',', '')))
-        except ValueError:
+        p = _num_price(it.get('price'))
+        if p is None:
             continue
+        store = ((it.get('store') or {}).get('name') or '').strip()
+        # 商戶去重：同店 + 同價 + 同名標題算同一報價
+        key = (store, p, norm_title(title))
+        if key in seen:
+            continue
+        seen.add(key)
+        prices.append(p)
     if not prices:
-        return None
+        return False
     lo, hi = min(prices), max(prices)
     price = f'${lo:,}-{hi:,}' if hi > lo else f'${lo:,}起'
     return {
@@ -143,8 +191,10 @@ def run_price_batch():
                 results[m] = result
                 ok += 1
                 consec_fail = 0
-            else:
+            elif result is None:
                 consec_fail += 1
+            else:
+                consec_fail = 0
             done_count += 1
             if done_count % 50 == 0:
                 el = time.time() - t0

@@ -12,6 +12,7 @@ import csv
 import time
 import markdown
 import re
+import base64
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
@@ -428,8 +429,8 @@ def update_status():
     except Exception:
         pass
     last_run = meta.get('last_run') or '2026-08-15'
-    return ('📅 2026 年 8 月 15 日 更新 · v1.0.0 · 🔄 每日偵測新機 · 有機先更新',
-            f'🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 價錢為 2026-08-15 快照僅供參考 · 最後更新 {last_run}')
+    return ('📅 2026 年 8 月 16 日 更新 · v1.1.0 · 🔄 每日偵測新機 · 有機先更新',
+            f'🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 價錢為 2026-08-16 BigGo 實抓快照僅供參考 · 最後更新 {last_run}')
 
 
 def load_new_models():
@@ -535,6 +536,12 @@ def build_html():
     content_html = md_to_html(md_text)
     date_status, foot_status = update_status()
     new_hint = new_models_hint()
+    # 角色立繪（DeepSeek 鯨魚娘 溟月）base64 內嵌，缺失時留空（唔會報錯）
+    maid_img = ''
+    _maid_path = os.path.join(BASE, 'deepseek_maid.webp')
+    if os.path.exists(_maid_path):
+        with open(_maid_path, 'rb') as _f:
+            maid_img = 'data:image/webp;base64,' + base64.b64encode(_f.read()).decode('ascii')
 
     # 套用雙源確認規格 + 填核心型號 Price 產品 ID（做價格連結）
     apply_specs_override()
@@ -563,7 +570,8 @@ def build_html():
                         .replace('__FIELDS_JSON__', fields_json) \
                         .replace('__DATE_STATUS__', date_status) \
                         .replace('__FOOT_STATUS__', foot_status) \
-                        .replace('__NEW_HINT__', new_hint)
+                        .replace('__NEW_HINT__', new_hint) \
+                        .replace('__MAID_IMG__', maid_img)
     out = os.path.join(BASE, '空調對比報告.html')
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html)
@@ -580,12 +588,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <meta property="og:description" content="香港市場 1,854 個空調型號全面對比：窗口式 / 分體式 / 流動式，EMSD 官方能源數據 + 8 品牌官網 220 型號核實，18 項屬性互動比較器。">
 <meta property="og:type" content="website">
 <meta name="description" content="香港空調對比報告：1,854 型號 · EMSD 官方能源標籤全量核實 · 8 品牌官網核實 · 互動比較器">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>❄️</text></svg>">
+<link rel="icon" href="__MAID_IMG__">
 <style>
 :root{
-  --primary:#0F3D5C; --primary2:#1B5E8A; --accent:#C9A227;
-  --bg:#F5F8FB; --text:#22303C; --muted:#6E7E8E;
-  --line:#D8E1EB; --alt:#EEF4FA; --warn:#B03A2E; --ok:#1E8E5A;
+  --primary:#10204D; --primary2:#526AA8; --accent:#C5A468;
+  --bg:#EEF2F9; --text:#172347; --muted:#6F7C99;
+  --line:#D4DCEC; --alt:#E6ECF6; --warn:#B03A2E; --ok:#1E8E5A;
 }
 *{box-sizing:border-box; margin:0; padding:0;}
 html{scroll-padding-top:64px;}
@@ -594,10 +602,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
 .wrap{max-width:1080px; margin:0 auto; padding:0 16px;}
 
 /* ===== Hero 封面 ===== */
-.hero{background:linear-gradient(135deg,#0F3D5C 0%,#1B5E8A 100%); color:#fff;
-  text-align:center; padding:64px 20px 56px; position:relative; overflow:hidden;}
-.hero::after{content:""; position:absolute; bottom:0; left:0; right:0; height:5px;
-  background:linear-gradient(90deg,transparent,var(--accent),transparent);}
+.hero{background:linear-gradient(160deg,#091333 0%,#10204D 30%,#1C326B 62%,#526AA8 100%); color:#fff;
+  text-align:center; padding:64px 20px 92px; position:relative; overflow:hidden;}
+.hero .maid{position:absolute; right:4%; bottom:46px; max-height:300px; max-width:44%;
+  border-radius:16px; box-shadow:0 12px 32px rgba(6,14,38,.45);
+  transform:rotate(2deg); pointer-events:none; opacity:.96; filter:drop-shadow(0 0 18px rgba(142,165,218,.35));}
+.hero::after{content:""; position:absolute; bottom:-1px; left:0; right:0; height:56px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 60' preserveAspectRatio='none'%3E%3Cpath fill='%23EEF2F9' d='M0,30 C240,58 480,6 720,28 C960,50 1200,10 1440,30 L1440,60 L0,60 Z'/%3E%3C/svg%3E") no-repeat bottom/100% 100%;}
+.bubble{position:absolute; font-size:22px; opacity:.5; pointer-events:none;
+  animation:float 6s ease-in-out infinite;}
+@keyframes float{0%,100%{transform:translateY(0);} 50%{transform:translateY(-16px);}}
 .hero h1{font-size:2.2em; letter-spacing:1px; margin-bottom:8px;}
 .hero .sub{color:var(--accent); font-size:1.15em; margin-bottom:28px;}
 .stats{display:flex; justify-content:center; gap:40px; flex-wrap:wrap; margin-bottom:26px;}
@@ -607,7 +621,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
 .hero .date{color:var(--accent); font-size:.95em; margin-top:10px;}
 
 /* ===== 頂部導覽 ===== */
-.topnav{position:sticky; top:0; z-index:100; background:rgba(15,61,92,.97);
+.topnav{position:sticky; top:0; z-index:100; background:rgba(10,36,71,.97);
   backdrop-filter:blur(6px); border-bottom:2px solid var(--accent);}
 .topnav .wrap{display:flex; align-items:center; gap:2px; flex-wrap:wrap;
   overflow:visible; padding:0 8px;}
@@ -643,7 +657,7 @@ p{margin:8px 0;}
 
 /* ===== 卡片 ===== */
 .card{background:#fff; border:1px solid var(--line); border-radius:12px;
-  padding:18px; margin:12px 0; box-shadow:0 1px 4px rgba(15,61,92,.06);}
+  padding:18px; margin:12px 0; box-shadow:0 1px 4px rgba(10,36,71,.06);}
 
 /* ===== 表格 ===== */
 .table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:12px 0;
@@ -655,7 +669,7 @@ td{padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top;}
 tbody tr:nth-child(even){background:var(--alt);}
 tbody tr:hover{background:#E8F1F9;}
 blockquote{margin:12px 0; padding:10px 16px; border-left:5px solid var(--accent);
-  background:#FFF7E3; border-radius:0 8px 8px 0; font-size:.92em;}
+  background:#FBF4E8; border-radius:0 8px 8px 0; font-size:.92em;}
 blockquote p{margin:2px 0;}
 code{background:#E8F1F9; padding:2px 6px; border-radius:4px; font-size:.9em;}
 pre{background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px;
@@ -665,7 +679,7 @@ ul,ol{margin:8px 0 8px 24px;}
 /* ===== 比較器 ===== */
 .compare{position:sticky; top:58px; z-index:90; background:#fff;
   border:1px solid var(--line); border-bottom:3px solid var(--accent);
-  border-radius:0 0 12px 12px; box-shadow:0 4px 12px rgba(15,61,92,.12);}
+  border-radius:0 0 12px 12px; box-shadow:0 4px 12px rgba(10,36,71,.12);}
 .compare .head{display:flex; align-items:center; justify-content:space-between;
   padding:10px 16px; background:var(--primary); color:#fff; border-radius:0 0 0 0;}
 .compare .head b{font-size:1em;}
@@ -684,8 +698,8 @@ ul,ol{margin:8px 0 8px 24px;}
 .mitem{display:flex; align-items:center; gap:10px; padding:9px 12px;
   border:1px solid var(--line); border-radius:8px; background:#fff; cursor:pointer;
   transition:border-color .15s, box-shadow .15s;}
-.mitem:hover{border-color:var(--primary2); box-shadow:0 2px 8px rgba(15,61,92,.12);}
-.mitem.checked{border-color:var(--accent); background:#FFFDF2; box-shadow:0 0 0 2px rgba(201,162,39,.35);}
+.mitem:hover{border-color:var(--primary2); box-shadow:0 2px 8px rgba(10,36,71,.12);}
+.mitem.checked{border-color:var(--accent); background:#FBF6EC; box-shadow:0 0 0 2px rgba(197,164,104,.35);}
 .mitem input{width:18px; height:18px; accent-color:var(--accent); cursor:pointer; flex:0 0 auto;}
 .mitem .info{flex:1; min-width:0;}
 .mitem .info .name{font-weight:600; font-size:.92em; color:var(--primary);}
@@ -696,7 +710,7 @@ ul,ol{margin:8px 0 8px 24px;}
 /* 比較面板 */
 .panel{display:none; position:fixed; bottom:0; left:0; right:0; z-index:200;
   background:#fff; border-top:3px solid var(--accent);
-  box-shadow:0 -6px 20px rgba(15,61,92,.25); max-height:62vh; display:none; flex-direction:column;}
+  box-shadow:0 -6px 20px rgba(10,36,71,.25); max-height:62vh; display:none; flex-direction:column;}
 .panel.open{display:flex;}
 .panel .phead{display:flex; align-items:center; justify-content:space-between;
   padding:10px 16px; background:var(--primary); color:#fff;}
@@ -706,7 +720,7 @@ ul,ol{margin:8px 0 8px 24px;}
 .panel table{min-width:420px;}
 .panel td:first-child{font-weight:600; color:var(--primary2); background:var(--alt);
   white-space:nowrap; width:120px;
-  position:sticky; left:0; z-index:2; box-shadow:2px 0 3px rgba(15,61,92,.08);}
+  position:sticky; left:0; z-index:2; box-shadow:2px 0 3px rgba(10,36,71,.08);}
 .panel thead th:first-child{position:sticky; left:0; z-index:3;}
 .panel .phint{text-align:center; color:var(--muted); padding:14px; font-size:.9em;}
 
@@ -715,7 +729,7 @@ ul,ol{margin:8px 0 8px 24px;}
 .plink:hover{color:var(--accent);}
 .more-wrap{text-align:center; padding:10px 12px; border-top:1px solid var(--line);}
 #btnMore{background:var(--primary); color:#fff; border:none; padding:8px 22px;
-  border-radius:20px; cursor:pointer; font-size:.9em; box-shadow:0 2px 6px rgba(15,61,92,.2);}
+  border-radius:20px; cursor:pointer; font-size:.9em; box-shadow:0 2px 6px rgba(10,36,71,.2);}
 #btnMore:hover{background:var(--accent); color:var(--primary);}
 
 /* ===== 比較器完善 ===== */
@@ -723,10 +737,10 @@ ul,ol{margin:8px 0 8px 24px;}
 .selonly input{accent-color:var(--accent);}
 .compare-tools .gocompare{background:var(--accent); color:var(--primary); font-weight:700;
   border:none; padding:7px 18px; border-radius:20px; cursor:pointer; font-size:.9em;
-  box-shadow:0 2px 8px rgba(201,162,39,.45);}
-.compare-tools .gocompare:hover{background:#DDB236;}
+  box-shadow:0 2px 8px rgba(197,164,104,.45);}
+.compare-tools .gocompare:hover{background:#B8944F;}
 .compare-tools .gocompare:disabled{opacity:.5; cursor:not-allowed; box-shadow:none;}
-.panel td.best{background:#FFF7D6; color:#8A6500; font-weight:700;}
+.panel td.best{background:#F7ECD8; color:#8A6A2F; font-weight:700;}
 .panel .rm{background:#C0392B; color:#fff; border:none; border-radius:10px;
   padding:1px 8px; font-size:.72em; cursor:pointer; margin-top:2px;}
 .panel .rm:hover{background:#922B21;}
@@ -736,7 +750,7 @@ ul,ol{margin:8px 0 8px 24px;}
   background:var(--primary); color:#fff; border:2px solid var(--accent);
   border-radius:50%; font-size:1.2em; cursor:pointer; z-index:150;
   display:none; align-items:center; justify-content:center;
-  box-shadow:0 3px 10px rgba(15,61,92,.35);}
+  box-shadow:0 3px 10px rgba(10,36,71,.35);}
 #backTop.show{display:flex; animation:backFade .25s ease;}
 @keyframes backFade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
 #backTop:hover{background:var(--accent); color:var(--primary);}
@@ -754,7 +768,7 @@ footer .blk p{font-size:.84em; line-height:1.8; margin:0;}
 footer .blk a{color:#8FD3FF; text-decoration:none;}
 footer .blk a:hover{text-decoration:underline;}
 footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
-  border:1px dashed var(--accent); border-radius:20px; font-size:.8em; color:#E8D9A0;}
+  border:1px dashed var(--accent); border-radius:20px; font-size:.8em; color:#E8D9B8;}
 
 /* ===== 響應式 ===== */
 @media (max-width:640px){
@@ -768,6 +782,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
   .topnav a[data-tip]::after{display:none;}
   .hero h1{font-size:1.6em;}
   .hero .sub{font-size:1em;}
+  .hero .maid{display:none;}
   .stats{display:grid; grid-template-columns:1fr 1fr; gap:14px 20px;}
   .stats .n{font-size:1.6em;}
   section{margin:28px 0;}
@@ -790,6 +805,11 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 
 <!-- ===== 封面 ===== -->
 <header class="hero">
+  <img class="maid" src="__MAID_IMG__" alt="DeepSeek 鯨魚娘 溟月">
+  <span class="bubble" style="left:7%;top:30%;">🫧</span>
+  <span class="bubble" style="left:15%;top:64%;animation-delay:1.6s;">🫧</span>
+  <span class="bubble" style="right:10%;bottom:22%;animation-delay:.8s;">🫧</span>
+  <span class="bubble" style="right:20%;top:26%;font-size:16px;animation-delay:2.4s;">🫧</span>
   <div class="wrap">
     <h1>香港空調對比報告</h1>
     <div class="sub">窗口式 · 分體式 · 流動式全面剖析 · 互動比較器</div>
@@ -893,7 +913,7 @@ __CONTENT__
 </main>
 
 <footer>
-  <b>香港空調對比報告 · v1.0.0</b><br>
+  <b>香港空調對比報告 · v1.1.0</b><br>
   能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號
 
   <div class="blk">
@@ -911,11 +931,12 @@ __CONTENT__
   </div>
 
   <div class="blk">
-    <h3>🤖 AI 製作提示</h3>
-    <p>本網頁由 <b style="color:#8FD3FF">DeepSeek AI</b> 輔助製作，配合多輪官方資料核實；所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證。</p>
+    <h3>🫧 鯨魚娘 AI 製作提示</h3>
+    <p>本網頁由 <b style="color:#C5A468">DeepSeek 鯨魚娘 AI</b> 輔助製作，配合多輪官方資料核實；所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證。<br>
+      <span style="font-size:.8em;color:#6F7C99;">角色形象「溟月」原作：上善无形 · DeepSeek 女仆二创：ZipZipPipe（CC BY-NC-SA 4.0，非商用）</span></p>
   </div>
 
-  <span class="ai">🤖 Powered by DeepSeek AI</span><br>
+  <span class="ai">🫧 Powered by DeepSeek 鯨魚娘 AI</span><br>
   <span class="line">──────</span><br>
   __FOOT_STATUS__<br>
   本報告僅供選購參考，不構成購買建議 · 價格及供應隨時變動，請以商戶實時報價為準
