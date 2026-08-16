@@ -5,7 +5,7 @@ PricesAPI 香港格價快照抓取（取代 BigGo 做主力自動價錢源）
 - 端點：GET https://api.pricesapi.io/api/v1/products/search
   參數：q=型號、country=hk、limit=5、offers_limit=20
   認證：Authorization: Bearer $PRICESAPI_API_KEY
-- 免費額度：1,000 calls/月、6 req/min；冷查詢需 30–90s，所以 timeout 用 100s
+- 免費額度：1,000 calls/月、10 req/min；冷查詢需 30–90s，所以 timeout 用 100s
 - 每月最多一次、分 7 日分批（批次進度共用 fetch_prices 嘅 meta）
   預設每月只查 395 個型號（核心 29 個優先），留 quota 俾 retry 同快取預熱
 輸出：pricesapi_prices.json {型號: {price, merchants, url, updated, source}}
@@ -49,7 +49,7 @@ LIMIT = 5            # /products/search 最多回 5 個 candidate
 OFFERS_LIMIT = 20    # 每個 candidate 最多 20 個商戶報價（cheapest-first）
 TIMEOUT = 100        # 冷查詢官方建議 read timeout >= 95s
 MAX_RETRIES = 3
-RATE_LIMIT_INTERVAL = _env_float('PRICESAPI_RATE_LIMIT_INTERVAL', 11)  # 免費版 6 req/min，預留緩衝
+RATE_LIMIT_INTERVAL = _env_float('PRICESAPI_RATE_LIMIT_INTERVAL', 11)  # 官方 10 req/min；11s 間隔（約 5.5/min）更保守
 
 # 免費版每月 1,000 calls；查 395 個 + retry 會比較穩陣。
 # 付費 plan 可設 PRICESAPI_BATCH_LIMIT=0 取消上限（或改大啲）。
@@ -93,7 +93,7 @@ def _currency(v):
 
 
 def _rate_limit_wait():
-    """免費版 6 req/min：保證兩次請求起碼相隔 RATE_LIMIT_INTERVAL 秒"""
+    """官方 10 req/min：我哋用 11s 間隔（約 5.5/min）留緩衝"""
     global _last_request_start
     with _request_lock:
         wait = _last_request_start + RATE_LIMIT_INTERVAL - time.monotonic()

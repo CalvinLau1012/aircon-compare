@@ -111,7 +111,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 - **困難**：Price.com.hk 全站被 Cloudflare「Just a moment…」質疑頁攔截——urllib、Playwright headless、有頭瀏覽器全部被擋；確認唔係限流（等冷卻冇用），而係硬封
 - **決策**：**唔用代理繞過**（保持誠實爬蟲）；探測咗十幾個來源後，改用 **BigGo 香港格價**做主價源（多商戶報價，性質同 Price.com.hk 一致，urllib 直連無 Cloudflare）
 - **升級**：改用 BigGo **官方公開 JSON API**（`api.biggo.com/api/v1/spa/search/{型號}/product`，`site=biggo.hk`、`region=hk`），唔再解析 HTML；商品搜索無需憑證（`client_id/client_secret` 只係規格搜索用）；修復分體機型號斜杠（`/`）未編碼導致 403 嘅 bug
-- **再升級（2026-08-16）**：主力改用 **PricesAPI**（`api.pricesapi.io/api/v1/products/search?country=hk`，官方有香港市場、免費 1,000 calls/月、6 req/min、Retry-After 同明確 error code）；API key 經 `PRICESAPI_API_KEY` 環境變數傳入，每月最多查 395 個型號（核心 29 優先），BigGo/Price 舊快照保留做後備
+- **再升級（2026-08-16）**：主力改用 **PricesAPI**（`api.pricesapi.io/api/v1/products/search?country=hk`，官方有香港市場、免費 1,000 calls/月、10 req/min、Retry-After 同明確 error code；我哋實際用 11s 間隔更保守）；API key 經 `PRICESAPI_API_KEY` 環境變數傳入，每月最多查 395 個型號（核心 29 優先），BigGo/Price 舊快照保留做後備
 
 ### 2. Gemini 人手查價全量失敗
 
