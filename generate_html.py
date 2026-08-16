@@ -537,6 +537,12 @@ def build_html():
         with open(_mascot_path, 'rb') as _f:
             mascot_img = 'data:image/webp;base64,' + base64.b64encode(_f.read()).decode('ascii')
 
+    # blue-fantasy 皮膚背景（dsh-web-ui skin 嘅 whale art data URI）
+    blue_fantasy_art = ''
+    _skin_art_path = os.path.join(BASE, 'blue_fantasy_art.txt')
+    if os.path.exists(_skin_art_path):
+        blue_fantasy_art = open(_skin_art_path, encoding='ascii').read().strip()
+
     # 套用雙源確認規格 + 填核心型號 Price 產品 ID（做價格連結）
     apply_specs_override()
     prices = load_prices()
@@ -568,7 +574,8 @@ def build_html():
                         .replace('__FOOT_STATUS__', foot_status) \
                         .replace('__NEW_HINT__', new_hint) \
                         .replace('__VERSION__', VERSION) \
-                        .replace('__MASCOT_IMG__', mascot_img)
+                        .replace('__MASCOT_IMG__', mascot_img) \
+                        .replace('__BLUE_FANTASY_ART__', blue_fantasy_art)
     out = os.path.join(BASE, '空調對比報告.html')
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html)
@@ -588,24 +595,39 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <link rel="icon" href="__MASCOT_IMG__">
 <style>
 :root{
-  --primary:#10204D; --primary2:#526AA8; --accent:#C5A468;
-  --bg:#EEF2F9; --text:#172347; --muted:#6F7C99;
-  --line:#D4DCEC; --alt:#E6ECF6; --warn:#B03A2E; --ok:#1E8E5A;
+  --primary:#4a5fa8; --primary2:#647ebf; --accent:#c08a33;
+  --bg:#e8ecf5; --text:#1d2539; --muted:#5b6989;
+  --line:#c7ccda; --alt:#eef1fb; --warn:#c00000; --ok:#2e8e52;
+  --surface:rgba(255,255,255,.78); --surface-strong:rgba(247,248,251,.88);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --primary:#7f96d2; --primary2:#647ebf; --accent:#d9a94f;
+    --bg:#101624; --text:#dbe2f2; --muted:#909dbb;
+    --line:#3b4257; --alt:#1d2539; --warn:#e05c5c; --ok:#5cb877;
+    --surface:rgba(30,36,56,.82); --surface-strong:rgba(38,48,79,.90);
+  }
 }
 *{box-sizing:border-box; margin:0; padding:0;}
 html{scroll-padding-top:64px;}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
-  background:var(--bg); color:var(--text); line-height:1.7;}
+  color:var(--text); line-height:1.7;
+  background-color:var(--bg);
+  background-image:linear-gradient(180deg, rgba(232,236,245,.86), rgba(232,236,245,.82)), url("__BLUE_FANTASY_ART__");
+  background-size:cover; background-position:center top; background-attachment:fixed;}
+@media (prefers-color-scheme: dark){
+  body{background-image:linear-gradient(180deg, rgba(16,22,36,.82), rgba(16,22,36,.88)), url("__BLUE_FANTASY_ART__");}
+}
 .wrap{max-width:1080px; margin:0 auto; padding:0 16px;}
 
 /* ===== Hero 封面 ===== */
-.hero{background:linear-gradient(160deg,#091333 0%,#10204D 30%,#1C326B 62%,#526AA8 100%); color:#fff;
+.hero{background:linear-gradient(160deg, rgba(74,95,168,.92) 0%, rgba(100,126,191,.80) 35%, rgba(200,209,235,.55) 100%); color:#fff;
   text-align:center; padding:64px 20px 92px; position:relative; overflow:hidden;}
 .hero .mascot{position:absolute; right:4%; bottom:46px; max-height:300px; max-width:44%;
   border-radius:16px; box-shadow:0 12px 32px rgba(6,14,38,.45);
   transform:rotate(2deg); pointer-events:none; opacity:.96; filter:drop-shadow(0 0 18px rgba(142,165,218,.35));}
 .hero::after{content:""; position:absolute; bottom:-1px; left:0; right:0; height:56px;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 60' preserveAspectRatio='none'%3E%3Cpath fill='%23EEF2F9' d='M0,30 C240,58 480,6 720,28 C960,50 1200,10 1440,30 L1440,60 L0,60 Z'/%3E%3C/svg%3E") no-repeat bottom/100% 100%;}
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 60' preserveAspectRatio='none'%3E%3Cpath fill='%23E8ECF5' d='M0,30 C240,58 480,6 720,28 C960,50 1200,10 1440,30 L1440,60 L0,60 Z'/%3E%3C/svg%3E") no-repeat bottom/100% 100%;}
 .bubble{position:absolute; font-size:22px; opacity:.5; pointer-events:none;
   animation:float 6s ease-in-out infinite;}
 @keyframes float{0%,100%{transform:translateY(0);} 50%{transform:translateY(-16px);}}
@@ -618,8 +640,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
 .hero .date{color:var(--accent); font-size:.95em; margin-top:10px;}
 
 /* ===== 頂部導覽 ===== */
-.topnav{position:sticky; top:0; z-index:100; background:rgba(10,36,71,.97);
-  backdrop-filter:blur(6px); border-bottom:2px solid var(--accent);}
+.topnav{position:sticky; top:0; z-index:100; background:rgba(42,52,80,.88);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-bottom:2px solid var(--accent);}
 .topnav .wrap{display:flex; align-items:center; gap:2px; flex-wrap:wrap;
   overflow:visible; padding:0 8px;}
 .topnav a{color:#DCE6F0; text-decoration:none; font-size:.84em; padding:13px 10px;
@@ -653,12 +675,12 @@ h3{color:var(--primary2); margin:18px 0 8px; font-size:1.1em;}
 p{margin:8px 0;}
 
 /* ===== 卡片 ===== */
-.card{background:#fff; border:1px solid var(--line); border-radius:12px;
+.card{background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--line); border-radius:12px;
   padding:18px; margin:12px 0; box-shadow:0 1px 4px rgba(10,36,71,.06);}
 
 /* ===== 表格 ===== */
 .table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:12px 0;
-  border:1px solid var(--line); border-radius:10px; background:#fff;}
+  border:1px solid var(--line); border-radius:10px; background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);}
 table{width:100%; border-collapse:collapse; font-size:.9em; min-width:600px;}
 th{background:var(--primary); color:#fff; padding:9px 10px; text-align:center;
   font-weight:600; border-bottom:3px solid var(--accent); white-space:nowrap;}
@@ -666,15 +688,16 @@ td{padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top;}
 tbody tr:nth-child(even){background:var(--alt);}
 tbody tr:hover{background:#E8F1F9;}
 blockquote{margin:12px 0; padding:10px 16px; border-left:5px solid var(--accent);
-  background:#FBF4E8; border-radius:0 8px 8px 0; font-size:.92em;}
+  background:rgba(238,241,251,.72); border-radius:0 8px 8px 0; font-size:.92em;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);}
 blockquote p{margin:2px 0;}
 code{background:#E8F1F9; padding:2px 6px; border-radius:4px; font-size:.9em;}
-pre{background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px;
+pre{background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--line); border-radius:8px; padding:12px;
   overflow-x:auto; margin:12px 0;}
 ul,ol{margin:8px 0 8px 24px;}
 
 /* ===== 比較器 ===== */
-.compare{position:sticky; top:58px; z-index:90; background:#fff;
+.compare{position:sticky; top:58px; z-index:90; background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
   border:1px solid var(--line); border-bottom:3px solid var(--accent);
   border-radius:0 0 12px 12px; box-shadow:0 4px 12px rgba(10,36,71,.12);}
 .compare .head{display:flex; align-items:center; justify-content:space-between;
@@ -693,7 +716,7 @@ ul,ol{margin:8px 0 8px 24px;}
 .model-list{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
   gap:8px; padding:10px 12px; max-height:340px; overflow-y:auto;}
 .mitem{display:flex; align-items:center; gap:10px; padding:9px 12px;
-  border:1px solid var(--line); border-radius:8px; background:#fff; cursor:pointer;
+  border:1px solid var(--line); border-radius:8px; background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); cursor:pointer;
   transition:border-color .15s, box-shadow .15s;}
 .mitem:hover{border-color:var(--primary2); box-shadow:0 2px 8px rgba(10,36,71,.12);}
 .mitem.checked{border-color:var(--accent); background:#FBF6EC; box-shadow:0 0 0 2px rgba(197,164,104,.35);}
@@ -706,7 +729,7 @@ ul,ol{margin:8px 0 8px 24px;}
 
 /* 比較面板 */
 .panel{display:none; position:fixed; bottom:0; left:0; right:0; z-index:200;
-  background:#fff; border-top:3px solid var(--accent);
+  background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-top:3px solid var(--accent);
   box-shadow:0 -6px 20px rgba(10,36,71,.25); max-height:62vh; display:none; flex-direction:column;}
 .panel.open{display:flex;}
 .panel .phead{display:flex; align-items:center; justify-content:space-between;
@@ -753,7 +776,8 @@ ul,ol{margin:8px 0 8px 24px;}
 #backTop:hover{background:var(--accent); color:var(--primary);}
 
 /* ===== 頁腳 ===== */
-footer{background:var(--primary); color:#BFD0DE; text-align:center;
+footer{background:rgba(20,26,43,.90); color:#BFD0DE; text-align:center;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
   padding:36px 16px 30px; margin-top:50px; font-size:.88em;}
 footer b{color:#fff;}
 footer .line{color:var(--accent);}
@@ -791,7 +815,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 }
 @media print{
   .topnav,.compare,.panel{display:none !important;}
-  body{background:#fff;}
+  body{background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);}
   .card{border:none; box-shadow:none; padding:0;}
   .hero{background:var(--primary); padding:30px;}
   a{color:inherit; text-decoration:none;}
@@ -893,8 +917,8 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
     <div class="phead">
       <b id="panelTitle">📋 型號對比</b>
       <span style="display:flex;gap:6px;">
-        <button onclick="copyCompare()" style="background:#fff;color:var(--primary);">📋 複製結果</button>
-        <button onclick="clearAll()" style="background:#fff;color:var(--primary);">🗑 清除</button>
+        <button onclick="copyCompare()" style="background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);color:var(--primary);">📋 複製結果</button>
+        <button onclick="clearAll()" style="background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);color:var(--primary);">🗑 清除</button>
         <button onclick="closePanel()">✕ 關閉</button>
       </span>
     </div>
