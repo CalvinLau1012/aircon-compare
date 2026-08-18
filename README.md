@@ -58,7 +58,7 @@
 - **價錢快照**：**BigGo 官方 JSON API**（`api.biggo.com`，多商戶報價，同 BigGo MCP Server 同源）+ PricesAPI 核心 29 驗收/後備 + Price.com.hk 舊快照；有新機時每月最多更新一次（分 7 日分批；現時批次進度 2/7）；點擊 🔍 喺瀏覽器 Google 搜最新價
 - **新機偵測**：比較 EMSD 官方資料庫新舊型號，新上市型號自動入庫並喺網頁「🆕 最近新上市」顯示
 - **價錢策略**：價錢快照以 BigGo 2026-08-16 實抓為主（唔頻繁更新，僅供參考）；規格以 EMSD + 品牌官網為準
-- **安全**：BigGo 主力源免憑證；PricesAPI key 只放 GitHub Actions Secrets（`PRICESAPI_API_KEY`），核心 29 驗收用 repo Variables `PRICESAPI_CORE_CHECK=1` 選用；權限只限 `contents: write`；Action 版本固定（@v4/@v5）；設 concurrency 防重疊
+- **安全**：BigGo 主力源免憑證；PricesAPI key 只放 GitHub Actions Secrets（`PRICESAPI_API_KEY`），核心 29 驗收用 repo Variables `PRICESAPI_CORE_CHECK=1` 選用；權限只限 `contents: write`；Action 版本固定（@v7/@v7，Node 24）；設 concurrency 防重疊
 - **淘汰機制**：`model_blacklist.json` 自動記錄連續多次「BigGo 冇市售報價」嘅型號；一經確認就停止更新、保留舊快照，並喺報告標註「🚫 已停售/淘汰」
 - **穩定**：抓取後經「數據驗證閘門」(`validate_data.py`) 檢查數量喺安全範圍——唔合格就唔提交，保住現有數據；每次成功提交 = 可回溯快照，壞咗可一鍵還原
 - 亦可喺 GitHub Actions 頁面手動觸發（workflow_dispatch）
