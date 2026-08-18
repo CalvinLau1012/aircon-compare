@@ -118,6 +118,73 @@ def fetch_biggo_price(model):
     }
 
 
+def _protected_models():
+    """核心 29 + 有官方網店價嘅型號，唔會因為一次 BigGo 冇結果就淘汰"""
+    protected = set()
+    try:
+        import generate_html
+        protected |= {norm_model(m.get('model')) for m in generate_html.MODELS if m.get('model')}
+    except Exception:
+        pass
+    for fn in ('rasonic_official.json', 'pana_official.json', 'midea_official.json'):
+        path = os.path.join(BASE, fn)
+        data = load_json(path, {})
+        if isinstance(data, dict):
+            for k, v in data.items():
+                if isinstance(v, dict) and v.get('price'):
+                    protected.add(norm_model(k))
+    return protected
+
+
+def run_full_scan():
+    """全量搜索一次：更新 BigGo 快照，同時確認第一版淘汰黑名單"""
+    import model_lifecycle
+    models = load_models()
+    todo, skipped = model_lifecycle.filter_active(models)
+    protected = _protected_models()
+    print(f'🔎 BigGo 全量搜索：{len(todo)} 個型號（跳過黑名單 {len(skipped)} 個）')
+    results = load_json(OUT_PATH, {})
+    if not isinstance(results, dict):
+        results = {}
+    outcomes = []
+    ok = 0
+    clean_miss = 0
+    network_fail = 0
+    t0 = time.time()
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        futures = {ex.submit(fetch_biggo_price, m): m for m in todo}
+        done = 0
+        for fut in as_completed(futures):
+            m = futures[fut]
+            try:
+                result = fut.result()
+            except Exception:
+                result = None
+            if result:
+                results[m] = result
+                outcomes.append((m, True))
+                ok += 1
+            elif result is False:
+                outcomes.append((m, False))
+                clean_miss += 1
+            else:
+                outcomes.append((m, None))
+                network_fail += 1
+            done += 1
+            if done % 25 == 0:
+                el = time.time() - t0
+                print(f'  進度 {done}/{len(todo)}（有價 {ok} / 無市售 {clean_miss} / 網絡失敗 {network_fail}）· {el:.0f}s', flush=True)
+                save_json(OUT_PATH, results)
+                model_lifecycle.record_results(outcomes, protected=protected)
+                outcomes.clear()
+    model_lifecycle.record_results(outcomes, protected=protected)
+    save_json(OUT_PATH, results)
+    bl = model_lifecycle.load_blacklist()
+    print(f'🎉 全量搜索完成：有價 {ok} · 乾淨無市售 {clean_miss} · 網絡失敗 {network_fail}')
+    print(f'🚫 現時黑名單：{len(bl)} 個型號')
+    model_lifecycle.print_blacklist()
+
+
 def run_price_batch():
     """執行當日 BigGo 價錢批次（每月一次、分 7 日）"""
     import fetch_prices
@@ -206,6 +273,8 @@ if __name__ == '__main__':
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     if '--smoke' in sys.argv:
         sys.exit(0 if biggo_smoke() else 1)
+    elif '--full-scan' in sys.argv:
+        run_full_scan()
     elif '--blacklist' in sys.argv:
         model_lifecycle.print_blacklist()
     elif '--price-batch' in sys.argv:

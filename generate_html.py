@@ -18,7 +18,7 @@ from crawl_utils import load_json, norm_model
 import model_lifecycle
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-VERSION = '1.2.3'  # 單一版本號來源（升級時只改呢度）
+VERSION = '1.2.4'  # 單一版本號來源（升級時只改呢度）
 
 # ============================================================
 # 型號資料庫（整合報告 + EMSD 官方）

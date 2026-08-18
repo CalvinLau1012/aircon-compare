@@ -84,7 +84,7 @@ if bl is not None:
     if not isinstance(bl, dict) or not isinstance(bl.get('models', {}), dict):
         errors.append('model_blacklist.json 格式異常')
     else:
-        check('型號黑名單數', len(bl.get('models', {})), 0, 400)
+        check('型號黑名單數', len(bl.get('models', {})), 0, 1500)
 tr = load_json('model_status.json')
 if tr is not None and not isinstance(tr, dict):
     errors.append('model_status.json 格式異常')
