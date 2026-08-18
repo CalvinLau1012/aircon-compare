@@ -18,7 +18,7 @@ from crawl_utils import load_json, norm_model
 import model_lifecycle
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-VERSION = '1.2.4'  # 單一版本號來源（升級時只改呢度）
+VERSION = '1.2.5'  # 單一版本號來源（升級時只改呢度）
 
 # ============================================================
 # 型號資料庫（整合報告 + EMSD 官方）
@@ -360,6 +360,26 @@ def normalize_brand(b):
     return BRAND_MAP.get(b.strip(), b.strip())
 
 
+def price_bucket(price):
+    """價位標籤：俾用戶按價錢區間篩選"""
+    if not price:
+        return '無價'
+    m = re.search(r'\$([\d,]+)', str(price))
+    if not m:
+        return '無價'
+    try:
+        v = int(m.group(1).replace(',', ''))
+    except ValueError:
+        return '無價'
+    if v < 2000:
+        return '$2,000以下'
+    if v < 4000:
+        return '$2,000-$4,000'
+    if v < 6000:
+        return '$4,000-$6,000'
+    return '$6,000以上'
+
+
 def load_prices():
     """載入 Price.com.hk 價格庫（prices.json）"""
     return load_json(os.path.join(BASE, 'prices.json'), {})
@@ -521,7 +541,16 @@ def load_emsd_models():
         bl = model_lifecycle.get_blacklist_entry(model)
         if bl:
             item['discontinued'] = True
+            item['status'] = '停售'
             item['note'] = f'🚫 已停售/淘汰：保留舊版（{bl.get("reason", "唔再更新")}）'
+        elif item.get('price_official'):
+            item['status'] = '官方價'
+        elif item.get('price'):
+            item['status'] = '有價'
+        else:
+            item['status'] = '無價'
+        item['price_range'] = price_bucket(item.get('price'))
+        item['tags'] = [item['status'], item['brand'], item['price_range'], item.get('hp') or '', item.get('mount') or '']
         out.append(item)
     priced = sum(1 for m in out if m['price'])
     sized = sum(1 for m in out if m['size'])
@@ -567,7 +596,16 @@ def build_html():
         bl = model_lifecycle.get_blacklist_entry(m['model'])
         if bl:
             m['discontinued'] = True
+            m['status'] = '停售'
             m['note'] = f'🚫 已停售/淘汰：保留舊版（{bl.get("reason", "唔再更新")}）'
+        elif m.get('price_official'):
+            m['status'] = '官方價'
+        elif m.get('price'):
+            m['status'] = '有價'
+        else:
+            m['status'] = '無價'
+        m['price_range'] = price_bucket(m.get('price'))
+        m['tags'] = [m['status'], m['brand'], m['price_range'], m.get('hp') or '', m.get('mount') or '']
 
     emsd_models = load_emsd_models()
     # 注入 <script> 前 escape `</`，避免型號名含 `</script>` 時 breakout（XSS 加固）
@@ -913,6 +951,12 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
         <select id="fEnergy" onchange="resetShown();renderList()">
           <option value="">全部能源級別</option><option>1級</option><option>2級</option><option>3級</option><option>4級</option><option>5級</option>
         </select>
+        <select id="fStatus" onchange="resetShown();renderList()">
+          <option value="">全部狀態</option><option>停售</option><option>官方價</option><option>有價</option><option>無價</option>
+        </select>
+        <select id="fPrice" onchange="resetShown();renderList()">
+          <option value="">全部價位</option><option>$2,000以下</option><option>$2,000-$4,000</option><option>$4,000-$6,000</option><option>$6,000以上</option><option>無價</option>
+        </select>
       </div>
     </div>
     <div class="chint">提示：Gree/TOSOT 保養為零售商規格（交叉核實），其餘品牌為官網核實</div>
@@ -995,11 +1039,15 @@ function matches(m){
   const br=document.getElementById('fBrand').value;
   const en=document.getElementById('fEnergy').value;
   const mo=document.getElementById('fMount').value;
+  const st=document.getElementById('fStatus').value;
+  const pr=document.getElementById('fPrice').value;
   if(hp && m.hp!==hp) return false;
   if(ty && m.type!==ty) return false;
   if(br && m.brand!==br) return false;
   if(en && m.energy!==en) return false;
   if(mo && m.mount!==mo) return false;
+  if(st && m.status!==st) return false;
+  if(pr && m.price_range!==pr) return false;
   if(q && !(m.brand.toLowerCase().includes(q)||m.model.toLowerCase().includes(q))) return false;
   if(document.getElementById('fSelOnly').checked && !selected.has(m.brand+'|'+m.model)) return false;
   return true;
@@ -1040,12 +1088,13 @@ function renderList(){
     const mountTxt = m.mount ? `${esc(m.mount)} ` : '';
     const modeTxt = m.mode ? `${esc(m.mode)} ` : '';
     const remoteTxt = m.remote==='✅' ? '· 有遙控 ' : (m.remote==='➖' ? '· 無遙控 ' : '');
-    const extra = (m.gas ? ` · ${esc(m.gas)}` : '') + (m.cspf ? ` · CSPF ${esc(m.cspf)}` : '');
+    const statusTxt = m.status==='停售' ? ' · 🚫停售' : (m.status==='官方價' ? ' · 🏷️官方價' : (m.status==='無價' ? ' · ⚠️無價' : ''));
+    const extra = (m.gas ? ` · ${esc(m.gas)}` : '') + (m.cspf ? ` · CSPF ${esc(m.cspf)}` : '') + (m.price_range ? ` · ${esc(m.price_range)}` : '');
     return `<label class="mitem ${on?'checked':''}">
       <input type="checkbox" ${on?'checked':''} onchange="toggle('${esc(id)}',this)">
       <span class="info">
         <span class="name">${esc(m.brand)} ${esc(m.model)}</span><br>
-        <span class="tag">${mountTxt}${modeTxt}${esc(m.hp||'?匹')} · ${esc(m.btu)} BTU · ${esc(m.type)} · ${energyTxt} ${remoteTxt}${extra}· ${priceHtml}</span>
+        <span class="tag">${mountTxt}${modeTxt}${esc(m.hp||'?匹')} · ${esc(m.btu)} BTU · ${esc(m.type)} · ${energyTxt} ${remoteTxt}${statusTxt}${extra} · ${priceHtml}</span>
       </span>
       <span class="badge">${wifiBadge} ${energyTxt}</span>
     </label>`;
