@@ -1,0 +1,24 @@
+name: BigGo smoke test
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: BigGo API smoke
+        run: |
+          set -e
+          echo '--- curl browser UA ---'
+          curl -sS -D /tmp/h1 --max-time 40 -o /tmp/biggo_curl.json 'https://api.biggo.com/api/v1/spa/search/RA-10RF/product' -H 'site: biggo.hk' -H 'region: hk' -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/148.0 Safari/537.36'
+          head -1 /tmp/h1 || true
+          head -c 400 /tmp/biggo_curl.json || true
+          echo
+          echo '--- python fetch_biggo ---'
+          python fetch_biggo.py RA-10RF || true
