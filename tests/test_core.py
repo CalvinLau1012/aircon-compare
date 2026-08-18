@@ -16,6 +16,7 @@ import fetch_biggo
 import fetch_prices
 import fetch_pricesapi
 import generate_html
+import model_lifecycle
 import price_utils
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -93,6 +94,28 @@ def test_best_price_priority():
     assert generate_html.best_price('RA-10RF', {}, {}, {}, {}) is None
     # 兼容舊 3 參數簽名（BigGo, Gemini, Price）
     assert generate_html.best_price('RA-10RF', biggo, gemini, prices) == '$200'
+
+
+# ---------- model_lifecycle ----------
+
+def test_model_lifecycle_auto_blacklist(tmp_path, monkeypatch):
+    black_path = tmp_path / 'blacklist.json'
+    track_path = tmp_path / 'tracking.json'
+    monkeypatch.setattr(model_lifecycle, 'BLACKLIST_PATH', str(black_path))
+    monkeypatch.setattr(model_lifecycle, 'TRACKING_PATH', str(track_path))
+    monkeypatch.setenv('MODEL_BLACKLIST_MISS_THRESHOLD', '2')
+
+    assert model_lifecycle.record_results([('OLD-A', False)]) == 0
+    assert model_lifecycle.record_results([('OLD-A', False)]) == 1
+    assert model_lifecycle.is_blacklisted('OLD-A')
+    assert model_lifecycle.get_blacklist_entry('OLD-A')['status'] == 'auto_discontinued'
+
+    todo, skipped = model_lifecycle.filter_active(['OLD-A', 'RA-10RF'])
+    assert todo == ['RA-10RF'] and skipped == ['OLD-A']
+
+    # 有市售報價會清記錄；protected 唔會淘汰
+    assert model_lifecycle.record_results([('OLD-B', False)], protected={'OLD-B'}) == 1
+    assert not model_lifecycle.is_blacklisted('OLD-B')
 
 
 # ---------- price_utils / fetch_pricesapi ----------

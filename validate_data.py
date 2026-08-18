@@ -78,7 +78,18 @@ s = load_json('specs_emsd.json')
 if isinstance(s, dict):
     check('specs_emsd 條目數', len(s), 1600, 2100)
 
-# 7) 核心/官網 JSON 唔可以變空
+# 7) 淘汰黑名單 / 追蹤檔一致性
+bl = load_json('model_blacklist.json')
+if bl is not None:
+    if not isinstance(bl, dict) or not isinstance(bl.get('models', {}), dict):
+        errors.append('model_blacklist.json 格式異常')
+    else:
+        check('型號黑名單數', len(bl.get('models', {})), 0, 400)
+tr = load_json('model_status.json')
+if tr is not None and not isinstance(tr, dict):
+    errors.append('model_status.json 格式異常')
+
+# 8) 核心/官網 JSON 唔可以變空
 for name in ('specs.json', 'official_specs.json', 'rasonic_official.json',
              'shew_official.json', 'pana_official.json', 'carrier_official.json',
              'general_official.json', 'midea_official.json'):

@@ -23,6 +23,7 @@ import urllib.parse
 import urllib.request
 
 from crawl_utils import BOT_UA as UA, load_json, norm_model, load_models, save_json
+import model_lifecycle
 from price_utils import currency_code, format_price_range, is_ac_title, norm_title, num_price as _num_price
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -365,6 +366,9 @@ def run_core_check():
     today = time.strftime('%Y-%m-%d')
     todo = [m for m in models if not (isinstance(results.get(m), dict) and results[m].get('price')
                                       and results[m].get('updated') == today)]
+    todo, skipped = model_lifecycle.filter_active(todo)
+    if skipped:
+        print(f'🚫 跳過黑名單核心驗收：{len(skipped)} 個')
     if not todo:
         print('✅ 今日核心 29 型號已全部驗收過，唔重複燒 quota')
         return

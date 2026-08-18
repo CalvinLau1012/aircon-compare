@@ -68,13 +68,17 @@ jobs:
           python fetch_specs.py || true
           python advance_queue.py
 
-      # 價錢快照分批更新（BigGo 香港格價）：有新機時每月最多一次，分 7 日分批進行
+      # 價錢快照分批更新（BigGo 香港格價）：先 smoke 測試連線，避免 GitHub IP 被 BigGo 封鎖時拖死成個 job
       - name: 價錢快照分批更新（BigGo 每月一次·分七日）
         run: |
-          if python -c "import sys; from fetch_prices import price_batch_active; sys.exit(0 if price_batch_active() else 1)"; then
-            python fetch_biggo.py --price-batch || true
+          if python fetch_biggo.py --smoke; then
+            if python -c "import sys; from fetch_prices import price_batch_active; sys.exit(0 if price_batch_active() else 1)"; then
+              python fetch_biggo.py --price-batch || true
+            else
+              echo "價錢批次未啟動，跳過"
+            fi
           else
-            echo "價錢批次未啟動，跳過"
+            echo "⚠️ BigGo 線上 smoke 失敗（可能封鎖 GitHub IP）：保留現有快照，唔推進批次"
           fi
 
       # PricesAPI 核心 29 驗收（選用）：喺 repo Variables 設 PRICESAPI_CORE_CHECK=1 先會跑

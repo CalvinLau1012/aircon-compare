@@ -23,6 +23,7 @@ import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from crawl_utils import BOT_UA as UA, load_json, norm_model, load_models, save_json
+import model_lifecycle
 from price_utils import format_price_range, is_ac_title, norm_title, num_price as _num_price
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -54,6 +55,26 @@ def _get(url):
         except Exception:
             time.sleep(2 * (attempt + 1))
     return None
+
+
+def biggo_smoke(model='RA-10RF', timeout=12):
+    """單次連線測試（唔重試）：GitHub Actions 用嚟快速判斷 BigGo 有冇封 IP"""
+    url = API.format(urllib.parse.quote(model, safe=''))
+    try:
+        req = urllib.request.Request(url, headers={
+            'User-Agent': UA,
+            'Accept': 'application/json',
+            'Referer': 'https://biggo.hk/',
+            'site': 'biggo.hk',
+            'region': 'hk',
+        })
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode('utf-8', 'ignore'))
+        print(f'BigGo smoke OK：{len(data.get("list") or [])} 筆原始結果')
+        return True
+    except Exception as e:
+        print(f'BigGo smoke 失敗：{str(e)[:120]}')
+        return False
 
 
 def fetch_biggo_price(model):
@@ -112,7 +133,15 @@ def run_price_batch():
         print('💰 BigGo 批次：唔喺進行中，跳過')
         return
     todo, idx, total = batch
-    print(f'💰 BigGo 批次 {idx + 1}/{fetch_prices.PRICE_BATCH_DAYS}：{len(todo)}/{total} 個型號，開始...')
+    todo, skipped = model_lifecycle.filter_active(todo)
+    if skipped:
+        print(f'🚫 跳過黑名單 {len(skipped)} 個型號（保留舊快照，唔再更新）')
+    if not todo:
+        print('✅ 本批全部型號都已淘汰，直接推進批次')
+        fetch_prices.advance_batch(meta)
+        fetch_prices.save_meta(meta)
+        return
+    print(f'💰 BigGo 批次 {idx + 1}/{fetch_prices.PRICE_BATCH_DAYS}：{len(todo)}/{total} 個型號（跳過 {len(skipped)} 個黑名單），開始...')
 
     results = load_json(OUT_PATH, {})
     if not isinstance(results, dict):
@@ -120,6 +149,12 @@ def run_price_batch():
 
     ok = 0
     consec_fail = 0
+    outcomes = []
+    try:
+        import generate_html
+        protected = {norm_model(m.get('model')) for m in generate_html.MODELS if m.get('model')}
+    except Exception:
+        protected = set()
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=3) as ex:
         futures = {ex.submit(fetch_biggo_price, m): m for m in todo}
@@ -132,22 +167,30 @@ def run_price_batch():
                 result = None
             if result:
                 results[m] = result
+                outcomes.append((m, True))
                 ok += 1
                 consec_fail = 0
             elif result is None:
+                outcomes.append((m, None))
                 consec_fail += 1
             else:
+                outcomes.append((m, False))
                 consec_fail = 0
             done_count += 1
             if done_count % 50 == 0:
                 el = time.time() - t0
                 print(f'  進度 {done_count}/{len(todo)}（得價 {ok}）· {el:.0f}s', flush=True)
                 save_json(OUT_PATH, results)
+                model_lifecycle.record_results(outcomes, protected=protected)
+                outcomes.clear()
             if done_count >= 40 and consec_fail >= 40:
-                print('⚠️ 連續 40 個失敗，疑似被限流，中止本批', flush=True)
+                print('⚠️ 連續 40 個失敗，疑似被限流/封 IP，中止本批', flush=True)
+                save_json(OUT_PATH, results)
+                model_lifecycle.record_results(outcomes, protected=protected)
                 fetch_prices.set_cooldown()
-                sys.exit(1)
+                os._exit(1)
 
+    model_lifecycle.record_results(outcomes, protected=protected)
     save_json(OUT_PATH, results)
 
     finished = fetch_prices.advance_batch(meta)
@@ -161,7 +204,11 @@ def run_price_batch():
 if __name__ == '__main__':
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-    if '--price-batch' in sys.argv:
+    if '--smoke' in sys.argv:
+        sys.exit(0 if biggo_smoke() else 1)
+    elif '--blacklist' in sys.argv:
+        model_lifecycle.print_blacklist()
+    elif '--price-batch' in sys.argv:
         run_price_batch()
     elif len(sys.argv) > 1:
         # 單型號測試：python fetch_biggo.py RA-10RF

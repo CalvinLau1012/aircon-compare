@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "updated": "2026-08-18",
+  "models": {
+    "RC-X7U": {
+      "status": "auto_discontinued",
+      "reason": "BigGo 現役商品搜索無市售報價，且無任何歷史價格快照；樂信牌 2020 年 4 級 R410A 舊型號",
+      "source": "biggo",
+      "kept_price_source": "",
+      "first_missed": "2026-08-18",
+      "last_checked": "2026-08-18",
+      "blacklisted_at": "2026-08-18",
+      "note": "保留 EMSD 規格舊版，唔再做價錢更新"
+    },
+    "CHK09SNE": {
+      "status": "auto_discontinued",
+      "reason": "BigGo 現役商品搜索無市售報價，且無任何歷史價格快照；開利 2020 年 4 級 R410A 舊型號",
+      "source": "biggo",
+      "kept_price_source": "",
+      "first_missed": "2026-08-18",
+      "last_checked": "2026-08-18",
+      "blacklisted_at": "2026-08-18",
+      "note": "保留 EMSD 規格舊版，唔再做價錢更新"
+    },
+    "FWAD19M18": {
+      "status": "auto_discontinued",
+      "reason": "BigGo 現役商品搜索無市售報價，且無任何歷史價格快照；豐澤牌 2020 年 4 級 R410A 舊型號",
+      "source": "biggo",
+      "kept_price_source": "",
+      "first_missed": "2026-08-18",
+      "last_checked": "2026-08-18",
+      "blacklisted_at": "2026-08-18",
+      "note": "保留 EMSD 規格舊版，唔再做價錢更新"
+    },
+    "SWH-18F3X1": {
+      "status": "auto_discontinued",
+      "reason": "BigGo 現役商品搜索無市售報價，且無任何歷史價格快照；小天鵝 2020 年 4 級 R410A 舊型號",
+      "source": "biggo",
+      "kept_price_source": "",
+      "first_missed": "2026-08-18",
+      "last_checked": "2026-08-18",
+      "blacklisted_at": "2026-08-18",
+      "note": "保留 EMSD 規格舊版，唔再做價錢更新"
+    },
+    "SWH-09F3X1": {
+      "status": "auto_discontinued",
+      "reason": "BigGo 現役商品搜索無市售報價，且無任何歷史價格快照；小天鵝 2020 年 4 級 R410A 舊型號",
+      "source": "biggo",
+      "kept_price_source": "",
+      "first_missed": "2026-08-18",
+      "last_checked": "2026-08-18",
+      "blacklisted_at": "2026-08-18",
+      "note": "保留 EMSD 規格舊版，唔再做價錢更新"
+    },
+    "SWH-24F3U1": {
+      "status": "auto_discontinued",
+      "reason": "BigGo 現役商品搜索無市售報價，且無任何歷史價格快照；小天鵝 2020 年 4 級 R410A 舊型號",
+      "source": "biggo",
+      "kept_price_source": "",
+      "first_missed": "2026-08-18",
+      "last_checked": "2026-08-18",
+      "blacklisted_at": "2026-08-18",
+      "note": "保留 EMSD 規格舊版，唔再做價錢更新"
+    }
+  }
+}

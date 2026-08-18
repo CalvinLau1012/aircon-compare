@@ -15,9 +15,10 @@ import re
 import base64
 
 from crawl_utils import load_json, norm_model
+import model_lifecycle
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-VERSION = '1.2.2'  # 單一版本號來源（升級時只改呢度）
+VERSION = '1.2.3'  # 單一版本號來源（升級時只改呢度）
 
 # ============================================================
 # 型號資料庫（整合報告 + EMSD 官方）
@@ -517,6 +518,10 @@ def load_emsd_models():
         apply_official(item)
         if item.get('price_official'):
             item['note'] = 'EMSD 官方登記 · 官網價'
+        bl = model_lifecycle.get_blacklist_entry(model)
+        if bl:
+            item['discontinued'] = True
+            item['note'] = f'🚫 已停售/淘汰：保留舊版（{bl.get("reason", "唔再更新")}）'
         out.append(item)
     priced = sum(1 for m in out if m['price'])
     sized = sum(1 for m in out if m['size'])
@@ -559,6 +564,10 @@ def build_html():
         bp = best_price(m['model'], pricesapi, biggo, gemini, prices)
         if bp:
             m['price'] = bp
+        bl = model_lifecycle.get_blacklist_entry(m['model'])
+        if bl:
+            m['discontinued'] = True
+            m['note'] = f'🚫 已停售/淘汰：保留舊版（{bl.get("reason", "唔再更新")}）'
 
     emsd_models = load_emsd_models()
     # 注入 <script> 前 escape `</`，避免型號名含 `</script>` 時 breakout（XSS 加固）

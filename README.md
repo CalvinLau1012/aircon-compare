@@ -1,4 +1,4 @@
-# ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/version-v1.2.2-2ea44f)
+# ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/version-v1.2.3-2ea44f)
 
 > 香港市場空調（窗口式 / 分體式 / 流動式；淨冷/冷暖、定頻/變頻）全面對比
 > **能源級別、雪種、年耗電已用機電署 EMSD 官方資料庫（1,927 型號）全量核實**
@@ -26,6 +26,7 @@
 | ------ | ------ |
 | 收錄型號 | 1,854（核心 29 + EMSD 全量 1,825） |
 | 有價格型號 | 1,848（BigGo 731 主力 + Price 舊快照補 1,117；2026-08-16） |
+| 淘汰黑名單 | 6（自動停止更新，保留 EMSD 舊版） |
 | BigGo 香港格價型號 | 731（官方 JSON API 實抓，2026-08-16；主力價錢源） |
 | PricesAPI 核心驗收型號 | 29（選用驗收/後備，每月免費額度內） |
 | 有尺寸型號 | 1,676 |
@@ -58,6 +59,7 @@
 - **新機偵測**：比較 EMSD 官方資料庫新舊型號，新上市型號自動入庫並喺網頁「🆕 最近新上市」顯示
 - **價錢策略**：價錢快照以 BigGo 2026-08-16 實抓為主（唔頻繁更新，僅供參考）；規格以 EMSD + 品牌官網為準
 - **安全**：BigGo 主力源免憑證；PricesAPI key 只放 GitHub Actions Secrets（`PRICESAPI_API_KEY`），核心 29 驗收用 repo Variables `PRICESAPI_CORE_CHECK=1` 選用；權限只限 `contents: write`；Action 版本固定（@v4/@v5）；設 concurrency 防重疊
+- **淘汰機制**：`model_blacklist.json` 自動記錄連續多次「BigGo 冇市售報價」嘅型號；一經確認就停止更新、保留舊快照，並喺報告標註「🚫 已停售/淘汰」
 - **穩定**：抓取後經「數據驗證閘門」(`validate_data.py`) 檢查數量喺安全範圍——唔合格就唔提交，保住現有數據；每次成功提交 = 可回溯快照，壞咗可一鍵還原
 - 亦可喺 GitHub Actions 頁面手動觸發（workflow_dispatch）
 
@@ -97,6 +99,8 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | `generate_html.py` | 網頁生成器（md + JSON → HTML） |
 | `crawl_utils.py` | 共用工具（誠實 UA / 型號規範化 / JSON 讀寫 / HTML 轉字 / 退避重試） |
 | `price_utils.py` | 價錢過濾共用工具（冷氣關鍵詞 / 配件排除 / 價格範圍格式化） |
+| `model_lifecycle.py` | 型號淘汰/黑名單管理（連續無市售報價自動停止更新） |
+| `model_blacklist.json` / `model_status.json` | 淘汰黑名單 / 追蹤記錄 |
 | `validate_data.py` | 數據驗證閘門（自動更新防壞數據） |
 | `tests/` · `requirements-dev.txt` | 單元測試 + 開發依賴（pytest） |
 | `emsd_空調能源標籤.csv` | EMSD 官方資料庫快照（1,927 型號） |
@@ -153,6 +157,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 | 版本 | 日期 | 重點 |
 | --- | --- | --- |
+| **v1.2.3** | 2026-08-18 | BigGo 線上 smoke 防護 + 型號淘汰黑名單機制（6 個 2020 舊型號自動停止更新） |
 | **v1.2.2** | 2026-08-16 | 全項目說明文件同步、每日檢查打卡（`last_check`）、BigGo 驗證閘門、抽取 `price_utils.py` 重用工具 |
 | **v1.2.1** | 2026-08-16 | 主力價錢源確定用返 **BigGo 官方 JSON API**；PricesAPI 改為核心 29 驗收/後備 |
 | **v1.2.0** | 2026-08-16 | 主力價錢源改用 **PricesAPI 香港格價**（免費 1,000 calls/月、核心 29 優先）；BigGo/Price 舊快照做後備 |
@@ -163,6 +168,14 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | v0.1.0 | 2026-08-11 | 報告初版（29 型號統合對比） |
 
 ## 📅 更新日誌
+
+### 2026-08-18 — v1.2.3 淘汰黑名單
+
+| 類別 | 內容 |
+| ------ | ------ |
+| 🚫 淘汰 | 新增 `model_blacklist.json`；6 個 2020 年舊型號（RC-X7U、CHK09SNE、FWAD19M18、SWH-18F3X1、SWH-09F3X1、SWH-24F3U1）確認無市售報價，停止更新並保留 EMSD 舊版 |
+| 🛡 防護 | 新增 BigGo `--smoke` 連線測試；GitHub Actions 發現 BigGo 封鎖 IP 時唔再死等，直接保留現有快照 |
+| 🧰 工具 | 新增 `model_lifecycle.py` 自動追蹤連續無市售報價，達標自動掉入黑名單 |
 
 ### 2026-08-16 — v1.2.2 全項目優化
 
@@ -202,4 +215,4 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | ------ | ------ |
 | 📝 內容 | 報告初版（29 型號對比） |
 
-**更新日期**：2026-08-16 · **版本**：v1.2.2
+**更新日期**：2026-08-18 · **版本**：v1.2.3
