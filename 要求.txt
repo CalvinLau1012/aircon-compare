@@ -1,5 +1,5 @@
 ════════════════════════════════════════
-【執行狀態更新 · 2026-08-18 · v1.2.5】
+【執行狀態更新 · 2026-08-20 · v1.2.6】
 
 ✅ 已完成並同步線上：
 1. 元文件「需求摘要.md」— 要求精要總結
@@ -18,6 +18,7 @@
    · 防禦性修補：誠實 Bot UA、退避重試遵從 Retry-After、抖動延遲、限流熔斷（降低被官方封鎖風險）
    · 淘汰機制：model_lifecycle.py + model_blacklist.json；2026-08-18 首輪全量確認 1,103 個停止更新（BigGo 有價 734）
    · 標籤化：每部機有停售/官方價/有價/無價狀態標籤 + 價位標籤；比較器可自由篩選
+   · 部署顯示：hero 顯示成功更新日期時間（last_deploy，香港時間）
    · 工具重用：price_utils.py（價錢過濾）、crawl_utils.py（JSON/HTML/SSL 共用）、fetch_prices.py（批次共用）
    · 網站皮膚：dsh-web-ui Blue Fantasy（只套皮膚）；whale-girl 鯨魚娘形象來自同一項目
    · 🙏 特別鳴謝：powerdog996（DreamSkin）皮膚原作、zhu1090093659/dsh-web-ui 適配及鯨魚娘素材、linux.do 介紹帖
