@@ -91,6 +91,11 @@ jobs:
       - name: 每日檢查打卡（更新 last_check）
         run: python fetch_prices.py --checkin || true
 
+      - name: 記錄成功部署時間（香港時間）
+        run: |
+          DEPLOY_TIME=$(TZ=Asia/Hong_Kong date '+%Y-%m-%d %H:%M:%S')
+          python fetch_prices.py --deploy-stamp "$DEPLOY_TIME"
+
       - name: 數據驗證（防壞數據上線）
         run: python validate_data.py
 

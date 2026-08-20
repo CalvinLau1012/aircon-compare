@@ -443,8 +443,10 @@ def update_status():
         pass
     last_check = meta.get('last_check') or meta.get('last_run') or '2026-08-16'
     last_price = meta.get('last_full') or meta.get('last_run') or last_check
-    return (f'📅 {_zh_date(last_check)} 檢查 · 價錢快照 {_zh_date(last_price)} · v{VERSION} · 🔄 每日自動檢查',
-            f'🔄 每日 00:30 自動檢查（EMSD + BigGo 價錢批次）· 價錢快照 {last_price} · 最後檢查 {last_check}')
+    last_deploy = meta.get('last_deploy') or ''
+    deploy_part = f' · ✅ 成功更新：{last_deploy}' if last_deploy else ''
+    return (f'📅 {_zh_date(last_check)} 檢查{deploy_part} · v{VERSION} · 🔄 每日自動檢查',
+            f'🔄 每日 00:30 自動檢查（EMSD + BigGo 價錢批次）· 價錢快照 {last_price} · 成功更新 {last_deploy or last_check}')
 
 
 def load_new_models():

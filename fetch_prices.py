@@ -157,6 +157,16 @@ def advance_batch(meta, days=PRICE_BATCH_DAYS, today=None):
     return False
 
 
+def deploy_stamp(stamp=None):
+    """記錄今次成功部署嘅日期時間（香港時間）"""
+    meta = load_meta()
+    if not stamp:
+        stamp = time.strftime('%Y-%m-%d %H:%M:%S')
+    meta['last_deploy'] = stamp
+    save_meta(meta)
+    print(f'✅ 部署時間已記錄：{stamp}')
+
+
 def checkin():
     """每日檢查打卡：只更新 last_check（俾網頁顯示每日檢查時間），唔當數據更新"""
     meta = load_meta()
@@ -238,6 +248,10 @@ def run_price_batch():
 
 
 def main():
+    if '--deploy-stamp' in sys.argv:
+        stamp = sys.argv[2] if len(sys.argv) > 2 else None
+        deploy_stamp(stamp)
+        return
     if '--checkin' in sys.argv:
         checkin()
         return
