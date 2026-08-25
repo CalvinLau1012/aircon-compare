@@ -628,7 +628,8 @@ ul,ol{margin:8px 0 8px 24px;}
 .compare-tools .filters{display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-left:auto;}
 .compare .chint{font-size:.72em; color:var(--muted); padding:3px 12px 7px; text-align:center;}
 .compare-tools select,.compare-tools input[type=search]{border:1px solid var(--line);
-  border-radius:20px; padding:5px 12px; font-size:.85em; background:var(--bg);}
+  border-radius:20px; padding:5px 12px; font-size:.85em; background:var(--bg); color:var(--text);
+  max-width:100%;}
 .model-list{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
   gap:8px; padding:10px 12px; max-height:340px; overflow-y:auto;}
 .mitem{display:flex; align-items:center; gap:10px; padding:9px 12px;
