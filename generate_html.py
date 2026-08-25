@@ -550,8 +550,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
 .stats{display:flex; justify-content:center; gap:40px; flex-wrap:wrap; margin-bottom:26px;}
 .stats .n{font-size:2.1em; font-weight:700; color:var(--accent);}
 .stats .l{font-size:.85em; opacity:.9;}
-.hero .src{font-size:.8em; opacity:.75; line-height:1.8;}
-.hero .date{color:var(--accent); font-size:.95em; margin-top:10px;}
+.hero .src{font-size:.8em; opacity:.98; line-height:1.8; color:#e6ebf7;}
+.hero .date{color:#ffffff; font-size:.95em; margin-top:10px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
 
 /* ===== 頂部導覽 ===== */
 .topnav{position:sticky; top:0; z-index:100; background:rgba(34,43,77,.97);
