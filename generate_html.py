@@ -758,10 +758,10 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <!-- ===== 封面 ===== -->
 <header class="hero">
   <img class="mascot" src="__MASCOT_IMG__" alt="whale-girl 吉祥物">
-  <span class="bubble" style="left:7%;top:30%;">咩</span>
-  <span class="bubble" style="left:15%;top:64%;animation-delay:1.6s;">咩</span>
-  <span class="bubble" style="right:10%;bottom:22%;animation-delay:.8s;">咩</span>
-  <span class="bubble" style="right:20%;top:26%;font-size:16px;animation-delay:2.4s;">咩</span>
+  <span class="bubble" style="left:7%;top:30%;">🫧</span>
+  <span class="bubble" style="left:15%;top:64%;animation-delay:1.6s;">🫧</span>
+  <span class="bubble" style="right:10%;bottom:22%;animation-delay:.8s;">🫧</span>
+  <span class="bubble" style="right:20%;top:26%;font-size:16px;animation-delay:2.4s;">🫧</span>
   <div class="wrap">
     <h1>香港空調對比報告</h1>
     <div class="sub">窗口式 · 分體式 · 流動式全面剖析 · 互動比較器</div>
