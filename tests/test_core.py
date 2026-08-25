@@ -17,9 +17,18 @@ import fetch_prices
 import fetch_pricesapi
 import generate_html
 import model_lifecycle
+import models_data
 import price_utils
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+# ---------- models_data（避免 fetch_* import 重型 generate_html） ----------
+
+def test_models_data_shared():
+    assert len(models_data.MODELS) == 29
+    assert generate_html.MODELS is models_data.MODELS
+    assert models_data.VERSION == generate_html.VERSION
 
 
 # ---------- crawl_utils ----------

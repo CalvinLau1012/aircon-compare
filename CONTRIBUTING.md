@@ -13,6 +13,7 @@ python validate_data.py
 ```
 
 3. 數據類改動要同時更新 `README.md`、`需求摘要.md`、`空調對比報告.md`
+4. UI／CSS 改動（尤其深色模式）要喺 `generate_html.py` 改，重新生成 `index.html`，並同步上述文件嘅更新日誌
 
 ## 提交建議
 

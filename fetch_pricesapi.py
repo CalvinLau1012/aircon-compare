@@ -8,7 +8,7 @@ PricesAPI 香港格價快照抓取（核心 29 型號驗收 + 後備）
   認證：Authorization: Bearer $PRICESAPI_API_KEY
 - 免費額度：1,000 calls/月、10 req/min；冷查詢需 30–90s，所以 timeout 用 100s
 - `--core`：直接做一次核心 29 型號驗收（唔經批次 meta，適合人手/選用 workflow）
-- 批次模式仍共用 fetch_prices 嘅 meta，但預設只查核心 29 個型號
+- 批次模式仍共用 batch_utils 嘅 meta，但預設只查核心 29 個型號
 輸出：pricesapi_prices.json {型號: {price, merchants, url, updated, source}}
 過濾規則：型號精確匹配 + 冷氣關鍵字 + 配件排除 + HKD 報價 + 商戶去重
 """
@@ -23,6 +23,7 @@ import urllib.parse
 import urllib.request
 
 from crawl_utils import BOT_UA as UA, load_json, norm_model, load_models, save_json
+import batch_utils
 import model_lifecycle
 from price_utils import currency_code, format_price_range, is_ac_title, norm_title, num_price as _num_price
 
@@ -226,10 +227,10 @@ def get_batch_limit():
 
 
 def core_model_keys():
-    """核心 29 個型號（generate_html.MODELS），每月必定優先更新"""
+    """核心 29 個型號（models_data.MODELS），每月必定優先更新"""
     try:
-        import generate_html
-        return {norm_model(m.get('model')) for m in generate_html.MODELS if m.get('model')}
+        import models_data
+        return {norm_model(m.get('model')) for m in models_data.MODELS if m.get('model')}
     except Exception:
         return set()
 
@@ -254,7 +255,6 @@ def save_results(results):
 
 def run_price_batch():
     """執行當日 PricesAPI 價錢批次（每月一次、分 7 日，核心型號優先）"""
-    import fetch_prices
     key = get_api_key()
     if not key:
         print('❌ 未設定 PRICESAPI_API_KEY 環境變數')
@@ -263,29 +263,29 @@ def run_price_batch():
         print('   3. 本地測試：export PRICESAPI_API_KEY=pricesapi_xxx')
         return
 
-    meta = fetch_prices.load_meta()
+    meta = batch_utils.load_meta()
     blocked = meta.get('blocked_until')
     if blocked and time.time() < blocked:
         print('🕐 冷卻期內，跳過本批（之後批次會繼續）')
         return
 
     models = prioritize_models(load_models())
-    batch = fetch_prices.get_batch_todo(models, meta, limit=get_batch_limit())
+    batch = batch_utils.get_batch_todo(models, meta, limit=get_batch_limit())
     if batch is None:
         print('💰 PricesAPI 批次：唔喺進行中，跳過')
         return
     todo, idx, total = batch
-    print(f'💰 PricesAPI 批次 {idx + 1}/{fetch_prices.PRICE_BATCH_DAYS}：'
+    print(f'💰 PricesAPI 批次 {idx + 1}/{batch_utils.PRICE_BATCH_DAYS}：'
           f'{len(todo)}/{total} 個型號，開始...')
 
     if not todo:
-        idx = fetch_prices.PRICE_BATCH_DAYS
+        idx = batch_utils.PRICE_BATCH_DAYS
         today = time.strftime('%Y-%m-%d')
         meta['price_batch_idx'] = idx
         meta.pop('price_batch_start', None)
         meta['last_run'] = today
         meta['last_full'] = today
-        fetch_prices.save_meta(meta)
+        batch_utils.save_meta(meta)
         print('🎉 PricesAPI 價錢快照全量更新完成')
         return
 
@@ -325,7 +325,7 @@ def run_price_batch():
         if i >= 10 and consec_fail >= 10:
             print('⚠️ 連續 10 個 API 失敗，疑似 key/額度/限流問題，中止本批', flush=True)
             save_results(results)
-            fetch_prices.set_cooldown()
+            batch_utils.set_cooldown()
             sys.exit(1)
 
     save_results(results)
@@ -333,19 +333,19 @@ def run_price_batch():
         print('⏰ 本批未完成，唔推進批次；下次同批續跑（已完成嘅唔重查）')
         return
 
-    finished = fetch_prices.advance_batch(meta, today=today)
+    finished = batch_utils.advance_batch(meta, today=today)
     if finished:
-        print(f'🎉 PricesAPI 價錢快照全量更新完成（分 {fetch_prices.PRICE_BATCH_DAYS} 日）')
+        print(f'🎉 PricesAPI 價錢快照全量更新完成（分 {batch_utils.PRICE_BATCH_DAYS} 日）')
     else:
-        print(f'💰 本批完成（{meta.get("price_batch_idx")}/{fetch_prices.PRICE_BATCH_DAYS}），聽日繼續')
-    fetch_prices.save_meta(meta)
+        print(f'💰 本批完成（{meta.get("price_batch_idx")}/{batch_utils.PRICE_BATCH_DAYS}），聽日繼續')
+    batch_utils.save_meta(meta)
 
 
 def core_models():
-    """核心 29 型號清單（保持 generate_html.MODELS 次序）"""
+    """核心 29 型號清單（保持 models_data.MODELS 次序）"""
     try:
-        import generate_html
-        return [m['model'] for m in generate_html.MODELS if m.get('model')]
+        import models_data
+        return [m['model'] for m in models_data.MODELS if m.get('model')]
     except Exception:
         return []
 
@@ -358,7 +358,7 @@ def run_core_check():
         return
     models = core_models()
     if not models:
-        print('❌ 讀取核心型號清單失敗（generate_html.MODELS）')
+        print('❌ 讀取核心型號清單失敗（models_data.MODELS）')
         return
     print(f'🔎 PricesAPI 核心 {len(models)} 型號驗收，開始...')
 

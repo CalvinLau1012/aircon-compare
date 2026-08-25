@@ -36,8 +36,8 @@ def main():
     print(f'分批進度：stage {old} → {q["stage"]}')
     # 官網核實全部完成（2→0）：啟動價錢快照分批更新（每月最多一次）
     if old == 2:
-        import fetch_prices
-        fetch_prices.start_price_batch()
+        import batch_utils
+        batch_utils.start_price_batch()
 
 
 if __name__ == '__main__':

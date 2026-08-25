@@ -8,19 +8,16 @@ Panasonic: 24 個窗口機產品頁（server-rendered，urllib 可抓）
 import json
 import os
 import re
-import ssl
 import sys
 import time
-import urllib.request
+
+from crawl_utils import fetch, no_verify_ssl_context
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/148.0 Safari/537.36'
-CTX = ssl.create_default_context()
-CTX.check_hostname = False
-CTX.verify_mode = ssl.CERT_NONE
+CTX = no_verify_ssl_context()
 
 # 分類頁攞到嘅全部產品 URL（含 item id）
 PANASONIC = [
@@ -67,8 +64,7 @@ COMFEE_MODELS = [
 
 
 def get(url, timeout=15):
-    req = urllib.request.Request(url, headers={'User-Agent': UA, 'Accept-Language': 'zh-HK,zh;q=0.9'})
-    return urllib.request.urlopen(req, timeout=timeout, context=CTX).read().decode('utf-8', 'ignore')
+    return fetch(url, timeout=timeout, context=CTX)
 
 
 def strip_html(html):
@@ -142,7 +138,6 @@ def fetch_hitachi(existing=None):
         try:
             html = get(url)
             body = strip_html(html)
-            size = grab(body, ['產品主機體尺寸'], 90) or grab(body, ['毫米'], 80)
             spec = {
                 'size': grab(body, ['產品主機體尺寸'], 100),
                 'weight': grab(body, ['淨重', '重量'], 50),

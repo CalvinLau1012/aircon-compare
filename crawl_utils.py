@@ -37,8 +37,11 @@ def jitter_sleep(lo=0.3, hi=0.9):
     time.sleep(random.uniform(lo, hi))
 
 
-def fetch(url, timeout=15, retries=3, extra_headers=None):
-    """帶退避重試嘅 GET（返回解碼文字）；連續 403/429 會拋出 HTTPError（叫用方應停止而非硬碰）"""
+def fetch(url, timeout=15, retries=3, extra_headers=None, context=None):
+    """帶退避重試嘅 GET（返回解碼文字）；連續 403/429 會拋出 HTTPError（叫用方應停止而非硬碰）
+
+    context: 可選 ssl.SSLContext（部分香港官網 TLS 憑證鏈唔完整時用 no_verify_ssl_context()）。
+    """
     last = None
     for attempt in range(retries):
         headers = {
@@ -50,7 +53,7 @@ def fetch(url, timeout=15, retries=3, extra_headers=None):
             headers.update(extra_headers)
         req = urllib.request.Request(url, headers=headers)
         try:
-            return urllib.request.urlopen(req, timeout=timeout).read().decode('utf-8', 'ignore')
+            return urllib.request.urlopen(req, timeout=timeout, context=context).read().decode('utf-8', 'ignore')
         except urllib.error.HTTPError as e:
             last = e
             if e.code in (403, 429) and attempt < retries - 1:

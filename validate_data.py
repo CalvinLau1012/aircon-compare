@@ -63,7 +63,9 @@ if os.path.exists(papi_path):
 
 # 5) prices_meta.json 批次狀態一致性
 meta = load_json('prices_meta.json')
-if isinstance(meta, dict):
+if not isinstance(meta, dict):
+    errors.append('prices_meta.json 格式異常（應為 JSON object）')
+else:
     idx = meta.get('price_batch_idx')
     active = meta.get('price_batch_start')
     if active:
@@ -71,7 +73,13 @@ if isinstance(meta, dict):
             errors.append(f'價錢批次 idx 異常：{idx}（active={active}）')
         if idx >= 7:
             errors.append(f'價錢批次已完成但未清理 price_batch_start（idx={idx}）')
-    check('prices_meta 可讀取', 1, 1, 1)
+    elif idx is not None and (not isinstance(idx, int) or idx < 0):
+        errors.append(f'價錢批次 idx 異常：{idx}（批次未啟動）')
+    if 'blocked_until' in meta and not isinstance(meta.get('blocked_until'), (int, float)):
+        errors.append('prices_meta.blocked_until 應為數字 timestamp')
+    for key in ('last_run', 'last_full', 'last_check', 'last_price_month'):
+        if key in meta and meta[key] is not None and not isinstance(meta[key], str):
+            errors.append(f'prices_meta.{key} 應為字串日期')
 
 # 6) specs_emsd.json（基準 1,757）
 s = load_json('specs_emsd.json')

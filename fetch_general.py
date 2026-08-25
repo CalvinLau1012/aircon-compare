@@ -1,28 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """GENERAL 珍寶香港總代理 general-aircon.com 窗口機規格抓取"""
-import json, re, sys, os, urllib.request, urllib.error, time
-from crawl_utils import BOT_UA, html_to_text, no_verify_ssl_context
+import json, re, sys, os, time
+from crawl_utils import fetch, html_to_text, no_verify_ssl_context
 
 CTX = no_verify_ssl_context()
 
 
 def get(u):
-    req = urllib.request.Request(u, headers={'User-Agent': BOT_UA, 'Accept-Language': 'zh-Hant,zh;q=0.9'})
-    last = None
-    for attempt in range(3):
-        try:
-            return urllib.request.urlopen(req, timeout=15, context=CTX).read().decode('utf-8', 'ignore')
-        except urllib.error.HTTPError as e:
-            last = e
-            if e.code in (403, 429) and attempt < 2:
-                time.sleep(int(e.headers.get('Retry-After') or 0) or 10)
-            elif e.code in (403, 429):
-                break
-        except Exception as e:
-            last = e
-            time.sleep(2)
-    raise last
+    return fetch(u, context=CTX, extra_headers={'Accept-Language': 'zh-Hant,zh;q=0.9'})
 
 
 URLS = [
@@ -70,7 +56,8 @@ def main():
         except Exception as e:
             print(f'{model}: ERR {str(e)[:50]}')
         time.sleep(0.2)
-    json.dump(out, open(os.path.join(base, 'general_official.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    with open(os.path.join(base, 'general_official.json'), 'w', encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False, indent=1)
     print('完成', len(out))
 
 

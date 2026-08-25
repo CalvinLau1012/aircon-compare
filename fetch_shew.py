@@ -1,25 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """信興官網 shew.com.hk Rasonic/FROSTAR/Panasonic 窗口機規格抓取"""
-import json, re, sys, urllib.request, urllib.error, time, os
-from crawl_utils import BOT_UA, html_to_text, no_verify_ssl_context
+import json, re, sys, time, os
+from crawl_utils import fetch, html_to_text, no_verify_ssl_context
 CTX = no_verify_ssl_context()
 def get(u):
-    req = urllib.request.Request(u, headers={'User-Agent':BOT_UA,'Accept-Language':'zh-HK,zh;q=0.9'})
-    last = None
-    for attempt in range(3):
-        try:
-            return urllib.request.urlopen(req, timeout=15, context=CTX).read().decode('utf-8','ignore')
-        except urllib.error.HTTPError as e:
-            last = e
-            if e.code in (403, 429) and attempt < 2:
-                time.sleep(int(e.headers.get('Retry-After') or 0) or 10)
-            elif e.code in (403, 429):
-                break
-        except Exception as e:
-            last = e
-            time.sleep(2)
-    raise last
+    return fetch(u, context=CTX)
 def grab(t, kws, n=80):
     for kw in kws:
         i = t.find(kw)
@@ -30,7 +16,8 @@ def grab(t, kws, n=80):
 def main():
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-    urls = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shew_urls.json'), encoding='utf-8'))
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shew_urls.json'), encoding='utf-8') as f:
+        urls = json.load(f)
     out = {}
     for url in urls:
         slug = url.rsplit('/', 1)[-1]
@@ -55,7 +42,8 @@ def main():
             print(f'  {model}: ERR {str(e)[:40]}')
         time.sleep(0.15)
     out_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shew_official.json')
-    json.dump(out, open(out_path, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    with open(out_path, 'w', encoding='utf-8') as f:
+        json.dump(out, f, ensure_ascii=False, indent=1)
     print('完成', len(out), '型號')
 
 

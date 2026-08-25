@@ -8,24 +8,20 @@ Rasonic 官方網店核實（rasonicshop.hk 樂信牌專賣店網上商店）
 import json
 import os
 import re
-import ssl
 import sys
 import time
-import urllib.request
+
+from crawl_utils import fetch, no_verify_ssl_context
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/148.0 Safari/537.36'
-CTX = ssl.create_default_context()
-CTX.check_hostname = False
-CTX.verify_mode = ssl.CERT_NONE
+CTX = no_verify_ssl_context()
 
 
 def get(url, timeout=15):
-    req = urllib.request.Request(url, headers={'User-Agent': UA, 'Accept-Language': 'zh-HK,zh;q=0.9'})
-    return urllib.request.urlopen(req, timeout=timeout, context=CTX).read().decode('utf-8', 'ignore')
+    return fetch(url, timeout=timeout, context=CTX)
 
 
 def strip_html(html):
@@ -35,7 +31,8 @@ def strip_html(html):
 
 
 def main():
-    urls = json.load(open(os.path.join(BASE, 'rasonic_urls.json'), encoding='utf-8'))
+    with open(os.path.join(BASE, 'rasonic_urls.json'), encoding='utf-8') as f:
+        urls = json.load(f)
     out = {}
     for i, url in enumerate(urls):
         try:

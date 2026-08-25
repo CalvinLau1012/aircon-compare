@@ -7,7 +7,7 @@ BigGo 香港格價（官方公開 JSON API）價錢快照抓取
 - 端點：GET https://api.biggo.com/api/v1/spa/search/{型號}/product
   必要 headers：site=biggo.hk、region=hk
   來源：Funmula-Corp/biggo-mcp-server（官方開源客戶端，同一 API）
-- 每月最多一次、分 7 日分批（批次進度共用 fetch_prices 嘅 meta）
+- 每月最多一次、分 7 日分批（批次進度共用 batch_utils 嘅 meta）
 輸出：biggo_prices.json {型號: {price, merchants, url, updated}}
   merchants = 過濾 + 商戶去重後嘅有效報價數
 過濾規則：型號精確匹配 + 冷氣關鍵字 + 配件排除 + 商戶去重（同店同價同名）
@@ -23,6 +23,7 @@ import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from crawl_utils import BOT_UA as UA, load_json, norm_model, load_models, save_json
+import batch_utils
 import model_lifecycle
 from price_utils import format_price_range, is_ac_title, norm_title, num_price as _num_price
 
@@ -122,8 +123,8 @@ def _protected_models():
     """核心 29 + 有官方網店價嘅型號，唔會因為一次 BigGo 冇結果就淘汰"""
     protected = set()
     try:
-        import generate_html
-        protected |= {norm_model(m.get('model')) for m in generate_html.MODELS if m.get('model')}
+        import models_data
+        protected |= {norm_model(m.get('model')) for m in models_data.MODELS if m.get('model')}
     except Exception:
         pass
     for fn in ('rasonic_official.json', 'pana_official.json', 'midea_official.json'):
@@ -187,15 +188,14 @@ def run_full_scan():
 
 def run_price_batch():
     """執行當日 BigGo 價錢批次（每月一次、分 7 日）"""
-    import fetch_prices
-    meta = fetch_prices.load_meta()
+    meta = batch_utils.load_meta()
     blocked = meta.get('blocked_until')
     if blocked and time.time() < blocked:
         print('🕐 冷卻期內，跳過本批（之後批次會繼續）')
         return
 
     models = load_models()
-    batch = fetch_prices.get_batch_todo(models, meta)
+    batch = batch_utils.get_batch_todo(models, meta)
     if batch is None:
         print('💰 BigGo 批次：唔喺進行中，跳過')
         return
@@ -205,10 +205,10 @@ def run_price_batch():
         print(f'🚫 跳過黑名單 {len(skipped)} 個型號（保留舊快照，唔再更新）')
     if not todo:
         print('✅ 本批全部型號都已淘汰，直接推進批次')
-        fetch_prices.advance_batch(meta)
-        fetch_prices.save_meta(meta)
+        batch_utils.advance_batch(meta)
+        batch_utils.save_meta(meta)
         return
-    print(f'💰 BigGo 批次 {idx + 1}/{fetch_prices.PRICE_BATCH_DAYS}：{len(todo)}/{total} 個型號（跳過 {len(skipped)} 個黑名單），開始...')
+    print(f'💰 BigGo 批次 {idx + 1}/{batch_utils.PRICE_BATCH_DAYS}：{len(todo)}/{total} 個型號（跳過 {len(skipped)} 個黑名單），開始...')
 
     results = load_json(OUT_PATH, {})
     if not isinstance(results, dict):
@@ -218,8 +218,8 @@ def run_price_batch():
     consec_fail = 0
     outcomes = []
     try:
-        import generate_html
-        protected = {norm_model(m.get('model')) for m in generate_html.MODELS if m.get('model')}
+        import models_data
+        protected = {norm_model(m.get('model')) for m in models_data.MODELS if m.get('model')}
     except Exception:
         protected = set()
     t0 = time.time()
@@ -254,18 +254,18 @@ def run_price_batch():
                 print('⚠️ 連續 40 個失敗，疑似被限流/封 IP，中止本批', flush=True)
                 save_json(OUT_PATH, results)
                 model_lifecycle.record_results(outcomes, protected=protected)
-                fetch_prices.set_cooldown()
+                batch_utils.set_cooldown()
                 os._exit(1)
 
     model_lifecycle.record_results(outcomes, protected=protected)
     save_json(OUT_PATH, results)
 
-    finished = fetch_prices.advance_batch(meta)
+    finished = batch_utils.advance_batch(meta)
     if finished:
-        print(f'🎉 BigGo 價錢快照全量更新完成（分 {fetch_prices.PRICE_BATCH_DAYS} 日）')
+        print(f'🎉 BigGo 價錢快照全量更新完成（分 {batch_utils.PRICE_BATCH_DAYS} 日）')
     else:
-        print(f'💰 本批完成（{meta.get("price_batch_idx")}/{fetch_prices.PRICE_BATCH_DAYS}），聽日繼續')
-    fetch_prices.save_meta(meta)
+        print(f'💰 本批完成（{meta.get("price_batch_idx")}/{batch_utils.PRICE_BATCH_DAYS}），聽日繼續')
+    batch_utils.save_meta(meta)
 
 
 if __name__ == '__main__':

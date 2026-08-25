@@ -15,112 +15,13 @@ import re
 import base64
 
 from crawl_utils import load_json, norm_model
+from models_data import VERSION, MODELS
 import model_lifecycle
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-VERSION = '1.2.6'  # 單一版本號來源（升級時只改呢度）
 
+# 核心型號資料庫已搬去 models_data.py（MODELS / VERSION）
 # ============================================================
-# 型號資料庫（整合報告 + EMSD 官方）
-# 欄位: brand, model, hp, btu, type, energy, wifi, price, kwh,
-#       cspf, kw, gas, noise, size, weight, warranty, note
-# ============================================================
-MODELS = [
-    # ---- 1 匹 定頻 ----
-    dict(brand='CANOPUS 肯特', model='TA-09EOG', hp='1匹', btu='~9,000', type='定頻', energy='3級', wifi='➖',
-         price='$1,850-2,500', kwh='394', cspf='3.4011', kw='2.73', gas='R32', noise='待查',
-         size='346×450×585', weight='~30kg', warranty='3/5年', note='💰 全場最平'),
-    dict(brand='TOSOT 大松', model='W09R5A', hp='1匹', btu='~9,000', type='定頻', energy='4級', wifi='➖',
-         price='$2,000-2,400', kwh='429', cspf='3.0396', kw='2.68', gas='R32', noise='待查',
-         size='350×450×535', weight='~30kg', warranty='3/5年', note='格力副廠 R32'),
-    dict(brand='Carrier 開利', model='CHK09BE', hp='1匹', btu='~9,000', type='定頻', energy='3級', wifi='➖',
-         price='$2,150-2,600', kwh='394', cspf='3.4011', kw='2.73', gas='R32', noise='45-49dB',
-         size='346×450×585', weight='~31kg', warranty='3/5年', note='雙重金鑽防銹'),
-    dict(brand='Midea 美的', model='MW-09CR8C', hp='1匹', btu='~9,000', type='定頻', energy='3級', wifi='➖',
-         price='$2,100-2,500', kwh='396', cspf='3.3693', kw='2.75', gas='R32', noise='45-49dB',
-         size='346×450×585', weight='~30kg', warranty='3/5年', note='銀離子抗菌網'),
-    dict(brand='HITACHI 日立', model='RA-10RF', hp='1匹', btu='9,120', type='定頻', energy='3級', wifi='➖',
-         price='$2,140-3,380', kwh='422', cspf='3.2045', kw='2.62', gas='R32', noise='44-48dB',
-         size='345×470×640', weight='34kg', warranty='3/5年', remote='➖', note='⭐ 38人認證極靜 · 無遙控（面板操控）'),
-    dict(brand='Rasonic 樂信', model='RC-XG9', hp='1匹', btu='8,803', type='定頻', energy='4級', wifi='➖',
-         price='$2,500-2,900', kwh='435', cspf='2.9978', kw='2.65', gas='R32', noise='待查',
-         size='346×450×640', weight='~29kg', warranty='3/5年', note='Panasonic 旗下'),
-    # ---- 1.5 匹 定頻 ----
-    dict(brand='CANOPUS 肯特', model='TA-12EOG', hp='1.5匹', btu='~12,000', type='定頻', energy='3級', wifi='➖',
-         price='$2,300-3,100', kwh='542', cspf='3.2809', kw='3.52', gas='R32', noise='待查',
-         size='375×560×668', weight='~40kg', warranty='3/5年', note='⚠️ 無遙控'),
-    dict(brand='Midea 美的', model='MW-12CR8C', hp='1.5匹', btu='~12,000', type='定頻', energy='3級', wifi='➖',
-         price='$2,700-3,200', kwh='549', cspf='3.2432', kw='3.56', gas='R32', noise='47-51dB',
-         size='375×560×668', weight='~39kg', warranty='3/5年', note='金鑽塗層'),
-    dict(brand='Carrier 開利', model='CHK12BE', hp='1.5匹', btu='~12,000', type='定頻', energy='3級', wifi='➖',
-         price='$2,800-3,300', kwh='542', cspf='3.2809', kw='3.52', gas='R32', noise='47-51dB',
-         size='375×560×668', weight='~40kg', warranty='3/5年', note='獨立抽濕'),
-    dict(brand='TOSOT 大松', model='W12R5A', hp='1.5匹', btu='11,601', type='定頻', energy='4級', wifi='➖',
-         price='$2,600-3,000', kwh='560', cspf='3.0725', kw='3.55', gas='R32', noise='待查',
-         size='375×560×668', weight='~38kg', warranty='3/5年', note='🚨 噪音投訴'),
-    dict(brand='Rasonic 樂信', model='RC-XG12', hp='1.5匹', btu='11,601', type='定頻', energy='4級', wifi='➖',
-         price='$3,100-3,600', kwh='558', cspf='3.0835', kw='3.57', gas='R32', noise='待查',
-         size='375×560×710', weight='~38kg', warranty='3/5年', note='⭐ 3+5年保養'),
-    # ---- 2 匹 定頻 ----
-    dict(brand='CANOPUS 肯特', model='TA-18EOG', hp='2匹', btu='~18,000', type='定頻', energy='3級', wifi='➖',
-         price='$3,500-4,800', kwh='814', cspf='3.2764', kw='5.34', gas='R32', noise='待查',
-         size='428×660×770', weight='~58kg', warranty='3/5年', note='💰 最平 2匹'),
-    dict(brand='Carrier 開利', model='CHK18BE', hp='2匹', btu='~18,000', type='定頻', energy='3級', wifi='➖',
-         price='$3,920-4,900', kwh='814', cspf='3.2764', kw='5.34', gas='R32', noise='50-54dB',
-         size='428×660×770', weight='~56kg', warranty='3/5年', note='定頻中 3 級'),
-    dict(brand='TOSOT 大松', model='W18R5A', hp='2匹', btu='17,572', type='定頻', energy='4級', wifi='➖',
-         price='$4,100-4,600', kwh='861', cspf='3.0237', kw='5.37', gas='R32', noise='待查',
-         size='428×660×770', weight='~55kg', warranty='3/5年', note='香港製 R32'),
-    dict(brand='FUJI 富士', model='RFR18FNTN', hp='2匹', btu='17,400', type='定頻', energy='4級', wifi='➖',
-         price='$4,000-4,600', kwh='850', cspf='3.0323', kw='5.21', gas='R410A', noise='待查',
-         size='428×660×770', weight='~56kg', warranty='2/5年', note='日系抗菌防霉'),
-    # ---- 2.5 匹 定頻 ----
-    dict(brand='TOSOT 大松', model='W24R5A', hp='2.5匹', btu='22,314', type='定頻', energy='4級', wifi='➖',
-         price='$4,618-5,800', kwh='1,057', cspf='3.1288', kw='6.63', gas='R32', noise='待查',
-         size='428×660×770', weight='~65kg', warranty='3/5年', note='唯一 2.5 匹'),
-    # ---- 1 匹 變頻 ----
-    dict(brand='COMFEE', model='CWF-09CRFN8-AD5', hp='1匹', btu='~9,000', type='變頻', energy='1級', wifi='✅',
-         price='$3,100-3,890', kwh='290', cspf='4.5994', kw='2.57', gas='R32', noise='42-46dB',
-         size='346×450×585', weight='~28kg', warranty='3/5年', note='🔌 最平 WiFi 智能機'),
-    dict(brand='Carrier 開利', model='CHK09EAVXP', hp='1匹', btu='~9,000', type='變頻', energy='1級', wifi='✅',
-         price='$2,800-4,200', kwh='272', cspf='4.7797', kw='2.63', gas='R32', noise='41-45dB',
-         size='346×450×585', weight='~29kg', warranty='3/5年', note='⭐ 性價比變頻'),
-    dict(brand='Midea 美的', model='MW-09CRF8B', hp='1匹', btu='~9,000', type='變頻', energy='1級', wifi='✅',
-         price='$2,700-4,300', kwh='290', cspf='4.5994', kw='2.57', gas='R32', noise='41-45dB',
-         size='346×450×585', weight='~29kg', warranty='3/5年', note='UV Pro 殺菌'),
-    dict(brand='Gree 格力', model='GWF09P', hp='1匹', btu='~9,000', type='變頻', energy='1級', wifi='✅',
-         price='$2,800-4,499', kwh='280', cspf='4.5066', kw='2.50', gas='R32', noise='待查',
-         size='350×450×535', weight='~28kg', warranty='3/5年', note='消委會高評分'),
-    dict(brand='Panasonic 樂聲', model='CW-HU90AA', hp='1匹', btu='~9,000', type='變頻', energy='1級', wifi='✅',
-         price='$4,570-6,449', kwh='269', cspf='5.0130', kw='2.62', gas='R32', noise='39-44dB',
-         size='346×450×640', weight='~30kg', warranty='3/5年', note='🏆 旗艦 nanoe X'),
-    # ---- 1.5 匹 變頻 ----
-    dict(brand='COMFEE', model='CWF-12CRFN8-AD5', hp='1.5匹', btu='~12,000', type='變頻', energy='1級', wifi='✅',
-         price='$2,900-4,990', kwh='380', cspf='4.6849', kw='3.50', gas='R32', noise='44-48dB',
-         size='375×560×668', weight='~35kg', warranty='3/5年', note='🔌 最平 1.5匹 WiFi'),
-    dict(brand='Carrier 開利', model='CHK12EAVXP', hp='1.5匹', btu='~12,000', type='變頻', energy='1級', wifi='✅',
-         price='$3,500-5,300', kwh='380', cspf='4.6849', kw='3.50', gas='R32', noise='43-47dB',
-         size='375×560×668', weight='~36kg', warranty='3/5年', note='⭐ 約樂聲 6 折'),
-    dict(brand='Gree 格力', model='GWF12DB', hp='1.5匹', btu='~12,000', type='變頻', energy='1級', wifi='✅',
-         price='$3,600-5,600', kwh='365', cspf='4.8539', kw='3.62', gas='R32', noise='待查',
-         size='375×560×668', weight='~36kg', warranty='3/5年', note='G-Diamond 抗腐蝕'),
-    dict(brand='General 珍寶', model='AMWB12NID', hp='1.5匹', btu='~12,000', type='變頻', energy='1級', wifi='➖',
-         price='$4,500-6,100', kwh='359', cspf='4.9263', kw='3.56', gas='R32', noise='43-48dB',
-         size='375×560×705', weight='~38kg', warranty='2/5年', note='UV-C 殺菌；⚠️ 無 WiFi'),
-    dict(brand='Panasonic 樂聲', model='CW-HU120AA', hp='1.5匹', btu='~12,000', type='變頻', energy='1級', wifi='✅',
-         price='$5,200-7,900', kwh='362', cspf='5.0219', kw='3.54', gas='R32', noise='41-45dB',
-         size='375×560×710', weight='~39kg', warranty='3/5年', note='🏆 大房機王'),
-    # ---- 2 匹 變頻 ----
-    dict(brand='COMFEE', model='CWF-18CRFN8-AD5', hp='2匹', btu='~18,000', type='變頻', energy='1級', wifi='✅',
-         price='$4,500-6,200', kwh='578', cspf='4.6392', kw='5.35', gas='R32', noise='46-50dB',
-         size='428×660×770', weight='~50kg', warranty='3/5年', note='🔌 最平 2匹 WiFi'),
-    dict(brand='Carrier 開利', model='CHK18EAVX', hp='2匹', btu='~18,000', type='變頻', energy='1級', wifi='✅',
-         price='$5,200-7,200', kwh='546', cspf='4.7763', kw='5.28', gas='R32', noise='45-49dB',
-         size='428×660×770', weight='~52kg', warranty='3/5年', note='⭐ 解決 2匹電費痛點'),
-    dict(brand='Rasonic 樂信', model='RC-TS18UV', hp='2匹', btu='~18,000', type='變頻', energy='1級', wifi='✅',
-         price='$5,800-7,500', kwh='548', cspf='4.7795', kw='5.36', gas='R32', noise='待查',
-         size='428×660×770', weight='~52kg', warranty='3/5年', note='R32 + WiFi + 抽濕'),
-]
 
 # 2026-08-15 規格覆蓋（豐澤產品頁 + Price.com.hk og 規格，雙源交叉確認）
 # 2026-08-15 追加：品牌官網/官方商舖核實（三源確認）
@@ -486,15 +387,21 @@ def new_models_hint():
             '（新機偵測自 EMSD 官方資料庫，每日 00:30 自動偵測）</div>')
 
 
-def load_emsd_models():
-    """讀取 EMSD 官方 CSV，轉為比較器數據（核心 29 型號去重）"""
+def load_emsd_models(prices=None, pricesapi=None, biggo=None, gemini=None):
+    """讀取 EMSD 官方 CSV，轉為比較器數據（核心 29 型號去重）
+
+    價格來源可選注入，等 build_html 重用同一份資料（唔使重複讀 JSON）。
+    """
     csv_path = os.path.join(BASE, 'emsd_空調能源標籤.csv')
-    prices = load_prices()
-    pricesapi = load_pricesapi()
-    biggo = load_biggo()
-    gemini = load_gemini()
+    prices = prices if prices is not None else load_prices()
+    pricesapi = pricesapi if pricesapi is not None else load_pricesapi()
+    biggo = biggo if biggo is not None else load_biggo()
+    gemini = gemini if gemini is not None else load_gemini()
     specs = load_specs_emsd()
-    rows = list(csv.reader(open(csv_path, encoding='utf-8-sig')))[1:]
+    # 黑名單只讀一次；之前逐型號 call get_blacklist_entry 會重複 parse 成個 JSON
+    blacklist = model_lifecycle.load_blacklist()
+    with open(csv_path, encoding='utf-8-sig') as f:
+        rows = list(csv.reader(f))[1:]
     rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
     core_keys = set(norm_model(m['model']) for m in MODELS)
     out = []
@@ -540,7 +447,7 @@ def load_emsd_models():
         apply_official(item)
         if item.get('price_official'):
             item['note'] = 'EMSD 官方登記 · 官網價'
-        bl = model_lifecycle.get_blacklist_entry(model)
+        bl = blacklist.get(model)
         if bl:
             item['discontinued'] = True
             item['status'] = '停售'
@@ -577,7 +484,8 @@ def build_html():
     blue_fantasy_art = ''
     _skin_art_path = os.path.join(BASE, 'blue_fantasy_art.txt')
     if os.path.exists(_skin_art_path):
-        blue_fantasy_art = open(_skin_art_path, encoding='ascii').read().strip()
+        with open(_skin_art_path, encoding='ascii') as _f:
+            blue_fantasy_art = _f.read().strip()
 
     # 套用雙源確認規格 + 填核心型號 Price 產品 ID（做價格連結）
     apply_specs_override()
@@ -585,6 +493,7 @@ def build_html():
     pricesapi = load_pricesapi()
     biggo = load_biggo()
     gemini = load_gemini()
+    blacklist = model_lifecycle.load_blacklist()
     for m in MODELS:
         pinfo = prices.get(m['model'])
         if isinstance(pinfo, dict) and pinfo.get('pid'):
@@ -595,7 +504,7 @@ def build_html():
         bp = best_price(m['model'], pricesapi, biggo, gemini, prices)
         if bp:
             m['price'] = bp
-        bl = model_lifecycle.get_blacklist_entry(m['model'])
+        bl = blacklist.get(m['model'])
         if bl:
             m['discontinued'] = True
             m['status'] = '停售'
@@ -609,9 +518,9 @@ def build_html():
         m['price_range'] = price_bucket(m.get('price'))
         m['tags'] = [m['status'], m['brand'], m['price_range'], m.get('hp') or '', m.get('mount') or '']
 
-    emsd_models = load_emsd_models()
+    emsd_models = load_emsd_models(prices=prices, pricesapi=pricesapi, biggo=biggo, gemini=gemini)
     # 注入 <script> 前 escape `</`，避免型號名含 `</script>` 時 breakout（XSS 加固）
-    models_json = json.dumps(MODELS, ensure_ascii=False).replace('</', '<\\/')
+    models_json = json.dumps(MODELS, ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/')
     emsd_json = json.dumps(emsd_models, ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/')
     fields_json = json.dumps(COMPARE_FIELDS, ensure_ascii=False)
 
@@ -648,13 +557,19 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   --bg:#e8ecf5; --text:#1d2539; --muted:#5b6989;
   --line:#c7ccda; --alt:#eef1fb; --warn:#c00000; --ok:#2e8e52;
   --surface:rgba(255,255,255,.78); --surface-strong:rgba(247,248,251,.88);
+  --hover:#E8F1F9; --code-bg:#E8F1F9; --checked-bg:#FBF6EC;
+  --blockquote-bg:rgba(238,241,251,.72);
+  --best-bg:#F7ECD8; --best-fg:#8A6A2F; --on-accent:#1d2539;
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --primary:#7f96d2; --primary2:#647ebf; --accent:#d9a94f;
+    --primary:#7f96d2; --primary2:#8ba3dc; --accent:#d9a94f;
     --bg:#101624; --text:#dbe2f2; --muted:#909dbb;
-    --line:#3b4257; --alt:#1d2539; --warn:#e05c5c; --ok:#5cb877;
+    --line:#3b4257; --alt:#1d2539; --warn:#e66b6b; --ok:#5cb877;
     --surface:rgba(30,36,56,.82); --surface-strong:rgba(38,48,79,.90);
+    --hover:#26334f; --code-bg:#26304d; --checked-bg:#252d40;
+    --blockquote-bg:rgba(38,48,79,.72);
+    --best-bg:#3a3222; --best-fg:#f0d48a; --on-accent:#101624;
   }
 }
 *{box-sizing:border-box; margin:0; padding:0;}
@@ -735,12 +650,12 @@ th{background:var(--primary); color:#fff; padding:9px 10px; text-align:center;
   font-weight:600; border-bottom:3px solid var(--accent); white-space:nowrap;}
 td{padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top;}
 tbody tr:nth-child(even){background:var(--alt);}
-tbody tr:hover{background:#E8F1F9;}
+tbody tr:hover{background:var(--hover);}
 blockquote{margin:12px 0; padding:10px 16px; border-left:5px solid var(--accent);
-  background:rgba(238,241,251,.72); border-radius:0 8px 8px 0; font-size:.92em;
+  background:var(--blockquote-bg); border-radius:0 8px 8px 0; font-size:.92em;
   backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);}
 blockquote p{margin:2px 0;}
-code{background:#E8F1F9; padding:2px 6px; border-radius:4px; font-size:.9em;}
+code{background:var(--code-bg); color:var(--text); padding:2px 6px; border-radius:4px; font-size:.9em;}
 pre{background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--line); border-radius:8px; padding:12px;
   overflow-x:auto; margin:12px 0;}
 ul,ol{margin:8px 0 8px 24px;}
@@ -761,14 +676,14 @@ ul,ol{margin:8px 0 8px 24px;}
 .compare-tools .filters{display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-left:auto;}
 .compare .chint{font-size:.72em; color:var(--muted); padding:3px 12px 7px; text-align:center;}
 .compare-tools select,.compare-tools input[type=search]{border:1px solid var(--line);
-  border-radius:20px; padding:5px 12px; font-size:.85em; background:var(--bg);}
+  border-radius:20px; padding:5px 12px; font-size:.85em; background:var(--bg); color:var(--text);}
 .model-list{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
   gap:8px; padding:10px 12px; max-height:340px; overflow-y:auto;}
 .mitem{display:flex; align-items:center; gap:10px; padding:9px 12px;
   border:1px solid var(--line); border-radius:8px; background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); cursor:pointer;
   transition:border-color .15s, box-shadow .15s;}
 .mitem:hover{border-color:var(--primary2); box-shadow:0 2px 8px rgba(10,36,71,.12);}
-.mitem.checked{border-color:var(--accent); background:#FBF6EC; box-shadow:0 0 0 2px rgba(197,164,104,.35);}
+.mitem.checked{border-color:var(--accent); background:var(--checked-bg); box-shadow:0 0 0 2px rgba(197,164,104,.35);}
 .mitem input{width:18px; height:18px; accent-color:var(--accent); cursor:pointer; flex:0 0 auto;}
 .mitem .info{flex:1; min-width:0;}
 .mitem .info .name{font-weight:600; font-size:.92em; color:var(--primary);}
@@ -809,10 +724,26 @@ ul,ol{margin:8px 0 8px 24px;}
   box-shadow:0 2px 8px rgba(197,164,104,.45);}
 .compare-tools .gocompare:hover{background:#B8944F;}
 .compare-tools .gocompare:disabled{opacity:.5; cursor:not-allowed; box-shadow:none;}
-.panel td.best{background:#F7ECD8; color:#8A6A2F; font-weight:700;}
+.panel td.best{background:var(--best-bg); color:var(--best-fg); font-weight:700;}
 .panel .rm{background:#C0392B; color:#fff; border:none; border-radius:10px;
   padding:1px 8px; font-size:.72em; cursor:pointer; margin-top:2px;}
 .panel .rm:hover{background:#922B21;}
+
+/* ===== 深色模式對比度修正 ===== */
+@media (prefers-color-scheme: dark){
+  :root{color-scheme:dark;}
+  /* 預設連結（尤其係目錄表）唔好用瀏覽器深藍，改用明亮 primary2 */
+  a, a:visited{color:var(--primary2);}
+  a:hover{color:var(--accent);}
+  /* 實色底 + 白字：深色下唔好用過淺嘅 --primary，改用較深藍保持白字對比度 */
+  th, .compare .head, .panel .phead, .mitem .badge, #btnMore, #backTop, h2.sec .tag{background:#4F66AD;}
+  .compare .head .sel{color:#fff;}
+  .compare-tools button{background:#5A6FB8;}
+  /* accent 底上面嘅文字：深色下改深色字，避免淺藍 x 淺金低對比 */
+  .compare-tools button:hover, .compare-tools .gocompare, #btnMore:hover, #backTop:hover, .panel .phead button{
+    color:var(--on-accent);
+  }
+}
 
 /* ===== 返回頂部 ===== */
 #backTop{position:fixed; right:16px; bottom:20px; width:44px; height:44px;

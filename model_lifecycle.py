@@ -82,7 +82,8 @@ def record_results(results, protected=None):
     black = load_blacklist()
     today = _today()
     threshold = int(os.environ.get('MODEL_BLACKLIST_MISS_THRESHOLD', DEFAULT_MISS_THRESHOLD))
-    changed = False
+    tracking_changed = False
+    black_changed = False
 
     for model, has_price in results:
         model = str(model)
@@ -91,7 +92,7 @@ def record_results(results, protected=None):
         if has_price:
             if model in tracking:
                 tracking.pop(model, None)
-                changed = True
+                tracking_changed = True
             continue
         rec = tracking.get(model)
         if not isinstance(rec, dict):
@@ -100,7 +101,7 @@ def record_results(results, protected=None):
         rec['misses'] = int(rec.get('misses', 0)) + 1
         rec['first_missed'] = rec.get('first_missed') or today
         tracking[model] = rec
-        changed = True
+        tracking_changed = True
         if rec['misses'] >= threshold and model not in black:
             black[model] = {
                 'status': 'auto_discontinued',
@@ -112,12 +113,12 @@ def record_results(results, protected=None):
                 'blacklisted_at': today,
                 'note': '自動淘汰：保留舊快照，唔再做更新',
             }
-            changed = True
+            black_changed = True
 
-    if changed:
+    if tracking_changed:
         save_json(TRACKING_PATH, tracking, indent=2)
-        if len(black) != len(load_blacklist()):
-            save_blacklist(black)
+    if black_changed:
+        save_blacklist(black)
     return len(black)
 
 

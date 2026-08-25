@@ -1,4 +1,23 @@
 ════════════════════════════════════════
+【執行狀態更新 · 2026-08-25 · v1.2.6（代碼重構 + 深色模式修正）】
+
+✅ 本次已完成（本地）：
+1. 代碼重構：
+   · 抽離 models_data.py（核心 29 型號資料）同 batch_utils.py（價錢批次 meta 共用）
+   · fetch_official / fetch_rasonic / fetch_shew / fetch_carrier / fetch_general 統一用 crawl_utils.fetch（退避重試 + Retry-After + SSL context）
+   · generate_html.py 黑名單／價格 JSON 只讀一次，生成時間大幅縮短
+   · model_lifecycle / fetch_emsd / verify_links / validate_data 修正多個穩健性問題
+2. 深色模式：
+   · 修正目錄連結、表格 hover、code、blockquote、已勾選卡片、金色按鈕等對比度不足
+3. 自動化：
+   · fetch_emsd 新增安全閘門（攞唔齊數據唔覆寫現有 CSV）+ 原子寫入（.tmp → os.replace）
+   · workflow 依賴安裝統一用 requirements-dev.txt；concurrency group 正名 daily-update
+   · actions/checkout@v7 同 actions/setup-python@v7 已向 GitHub API 確認存在
+4. 文件同步：
+   · README / AGENTS / 需求摘要 / 空調對比報告 全部已更新
+⚠️ 待辦：commit + push 之後，GitHub Pages 先會更新到呢個版本
+
+════════════════════════════════════════
 【執行狀態更新 · 2026-08-20 · v1.2.6】
 
 ✅ 已完成並同步線上：
