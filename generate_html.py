@@ -460,13 +460,29 @@ def build_html():
     emsd_json = json.dumps(emsd_models, ensure_ascii=False, separators=(',', ':'))
     fields_json = json.dumps(COMPARE_FIELDS, ensure_ascii=False)
 
+    # 皮膚資源（Blue Fantasy 壁紙 + whale-girl 吉祥物；檔案唔喺就留空，唔整死生成）
+    import base64 as _b64
+    mascot_img = ''
+    _mascot_path = os.path.join(BASE, 'whale_girl.webp')
+    if os.path.exists(_mascot_path):
+        with open(_mascot_path, 'rb') as _f:
+            mascot_img = 'data:image/webp;base64,' + _b64.b64encode(_f.read()).decode('ascii')
+    blue_fantasy_art = ''
+    _skin_art_path = os.path.join(BASE, 'blue_fantasy_art.txt')
+    if os.path.exists(_skin_art_path):
+        with open(_skin_art_path, encoding='ascii') as _f:
+            blue_fantasy_art = _f.read().strip()
+
     html = HTML_TEMPLATE.replace('__CONTENT__', content_html) \
                         .replace('__MODELS_JSON__', models_json) \
                         .replace('__EMSD_JSON__', emsd_json) \
                         .replace('__FIELDS_JSON__', fields_json) \
                         .replace('__DATE_STATUS__', date_status) \
                         .replace('__FOOT_STATUS__', foot_status) \
-                        .replace('__NEW_HINT__', new_hint)
+                        .replace('__NEW_HINT__', new_hint) \
+                        .replace('__VERSION__', VERSION) \
+                        .replace('__MASCOT_IMG__', mascot_img) \
+                        .replace('__BLUE_FANTASY_ART__', blue_fantasy_art)
     out = os.path.join(BASE, '空調對比報告.html')
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html)
@@ -483,22 +499,47 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <meta property="og:description" content="香港市場 1,854 個空調型號全面對比：窗口式 / 分體式 / 流動式，EMSD 官方能源數據 + 8 品牌官網 220 型號核實，18 項屬性互動比較器。">
 <meta property="og:type" content="website">
 <meta name="description" content="香港空調對比報告：1,854 型號 · EMSD 官方能源標籤全量核實 · 8 品牌官網核實 · 互動比較器">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>❄️</text></svg>">
+<link rel="icon" href="__MASCOT_IMG__">
 <style>
 :root{
-  --primary:#0F3D5C; --primary2:#1B5E8A; --accent:#C9A227;
-  --bg:#F5F8FB; --text:#22303C; --muted:#6E7E8E;
-  --line:#D8E1EB; --alt:#EEF4FA; --warn:#B03A2E; --ok:#1E8E5A;
+  --primary:#4a5fa8; --primary2:#647ebf; --accent:#c08a33;
+  --bg:#e8ecf5; --text:#1d2539; --muted:#5b6989;
+  --line:#c7ccda; --alt:#eef1fb; --warn:#c00000; --ok:#2e8e52;
+  --surface:rgba(255,255,255,.78); --surface-strong:rgba(247,248,251,.88);
+  --hover:#E8F1F9; --code-bg:#E8F1F9; --checked-bg:#FBF6EC;
+  --blockquote-bg:rgba(238,241,251,.72);
+  --best-bg:#F7ECD8; --best-fg:#8A6A2F; --on-accent:#1d2539;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --primary:#7f96d2; --primary2:#8ba3dc; --accent:#d9a94f;
+    --bg:#101624; --text:#dbe2f2; --muted:#909dbb;
+    --line:#3b4257; --alt:#1d2539; --warn:#e66b6b; --ok:#5cb877;
+    --surface:rgba(30,36,56,.82); --surface-strong:rgba(38,48,79,.90);
+    --hover:#26334f; --code-bg:#26304d; --checked-bg:#252d40;
+    --blockquote-bg:rgba(38,48,79,.72);
+    --best-bg:#3a3222; --best-fg:#f0d48a; --on-accent:#101624;
+  }
 }
 *{box-sizing:border-box; margin:0; padding:0;}
 html{scroll-padding-top:64px;}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
-  background:var(--bg); color:var(--text); line-height:1.7;}
+  color:var(--text); line-height:1.7;
+  background-color:var(--bg);
+  background-image:linear-gradient(180deg, rgba(232,236,245,.86), rgba(232,236,245,.82)), url("__BLUE_FANTASY_ART__");
+  background-size:cover; background-position:center top; background-attachment:fixed;}
+@media (prefers-color-scheme: dark){
+  body{background-image:linear-gradient(180deg, rgba(16,22,36,.82), rgba(16,22,36,.88)), url("__BLUE_FANTASY_ART__");}
+}
 .wrap{max-width:1080px; margin:0 auto; padding:0 16px;}
 
 /* ===== Hero 封面 ===== */
-.hero{background:linear-gradient(135deg,#0F3D5C 0%,#1B5E8A 100%); color:#fff;
-  text-align:center; padding:64px 20px 56px; position:relative; overflow:hidden;}
+.hero{background:linear-gradient(160deg,#222b4d 0%,#3c4e92 45%,#4a5fa8 100%); color:#fff;
+  text-align:center; padding:64px 20px 92px; position:relative; overflow:hidden;}
+.hero .mascot{position:absolute; right:4%; bottom:46px; max-height:300px; max-width:44%;
+  border-radius:16px; box-shadow:0 12px 32px rgba(6,14,38,.45);
+  transform:rotate(2deg); pointer-events:none; opacity:.96;
+  filter:drop-shadow(0 0 18px rgba(142,165,218,.35));}
 .hero::after{content:""; position:absolute; bottom:0; left:0; right:0; height:5px;
   background:linear-gradient(90deg,transparent,var(--accent),transparent);}
 .hero h1{font-size:2.2em; letter-spacing:1px; margin-bottom:8px;}
@@ -510,7 +551,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
 .hero .date{color:var(--accent); font-size:.95em; margin-top:10px;}
 
 /* ===== 頂部導覽 ===== */
-.topnav{position:sticky; top:0; z-index:100; background:rgba(15,61,92,.97);
+.topnav{position:sticky; top:0; z-index:100; background:rgba(34,43,77,.97);
   backdrop-filter:blur(6px); border-bottom:2px solid var(--accent);}
 .topnav .wrap{display:flex; align-items:center; gap:2px; flex-wrap:wrap;
   overflow:visible; padding:0 8px;}
@@ -545,30 +586,33 @@ h3{color:var(--primary2); margin:18px 0 8px; font-size:1.1em;}
 p{margin:8px 0;}
 
 /* ===== 卡片 ===== */
-.card{background:#fff; border:1px solid var(--line); border-radius:12px;
-  padding:18px; margin:12px 0; box-shadow:0 1px 4px rgba(15,61,92,.06);}
+.card{background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--line); border-radius:12px;
+  padding:18px; margin:12px 0; box-shadow:0 1px 4px rgba(10,36,71,.08);}
 
 /* ===== 表格 ===== */
 .table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:12px 0;
-  border:1px solid var(--line); border-radius:10px; background:#fff;}
+  border:1px solid var(--line); border-radius:10px; background:var(--surface);}
 table{width:100%; border-collapse:collapse; font-size:.9em; min-width:600px;}
 th{background:var(--primary); color:#fff; padding:9px 10px; text-align:center;
   font-weight:600; border-bottom:3px solid var(--accent); white-space:nowrap;}
 td{padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top;}
 tbody tr:nth-child(even){background:var(--alt);}
-tbody tr:hover{background:#E8F1F9;}
+tbody tr:hover{background:var(--hover);}
 blockquote{margin:12px 0; padding:10px 16px; border-left:5px solid var(--accent);
-  background:#FFF7E3; border-radius:0 8px 8px 0; font-size:.92em;}
+  background:var(--blockquote-bg); border-radius:0 8px 8px 0; font-size:.92em;}
 blockquote p{margin:2px 0;}
-code{background:#E8F1F9; padding:2px 6px; border-radius:4px; font-size:.9em;}
-pre{background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px;
+code{background:var(--code-bg); color:var(--text); padding:2px 6px; border-radius:4px; font-size:.9em;}
+pre{background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--line); border-radius:8px; padding:12px;
   overflow-x:auto; margin:12px 0;}
 ul,ol{margin:8px 0 8px 24px;}
 
 /* ===== 比較器 ===== */
-.compare{position:sticky; top:58px; z-index:90; background:#fff;
+.compare{position:sticky; top:58px; z-index:90; background:var(--surface);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
   border:1px solid var(--line); border-bottom:3px solid var(--accent);
-  border-radius:0 0 12px 12px; box-shadow:0 4px 12px rgba(15,61,92,.12);}
+  border-radius:0 0 12px 12px; box-shadow:0 4px 12px rgba(10,36,71,.12);}
 .compare .head{display:flex; align-items:center; justify-content:space-between;
   padding:10px 16px; background:var(--primary); color:#fff; border-radius:0 0 0 0;}
 .compare .head b{font-size:1em;}
@@ -585,10 +629,11 @@ ul,ol{margin:8px 0 8px 24px;}
 .model-list{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
   gap:8px; padding:10px 12px; max-height:340px; overflow-y:auto;}
 .mitem{display:flex; align-items:center; gap:10px; padding:9px 12px;
-  border:1px solid var(--line); border-radius:8px; background:#fff; cursor:pointer;
+  border:1px solid var(--line); border-radius:8px; background:var(--surface);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); cursor:pointer;
   transition:border-color .15s, box-shadow .15s;}
-.mitem:hover{border-color:var(--primary2); box-shadow:0 2px 8px rgba(15,61,92,.12);}
-.mitem.checked{border-color:var(--accent); background:#FFFDF2; box-shadow:0 0 0 2px rgba(201,162,39,.35);}
+.mitem:hover{border-color:var(--primary2); box-shadow:0 2px 8px rgba(10,36,71,.12);}
+.mitem.checked{border-color:var(--accent); background:var(--checked-bg); box-shadow:0 0 0 2px rgba(197,164,104,.35);}
 .mitem input{width:18px; height:18px; accent-color:var(--accent); cursor:pointer; flex:0 0 auto;}
 .mitem .info{flex:1; min-width:0;}
 .mitem .info .name{font-weight:600; font-size:.92em; color:var(--primary);}
@@ -598,8 +643,9 @@ ul,ol{margin:8px 0 8px 24px;}
 
 /* 比較面板 */
 .panel{display:none; position:fixed; bottom:0; left:0; right:0; z-index:200;
-  background:#fff; border-top:3px solid var(--accent);
-  box-shadow:0 -6px 20px rgba(15,61,92,.25); max-height:62vh; display:none; flex-direction:column;}
+  background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border-top:3px solid var(--accent);
+  box-shadow:0 -6px 20px rgba(10,36,71,.25); max-height:62vh; display:none; flex-direction:column;}
 .panel.open{display:flex;}
 .panel .phead{display:flex; align-items:center; justify-content:space-between;
   padding:10px 16px; background:var(--primary); color:#fff;}
@@ -629,7 +675,7 @@ ul,ol{margin:8px 0 8px 24px;}
   box-shadow:0 2px 8px rgba(201,162,39,.45);}
 .compare-tools .gocompare:hover{background:#DDB236;}
 .compare-tools .gocompare:disabled{opacity:.5; cursor:not-allowed; box-shadow:none;}
-.panel td.best{background:#FFF7D6; color:#8A6500; font-weight:700;}
+.panel td.best{background:var(--best-bg); color:var(--best-fg); font-weight:700;}
 .panel .rm{background:#C0392B; color:#fff; border:none; border-radius:10px;
   padding:1px 8px; font-size:.72em; cursor:pointer; margin-top:2px;}
 .panel .rm:hover{background:#922B21;}
@@ -669,6 +715,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
     scrollbar-width:none;}
   .topnav .wrap::-webkit-scrollbar{display:none;}
   .topnav a[data-tip]::after{display:none;}
+  .hero .mascot{display:none;}
   .hero h1{font-size:1.6em;}
   .hero .sub{font-size:1em;}
   .stats{display:grid; grid-template-columns:1fr 1fr; gap:14px 20px;}
@@ -693,6 +740,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 
 <!-- ===== 封面 ===== -->
 <header class="hero">
+  <img class="mascot" src="__MASCOT_IMG__" alt="whale-girl 吉祥物">
   <div class="wrap">
     <h1>香港空調對比報告</h1>
     <div class="sub">窗口式 · 分體式 · 流動式全面剖析 · 互動比較器</div>
@@ -796,7 +844,7 @@ __CONTENT__
 </main>
 
 <footer>
-  <b>香港空調對比報告 · v1.0.0</b><br>
+  <b>香港空調對比報告 · v__VERSION__</b><br>
   能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號
 
   <div class="blk">
