@@ -68,12 +68,16 @@ jobs:
           python advance_queue.py
 
       # ============ 第 3 步：價錢快照批次（BigGo；進度由 batch_utils 共用管理） ============
-      - name: 價錢快照分批更新（BigGo 每月一次·分七日）
+      - name: 價錢快照分批更新（BigGo 每月一次·分七日；先 smoke 測試 GitHub IP）
         run: |
-          if python -c "import sys; from batch_utils import price_batch_active; sys.exit(0 if price_batch_active() else 1)"; then
-            python fetch_biggo.py --price-batch || true
+          if python fetch_biggo.py --smoke; then
+            if python -c "import sys; from batch_utils import price_batch_active; sys.exit(0 if price_batch_active() else 1)"; then
+              python fetch_biggo.py --price-batch || true
+            else
+              echo "價錢批次未啟動，跳過"
+            fi
           else
-            echo "價錢批次未啟動，跳過"
+            echo "⚠️ BigGo smoke 失敗（GitHub IP 被限流），跳過本批，唔硬碰"
           fi
 
       # ============ 第 4 步：安全閘門 + 生成網頁 + 上線 ============

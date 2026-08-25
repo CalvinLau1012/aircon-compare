@@ -147,9 +147,25 @@ def run_price_batch():
         print(f'💰 本批完成（{meta["price_batch_idx"]}/{PRICE_BATCH_DAYS}），聽日繼續')
 
 
+def run_smoke():
+    """連線煙霧測試：抓一個熱門型號確認 BigGo 對當前 IP 友好（批次前一定要過）"""
+    test = 'RA-10RF'
+    try:
+        r = fetch_biggo_price(test)
+    except Exception:
+        r = None
+    if r and r.get('price'):
+        print(f'✅ BigGo smoke test 通過：{test} → {r["price"]}（{r.get("merchants", 0)} 商戶）')
+        return True
+    print(f'⚠️ BigGo smoke test 失敗（{test} 攞唔到價）——可能被 GitHub IP 限流，建議跳過本批')
+    return False
+
+
 if __name__ == '__main__':
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    if '--smoke' in sys.argv:
+        sys.exit(0 if run_smoke() else 1)
     if '--price-batch' in sys.argv:
         run_price_batch()
     elif len(sys.argv) > 1:
@@ -157,4 +173,4 @@ if __name__ == '__main__':
         for m in sys.argv[1:]:
             print(m, '→', fetch_biggo_price(m))
     else:
-        print('用法：python fetch_biggo.py --price-batch  或  python fetch_biggo.py <型號>')
+        print('用法：python fetch_biggo.py --smoke  /  --price-batch  /  <型號>')
