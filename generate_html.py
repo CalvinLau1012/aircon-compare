@@ -540,10 +540,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
   border-radius:16px; box-shadow:0 12px 32px rgba(6,14,38,.45);
   transform:rotate(2deg); pointer-events:none; opacity:.96;
   filter:drop-shadow(0 0 18px rgba(142,165,218,.35));}
-.hero::after{content:""; position:absolute; bottom:0; left:0; right:0; height:5px;
-  background:linear-gradient(90deg,transparent,var(--accent),transparent);}
+.hero::after{content:""; position:absolute; bottom:-1px; left:0; right:0; height:56px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 60' preserveAspectRatio='none'%3E%3Cpath fill='%23E8ECF5' d='M0,30 C240,58 480,6 720,28 C960,50 1200,10 1440,30 L1440,60 L0,60 Z'/%3E%3C/svg%3E") no-repeat bottom/100% 100%;}
+.bubble{position:absolute; font-size:22px; opacity:.5; pointer-events:none;
+  animation:float 6s ease-in-out infinite;}
+@keyframes float{0%,100%{transform:translateY(0);} 50%{transform:translateY(-16px);}}
 .hero h1{font-size:2.2em; letter-spacing:1px; margin-bottom:8px;}
-.hero .sub{color:var(--accent); font-size:1.15em; margin-bottom:28px;}
+.hero .sub{color:#ffffff; font-size:1.15em; margin-bottom:28px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
 .stats{display:flex; justify-content:center; gap:40px; flex-wrap:wrap; margin-bottom:26px;}
 .stats .n{font-size:2.1em; font-weight:700; color:var(--accent);}
 .stats .l{font-size:.85em; opacity:.9;}
@@ -727,6 +730,20 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
   .panel table{font-size:.8em;}
   .topnav a{padding:12px 10px; font-size:.8em;}
 }
+@media (prefers-color-scheme: dark){
+  :root{color-scheme:dark;}
+  /* 深色模式 + 玻璃下，深色元件用 --primary 對比不足 → 提亮背景 */
+  a, a:visited{color:var(--primary2);}
+  a:hover{color:var(--accent);}
+  /* 標題欄/徽章/按鈕：深色下用亮藍，唔好用太深嘅 primary */
+  th, .compare .head, .panel .phead, .mitem .badge, #btnMore, #backTop, h2.sec .tag{background:#4F66AD;}
+  .compare .head .sel{color:#fff;}
+  .compare-tools button{background:#5A6FB8;}
+  /* accent 按鈕喺深色下：文字用深色先夠對比 */
+  .compare-tools button:hover, .compare-tools .gocompare, #btnMore:hover, #backTop:hover, .panel .phead button{
+    color:var(--on-accent);
+  }
+}
 @media print{
   .topnav,.compare,.panel{display:none !important;}
   body{background:#fff;}
@@ -741,6 +758,10 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <!-- ===== 封面 ===== -->
 <header class="hero">
   <img class="mascot" src="__MASCOT_IMG__" alt="whale-girl 吉祥物">
+  <span class="bubble" style="left:7%;top:30%;">咩</span>
+  <span class="bubble" style="left:15%;top:64%;animation-delay:1.6s;">咩</span>
+  <span class="bubble" style="right:10%;bottom:22%;animation-delay:.8s;">咩</span>
+  <span class="bubble" style="right:20%;top:26%;font-size:16px;animation-delay:2.4s;">咩</span>
   <div class="wrap">
     <h1>香港空調對比報告</h1>
     <div class="sub">窗口式 · 分體式 · 流動式全面剖析 · 互動比較器</div>
