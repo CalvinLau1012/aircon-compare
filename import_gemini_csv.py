@@ -14,6 +14,8 @@ import re
 import sys
 import time
 
+from crawl_utils import norm_model
+
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT_PATH = os.path.join(BASE, 'gemini_prices.json')
 
@@ -28,8 +30,7 @@ def main():
         return
 
     # 讀 Gemini 返回 CSV（可能帶 markdown 碼塊 ```csv ... ```，自動清洗）
-    with io.open(src, encoding='utf-8-sig', errors='replace') as f:
-        raw = f.read()
+    raw = io.open(src, encoding='utf-8-sig', errors='replace').read()
     raw = re.sub(r'^```(?:csv)?\s*|\s*```$', '', raw, flags=re.M)
     rows = list(csv.reader(io.StringIO(raw)))
     header = [c.strip().lower() for c in rows[0]] if rows else []

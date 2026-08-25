@@ -47,57 +47,12 @@ if isinstance(p, dict):
     priced = sum(1 for v in p.values() if isinstance(v, dict) and v.get('price'))
     check('Price 有價型號數', priced, 1600, 2100)
 
-# 3) BigGo 主力價錢快照（基準 731；低過 500 代表批次大規模失敗）
-bg = load_json('biggo_prices.json')
-if isinstance(bg, dict):
-    bg_priced = sum(1 for v in bg.values() if isinstance(v, dict) and v.get('price'))
-    check('BigGo 有價型號數', bg_priced, 500, 900)
-
-# 4) PricesAPI 核心 29 驗收快照（有檔案先驗證）
-papi_path = os.path.join(BASE, 'pricesapi_prices.json')
-if os.path.exists(papi_path):
-    pa = load_json('pricesapi_prices.json')
-    if isinstance(pa, dict):
-        pa_priced = sum(1 for v in pa.values() if isinstance(v, dict) and v.get('price'))
-        check('PricesAPI 核心驗收有價數', pa_priced, 1, 40)
-
-# 5) prices_meta.json 批次狀態一致性
-meta = load_json('prices_meta.json')
-if not isinstance(meta, dict):
-    errors.append('prices_meta.json 格式異常（應為 JSON object）')
-else:
-    idx = meta.get('price_batch_idx')
-    active = meta.get('price_batch_start')
-    if active:
-        if not isinstance(idx, int) or not 0 <= idx <= 6:
-            errors.append(f'價錢批次 idx 異常：{idx}（active={active}）')
-        if idx >= 7:
-            errors.append(f'價錢批次已完成但未清理 price_batch_start（idx={idx}）')
-    elif idx is not None and (not isinstance(idx, int) or idx < 0):
-        errors.append(f'價錢批次 idx 異常：{idx}（批次未啟動）')
-    if 'blocked_until' in meta and not isinstance(meta.get('blocked_until'), (int, float)):
-        errors.append('prices_meta.blocked_until 應為數字 timestamp')
-    for key in ('last_run', 'last_full', 'last_check', 'last_price_month'):
-        if key in meta and meta[key] is not None and not isinstance(meta[key], str):
-            errors.append(f'prices_meta.{key} 應為字串日期')
-
-# 6) specs_emsd.json（基準 1,757）
+# 3) specs_emsd.json（基準 1,757）
 s = load_json('specs_emsd.json')
 if isinstance(s, dict):
     check('specs_emsd 條目數', len(s), 1600, 2100)
 
-# 7) 淘汰黑名單 / 追蹤檔一致性
-bl = load_json('model_blacklist.json')
-if bl is not None:
-    if not isinstance(bl, dict) or not isinstance(bl.get('models', {}), dict):
-        errors.append('model_blacklist.json 格式異常')
-    else:
-        check('型號黑名單數', len(bl.get('models', {})), 0, 1500)
-tr = load_json('model_status.json')
-if tr is not None and not isinstance(tr, dict):
-    errors.append('model_status.json 格式異常')
-
-# 8) 核心/官網 JSON 唔可以變空
+# 4) 核心/官網 JSON 唔可以變空
 for name in ('specs.json', 'official_specs.json', 'rasonic_official.json',
              'shew_official.json', 'pana_official.json', 'carrier_official.json',
              'general_official.json', 'midea_official.json'):

@@ -17,7 +17,6 @@ from html.parser import HTMLParser
 from crawl_utils import BOT_UA, norm_model
 
 BASE = 'https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50&p='
-MIN_EMSD_ROWS = 1700  # 低過呢個數唔會覆寫現有 CSV（同 validate_data.py 安全下限一致）
 
 
 class TableParser(HTMLParser):
@@ -102,7 +101,8 @@ def detect_new_models(all_rows):
     csv_path = os.path.join(base, 'emsd_空調能源標籤.csv')
     new_path = os.path.join(base, 'new_models.json')
 
-    nk = norm_model  # 型號規範化（crawl_utils 共用）
+    def nk(s):
+        return norm_model(s)  # 共用 crawl_utils（各腳本一字不差）
 
     # 舊 CSV 型號集合
     old_keys = set()
@@ -169,7 +169,7 @@ def main():
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
     all_rows = []
-    header = []  # 避免第一頁就冇數據時 UnboundLocalError
+    header = []  # 安全閘門用：避免第一頁失敗時 UnboundLocalError
     p = 1
     while True:
         try:
@@ -198,20 +198,19 @@ def main():
         p += 1
         time.sleep(random.uniform(1.0, 2.5))  # 分頁隨機抖動，唔畀官方機械式節奏
 
-    # 安全閘門：網絡/頁面異常攞唔齊數據時，唔好覆寫現有 CSV
+    MIN_EMSD_ROWS = 1700  # 安全閘門：攞唔齊最少行數就唔覆寫現有 CSV
     if not all_rows or not header or len(all_rows) < MIN_EMSD_ROWS:
-        print(f'❌ EMSD 只攞到 {len(all_rows)} 行（安全下限 {MIN_EMSD_ROWS}），保留現有 CSV，唔覆寫', file=sys.stderr)
+        print(f'⚠️ EMSD 只攞到 {len(all_rows)} 行，少於安全下限 {MIN_EMSD_ROWS}，唔覆寫現有 CSV', file=sys.stderr)
         sys.exit(1)
 
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'emsd_空調能源標籤.csv')
     detect_new_models(all_rows)  # 新機偵測（比較新舊 CSV）
-    # 原子寫入：先寫 .tmp 再 os.replace，避免寫到一半中斷整壞現有 CSV
     tmp = out + '.tmp'
     with open(tmp, 'w', newline='', encoding='utf-8-sig') as f:
         w = csv.writer(f)
         w.writerow(header)
         w.writerows(all_rows)
-    os.replace(tmp, out)
+    os.replace(tmp, out)  # 原子替換：寫好先換名，唔會整壞現有 CSV
     print('完成！共', len(all_rows), '個型號，存於', out)
 
 

@@ -2,10 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 批量抓取 Price.com.hk 價格範圍（EMSD 型號）
-- ⚠️ Price.com.hk 已被 Cloudflare 封，本腳本只保留做舊快照維護；
-  主力價錢源已改為 fetch_biggo.py（批次 meta 已搬去 batch_utils.py 共用）
 輸入：emsd_空調能源標籤.csv
 輸出：prices.json {型號: "$X,XXX - Y,YYY"}
+
+共享工具（唔重複造輪）：
+- crawl_utils：UA / norm_model / load_models
+- batch_utils：prices_meta 讀寫、批次進度、冷卻期（fetch_biggo / fetch_pricesapi / workflow 一齊用）
 """
 import json
 import os
@@ -15,20 +17,15 @@ import sys
 import time
 import urllib.request
 import urllib.error
+import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from crawl_utils import BOT_UA as UA, load_models
-from batch_utils import (PRICE_BATCH_DAYS, load_meta, save_meta, set_cooldown,
-                         detect_mode, start_price_batch, price_batch_active,
-                         get_batch_todo, advance_batch, deploy_stamp, checkin)
-
-# 兼容舊 import path：workflow / tests 會經 fetch_prices 用批次函數
-__all__ = ['fetch_price', 'load_meta', 'save_meta', 'set_cooldown', 'detect_mode',
-           'start_price_batch', 'price_batch_active', 'get_batch_todo',
-           'advance_batch', 'deploy_stamp', 'checkin']
+from crawl_utils import BOT_UA as UA, load_models, norm_model
+from batch_utils import (COOLDOWN_HOURS, PRICE_BATCH_DAYS, load_meta, save_meta,
+                         set_cooldown, detect_mode, start_price_batch,
+                         price_batch_active, get_batch_todo, advance_batch)
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-CSV_PATH = os.path.join(BASE, 'emsd_空調能源標籤.csv')
 OUT_PATH = os.path.join(BASE, 'prices.json')
 
 
@@ -67,24 +64,25 @@ def fetch_price(model):
     return None
 
 
+# ===== 價錢快照批次 meta/進度全部由 batch_utils 共用（re-export 保持舊介面）=====
+# load_meta / save_meta / set_cooldown / detect_mode / start_price_batch /
+# price_batch_active / get_batch_todo / advance_batch / PRICE_BATCH_DAYS / COOLDOWN_HOURS
+
 
 def run_price_batch():
-    """執行當日價錢批次（全量分 7 片，每日一片）"""
+    """執行當日價錢批次（全量分 7 片，每日一片；切片/推進由 batch_utils 共用）"""
     meta = load_meta()
-    idx = meta.get('price_batch_idx', 0)
-    if not meta.get('price_batch_start') or idx >= PRICE_BATCH_DAYS:
+    batch = get_batch_todo(load_models(), meta)
+    if not batch:
         print('💰 價錢批次：唔喺進行中，跳過')
         return
+    todo, idx, total = batch
     blocked = meta.get('blocked_until')
     if blocked and time.time() < blocked:
         print('🕐 冷卻期內，跳過本批（之後批次會繼續）')
         return
 
-    models = load_models()
-    n = len(models)
-    step = (n + PRICE_BATCH_DAYS - 1) // PRICE_BATCH_DAYS
-    todo = models[idx * step:(idx + 1) * step]
-    print(f'💰 價錢批次 {idx + 1}/{PRICE_BATCH_DAYS}：{len(todo)} 個型號，開始...')
+    print(f'💰 價錢批次 {idx + 1}/{PRICE_BATCH_DAYS}：{len(todo)}/{total} 個型號，開始...')
 
     results = {}
     if os.path.exists(OUT_PATH):
@@ -126,25 +124,15 @@ def run_price_batch():
     with open(OUT_PATH, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False)
 
-    idx += 1
-    meta['price_batch_idx'] = idx
-    if idx >= PRICE_BATCH_DAYS:
-        meta.pop('price_batch_start', None)
-        meta['last_full'] = time.strftime('%Y-%m-%d')
+    done = advance_batch(meta)
+    save_meta(meta)
+    if done:
         print(f'🎉 價錢快照全量更新完成（分 {PRICE_BATCH_DAYS} 日）')
     else:
-        print(f'💰 本批完成（{idx}/{PRICE_BATCH_DAYS}），聽日繼續')
-    save_meta(meta)
+        print(f'💰 本批完成（{meta["price_batch_idx"]}/{PRICE_BATCH_DAYS}），聽日繼續')
 
 
 def main():
-    if '--deploy-stamp' in sys.argv:
-        stamp = sys.argv[2] if len(sys.argv) > 2 else None
-        deploy_stamp(stamp)
-        return
-    if '--checkin' in sys.argv:
-        checkin()
-        return
     if '--price-batch' in sys.argv:
         run_price_batch()
         return

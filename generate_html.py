@@ -12,15 +12,15 @@ import csv
 import time
 import markdown
 import re
-import base64
-
-from crawl_utils import load_json, norm_model
-from models_data import VERSION, MODELS
-import model_lifecycle
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
-# 核心型號資料庫已搬去 models_data.py（MODELS / VERSION）
+from models_data import MODELS, VERSION
+
+# ============================================================
+# 型號資料庫（整合報告 + EMSD 官方）
+# 欄位: brand, model, hp, btu, type, energy, wifi, price, kwh,
+#       cspf, kw, gas, noise, size, weight, warranty, note
 # ============================================================
 
 # 2026-08-15 規格覆蓋（豐澤產品頁 + Price.com.hk og 規格，雙源交叉確認）
@@ -31,7 +31,7 @@ SPECS_OVERRIDE = {
     'TA-09EOG': {'size': '350×451×675', 'warranty': '4/5年'},
     'TA-12EOG': {'size': '380×600×560', 'warranty': '4/5年'},
     'TA-18EOG': {'size': '428×660×680', 'warranty': '4/5年'},
-    # ---- TOSOT（官方商舖確認：450×350×580 闊高深、淨重32kg、遙控；零售商交叉核實保養 2年全機/5年壓縮機）----
+    # ---- TOSOT（官方商舖確認尺寸/淨重/遙控 + 零售商交叉核實保養）----
     'W09R5A': {'size': '350×450×580', 'weight': '32kg', 'remote': '✅', 'warranty': '2年全機/5年壓縮機'},
     'W12R5A': {'size': '375×560×668', 'weight': '39kg', 'remote': '✅', 'warranty': '2年全機/5年壓縮機'},
     'W18R5A': {'size': '428×660×700', 'warranty': '2年全機/5年壓縮機'},
@@ -50,13 +50,14 @@ SPECS_OVERRIDE = {
     'RC-XG12': {'size': '375×560×668', 'weight': '39kg'},
     # ---- FUJI（豐澤確認「可遙控」）----
     'RFR18FNTN': {'size': '428×660×705', 'remote': '✅'},
+    # ---- COMFEE（官網 feelcomfee 精確尺寸/液晶遙控/IoT，見下「品牌官網逐型號核實」組）----
     # ---- Carrier EAVXP（世紀開利官網確認「淨冷遙控型」）----
     'CHK09EAVXP': {'size': '350×450×675', 'remote': '✅'},
     'CHK12EAVXP': {'size': '350×450×675', 'remote': '✅'},
     'CHK18EAVX': {'size': '428×660×780', 'remote': '✅'},
     # ---- Midea CRF8B（官方商舖確認 Wi-Fi 遙控變頻淨冷）----
     'MW-09CRF8B': {'size': '350×451×675', 'remote': '✅'},
-    # ---- Gree（官方商舖確認 GWF12DB：39kg、3年、Wi-Fi、無線遙控；零售商交叉核實壓縮機永久保養）----
+    # ---- Gree（官方商舖 + 零售商交叉核實保養）----
     'GWF09P': {'size': '350×450×640', 'remote': '✅', 'warranty': '3年全機/壓縮機永久'},
     'GWF12DB': {'size': '375×560×708', 'weight': '39kg', 'warranty': '3年全機/壓縮機永久', 'remote': '✅'},
     # ---- General（Price og）----
@@ -204,6 +205,10 @@ def md_to_html(md_text):
     return html
 
 
+def norm_model(s):
+    return re.sub(r'[^A-Z0-9]', '', s.upper())
+
+
 def kw_to_hp(kw):
     """製冷量 kW → 匹數（約算）"""
     try:
@@ -261,80 +266,63 @@ def normalize_brand(b):
     return BRAND_MAP.get(b.strip(), b.strip())
 
 
-def price_bucket(price):
-    """價位標籤：俾用戶按價錢區間篩選"""
-    if not price:
-        return '無價'
-    m = re.search(r'\$([\d,]+)', str(price))
-    if not m:
-        return '無價'
-    try:
-        v = int(m.group(1).replace(',', ''))
-    except ValueError:
-        return '無價'
-    if v < 2000:
-        return '$2,000以下'
-    if v < 4000:
-        return '$2,000-$4,000'
-    if v < 6000:
-        return '$4,000-$6,000'
-    return '$6,000以上'
-
-
 def load_prices():
-    """載入 Price.com.hk 價格庫（prices.json）"""
-    return load_json(os.path.join(BASE, 'prices.json'), {})
+    """載入 Price.com.hk 價格庫（prices.json：型號 → {price, pid}）"""
+    p = os.path.join(BASE, 'prices.json')
+    if not os.path.exists(p):
+        return {}
+    with open(p, encoding='utf-8') as f:
+        return json.load(f)
 
-def load_pricesapi():
-    """載入 PricesAPI 核心 29 驗收快照（pricesapi_prices.json）（後備，需 API key）"""
-    return load_json(os.path.join(BASE, 'pricesapi_prices.json'), {})
 
 def load_biggo():
-    """載入 BigGo 香港格價快照（biggo_prices.json）（主力價錢源）"""
-    return load_json(os.path.join(BASE, 'biggo_prices.json'), {})
+    """載入 BigGo 香港格價快照（biggo_prices.json：型號 → {price, merchants}）"""
+    p = os.path.join(BASE, 'biggo_prices.json')
+    if not os.path.exists(p):
+        return {}
+    with open(p, encoding='utf-8') as f:
+        return json.load(f)
+
 
 def load_gemini():
-    """載入 Gemini AI 搜索價（gemini_prices.json）"""
-    return load_json(os.path.join(BASE, 'gemini_prices.json'), {})
+    """載入 Gemini AI 搜索價（gemini_prices.json：型號 → {price, source}）"""
+    p = os.path.join(BASE, 'gemini_prices.json')
+    if not os.path.exists(p):
+        return {}
+    with open(p, encoding='utf-8') as f:
+        return json.load(f)
+
 
 def best_price(model, *sources):
-    """價錢優先級：BigGo 實抓 > PricesAPI 核心驗收/後備 > Gemini AI 搜 > Price 舊快照
-
-    兼容舊簽名 best_price(model, biggo, gemini, prices)。
+    """價錢優先級：BigGo 實抓 > PricesAPI 核心後備 > Gemini AI 搜 > Price 舊快照
+    支援兩種簽名：
+      best_price(model, pricesapi, biggo, gemini, prices)   # 4 源（新版）
+      best_price(model, biggo, gemini, prices)             # 3 源（舊版兼容）
     """
-    if len(sources) == 3:
-        pricesapi, biggo, gemini, prices = {}, sources[0], sources[1], sources[2]
-    elif len(sources) == 4:
+    if len(sources) == 4:
         pricesapi, biggo, gemini, prices = sources
+    elif len(sources) == 3:
+        pricesapi, biggo, gemini, prices = None, sources[0], sources[1], sources[2]
     else:
-        raise TypeError('best_price(model, pricesapi, biggo, gemini, prices)')
-    b = (biggo or {}).get(model) or {}
-    if b.get('price'):
-        return b['price']
-    pa = (pricesapi or {}).get(model) or {}
-    if pa.get('price'):
-        return pa['price']
-    g = (gemini or {}).get(model) or {}
-    if g.get('price'):
-        return g['price']
-    p = (prices or {}).get(model) or {}
-    return p.get('price') or None
+        return None
+    for src in (biggo, pricesapi, gemini, prices):
+        v = (src or {}).get(model) or {}
+        if v.get('price'):
+            return v['price']
+    return None
 
 
 def load_specs_emsd():
-    """載入 EMSD 型號規格（specs_emsd.json）"""
-    return load_json(os.path.join(BASE, 'specs_emsd.json'), {})
-
-def _zh_date(s):
-    try:
-        d = time.strptime(s, '%Y-%m-%d')
-        return f'{d.tm_year} 年 {d.tm_mon} 月 {d.tm_mday} 日'
-    except Exception:
-        return s
+    """載入 EMSD 型號規格（specs_emsd.json：Price og 規格）"""
+    p = os.path.join(BASE, 'specs_emsd.json')
+    if not os.path.exists(p):
+        return {}
+    with open(p, encoding='utf-8') as f:
+        return json.load(f)
 
 
 def update_status():
-    """讀取 meta 生成更新狀態文字（每日檢查日期 vs 價錢快照日期分開顯示）"""
+    """讀取 meta 生成更新狀態文字（網站自動顯示有冇更新）"""
     p = os.path.join(BASE, 'prices_meta.json')
     meta = {}
     try:
@@ -342,12 +330,9 @@ def update_status():
             meta = json.load(f)
     except Exception:
         pass
-    last_check = meta.get('last_check') or meta.get('last_run') or '2026-08-16'
-    last_price = meta.get('last_full') or meta.get('last_run') or last_check
-    last_deploy = meta.get('last_deploy') or ''
-    deploy_part = f' · ✅ 成功更新：{last_deploy}' if last_deploy else ''
-    return (f'📅 {_zh_date(last_check)} 檢查{deploy_part} · v{VERSION} · 🔄 每日自動檢查',
-            f'🔄 每日 00:30 自動檢查（EMSD + BigGo 價錢批次）· 價錢快照 {last_price} · 成功更新 {last_deploy or last_check}')
+    last_run = meta.get('last_run') or '2026-08-15'
+    return ('📅 2026 年 8 月 15 日 更新 · v' + VERSION + ' · 🔄 每日偵測新機 · 有機先更新',
+            f'🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 價錢為 2026-08-15 快照僅供參考 · 最後更新 {last_run}')
 
 
 def load_new_models():
@@ -387,21 +372,14 @@ def new_models_hint():
             '（新機偵測自 EMSD 官方資料庫，每日 00:30 自動偵測）</div>')
 
 
-def load_emsd_models(prices=None, pricesapi=None, biggo=None, gemini=None):
-    """讀取 EMSD 官方 CSV，轉為比較器數據（核心 29 型號去重）
-
-    價格來源可選注入，等 build_html 重用同一份資料（唔使重複讀 JSON）。
-    """
+def load_emsd_models():
+    """讀取 EMSD 官方 CSV，轉為比較器數據（核心 29 型號去重）"""
     csv_path = os.path.join(BASE, 'emsd_空調能源標籤.csv')
-    prices = prices if prices is not None else load_prices()
-    pricesapi = pricesapi if pricesapi is not None else load_pricesapi()
-    biggo = biggo if biggo is not None else load_biggo()
-    gemini = gemini if gemini is not None else load_gemini()
+    prices = load_prices()
+    biggo = load_biggo()
+    gemini = load_gemini()
     specs = load_specs_emsd()
-    # 黑名單只讀一次；之前逐型號 call get_blacklist_entry 會重複 parse 成個 JSON
-    blacklist = model_lifecycle.load_blacklist()
-    with open(csv_path, encoding='utf-8-sig') as f:
-        rows = list(csv.reader(f))[1:]
+    rows = list(csv.reader(open(csv_path, encoding='utf-8-sig')))[1:]
     rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
     core_keys = set(norm_model(m['model']) for m in MODELS)
     out = []
@@ -418,7 +396,7 @@ def load_emsd_models(prices=None, pricesapi=None, biggo=None, gemini=None):
             kw = 0.0
         btu = f"{kw*3412:,.0f}" if kw else '待查'
         pinfo = prices.get(model) or {}
-        price = best_price(model, pricesapi, biggo, gemini, prices)
+        price = best_price(model, biggo, gemini, prices)
         pid = pinfo.get('pid') or None
         sinfo = specs.get(model) or {}
         size = sinfo.get('size') or ''
@@ -441,25 +419,12 @@ def load_emsd_models(prices=None, pricesapi=None, biggo=None, gemini=None):
             'wifi': wifi, 'remote': remote, 'price': price, 'pid': pid,
             'kwh': r[5], 'cspf': r[7], 'kw': r[6], 'gas': r[8],
             'noise': '', 'size': size, 'weight': weight, 'warranty': warranty,
-            'note': 'EMSD 官方登記 · BigGo/Price 市場價', 'ref': r[2], 'provider': r[13],
+            'note': 'EMSD 官方登記 · Price 實價', 'ref': r[2], 'provider': r[13],
         }
         # 官網核實數據覆蓋
         apply_official(item)
         if item.get('price_official'):
             item['note'] = 'EMSD 官方登記 · 官網價'
-        bl = blacklist.get(model)
-        if bl:
-            item['discontinued'] = True
-            item['status'] = '停售'
-            item['note'] = f'🚫 已停售/淘汰：保留舊版（{bl.get("reason", "唔再更新")}）'
-        elif item.get('price_official'):
-            item['status'] = '官方價'
-        elif item.get('price'):
-            item['status'] = '有價'
-        else:
-            item['status'] = '無價'
-        item['price_range'] = price_bucket(item.get('price'))
-        item['tags'] = [item['status'], item['brand'], item['price_range'], item.get('hp') or '', item.get('mount') or '']
         out.append(item)
     priced = sum(1 for m in out if m['price'])
     sized = sum(1 for m in out if m['size'])
@@ -473,55 +438,26 @@ def build_html():
     content_html = md_to_html(md_text)
     date_status, foot_status = update_status()
     new_hint = new_models_hint()
-    # 角色立繪（whale-girl / 鯨魚娘）base64 內嵌，缺失時留空（唔會報錯）
-    mascot_img = ''
-    _mascot_path = os.path.join(BASE, 'whale_girl.webp')
-    if os.path.exists(_mascot_path):
-        with open(_mascot_path, 'rb') as _f:
-            mascot_img = 'data:image/webp;base64,' + base64.b64encode(_f.read()).decode('ascii')
-
-    # blue-fantasy 皮膚背景（dsh-web-ui skin 嘅 whale art data URI）
-    blue_fantasy_art = ''
-    _skin_art_path = os.path.join(BASE, 'blue_fantasy_art.txt')
-    if os.path.exists(_skin_art_path):
-        with open(_skin_art_path, encoding='ascii') as _f:
-            blue_fantasy_art = _f.read().strip()
 
     # 套用雙源確認規格 + 填核心型號 Price 產品 ID（做價格連結）
     apply_specs_override()
     prices = load_prices()
-    pricesapi = load_pricesapi()
     biggo = load_biggo()
     gemini = load_gemini()
-    blacklist = model_lifecycle.load_blacklist()
     for m in MODELS:
         pinfo = prices.get(m['model'])
         if isinstance(pinfo, dict) and pinfo.get('pid'):
             m['pid'] = pinfo['pid']
         else:
             m['pid'] = None
-        # 價錢優先級：BigGo 實抓 > PricesAPI 核心驗收 > Gemini AI 搜 > Price 舊快照
-        bp = best_price(m['model'], pricesapi, biggo, gemini, prices)
+        # 價錢優先級：BigGo 實抓 > Gemini AI 搜 > Price 舊快照
+        bp = best_price(m['model'], biggo, gemini, prices)
         if bp:
             m['price'] = bp
-        bl = blacklist.get(m['model'])
-        if bl:
-            m['discontinued'] = True
-            m['status'] = '停售'
-            m['note'] = f'🚫 已停售/淘汰：保留舊版（{bl.get("reason", "唔再更新")}）'
-        elif m.get('price_official'):
-            m['status'] = '官方價'
-        elif m.get('price'):
-            m['status'] = '有價'
-        else:
-            m['status'] = '無價'
-        m['price_range'] = price_bucket(m.get('price'))
-        m['tags'] = [m['status'], m['brand'], m['price_range'], m.get('hp') or '', m.get('mount') or '']
 
-    emsd_models = load_emsd_models(prices=prices, pricesapi=pricesapi, biggo=biggo, gemini=gemini)
-    # 注入 <script> 前 escape `</`，避免型號名含 `</script>` 時 breakout（XSS 加固）
-    models_json = json.dumps(MODELS, ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/')
-    emsd_json = json.dumps(emsd_models, ensure_ascii=False, separators=(',', ':')).replace('</', '<\\/')
+    emsd_models = load_emsd_models()
+    models_json = json.dumps(MODELS, ensure_ascii=False)
+    emsd_json = json.dumps(emsd_models, ensure_ascii=False, separators=(',', ':'))
     fields_json = json.dumps(COMPARE_FIELDS, ensure_ascii=False)
 
     html = HTML_TEMPLATE.replace('__CONTENT__', content_html) \
@@ -530,10 +466,7 @@ def build_html():
                         .replace('__FIELDS_JSON__', fields_json) \
                         .replace('__DATE_STATUS__', date_status) \
                         .replace('__FOOT_STATUS__', foot_status) \
-                        .replace('__NEW_HINT__', new_hint) \
-                        .replace('__VERSION__', VERSION) \
-                        .replace('__MASCOT_IMG__', mascot_img) \
-                        .replace('__BLUE_FANTASY_ART__', blue_fantasy_art)
+                        .replace('__NEW_HINT__', new_hint)
     out = os.path.join(BASE, '空調對比報告.html')
     with open(out, 'w', encoding='utf-8') as f:
         f.write(html)
@@ -550,62 +483,35 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <meta property="og:description" content="香港市場 1,854 個空調型號全面對比：窗口式 / 分體式 / 流動式，EMSD 官方能源數據 + 8 品牌官網 220 型號核實，18 項屬性互動比較器。">
 <meta property="og:type" content="website">
 <meta name="description" content="香港空調對比報告：1,854 型號 · EMSD 官方能源標籤全量核實 · 8 品牌官網核實 · 互動比較器">
-<link rel="icon" href="__MASCOT_IMG__">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>❄️</text></svg>">
 <style>
 :root{
-  --primary:#4a5fa8; --primary2:#647ebf; --accent:#c08a33;
-  --bg:#e8ecf5; --text:#1d2539; --muted:#5b6989;
-  --line:#c7ccda; --alt:#eef1fb; --warn:#c00000; --ok:#2e8e52;
-  --surface:rgba(255,255,255,.78); --surface-strong:rgba(247,248,251,.88);
-  --hover:#E8F1F9; --code-bg:#E8F1F9; --checked-bg:#FBF6EC;
-  --blockquote-bg:rgba(238,241,251,.72);
-  --best-bg:#F7ECD8; --best-fg:#8A6A2F; --on-accent:#1d2539;
-}
-@media (prefers-color-scheme: dark){
-  :root{
-    --primary:#7f96d2; --primary2:#8ba3dc; --accent:#d9a94f;
-    --bg:#101624; --text:#dbe2f2; --muted:#909dbb;
-    --line:#3b4257; --alt:#1d2539; --warn:#e66b6b; --ok:#5cb877;
-    --surface:rgba(30,36,56,.82); --surface-strong:rgba(38,48,79,.90);
-    --hover:#26334f; --code-bg:#26304d; --checked-bg:#252d40;
-    --blockquote-bg:rgba(38,48,79,.72);
-    --best-bg:#3a3222; --best-fg:#f0d48a; --on-accent:#101624;
-  }
+  --primary:#0F3D5C; --primary2:#1B5E8A; --accent:#C9A227;
+  --bg:#F5F8FB; --text:#22303C; --muted:#6E7E8E;
+  --line:#D8E1EB; --alt:#EEF4FA; --warn:#B03A2E; --ok:#1E8E5A;
 }
 *{box-sizing:border-box; margin:0; padding:0;}
 html{scroll-padding-top:64px;}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei","PingFang TC","Noto Sans TC",sans-serif;
-  color:var(--text); line-height:1.7;
-  background-color:var(--bg);
-  background-image:linear-gradient(180deg, rgba(232,236,245,.86), rgba(232,236,245,.82)), url("__BLUE_FANTASY_ART__");
-  background-size:cover; background-position:center top; background-attachment:fixed;}
-@media (prefers-color-scheme: dark){
-  body{background-image:linear-gradient(180deg, rgba(16,22,36,.82), rgba(16,22,36,.88)), url("__BLUE_FANTASY_ART__");}
-}
+  background:var(--bg); color:var(--text); line-height:1.7;}
 .wrap{max-width:1080px; margin:0 auto; padding:0 16px;}
 
 /* ===== Hero 封面 ===== */
-.hero{background:linear-gradient(160deg,#222b4d 0%,#3c4e92 45%,#4a5fa8 100%); color:#fff; opacity:1;
-  text-align:center; padding:64px 20px 92px; position:relative; overflow:hidden;}
-.hero .mascot{position:absolute; right:4%; bottom:46px; max-height:300px; max-width:44%;
-  border-radius:16px; box-shadow:0 12px 32px rgba(6,14,38,.45);
-  transform:rotate(2deg); pointer-events:none; opacity:.96; filter:drop-shadow(0 0 18px rgba(142,165,218,.35));}
-.hero::after{content:""; position:absolute; bottom:-1px; left:0; right:0; height:56px;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 60' preserveAspectRatio='none'%3E%3Cpath fill='%23E8ECF5' d='M0,30 C240,58 480,6 720,28 C960,50 1200,10 1440,30 L1440,60 L0,60 Z'/%3E%3C/svg%3E") no-repeat bottom/100% 100%;}
-.bubble{position:absolute; font-size:22px; opacity:.5; pointer-events:none;
-  animation:float 6s ease-in-out infinite;}
-@keyframes float{0%,100%{transform:translateY(0);} 50%{transform:translateY(-16px);}}
+.hero{background:linear-gradient(135deg,#0F3D5C 0%,#1B5E8A 100%); color:#fff;
+  text-align:center; padding:64px 20px 56px; position:relative; overflow:hidden;}
+.hero::after{content:""; position:absolute; bottom:0; left:0; right:0; height:5px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);}
 .hero h1{font-size:2.2em; letter-spacing:1px; margin-bottom:8px;}
-.hero .sub{color:#ffffff; font-size:1.15em; margin-bottom:28px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
+.hero .sub{color:var(--accent); font-size:1.15em; margin-bottom:28px;}
 .stats{display:flex; justify-content:center; gap:40px; flex-wrap:wrap; margin-bottom:26px;}
 .stats .n{font-size:2.1em; font-weight:700; color:var(--accent);}
 .stats .l{font-size:.85em; opacity:.9;}
-.hero .src{font-size:.8em; opacity:.98; line-height:1.8; color:#e6ebf7;}
-.hero .date{color:#ffffff; font-size:.95em; margin-top:10px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
+.hero .src{font-size:.8em; opacity:.75; line-height:1.8;}
+.hero .date{color:var(--accent); font-size:.95em; margin-top:10px;}
 
 /* ===== 頂部導覽 ===== */
-.topnav{position:sticky; top:0; z-index:100; background:rgba(42,52,80,.88);
-  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-bottom:2px solid var(--accent);}
+.topnav{position:sticky; top:0; z-index:100; background:rgba(15,61,92,.97);
+  backdrop-filter:blur(6px); border-bottom:2px solid var(--accent);}
 .topnav .wrap{display:flex; align-items:center; gap:2px; flex-wrap:wrap;
   overflow:visible; padding:0 8px;}
 .topnav a{color:#DCE6F0; text-decoration:none; font-size:.84em; padding:13px 10px;
@@ -639,31 +545,30 @@ h3{color:var(--primary2); margin:18px 0 8px; font-size:1.1em;}
 p{margin:8px 0;}
 
 /* ===== 卡片 ===== */
-.card{background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--line); border-radius:12px;
-  padding:18px; margin:12px 0; box-shadow:0 1px 4px rgba(10,36,71,.06);}
+.card{background:#fff; border:1px solid var(--line); border-radius:12px;
+  padding:18px; margin:12px 0; box-shadow:0 1px 4px rgba(15,61,92,.06);}
 
 /* ===== 表格 ===== */
 .table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:12px 0;
-  border:1px solid var(--line); border-radius:10px; background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);}
+  border:1px solid var(--line); border-radius:10px; background:#fff;}
 table{width:100%; border-collapse:collapse; font-size:.9em; min-width:600px;}
 th{background:var(--primary); color:#fff; padding:9px 10px; text-align:center;
   font-weight:600; border-bottom:3px solid var(--accent); white-space:nowrap;}
 td{padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top;}
 tbody tr:nth-child(even){background:var(--alt);}
-tbody tr:hover{background:var(--hover);}
+tbody tr:hover{background:#E8F1F9;}
 blockquote{margin:12px 0; padding:10px 16px; border-left:5px solid var(--accent);
-  background:var(--blockquote-bg); border-radius:0 8px 8px 0; font-size:.92em;
-  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);}
+  background:#FFF7E3; border-radius:0 8px 8px 0; font-size:.92em;}
 blockquote p{margin:2px 0;}
-code{background:var(--code-bg); color:var(--text); padding:2px 6px; border-radius:4px; font-size:.9em;}
-pre{background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--line); border-radius:8px; padding:12px;
+code{background:#E8F1F9; padding:2px 6px; border-radius:4px; font-size:.9em;}
+pre{background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px;
   overflow-x:auto; margin:12px 0;}
 ul,ol{margin:8px 0 8px 24px;}
 
 /* ===== 比較器 ===== */
-.compare{position:sticky; top:58px; z-index:90; background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+.compare{position:sticky; top:58px; z-index:90; background:#fff;
   border:1px solid var(--line); border-bottom:3px solid var(--accent);
-  border-radius:0 0 12px 12px; box-shadow:0 4px 12px rgba(10,36,71,.12);}
+  border-radius:0 0 12px 12px; box-shadow:0 4px 12px rgba(15,61,92,.12);}
 .compare .head{display:flex; align-items:center; justify-content:space-between;
   padding:10px 16px; background:var(--primary); color:#fff; border-radius:0 0 0 0;}
 .compare .head b{font-size:1em;}
@@ -676,14 +581,14 @@ ul,ol{margin:8px 0 8px 24px;}
 .compare-tools .filters{display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-left:auto;}
 .compare .chint{font-size:.72em; color:var(--muted); padding:3px 12px 7px; text-align:center;}
 .compare-tools select,.compare-tools input[type=search]{border:1px solid var(--line);
-  border-radius:20px; padding:5px 12px; font-size:.85em; background:var(--bg); color:var(--text);}
+  border-radius:20px; padding:5px 12px; font-size:.85em; background:var(--bg);}
 .model-list{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
   gap:8px; padding:10px 12px; max-height:340px; overflow-y:auto;}
 .mitem{display:flex; align-items:center; gap:10px; padding:9px 12px;
-  border:1px solid var(--line); border-radius:8px; background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); cursor:pointer;
+  border:1px solid var(--line); border-radius:8px; background:#fff; cursor:pointer;
   transition:border-color .15s, box-shadow .15s;}
-.mitem:hover{border-color:var(--primary2); box-shadow:0 2px 8px rgba(10,36,71,.12);}
-.mitem.checked{border-color:var(--accent); background:var(--checked-bg); box-shadow:0 0 0 2px rgba(197,164,104,.35);}
+.mitem:hover{border-color:var(--primary2); box-shadow:0 2px 8px rgba(15,61,92,.12);}
+.mitem.checked{border-color:var(--accent); background:#FFFDF2; box-shadow:0 0 0 2px rgba(201,162,39,.35);}
 .mitem input{width:18px; height:18px; accent-color:var(--accent); cursor:pointer; flex:0 0 auto;}
 .mitem .info{flex:1; min-width:0;}
 .mitem .info .name{font-weight:600; font-size:.92em; color:var(--primary);}
@@ -693,8 +598,8 @@ ul,ol{margin:8px 0 8px 24px;}
 
 /* 比較面板 */
 .panel{display:none; position:fixed; bottom:0; left:0; right:0; z-index:200;
-  background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-top:3px solid var(--accent);
-  box-shadow:0 -6px 20px rgba(10,36,71,.25); max-height:62vh; display:none; flex-direction:column;}
+  background:#fff; border-top:3px solid var(--accent);
+  box-shadow:0 -6px 20px rgba(15,61,92,.25); max-height:62vh; display:none; flex-direction:column;}
 .panel.open{display:flex;}
 .panel .phead{display:flex; align-items:center; justify-content:space-between;
   padding:10px 16px; background:var(--primary); color:#fff;}
@@ -704,7 +609,7 @@ ul,ol{margin:8px 0 8px 24px;}
 .panel table{min-width:420px;}
 .panel td:first-child{font-weight:600; color:var(--primary2); background:var(--alt);
   white-space:nowrap; width:120px;
-  position:sticky; left:0; z-index:2; box-shadow:2px 0 3px rgba(10,36,71,.08);}
+  position:sticky; left:0; z-index:2; box-shadow:2px 0 3px rgba(15,61,92,.08);}
 .panel thead th:first-child{position:sticky; left:0; z-index:3;}
 .panel .phint{text-align:center; color:var(--muted); padding:14px; font-size:.9em;}
 
@@ -713,7 +618,7 @@ ul,ol{margin:8px 0 8px 24px;}
 .plink:hover{color:var(--accent);}
 .more-wrap{text-align:center; padding:10px 12px; border-top:1px solid var(--line);}
 #btnMore{background:var(--primary); color:#fff; border:none; padding:8px 22px;
-  border-radius:20px; cursor:pointer; font-size:.9em; box-shadow:0 2px 6px rgba(10,36,71,.2);}
+  border-radius:20px; cursor:pointer; font-size:.9em; box-shadow:0 2px 6px rgba(15,61,92,.2);}
 #btnMore:hover{background:var(--accent); color:var(--primary);}
 
 /* ===== 比較器完善 ===== */
@@ -721,43 +626,26 @@ ul,ol{margin:8px 0 8px 24px;}
 .selonly input{accent-color:var(--accent);}
 .compare-tools .gocompare{background:var(--accent); color:var(--primary); font-weight:700;
   border:none; padding:7px 18px; border-radius:20px; cursor:pointer; font-size:.9em;
-  box-shadow:0 2px 8px rgba(197,164,104,.45);}
-.compare-tools .gocompare:hover{background:#B8944F;}
+  box-shadow:0 2px 8px rgba(201,162,39,.45);}
+.compare-tools .gocompare:hover{background:#DDB236;}
 .compare-tools .gocompare:disabled{opacity:.5; cursor:not-allowed; box-shadow:none;}
-.panel td.best{background:var(--best-bg); color:var(--best-fg); font-weight:700;}
+.panel td.best{background:#FFF7D6; color:#8A6500; font-weight:700;}
 .panel .rm{background:#C0392B; color:#fff; border:none; border-radius:10px;
   padding:1px 8px; font-size:.72em; cursor:pointer; margin-top:2px;}
 .panel .rm:hover{background:#922B21;}
-
-/* ===== 深色模式對比度修正 ===== */
-@media (prefers-color-scheme: dark){
-  :root{color-scheme:dark;}
-  /* 預設連結（尤其係目錄表）唔好用瀏覽器深藍，改用明亮 primary2 */
-  a, a:visited{color:var(--primary2);}
-  a:hover{color:var(--accent);}
-  /* 實色底 + 白字：深色下唔好用過淺嘅 --primary，改用較深藍保持白字對比度 */
-  th, .compare .head, .panel .phead, .mitem .badge, #btnMore, #backTop, h2.sec .tag{background:#4F66AD;}
-  .compare .head .sel{color:#fff;}
-  .compare-tools button{background:#5A6FB8;}
-  /* accent 底上面嘅文字：深色下改深色字，避免淺藍 x 淺金低對比 */
-  .compare-tools button:hover, .compare-tools .gocompare, #btnMore:hover, #backTop:hover, .panel .phead button{
-    color:var(--on-accent);
-  }
-}
 
 /* ===== 返回頂部 ===== */
 #backTop{position:fixed; right:16px; bottom:20px; width:44px; height:44px;
   background:var(--primary); color:#fff; border:2px solid var(--accent);
   border-radius:50%; font-size:1.2em; cursor:pointer; z-index:150;
   display:none; align-items:center; justify-content:center;
-  box-shadow:0 3px 10px rgba(10,36,71,.35);}
+  box-shadow:0 3px 10px rgba(15,61,92,.35);}
 #backTop.show{display:flex; animation:backFade .25s ease;}
 @keyframes backFade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
 #backTop:hover{background:var(--accent); color:var(--primary);}
 
 /* ===== 頁腳 ===== */
-footer{background:rgba(20,26,43,.90); color:#BFD0DE; text-align:center;
-  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+footer{background:var(--primary); color:#BFD0DE; text-align:center;
   padding:36px 16px 30px; margin-top:50px; font-size:.88em;}
 footer b{color:#fff;}
 footer .line{color:var(--accent);}
@@ -769,7 +657,7 @@ footer .blk p{font-size:.84em; line-height:1.8; margin:0;}
 footer .blk a{color:#8FD3FF; text-decoration:none;}
 footer .blk a:hover{text-decoration:underline;}
 footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
-  border:1px dashed var(--accent); border-radius:20px; font-size:.8em; color:#E8D9B8;}
+  border:1px dashed var(--accent); border-radius:20px; font-size:.8em; color:#E8D9A0;}
 
 /* ===== 響應式 ===== */
 @media (max-width:640px){
@@ -783,7 +671,6 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
   .topnav a[data-tip]::after{display:none;}
   .hero h1{font-size:1.6em;}
   .hero .sub{font-size:1em;}
-  .hero .mascot{display:none;}
   .stats{display:grid; grid-template-columns:1fr 1fr; gap:14px 20px;}
   .stats .n{font-size:1.6em;}
   section{margin:28px 0;}
@@ -795,7 +682,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 }
 @media print{
   .topnav,.compare,.panel{display:none !important;}
-  body{background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);}
+  body{background:#fff;}
   .card{border:none; box-shadow:none; padding:0;}
   .hero{background:var(--primary); padding:30px;}
   a{color:inherit; text-decoration:none;}
@@ -806,11 +693,6 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 
 <!-- ===== 封面 ===== -->
 <header class="hero">
-  <img class="mascot" src="__MASCOT_IMG__" alt="whale-girl 鯨魚娘">
-  <span class="bubble" style="left:7%;top:30%;">🫧</span>
-  <span class="bubble" style="left:15%;top:64%;animation-delay:1.6s;">🫧</span>
-  <span class="bubble" style="right:10%;bottom:22%;animation-delay:.8s;">🫧</span>
-  <span class="bubble" style="right:20%;top:26%;font-size:16px;animation-delay:2.4s;">🫧</span>
   <div class="wrap">
     <h1>香港空調對比報告</h1>
     <div class="sub">窗口式 · 分體式 · 流動式全面剖析 · 互動比較器</div>
@@ -820,7 +702,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + PricesAPI 核心 29 驗收 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
     <div class="date">__DATE_STATUS__</div>
   </div>
 </header>
@@ -834,7 +716,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
     <a href="#energy" data-tip="能源標籤級別分析">⚡ 能源分析</a>
     <a href="#rank" data-tip="能源效益及用戶評價排名">📈 排名</a>
     <a href="#recommend" data-tip="按場景最終推薦">🏆 推薦</a>
-    <a href="#price" data-tip="官方網店價 vs BigGo 實價">💰 價格</a>
+    <a href="#price" data-tip="官方網店價 vs Price 實價">💰 價格</a>
     <a href="#official" data-tip="8 品牌官網核實 220 型號；Gree/TOSOT 零售商交叉核實">🏭 官網核實</a>
     <a href="#verify" data-tip="EMSD 官方驗證結果">✅ 官方驗證</a>
     <a href="#forum" data-tip="LIHKG 連登討論摘錄（附原帖連結）">💬 論壇</a>
@@ -884,12 +766,6 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
         <select id="fEnergy" onchange="resetShown();renderList()">
           <option value="">全部能源級別</option><option>1級</option><option>2級</option><option>3級</option><option>4級</option><option>5級</option>
         </select>
-        <select id="fStatus" onchange="resetShown();renderList()">
-          <option value="">全部狀態</option><option>停售</option><option>官方價</option><option>有價</option><option>無價</option>
-        </select>
-        <select id="fPrice" onchange="resetShown();renderList()">
-          <option value="">全部價位</option><option>$2,000以下</option><option>$2,000-$4,000</option><option>$4,000-$6,000</option><option>$6,000以上</option><option>無價</option>
-        </select>
       </div>
     </div>
     <div class="chint">提示：Gree/TOSOT 保養為零售商規格（交叉核實），其餘品牌為官網核實</div>
@@ -903,8 +779,8 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
     <div class="phead">
       <b id="panelTitle">📋 型號對比</b>
       <span style="display:flex;gap:6px;">
-        <button onclick="copyCompare()" style="background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);color:var(--primary);">📋 複製結果</button>
-        <button onclick="clearAll()" style="background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);color:var(--primary);">🗑 清除</button>
+        <button onclick="copyCompare()" style="background:#fff;color:var(--primary);">📋 複製結果</button>
+        <button onclick="clearAll()" style="background:#fff;color:var(--primary);">🗑 清除</button>
         <button onclick="closePanel()">✕ 關閉</button>
       </span>
     </div>
@@ -920,7 +796,7 @@ __CONTENT__
 </main>
 
 <footer>
-  <b>香港空調對比報告 · v__VERSION__</b><br>
+  <b>香港空調對比報告 · v1.0.0</b><br>
   能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號
 
   <div class="blk">
@@ -934,17 +810,15 @@ __CONTENT__
     <h3>🙏 資料來源鳴謝</h3>
     <p>· 機電工程署 EMSD 能源標籤資料庫（官方能源/雪種/耗電數據）<br>
       · 品牌官網及總代理：信興集團、樂信網店、Panasonic、世紀開利、GENERAL 第一電業、HITACHI、COMFEE、美的<br>
-      · 價格快照：BigGo 香港格價（點擊 🔍 轉跳 Google 搜最新價）· PricesAPI 核心 29 驗收後備 · 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價<br>
-      · 🎨 網站皮膚 Blue Fantasy：原作 <b>powerdog996（DreamSkin 社區）</b>，<b>zhu1090093659/dsh-web-ui</b> 適配；whale-girl 鯨魚娘素材來自同一項目。多謝大佬！</p>
+      · 價格快照：Price.com.hk 2026-08-15（點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
   </div>
 
   <div class="blk">
-    <h3>🫧 鯨魚娘 AI 製作提示</h3>
-    <p>本網頁由 <b style="color:#C5A468">DeepSeek 鯨魚娘 AI</b> 輔助製作，配合多輪官方資料核實；所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證。<br>
-      <span style="font-size:.8em;color:#6F7C99;">角色形象：whale-girl 鯨魚娘（寵物皮膚：<a href="https://github.com/zhu1090093659/dsh-web-ui" target="_blank" rel="noopener">zhu1090093659/dsh-web-ui</a> · 來源：<a href="https://linux.do/t/topic/2751323" target="_blank" rel="noopener">linux.do 介紹帖</a>）<br>🙏 特別感謝 powerdog996（DreamSkin）Blue Fantasy 皮膚原作、zhu1090093659/dsh-web-ui 適配及鯨魚娘素材！</span></p>
+    <h3>🤖 AI 製作提示</h3>
+    <p>本網頁由 <b style="color:#8FD3FF">DeepSeek AI</b> 輔助製作，配合多輪官方資料核實；所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證。</p>
   </div>
 
-  <span class="ai">🫧 Powered by DeepSeek 鯨魚娘 AI</span><br>
+  <span class="ai">🤖 Powered by DeepSeek AI</span><br>
   <span class="line">──────</span><br>
   __FOOT_STATUS__<br>
   本報告僅供選購參考，不構成購買建議 · 價格及供應隨時變動，請以商戶實時報價為準
@@ -972,15 +846,11 @@ function matches(m){
   const br=document.getElementById('fBrand').value;
   const en=document.getElementById('fEnergy').value;
   const mo=document.getElementById('fMount').value;
-  const st=document.getElementById('fStatus').value;
-  const pr=document.getElementById('fPrice').value;
   if(hp && m.hp!==hp) return false;
   if(ty && m.type!==ty) return false;
   if(br && m.brand!==br) return false;
   if(en && m.energy!==en) return false;
   if(mo && m.mount!==mo) return false;
-  if(st && m.status!==st) return false;
-  if(pr && m.price_range!==pr) return false;
   if(q && !(m.brand.toLowerCase().includes(q)||m.model.toLowerCase().includes(q))) return false;
   if(document.getElementById('fSelOnly').checked && !selected.has(m.brand+'|'+m.model)) return false;
   return true;
@@ -1021,13 +891,12 @@ function renderList(){
     const mountTxt = m.mount ? `${esc(m.mount)} ` : '';
     const modeTxt = m.mode ? `${esc(m.mode)} ` : '';
     const remoteTxt = m.remote==='✅' ? '· 有遙控 ' : (m.remote==='➖' ? '· 無遙控 ' : '');
-    const statusTxt = m.status==='停售' ? ' · 🚫停售' : (m.status==='官方價' ? ' · 🏷️官方價' : (m.status==='無價' ? ' · ⚠️無價' : ''));
-    const extra = (m.gas ? ` · ${esc(m.gas)}` : '') + (m.cspf ? ` · CSPF ${esc(m.cspf)}` : '') + (m.price_range ? ` · ${esc(m.price_range)}` : '');
+    const extra = (m.gas ? ` · ${esc(m.gas)}` : '') + (m.cspf ? ` · CSPF ${esc(m.cspf)}` : '');
     return `<label class="mitem ${on?'checked':''}">
       <input type="checkbox" ${on?'checked':''} onchange="toggle('${esc(id)}',this)">
       <span class="info">
         <span class="name">${esc(m.brand)} ${esc(m.model)}</span><br>
-        <span class="tag">${mountTxt}${modeTxt}${esc(m.hp||'?匹')} · ${esc(m.btu)} BTU · ${esc(m.type)} · ${energyTxt} ${remoteTxt}${statusTxt}${extra} · ${priceHtml}</span>
+        <span class="tag">${mountTxt}${modeTxt}${esc(m.hp||'?匹')} · ${esc(m.btu)} BTU · ${esc(m.type)} · ${energyTxt} ${remoteTxt}${extra}· ${priceHtml}</span>
       </span>
       <span class="badge">${wifiBadge} ${energyTxt}</span>
     </label>`;

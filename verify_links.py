@@ -170,14 +170,7 @@ def main():
         futures = {ex.submit(verify_one, it): it for it in items}
         done = 0
         for fut in as_completed(futures):
-            try:
-                st, model, pid, title = fut.result()
-            except Exception as e:
-                # 單一型號驗證出錯唔應該拖冧成個 batch
-                print(f'⚠️ 型號驗證錯誤：{futures[fut]} - {str(e)[:80]}', flush=True)
-                kept += 1
-                done += 1
-                continue
+            st, model, pid, title = fut.result()
             if st == 'ok':
                 ok_n += 1
                 report['ok'].append({'model': model, 'pid': pid})

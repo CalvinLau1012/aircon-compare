@@ -2,18 +2,18 @@ name: 每日偵測 · 新機分批更新
 
 on:
   schedule:
-    # 每日香港時間 00:30（UTC 16:30）輕量偵測；有新機先觸發分批更新
+    # 香港時間每日 00:30（UTC 16:30）輕量偵測；有新機先觸發分批更新
     - cron: '30 16 * * *'
   # 亦可以喺 GitHub Actions 頁面手動觸發
   workflow_dispatch: {}
 
-# 安全：只授予寫內容嘅最低權限；BigGo 主力源唔需要密鑰，PricesAPI 後備 key 放 Secrets
+# 安全：只授予寫內容嘅最低權限，唔需要任何密鑰/Token
 permissions:
   contents: write
 
 # 防止重疊執行
 concurrency:
-  group: daily-update
+  group: weekly-update
   cancel-in-progress: true
 
 jobs:
@@ -21,22 +21,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
+      # ============ 環境：代碼 + Python + 依賴（含測試） ============
       - name: 取出代碼
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: 設定 Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'
 
-      - name: 安裝依賴（含測試）
-        run: pip install -r requirements-dev.txt
+      - name: 安裝依賴
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
-      # 代碼回歸測試（早啲 fail，唔好等到後面先發現壞咗）
-      - name: 單元測試
+      # ============ 閘門：共享工具契約測試（複用契約一變即刻失敗） ============
+      - name: 測試閘門
         run: python -m pytest tests/ -q
 
-      # 每日輕量偵測：EMSD 官方資料庫 + 新機 diff（有新機自動入隊列）
+      # ============ 第 1 步：EMSD 官方資料庫 + 新機偵測 ============
       - name: 抓取 EMSD + 新機偵測
         run: python fetch_emsd.py
         continue-on-error: true
@@ -46,10 +48,10 @@ jobs:
         run: |
           STAGE=$(python -c "import json;print(json.load(open('update_queue.json',encoding='utf-8')).get('stage',0))" 2>/dev/null || echo 0)
           echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
-          echo "今日批次階段：$STAGE"
+          echo "今日更新階段：$STAGE"
 
-      # 新機後第 1 日：官網核實第一批（Panasonic/HITACHI/COMFEE + 信興 + 樂信網店）
-      - name: 官網核實第一批
+      # ============ 第 2 步：新機官網核實（分兩日；fetch_* 共用 crawl_utils） ============
+      - name: 官網核實第一批（新機後第 1 日）
         if: steps.stage.outputs.stage == '1'
         run: |
           python fetch_official.py || true
@@ -57,8 +59,7 @@ jobs:
           python fetch_rasonic.py || true
           python advance_queue.py
 
-      # 新機後第 2 日：官網核實第二批（世紀開利 + 珍寶 + 規格）
-      - name: 官網核實第二批
+      - name: 官網核實第二批（新機後第 2 日）
         if: steps.stage.outputs.stage == '2'
         run: |
           python fetch_carrier.py || true
@@ -66,34 +67,16 @@ jobs:
           python fetch_specs.py || true
           python advance_queue.py
 
-      # 價錢快照分批更新（BigGo 香港格價）：先 smoke 測試連線，避免 GitHub IP 被 BigGo 封鎖時拖死成個 job
+      # ============ 第 3 步：價錢快照批次（BigGo；進度由 batch_utils 共用管理） ============
       - name: 價錢快照分批更新（BigGo 每月一次·分七日）
         run: |
-          if python fetch_biggo.py --smoke; then
-            if python -c "import sys; from fetch_prices import price_batch_active; sys.exit(0 if price_batch_active() else 1)"; then
-              python fetch_biggo.py --price-batch || true
-            else
-              echo "價錢批次未啟動，跳過"
-            fi
+          if python -c "import sys; from batch_utils import price_batch_active; sys.exit(0 if price_batch_active() else 1)"; then
+            python fetch_biggo.py --price-batch || true
           else
-            echo "⚠️ BigGo 線上 smoke 失敗（可能封鎖 GitHub IP）：保留現有快照，唔推進批次"
+            echo "價錢批次未啟動，跳過"
           fi
 
-      # PricesAPI 核心 29 驗收（選用）：喺 repo Variables 設 PRICESAPI_CORE_CHECK=1 先會跑
-      - name: PricesAPI 核心 29 驗收（選用後備）
-        if: vars.PRICESAPI_CORE_CHECK == '1'
-        env:
-          PRICESAPI_API_KEY: ${{ secrets.PRICESAPI_API_KEY }}
-        run: python fetch_pricesapi.py --core || true
-
-      - name: 每日檢查打卡（更新 last_check）
-        run: python fetch_prices.py --checkin || true
-
-      - name: 記錄成功部署時間（香港時間）
-        run: |
-          DEPLOY_TIME=$(TZ=Asia/Hong_Kong date '+%Y-%m-%d %H:%M:%S')
-          python fetch_prices.py --deploy-stamp "$DEPLOY_TIME"
-
+      # ============ 第 4 步：安全閘門 + 生成網頁 + 上線 ============
       - name: 數據驗證（防壞數據上線）
         run: python validate_data.py
 
