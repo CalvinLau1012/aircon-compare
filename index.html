@@ -45,10 +45,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
 /* ===== Hero 封面 ===== */
 .hero{background:linear-gradient(160deg,#222b4d 0%,#3c4e92 45%,#4a5fa8 100%); color:#fff;
   text-align:center; padding:64px 20px 92px; position:relative; overflow:hidden;}
-.hero .mascot{position:absolute; right:4%; bottom:46px; max-height:300px; max-width:44%;
-  border-radius:16px; box-shadow:0 12px 32px rgba(6,14,38,.45);
-  transform:rotate(2deg); pointer-events:none; opacity:.96;
-  filter:drop-shadow(0 0 18px rgba(142,165,218,.35));}
+/* 吉祥物預設隱藏：只有超大屏（CSS 寬 ≥1600px）先顯示，
+   確保任何重疊情況下文字都保持可讀 */
+.hero .mascot{display:none;}
+@media (min-width:1600px){
+  .hero .mascot{display:block; position:absolute; right:4%; bottom:46px;
+    max-height:300px; max-width:32%; z-index:1;
+    border-radius:16px; box-shadow:0 12px 32px rgba(6,14,38,.45);
+    transform:rotate(2deg); pointer-events:none; opacity:.96;
+    filter:drop-shadow(0 0 18px rgba(142,165,218,.35));}
+}
+/* 文字層置頂：即使同吉祥物重疊，文字仍然可讀 */
+.hero .wrap{position:relative; z-index:2;}
 .hero::after{content:""; position:absolute; bottom:-1px; left:0; right:0; height:56px;
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 60' preserveAspectRatio='none'%3E%3Cpath fill='%23E8ECF5' d='M0,30 C240,58 480,6 720,28 C960,50 1200,10 1440,30 L1440,60 L0,60 Z'/%3E%3C/svg%3E") no-repeat bottom/100% 100%;}
 .bubble{position:absolute; font-size:22px; opacity:.5; pointer-events:none;
@@ -57,9 +65,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
 .hero h1{font-size:2.2em; letter-spacing:1px; margin-bottom:8px;}
 .hero .sub{color:#ffffff; font-size:1.15em; margin-bottom:28px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
 .stats{display:flex; justify-content:center; gap:40px; flex-wrap:wrap; margin-bottom:26px;}
-.stats .n{font-size:2.1em; font-weight:700; color:var(--accent);}
-.stats .l{font-size:.85em; opacity:.9;}
-.hero .src{font-size:.8em; opacity:.98; line-height:1.8; color:#e6ebf7;}
+.stats .n{font-size:2.1em; font-weight:700; color:var(--accent); text-shadow:0 1px 3px rgba(15,20,35,.55);}
+.stats .l{font-size:.85em; opacity:.95; text-shadow:0 1px 3px rgba(15,20,35,.6);}
+.hero .src{font-size:.8em; opacity:.98; line-height:1.8; color:#e6ebf7; text-shadow:0 1px 3px rgba(15,20,35,.6);}
 .hero .date{color:#ffffff; font-size:.95em; margin-top:10px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
 
 /* ===== 頂部導覽 ===== */
