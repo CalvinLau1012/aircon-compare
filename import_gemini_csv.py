@@ -14,8 +14,6 @@ import re
 import sys
 import time
 
-from crawl_utils import norm_model
-
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT_PATH = os.path.join(BASE, 'gemini_prices.json')
 

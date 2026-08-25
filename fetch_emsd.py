@@ -28,7 +28,8 @@ class TableParser(HTMLParser):
         self.cur_row = []
         self.rows = []
 
-    def handle_starttag(self, tag, attrs):
+    def handle_starttag(self, tag, *args):
+        del args  # HTMLParser 傳入 attrs，呢度唔用
         if tag == 'table':
             self.in_table = True
         elif tag == 'tr' and self.in_table:

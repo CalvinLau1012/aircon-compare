@@ -20,10 +20,9 @@ import urllib.error
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from crawl_utils import BOT_UA as UA, load_models, norm_model
-from batch_utils import (COOLDOWN_HOURS, PRICE_BATCH_DAYS, load_meta, save_meta,
-                         set_cooldown, detect_mode, start_price_batch,
-                         price_batch_active, get_batch_todo, advance_batch)
+from crawl_utils import BOT_UA as UA, load_models
+from batch_utils import (PRICE_BATCH_DAYS, load_meta, save_meta, set_cooldown,
+                         detect_mode, get_batch_todo, advance_batch)
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT_PATH = os.path.join(BASE, 'prices.json')

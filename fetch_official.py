@@ -84,7 +84,7 @@ def grab(body, kws, n=90):
     return ''
 
 
-def parse_panasonic(model, html):
+def parse_panasonic(html):
     body = strip_html(html)
     m = re.search(r'<title>([^<]*)</title>', html)
     title = m.group(1) if m else ''
@@ -107,7 +107,7 @@ def fetch_panasonic(existing=None):
             continue
         try:
             html = get(url)
-            spec = parse_panasonic(model, html)
+            spec = parse_panasonic(html)
             spec['url'] = url
             results[model] = spec
             print(f"  {model}: {spec.get('size','?')[:40]} | {spec.get('weight','?')[:25]} | heat={spec['heat']} cool={spec['cool']}")
