@@ -290,7 +290,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
     <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
-    <div class="date">📅 2026 年 8 月 15 日 更新 · v1.2.6 · 🔄 每日偵測新機 · 有機先更新</div>
+    <div class="date">📅 2026 年 8 月 15 日 更新 · v1.2.7 · 🔄 每日偵測新機 · 有機先更新</div>
   </div>
 </header>
 
@@ -379,9 +379,9 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <div class="md-content">
 <h1>🏠 香港空調統合對比報告（窗口式精選 + 全量資料庫）</h1>
 <blockquote>
-<p><strong>報告生成日期</strong>：2026-08-11 ｜ <strong>最後更新</strong>：2026-08-25 ｜ <strong>版本</strong>：v1.2.6
+<p><strong>報告生成日期</strong>：2026-08-11 ｜ <strong>最後更新</strong>：2026-08-25 ｜ <strong>版本</strong>：v1.2.7
 <strong>更新機制</strong>：GitHub Actions 每日 00:30 HKT 自動檢查（EMSD 新機偵測 + <code>last_check</code> 打卡 + 數據驗證閘門 + 自動重新部署）；有新機先官網核實分兩日；BigGo 價錢批次每月最多一次（分 7 日）；PricesAPI 核心 29 驗收為選用後備
-<strong>現況</strong>：BigGo 主力價錢批次 <strong>2/7 日完成</strong>，維持 731 個有效價；本地已重建 v1.2.6（2026-08-25 深色模式修正 + 代碼重構），GitHub Pages 待 push 後同步
+<strong>現況</strong>：BigGo 主力價錢批次 <strong>2/7 日完成</strong>，維持 731 個有效價；v1.2.7 已重建並同步（2026-08-25 皮膚/深色模式恢復 + 響應式適配 + 工具複用整理）
 <strong>數據來源</strong>：機電署 EMSD 官方資料庫（1,927 型號全量核實）· 8 大品牌官網/總代理（220 型號）· BigGo 官方 JSON API 實抓（731 型號，2026-08-16；主力價錢源）· PricesAPI 核心 29 驗收（已配置，選用後備）· Price.com.hk 舊快照（1,847 型號，2026-08-15，🔍 點擊 Google 搜最新價）· 豐澤 · 百老匯 · 友和 · LIHKG 連登（3 帖摘錄）
 <strong>⚠️ 注意</strong>：豐澤與電器幫同屬屈臣氏集團，價格不可互證；獨立驗證以 BigGo 不同商戶 / 官方網店為準
 <strong>額外搜尋</strong>：LIHKG 連登（電器台）、HKEPC、香港討論區
@@ -2273,6 +2273,37 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </blockquote>
 <hr />
 <h2>📅 更新日誌</h2>
+<h3>2026-08-25 — v1.2.7 皮膚恢復 + 響應式適配</h3>
+<table>
+<thead>
+<tr>
+<th>類別</th>
+<th>內容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🎨 皮膚</td>
+<td>恢復 Blue Fantasy 壁紙皮膚 + whale-girl 吉祥物 + 玻璃質感</td>
+</tr>
+<tr>
+<td>🌙 深色模式</td>
+<td>3 組深色區塊全面恢復（變數/皮膚背景/元件級對比度）</td>
+</tr>
+<tr>
+<td>📱 響應式</td>
+<td>下拉選單手機溢出修復 + 深色 select 對比度 + 吉祥物重疊修復（超大屏先顯示）</td>
+</tr>
+<tr>
+<td>🧰 工具</td>
+<td>全面共用 <code>crawl_utils</code>/<code>batch_utils</code>/<code>price_utils</code>/<code>models_data</code>；<code>SPECS_OVERRIDE</code> 重複 key 修復</td>
+</tr>
+<tr>
+<td>✅ 測試</td>
+<td>pytest 18/18 · 16 組合適配測試 · BigGo 線上 smoke 通過</td>
+</tr>
+</tbody>
+</table>
 <h3>2026-08-25 — 深色模式對比度修正 + 代碼重構（版本維持 v1.2.6）</h3>
 <table>
 <thead>
@@ -2524,7 +2555,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </main>
 
 <footer>
-  <b>香港空調對比報告 · v1.2.6</b><br>
+  <b>香港空調對比報告 · v1.2.7</b><br>
   能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號
 
   <div class="blk">
