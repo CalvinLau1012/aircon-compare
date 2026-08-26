@@ -47,7 +47,7 @@ jobs:
 
       # ============ GATE-01 治理區塊驗證（六個規範塊嚴格提取） ============
       - name: 治理區塊驗證（GATE-01）
-        run: python scripts/extract-governance.py
+        run: python scripts/extract_governance.py
 
       # ============ GATE-03 功能註冊表檢查（Schema + 測試綁定） ============
       - name: 功能註冊表檢查（GATE-03）
@@ -123,7 +123,7 @@ jobs:
             --payload-dir .
 
       - name: 驗證 metadata.json（GATE-06）
-        run: python scripts/validate-metadata.py
+        run: python scripts/validate_metadata.py
 
       - name: 提交並推送（有變更先提交）
         run: |
