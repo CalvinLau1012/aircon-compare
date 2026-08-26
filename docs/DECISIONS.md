@@ -88,6 +88,19 @@
 - **原因**：一次性啟動數據無需為其建立長期自動化通道；上傳後由驗證閘門把關再上線。
 - **後果**：`model_blacklist.json` 為一次性人類驗證產物；後續日常淘汰由 `model_lifecycle.py` 自動追蹤（連續多次無報價才入黑名單，網絡錯誤不計）。
 
+## D10 · BigGo 免登入 API 通道關閉：轉向官方免費認證（技術限制轉向）
+
+- **日期**：2026-08-26
+- **狀態**：已實行（待人類提供憑證）
+- **背景**：2026-08-26 下午起，`api.biggo.com/api/v1/spa/search/{query}/product` 對未登入請求返回 `429 {"result":false,"require_login":true}`（本地 IP 與 GitHub IP 同樣）。此前同日早上此通道仍免認證（D1 實證）。網頁版 HTML 頁面仍可訪問，但 JSON API 通道已收緊。
+- **選項**：
+  - A：回歸網頁版 HTML 解析（GitHub IP 被限流，不滿足全自動）
+  - B：轉用其他價錢源（覆蓋/穩定性未知）
+  - C：BigGo 官方認證（免費）：註冊 account.biggo.com → 生成 `client_id`/`client_secret` → `https://api.biggo.com/auth/v1/token`（grant_type=client_credentials）攞 access_token，product search 帶 token 請求
+- **決策**：選 C；認證資料由用戶在本地一次性生成（符合 D2 一次性例外），憑證只放 GitHub Secrets，日常更新由 CI 全自動帶 token 抓取。
+- **原因**：BigGo 為免費官方認證（MCP Server 官方推薦方式）；保持主力價源不變、全自動可延續。
+- **後果**：待用戶提供憑證後實施；實施前價錢維持現有快照（731 型號），CI smoke 會失敗並自動跳過批次（不會損壞數據）。
+
 ---
 
 ## 決策模板
