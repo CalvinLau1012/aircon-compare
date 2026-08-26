@@ -1,4 +1,6 @@
 {
   // Markdown lint 配置：報告含大量長表格行/長連結，豁免行長規則
-  "MD013": false
+  "MD013": false,
+  // CHANGELOG 按 Keep a Changelog 格式每版本重複 Added/Changed/Fixed 標題，豁免重複標題
+  "MD024": { "siblings_only": true }
 }
