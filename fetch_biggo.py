@@ -45,7 +45,8 @@ _NEXT_SLOT = 0.0
 _LOCK = __import__('threading').Lock()
 
 # 主動限速：批次內全局最小請求間隔（2 個 worker 共用；每秒最多約 0.4 個請求）
-MIN_PACE = 2.5
+# 默認 2.5s 保守值（GitHub IP）；本地驗證可設 BIGGO_MIN_PACE=0.4 加速（本地 IP 友好）
+MIN_PACE = float(os.environ.get('BIGGO_MIN_PACE', '2.5'))
 
 
 def _global_cooldown(seconds):
