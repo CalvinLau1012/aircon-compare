@@ -90,6 +90,9 @@ jobs:
       # ============ 第 3 步：價錢快照批次（BigGo 官方 JSON API；進度由 batch_utils 共用管理） ============
       # 2026-08-26：改用官方 API api.biggo.com（同被限流嘅網頁版 biggo.hk 唔同 host）
       - name: 價錢快照分批更新（BigGo API 每月一次·分七日；先 smoke 測試）
+        env:
+          BIGGO_CLIENT_ID: ${{ secrets.BIGGO_CLIENT_ID }}
+          BIGGO_CLIENT_SECRET: ${{ secrets.BIGGO_CLIENT_SECRET }}
         run: |
           if [ "${{ github.event.inputs.force_price_batch }}" = "true" ]; then
             echo "🚀 強行全量批次（一次性測試）：全部型號一次過 + 淘汰確認"

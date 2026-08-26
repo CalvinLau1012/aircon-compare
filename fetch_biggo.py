@@ -14,6 +14,7 @@ BigGo 香港格價價錢快照抓取（官方 JSON API）
 - price_utils：num_price / is_ac_title（冷氣關鍵字 + 配件排除同一套）
 - batch_utils：prices_meta 讀寫、批次切片 get_batch_todo / 推進 advance_batch
 """
+import base64
 import json
 import os
 import random
@@ -33,11 +34,38 @@ from model_lifecycle import load_blacklist, filter_active, revive_model
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT_PATH = os.path.join(BASE, 'biggo_prices.json')
 
-# 官方 JSON API（product search 唔使認證；site/region 揀香港）
+# 官方 JSON API（product search 需登入認證；2026-08-26 起免登入通道已關閉，見 docs/DECISIONS.md D10）
 API_URL = 'https://api.biggo.com/api/v1/spa/search/{q}/product'
+AUTH_URL = 'https://api.biggo.com/auth/v1/token'
 API_HEADERS = {'Content-Type': 'application/json', 'site': 'biggo.hk', 'region': 'hk'}
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36')
+
+# access_token 快取（client credentials；55 分鐘 TTL，token 一般 60 分鐘有效）
+_TOKEN = {'value': None, 'expires': 0.0}
+
+
+def _get_access_token():
+    """用 BIGGO_CLIENT_ID/SECRET 攞 access_token（免費官方認證；冇配置就 None = 免登入 fallback）"""
+    cid = os.environ.get('BIGGO_CLIENT_ID', '').strip()
+    csec = os.environ.get('BIGGO_CLIENT_SECRET', '').strip()
+    if not cid or not csec:
+        return None
+    now = time.time()
+    if _TOKEN['value'] and now < _TOKEN['expires']:
+        return _TOKEN['value']
+    cred = base64.b64encode(f'{cid}:{csec}'.encode()).decode()
+    data = urllib.parse.urlencode({'grant_type': 'client_credentials'}).encode()
+    req = urllib.request.Request(AUTH_URL, data=data, headers={
+        'Authorization': f'Basic {cred}',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': UA,
+    })
+    tok = json.loads(urllib.request.urlopen(req, timeout=20).read().decode('utf-8')).get('access_token')
+    if tok:
+        _TOKEN['value'] = tok
+        _TOKEN['expires'] = now + 55 * 60
+    return tok
 
 # 全局冷卻狀態：遇 429 就冷卻 60-120s，期間所有新請求停喺度等（防止批次被限流打死）
 _COOLDOWN_UNTIL = 0.0
@@ -85,15 +113,16 @@ def _api_search(model, jitter=(0.2, 0.6)):
         try:
             _wait_cooldown()
             _wait_pace()
-            req = urllib.request.Request(API_URL.format(q=urllib.parse.quote(model, safe='')), headers={
-                'User-Agent': UA, **API_HEADERS,
-                'Accept': 'application/json',
-            })
+            headers = {'User-Agent': UA, **API_HEADERS, 'Accept': 'application/json'}
+            token = _get_access_token()
+            if token:
+                headers['Authorization'] = f'Bearer {token}'
+            req = urllib.request.Request(API_URL.format(q=urllib.parse.quote(model, safe='')), headers=headers)
             data = json.loads(urllib.request.urlopen(req, timeout=20).read().decode('utf-8', 'ignore'))
             return data, True
         except urllib.error.HTTPError as e:
             if e.code == 429:
-                # 尊重 Retry-After；冇就 60s 全局冷卻（批次內所有 worker 一齊停）
+                # require_login（免登入通道關閉）唔係冷卻問題；有 token 就照舊冷卻重試
                 wait = int(e.headers.get('Retry-After') or 0) or 60
                 print(f'  ⏳ 429 限流：全局冷卻 {wait}s 後重試（{model}，第 {attempt + 1} 次）', flush=True)
                 _global_cooldown(wait)
