@@ -84,22 +84,7 @@
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-18G3CVRGR-HK1": {
-    "first_missed": "2026-08-18",
-    "misses": 1,
-    "last_checked": "2026-08-18"
-  },
   "RC-H9HR": {
-    "first_missed": "2026-08-18",
-    "misses": 1,
-    "last_checked": "2026-08-18"
-  },
-  "RAC-07G3CVRGR-HK1": {
-    "first_missed": "2026-08-18",
-    "misses": 1,
-    "last_checked": "2026-08-18"
-  },
-  "RAC-07G3CVRG-HK1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
@@ -529,11 +514,6 @@
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09VFPN": {
-    "first_missed": "2026-08-18",
-    "misses": 1,
-    "last_checked": "2026-08-18"
-  },
   "CHK7000TP": {
     "first_missed": "2026-08-18",
     "misses": 1,
@@ -655,11 +635,6 @@
     "last_checked": "2026-08-18"
   },
   "RAC-12G3CVG-HK1": {
-    "first_missed": "2026-08-18",
-    "misses": 1,
-    "last_checked": "2026-08-18"
-  },
-  "HIP12HK1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
@@ -820,11 +795,6 @@
     "last_checked": "2026-08-18"
   },
   "CFW-09FF-H": {
-    "first_missed": "2026-08-18",
-    "misses": 1,
-    "last_checked": "2026-08-18"
-  },
-  "CFW-18FF-H": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
@@ -1040,11 +1010,6 @@
     "last_checked": "2026-08-18"
   },
   "EWV125CR1WA": {
-    "first_missed": "2026-08-18",
-    "misses": 1,
-    "last_checked": "2026-08-18"
-  },
-  "RAC-07G3CVRG-HK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
@@ -4179,11 +4144,6 @@
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "LGHP12S": {
-    "first_missed": "2026-08-18",
-    "misses": 1,
-    "last_checked": "2026-08-18"
-  },
   "LGHP09S": {
     "first_missed": "2026-08-18",
     "misses": 1,
@@ -5481,7 +5441,32 @@
   },
   "CS-YU12ZKA / CU-YU12ZKA": {
     "first_missed": "2026-08-20",
+    "misses": 2,
+    "last_checked": "2026-08-26"
+  },
+  "W18V5B": {
+    "first_missed": "2026-08-26",
     "misses": 1,
-    "last_checked": "2026-08-20"
+    "last_checked": "2026-08-26"
+  },
+  "MWH-12HR3U1": {
+    "first_missed": "2026-08-26",
+    "misses": 1,
+    "last_checked": "2026-08-26"
+  },
+  "FWAC08M18": {
+    "first_missed": "2026-08-26",
+    "misses": 1,
+    "last_checked": "2026-08-26"
+  },
+  "SRK35QE3 / SRC35QE3": {
+    "first_missed": "2026-08-26",
+    "misses": 1,
+    "last_checked": "2026-08-26"
+  },
+  "AR09NVWSBWKN": {
+    "first_missed": "2026-08-26",
+    "misses": 1,
+    "last_checked": "2026-08-26"
   }
 }

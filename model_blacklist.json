@@ -232,37 +232,7 @@
       "blacklisted_at": "2026-08-18",
       "note": "自動淘汰：保留舊快照，唔再做更新"
     },
-    "RAC-18G3CVRGR-HK1": {
-      "status": "auto_discontinued",
-      "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
-      "source": "biggo",
-      "kept_price_source": "biggo_prices.json 如有舊快照會保留",
-      "first_missed": "2026-08-18",
-      "last_checked": "2026-08-18",
-      "blacklisted_at": "2026-08-18",
-      "note": "自動淘汰：保留舊快照，唔再做更新"
-    },
     "RC-H9HR": {
-      "status": "auto_discontinued",
-      "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
-      "source": "biggo",
-      "kept_price_source": "biggo_prices.json 如有舊快照會保留",
-      "first_missed": "2026-08-18",
-      "last_checked": "2026-08-18",
-      "blacklisted_at": "2026-08-18",
-      "note": "自動淘汰：保留舊快照，唔再做更新"
-    },
-    "RAC-07G3CVRGR-HK1": {
-      "status": "auto_discontinued",
-      "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
-      "source": "biggo",
-      "kept_price_source": "biggo_prices.json 如有舊快照會保留",
-      "first_missed": "2026-08-18",
-      "last_checked": "2026-08-18",
-      "blacklisted_at": "2026-08-18",
-      "note": "自動淘汰：保留舊快照，唔再做更新"
-    },
-    "RAC-07G3CVRG-HK1": {
       "status": "auto_discontinued",
       "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
       "source": "biggo",
@@ -1122,16 +1092,6 @@
       "blacklisted_at": "2026-08-18",
       "note": "自動淘汰：保留舊快照，唔再做更新"
     },
-    "CHK09VFPN": {
-      "status": "auto_discontinued",
-      "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
-      "source": "biggo",
-      "kept_price_source": "biggo_prices.json 如有舊快照會保留",
-      "first_missed": "2026-08-18",
-      "last_checked": "2026-08-18",
-      "blacklisted_at": "2026-08-18",
-      "note": "自動淘汰：保留舊快照，唔再做更新"
-    },
     "CHK7000TP": {
       "status": "auto_discontinued",
       "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
@@ -1373,16 +1333,6 @@
       "note": "自動淘汰：保留舊快照，唔再做更新"
     },
     "RAC-12G3CVG-HK1": {
-      "status": "auto_discontinued",
-      "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
-      "source": "biggo",
-      "kept_price_source": "biggo_prices.json 如有舊快照會保留",
-      "first_missed": "2026-08-18",
-      "last_checked": "2026-08-18",
-      "blacklisted_at": "2026-08-18",
-      "note": "自動淘汰：保留舊快照，唔再做更新"
-    },
-    "HIP12HK1": {
       "status": "auto_discontinued",
       "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
       "source": "biggo",
@@ -1703,16 +1653,6 @@
       "note": "自動淘汰：保留舊快照，唔再做更新"
     },
     "CFW-09FF-H": {
-      "status": "auto_discontinued",
-      "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
-      "source": "biggo",
-      "kept_price_source": "biggo_prices.json 如有舊快照會保留",
-      "first_missed": "2026-08-18",
-      "last_checked": "2026-08-18",
-      "blacklisted_at": "2026-08-18",
-      "note": "自動淘汰：保留舊快照，唔再做更新"
-    },
-    "CFW-18FF-H": {
       "status": "auto_discontinued",
       "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
       "source": "biggo",
@@ -2143,16 +2083,6 @@
       "note": "自動淘汰：保留舊快照，唔再做更新"
     },
     "EWV125CR1WA": {
-      "status": "auto_discontinued",
-      "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
-      "source": "biggo",
-      "kept_price_source": "biggo_prices.json 如有舊快照會保留",
-      "first_missed": "2026-08-18",
-      "last_checked": "2026-08-18",
-      "blacklisted_at": "2026-08-18",
-      "note": "自動淘汰：保留舊快照，唔再做更新"
-    },
-    "RAC-07G3CVRG-HK": {
       "status": "auto_discontinued",
       "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
       "source": "biggo",
@@ -8422,16 +8352,6 @@
       "blacklisted_at": "2026-08-18",
       "note": "自動淘汰：保留舊快照，唔再做更新"
     },
-    "LGHP12S": {
-      "status": "auto_discontinued",
-      "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
-      "source": "biggo",
-      "kept_price_source": "biggo_prices.json 如有舊快照會保留",
-      "first_missed": "2026-08-18",
-      "last_checked": "2026-08-18",
-      "blacklisted_at": "2026-08-18",
-      "note": "自動淘汰：保留舊快照，唔再做更新"
-    },
     "LGHP09S": {
       "status": "auto_discontinued",
       "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
@@ -11020,6 +10940,16 @@
       "first_missed": "2026-08-18",
       "last_checked": "2026-08-18",
       "blacklisted_at": "2026-08-18",
+      "note": "自動淘汰：保留舊快照，唔再做更新"
+    },
+    "CS-YU12ZKA / CU-YU12ZKA": {
+      "status": "auto_discontinued",
+      "reason": "連續 2 個更新週期 BigGo 商品搜索都無市售報價",
+      "source": "biggo",
+      "kept_price_source": "biggo_prices.json 如有舊快照會保留",
+      "first_missed": "2026-08-20",
+      "last_checked": "2026-08-26",
+      "blacklisted_at": "2026-08-26",
       "note": "自動淘汰：保留舊快照，唔再做更新"
     }
   }
