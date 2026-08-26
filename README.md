@@ -16,7 +16,7 @@
 
 - ⚖️ **互動比較器**：勾選 2 個或以上型號，即時彈出 18 項屬性對比表（自動高亮最平/最慳電/最高 CSPF）
 - 🔍 搜尋（品牌/型號）+ 自由篩選標籤（品牌、機型、匹數、能源、價位、停售狀態）+ 排序（價格 / 能源 / 年耗電 / CSPF）
-- 🛒 1,848 個型號附價格快照（BigGo 2026-08-16 主力 + Price 舊快照後備），點擊 🔍 直接在你的瀏覽器用 Google 搜最新價
+- 🛒 1,848 個型號附價格快照（BigGo 742 主力·2026-08-26 全量復核 + Price 舊快照後備），點擊 🔍 直接在你的瀏覽器用 Google 搜最新價
 - 📱 手機 / 平板 / 桌面全響應式（表格可橫向捲動）
 - 🌙 深色模式自動跟隨系統，並已修正目錄連結／表格 hover／code／引用／卡片／按鈕等對比度
 - 📊 完整報告：定頻 vs 變頻、統合總表、官方驗證、能源分析、深度分析、排名、推薦、價格驗證、論壇討論精華
@@ -246,7 +246,7 @@ python -m pytest              # 跑單元測試（先 pip install -r requirement
 
 ```bash
 
-python fetch_biggo.py --price-batch   # BigGo 主力價錢批次（731 型號；與 MCP Server 同源）
+python fetch_biggo.py --price-batch   # BigGo 主力價錢批次（742 型號；與 MCP Server 同源）
 export PRICESAPI_API_KEY=pricesapi_xxx   # 或在 GitHub Actions Secrets 設定
 python fetch_pricesapi.py --core   # PricesAPI 核心 29 驗收/後備（不跑批次）
 python fetch_prices.py         # Price.com.hk 舊快照（1,847 型號，可選；已被 Cloudflare 封）
@@ -276,7 +276,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | `tests/` · `requirements-dev.txt` | 單元測試 + 開發依賴（pytest） |
 | `emsd_空調能源標籤.csv` | EMSD 官方資料庫快照（1,927 型號） |
 | `prices.json` / `specs_emsd.json` | Price 舊快照 / 規格資料庫（後備） |
-| `biggo_prices.json` | BigGo 官方 JSON API 價錢快照（731 型號，主力價錢源） |
+| `biggo_prices.json` | BigGo 官方 JSON API 價錢快照（742 型號，主力價錢源） |
 | `pricesapi_prices.json` | PricesAPI 核心 29 驗收快照（後備，需 API key） |
 | `whale_girl.webp` / `whale-girl.ico` | whale-girl 鯨魚娘角色立繪（官方 sprite 高清提取 WebP + 用戶原始 ICO） |
 | `blue_fantasy_art.txt` | Blue Fantasy skin 背景 whale art（data URI，網站內嵌用） |

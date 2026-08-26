@@ -15,9 +15,9 @@
   - A：保留本地手動批次（用戶本地執行後推送結果）
   - B：純快照模式（停止線上價錢抓取，價錢維持現有快照）
   - C：改用 BigGo 官方 JSON API（`api.biggo.com`）
-- **決策**：用戶先批准 B（純快照），並要求尋找免費 MCP 方案；調查後發現 BigGo 官方 JSON API（與網頁版為不同主機、product search 免認證），經本地實測（HTTP 200）與 CI smoke 驗證後，轉向 C。
+- **決策**：用戶先批准 B（純快照），並要求尋找免費 MCP 方案；調查後發現 BigGo 官方 JSON API（與網頁版為不同主機、當時 product search 免認證），經本地實測（HTTP 200）與 CI smoke 驗證後，轉向 C。
 - **原因**：用戶明確要求價錢更新必須全自動（不接受本地手動處理）；官方 API 經實證對 GitHub IP 友好。
-- **後果**：價錢批次恢復全自動；後續發現大批量請求觸發批次級限流，另見 D3。
+- **後果**：價錢批次恢復全自動；同日稍後免登入通道被關閉（見 D10），改用官方免費認證延續此方案。
 
 ## D2 · 價錢批次執行位置：日常必須在 GitHub Actions 全自動執行（人類決策）
 
@@ -99,7 +99,7 @@
   - C：BigGo 官方認證（免費）：註冊 account.biggo.com → 生成 `client_id`/`client_secret` → `https://api.biggo.com/auth/v1/token`（grant_type=client_credentials）攞 access_token，product search 帶 token 請求
 - **決策**：選 C；認證資料由用戶在本地一次性生成（符合 D2 一次性例外），憑證只放 GitHub Secrets，日常更新由 CI 全自動帶 token 抓取。
 - **原因**：BigGo 為免費官方認證（MCP Server 官方推薦方式）；保持主力價源不變、全自動可延續。
-- **後果**：待用戶提供憑證後實施；實施前價錢維持現有快照（731 型號），CI smoke 會失敗並自動跳過批次（不會損壞數據）。
+- **後果**：已實施（用戶 2026-08-26 提供憑證，存於 GitHub Secrets）；本地全量復核 728 型號得價 722、黑名單復核復活 8 個，有價型號 731 → 742；CI 帶憑證 smoke 實測通過（run 32979760795）。
 
 ---
 
