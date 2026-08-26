@@ -8,21 +8,22 @@
    · metadata.json 生成/驗證（gen/validate_metadata.py）；部署時間 UTC、HKT 顯示
    · CI 門禁 GATE-01/03/05/06 全部 Block 級
    · 頁面 runtime fetch metadata.json（版本/最後部署/資料日期）
-2. PDF 報告導出（generate_pdf.py，reportlab 內置中文字體，同 Web 同一 metadata）
-3. BigGo 限流解決：改用官方 JSON API api.biggo.com（同網頁版唔同 host；實測本地 + CI 友好）
-4. 質量：pytest 28 + 瀏覽器 smoke 5；文檔全部同步 v1.2.8
+2. PDF 報告導出（generate_pdf.py，reportlab 內置中文字體，與 Web 共用同一 metadata）
+3. BigGo 限流解決：改用官方 JSON API api.biggo.com（與網頁版不同主機；實測本地 + CI 友好）
+4. 決策記錄：新增 docs/DECISIONS.md（人類決策項 + 技術限制轉向，均註明原因）
+5. 質量：pytest 28 + 瀏覽器 smoke 5；文檔全部同步 v1.2.8 並全面改用書面語
 
 ════════════════════════════════════════
 【執行狀態更新 · 2026-08-25 · v1.2.7（皮膚恢復 + 響應式適配）】
 
 ✅ 本次已完成並同步線上：
-1. 皮膚同深色模式全面恢復：
+1. 皮膚與深色模式全面恢復：
    · Blue Fantasy 壁紙皮膚 + whale-girl 吉祥物 + 玻璃質感（重構期間被刪，已還原 fbd3352 設計）
    · 3 組深色模式區塊：變數 / 皮膚背景 / 元件級對比度（th/按鈕 #4F66AD 提亮、accent 深字、hero 白字陰影）
 2. 響應式適配修正（8 裝置 × 深淺色 16 組合測試）：
    · 品牌下拉選單手機溢出 → max-width
    · 深色 select 文字對比度
-   · 吉祥物重疊 → 預設隱藏，超大屏（CSS ≥1600px）先顯示；文字置頂 + 陰影
+   · 吉祥物重疊 → 預設隱藏，超大屏（CSS ≥1600px）才顯示；文字置頂 + 陰影
 3. 工具複用整理：fetch_*/generate_html 共用 crawl_utils/batch_utils/price_utils/models_data；SPECS_OVERRIDE 9 個重複 key 修復（P0）
 4. 質量閘門：pytest 18/18 · 數據驗證通過 · BigGo 線上 smoke 通過
 
@@ -31,19 +32,19 @@
 
 ✅ 本次已完成（本地）：
 1. 代碼重構：
-   · 抽離 models_data.py（核心 29 型號資料）同 batch_utils.py（價錢批次 meta 共用）
+   · 抽離 models_data.py（核心 29 型號資料）與 batch_utils.py（價錢批次 meta 共用）
    · fetch_official / fetch_rasonic / fetch_shew / fetch_carrier / fetch_general 統一用 crawl_utils.fetch（退避重試 + Retry-After + SSL context）
    · generate_html.py 黑名單／價格 JSON 只讀一次，生成時間大幅縮短
    · model_lifecycle / fetch_emsd / verify_links / validate_data 修正多個穩健性問題
 2. 深色模式：
    · 修正目錄連結、表格 hover、code、blockquote、已勾選卡片、金色按鈕等對比度不足
 3. 自動化：
-   · fetch_emsd 新增安全閘門（攞唔齊數據唔覆寫現有 CSV）+ 原子寫入（.tmp → os.replace）
+   · fetch_emsd 新增安全閘門（抓不齊數據不覆寫現有 CSV）+ 原子寫入（.tmp → os.replace）
    · workflow 依賴安裝統一用 requirements-dev.txt；concurrency group 正名 daily-update
-   · actions/checkout@v7 同 actions/setup-python@v7 已向 GitHub API 確認存在
+   · actions/checkout@v7 與 actions/setup-python@v7 已向 GitHub API 確認存在
 4. 文件同步：
    · README / AGENTS / 需求摘要 / 空調對比報告 全部已更新
-⚠️ 待辦：commit + push 之後，GitHub Pages 先會更新到呢個版本
+⚠️ 待辦：commit + push 之後，GitHub Pages 才會更新到這個版本
 
 ════════════════════════════════════════
 【執行狀態更新 · 2026-08-20 · v1.2.6】
@@ -59,9 +60,9 @@
    · 8 品牌官網/總代理 220 型號核實（尺寸/淨重/保養/官方價）
    · 價錢主力：BigGo 官方 JSON API 731 型號（2026-08-16；批次 2/7 完成）
    · 價錢後備：PricesAPI 核心 29 驗收（key 已配置，選用）→ Price 舊快照 1,847
-   · 點擊 🔍 喺用戶瀏覽器 Google 搜最新價
+   · 點擊 🔍 在用戶瀏覽器用 Google 搜最新價
    · 網頁持續優化：LIHKG 論壇 3 帖摘錄、機型篩選修正、導覽列/頁腳多輪打磨
-   · 自動化：GitHub Actions 每日 00:30 HKT 自動檢查（EMSD 新機偵測 + last_check 打卡 + 驗證閘門 + 重新部署）；有新機先官網核實分兩日；BigGo 價錢批次每月最多一次（分 7 日）
+   · 自動化：GitHub Actions 每日 00:30 HKT 自動檢查（EMSD 新機偵測 + last_check 打卡 + 驗證閘門 + 重新部署）；有新機才官網核實分兩日；BigGo 價錢批次每月最多一次（分 7 日）
    · 防禦性修補：誠實 Bot UA、退避重試遵從 Retry-After、抖動延遲、限流熔斷（降低被官方封鎖風險）
    · 淘汰機制：model_lifecycle.py + model_blacklist.json；2026-08-18 首輪全量確認 1,103 個停止更新（BigGo 有價 734）
    · 標籤化：每部機有停售/官方價/有價/無價狀態標籤 + 價位標籤；比較器可自由篩選
@@ -81,16 +82,16 @@
 
 ## 二、情報蒐集要求（情報方面）
 
- 原始要求：「請幫我從網上盡可能查找各個窗口式定頻遙控空調嘅資訊（最好有wifi,智能家居等等的功能」＋ 後續指示「多上網，不同的網找資料」
+ 原始要求：「請幫我從網上盡可能查找各個窗口式定頻遙控空調的資訊（最好有wifi,智能家居等等的功能」＋ 後續指示「多上網，不同的網找資料」
 
 ## 三、資料時效性
 - 必須使用**最新**資訊
-- 每次更新都要**重新上網抓取**最新數據，唔好沿用舊報告數字
-- 標註每項資料嘅**時間點**（數據來源日期）
+- 每次更新都要**重新上網抓取**最新數據，不要沿用舊報告數字
+- 標註每項資料的**時間點**（數據來源日期）
 ## 四、資料準確性
 - 優先使用**第一方評測平台**與**官方數據**
 - 注意區分：模型廠商自報數據 vs 獨立第三方評測數據
-- 對存疑數字要**交叉驗證**，並喺報告註明來源
+- 對存疑數字要**交叉驗證**，並在報告註明來源
 每個關鍵數據（分數、定價、發布日期）應至少由 **2 個以上來源**互相印證，避免單一來源偏差。
 
 
@@ -99,6 +100,6 @@
 - 註明免責聲明（數據會隨時間變化；報告僅供選購參考，不構成購買建議；論壇意見為用戶主觀評價）
 
 
-請將我嘅要求摘錄精要總結成.md「元文件］
-然後按我嘅要求上網搵資料執行對比，然後輸出到另外一個.md裏面
-多一點ask,看看要怎麽找資料
+請將我的要求摘錄精要總結成.md「元文件」
+然後按我的要求上網找資料執行對比，然後輸出到另外一個.md裏面
+多一點ask，看看要怎麼找資料

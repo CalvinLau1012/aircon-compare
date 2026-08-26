@@ -3,20 +3,20 @@
 > 香港市場空調（窗口式 / 分體式 / 流動式；淨冷/冷暖、定頻/變頻）全面對比
 > **能源級別、雪種、年耗電已用機電署 EMSD 官方資料庫（1,927 型號）全量核實**
 > **220 個型號已直接經品牌官網/官方網店/總代理逐型號核實（2026-08-15）**
-> 🎨 **Blue Fantasy 藍色幻想 skin**（dsh-web-ui 皮膚；只套皮膚，其他插件唔加）
-> 📌 **現況（2026-08-26）**：v1.2.8——治理落地（門禁 + metadata.json）+ PDF 報告導出；價錢維持快照（GitHub IP 被 BigGo 限流，更新改本地批次）
+> 🎨 **Blue Fantasy 藍色幻想 skin**（dsh-web-ui 皮膚；只套皮膚，其他插件不加）
+> 📌 **現況（2026-08-26）**：v1.2.8——治理落地（門禁 + metadata.json）+ PDF 報告導出；BigGo 已改用官方 JSON API（解決 GitHub IP 限流）
 
 ## 🚀 立即使用
 
 **線上版**：<https://calvinlau1012.github.io/aircon-compare/> （GitHub Pages）
 
-**離線版**：下載 [`index.html`](index.html)，直接喺瀏覽器打開（單一檔案，可 email / WhatsApp 轉發）。
+**離線版**：下載 [`index.html`](index.html)，直接在瀏覽器打開（單一檔案，可 email / WhatsApp 轉發）。
 
 ## ✨ 功能
 
 - ⚖️ **互動比較器**：勾選 2 個或以上型號，即時彈出 18 項屬性對比表（自動高亮最平/最慳電/最高 CSPF）
 - 🔍 搜尋（品牌/型號）+ 自由篩選標籤（品牌、機型、匹數、能源、價位、停售狀態）+ 排序（價格 / 能源 / 年耗電 / CSPF）
-- 🛒 1,848 個型號附價格快照（BigGo 2026-08-16 主力 + Price 舊快照後備），點擊 🔍 直接喺你瀏覽器 Google 搜最新價
+- 🛒 1,848 個型號附價格快照（BigGo 2026-08-16 主力 + Price 舊快照後備），點擊 🔍 直接在你的瀏覽器用 Google 搜最新價
 - 📱 手機 / 平板 / 桌面全響應式（表格可橫向捲動）
 - 🌙 深色模式自動跟隨系統，並已修正目錄連結／表格 hover／code／引用／卡片／按鈕等對比度
 - 📊 完整報告：定頻 vs 變頻、統合總表、官方驗證、能源分析、深度分析、排名、推薦、價格驗證、論壇討論精華
@@ -36,7 +36,7 @@
 | 對比屬性 | 18 項 |
 
 > 🎨 角色形象：whale-girl 鯨魚娘（寵物皮膚：[zhu1090093659/dsh-web-ui](https://github.com/zhu1090093659/dsh-web-ui) · 介紹：[linux.do](https://linux.do/t/topic/2751323)）
-> 🙏 **特別鳴謝**：Blue Fantasy 皮膚原作 **powerdog996（DreamSkin 社區）**、dsh-web-ui 適配同鯨魚娘素材提供者 **zhu1090093659**，以及 linux.do 介紹帖大佬
+> 🙏 **特別鳴謝**：Blue Fantasy 皮膚原作 **powerdog996（DreamSkin 社區）**、dsh-web-ui 適配與鯨魚娘素材提供者 **zhu1090093659**，以及 linux.do 介紹帖作者
 
 ## 🏭 品牌官網核實（2026-08-15）
 
@@ -55,19 +55,19 @@
 
 ## 🔄 自動更新（新機偵測）
 
-- **排程**：GitHub Actions 每日 00:30（香港時間）輕量偵測 EMSD；**有新機先觸發更新**（官網核實分兩日分批進行），冇新機就唔更新內容
-- **價錢快照**：**BigGo 官方 JSON API**（`api.biggo.com`，多商戶報價，同 BigGo MCP Server 同源）+ PricesAPI 核心 29 驗收/後備 + Price.com.hk 舊快照；有新機時每月最多更新一次（分 7 日分批；現時批次進度 2/7）；點擊 🔍 喺瀏覽器 Google 搜最新價
-- **新機偵測**：比較 EMSD 官方資料庫新舊型號，新上市型號自動入庫並喺網頁「🆕 最近新上市」顯示
-- **價錢策略**：價錢快照以 BigGo 2026-08-16 實抓為主（唔頻繁更新，僅供參考）；規格以 EMSD + 品牌官網為準
+- **排程**：GitHub Actions 每日 00:30（香港時間）輕量偵測 EMSD；**有新機才觸發更新**（官網核實分兩日分批進行），沒有新機就不更新內容
+- **價錢快照**：**BigGo 官方 JSON API**（`api.biggo.com`，多商戶報價，與 BigGo MCP Server 同源）+ PricesAPI 核心 29 驗收/後備 + Price.com.hk 舊快照；有新機時每月最多更新一次（分 7 日分批；現時批次進度 2/7）；點擊 🔍 在瀏覽器用 Google 搜最新價
+- **新機偵測**：比較 EMSD 官方資料庫新舊型號，新上市型號自動入庫並在網頁「🆕 最近新上市」顯示
+- **價錢策略**：價錢快照以 BigGo 2026-08-16 實抓為主（不頻繁更新，僅供參考）；規格以 EMSD + 品牌官網為準
 - **安全**：BigGo 主力源免憑證；PricesAPI key 只放 GitHub Actions Secrets（`PRICESAPI_API_KEY`），核心 29 驗收用 repo Variables `PRICESAPI_CORE_CHECK=1` 選用；權限只限 `contents: write`；Action 版本固定（@v7/@v7，Node 24）；設 concurrency 防重疊
 - **部署顯示**：每次成功更新會記錄香港時間 `last_deploy`，網頁 hero 顯示「✅ 成功更新：YYYY-MM-DD HH:MM」
-- **淘汰機制**：`model_blacklist.json` 自動記錄連續多次「BigGo 冇市售報價」嘅型號；一經確認就停止更新、保留舊快照，並喺報告標註「🚫 已停售/淘汰」
-- **穩定**：抓取後經「數據驗證閘門」(`validate_data.py`) 檢查數量喺安全範圍——唔合格就唔提交，保住現有數據；每次成功提交 = 可回溯快照，壞咗可一鍵還原
-- 亦可喺 GitHub Actions 頁面手動觸發（workflow_dispatch）
+- **淘汰機制**：`model_blacklist.json` 自動記錄連續多次「BigGo 無市售報價」的型號；一經確認就停止更新、保留舊快照，並在報告標註「🚫 已停售/淘汰」
+- **穩定**：抓取後經「數據驗證閘門」(`validate_data.py`) 檢查數量在安全範圍——不合格就不提交，保住現有數據；每次成功提交 = 可回溯快照，損壞可一鍵還原
+- 亦可在 GitHub Actions 頁面手動觸發（workflow_dispatch）
 
 ## 🏛️ 治理標準
 
-項目依 `docs/AIRCON_COMPARE_GOVERNANCE.md`（唯一治理源）運作，版本/部署時間/資料日期全部由流水線生成嘅 `metadata.json` 提供。
+項目依 `docs/AIRCON_COMPARE_GOVERNANCE.md`（唯一治理源）運作，版本/部署時間/資料日期全部由流水線生成的 `metadata.json` 提供。
 
 ### CI 門禁（全部 Block 級）
 
@@ -105,6 +105,10 @@ flowchart LR
 | report | pdf-export |
 | operations | version-display · last-deploy · dataset-update · build-metadata · github-pages-deploy |
 
+### 決策記錄
+
+人類決策項與因技術限制導致的方案轉向，見 `docs/DECISIONS.md`（含背景、選項、決策與原因）。
+
 ## 🔧 自行重建
 
 ```bash
@@ -119,9 +123,9 @@ python -m pytest              # 跑單元測試（先 pip install -r requirement
 
 ```bash
 
-python fetch_biggo.py --price-batch   # BigGo 主力價錢批次（731 型號；同 MCP Server 同源）
-export PRICESAPI_API_KEY=pricesapi_xxx   # 或喺 GitHub Actions Secrets 設定
-python fetch_pricesapi.py --core   # PricesAPI 核心 29 驗收/後備（唔行批次）
+python fetch_biggo.py --price-batch   # BigGo 主力價錢批次（731 型號；與 MCP Server 同源）
+export PRICESAPI_API_KEY=pricesapi_xxx   # 或在 GitHub Actions Secrets 設定
+python fetch_pricesapi.py --core   # PricesAPI 核心 29 驗收/後備（不跑批次）
 python fetch_prices.py         # Price.com.hk 舊快照（1,847 型號，可選；已被 Cloudflare 封）
 python fetch_official.py       # Panasonic/HITACHI/COMFEE 官網規格
 python fetch_shew.py           # 信興官網 Rasonic 規格
@@ -135,7 +139,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 | 檔案 | 說明 |
 | ------ | ------ |
-| `index.html` | 網頁版報告（self-contained，無外部依賴；`空調對比報告.html` 為本機生成物，唔入庫） |
+| `index.html` | 網頁版報告（self-contained，無外部依賴；`空調對比報告.html` 為本機生成物，不入庫） |
 | `空調對比報告.md` | Markdown 報告全文 |
 | `需求摘要.md` | 需求元文件 |
 | `generate_html.py` | 網頁生成器（md + JSON → HTML） |
@@ -158,32 +162,35 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 ## 🧭 開發困難與決策（紀錄）
 
+> 完整決策記錄（含人類決策項、背景、選項、原因）見 `docs/DECISIONS.md`。以下為重點摘要。
+
 ### 1. 價錢數據源被封
 
-- **困難**：Price.com.hk 全站被 Cloudflare「Just a moment…」質疑頁攔截——urllib、Playwright headless、有頭瀏覽器全部被擋；確認唔係限流（等冷卻冇用），而係硬封
-- **決策**：**唔用代理繞過**（保持誠實爬蟲）；探測咗十幾個來源後，改用 **BigGo 香港格價**做主價源（多商戶報價，性質同 Price.com.hk 一致，urllib 直連無 Cloudflare）
-- **升級**：改用 BigGo **官方公開 JSON API**（`api.biggo.com/api/v1/spa/search/{型號}/product`，`site=biggo.hk`、`region=hk`），唔再解析 HTML；商品搜索無需憑證（`client_id/client_secret` 只係規格搜索用）；修復分體機型號斜杠（`/`）未編碼導致 403 嘅 bug
-- **再升級（2026-08-16）**：曾試用 **PricesAPI**（`api.pricesapi.io`，香港市場、免費 1,000 calls/月）；實測 BigGo MCP Server 後，確定主力用返 BigGo，PricesAPI 只保留核心 29 驗收/後備
+- **困難**：Price.com.hk 全站被 Cloudflare「Just a moment…」質疑頁攔截——urllib、Playwright headless、有頭瀏覽器全部被擋；確認不是限流（等冷卻無效），而是硬性封鎖
+- **決策**：**不用代理繞過**（保持誠實爬蟲）；探測十多個來源後，改用 **BigGo 香港格價**作主價源（多商戶報價，性質與 Price.com.hk 一致，urllib 直連無 Cloudflare）
+- **升級**：改用 BigGo **官方公開 JSON API**（`api.biggo.com/api/v1/spa/search/{型號}/product`，`site=biggo.hk`、`region=hk`），不再解析 HTML；商品搜索無需憑證（`client_id/client_secret` 僅規格搜索用）；修復分體機型號斜杠（`/`）未編碼導致 403 的 bug
+- **再升級（2026-08-16）**：曾試用 **PricesAPI**（`api.pricesapi.io`，香港市場、免費 1,000 calls/月）；實測 BigGo MCP Server 後，確定主力用回 BigGo，PricesAPI 只保留核心 29 驗收/後備
+- **限流轉向（2026-08-26）**：GitHub Actions IP 被 BigGo 網頁版限流 → 經人類決策先採純快照 → 發現官方 JSON API（不同主機）後轉向 API 方案（見 DECISIONS.md D1-D3）
 
 ### 2. Gemini 人手查價全量失敗
 
-- **困難**：Web 版 Gemini 幫手查價，29 個型號批次成功（21 個有價），但 1,874 型號全量批次幾乎全部空回應（只有舊批次重複答案，Flash-Lite 未登入模式處理唔到）
-- **決策**：放棄 Gemini 全量路線；保留嗰 21 個有價結果做補充源；主力確定用 BigGo 自動分批負責，PricesAPI 做核心 29 驗收/後備
+- **困難**：Web 版 Gemini 幫手查價，29 個型號批次成功（21 個有價），但 1,874 型號全量批次幾乎全部空回應（只有舊批次重複答案，Flash-Lite 未登入模式處理不了）
+- **決策**：放棄 Gemini 全量路線；保留那 21 個有價結果作補充源；主力確定用 BigGo 自動分批負責，PricesAPI 作核心 29 驗收/後備
 
 ### 3. 每日抓價觸發防護
 
-- **困難**：每日全量抓價令封鎖越嚟越頻密，價錢更新風險大
-- **決策**：價錢改做**快照策略**——唔再每日更新，有新機時每月最多分批更新一次（分 7 日）；點擊 🔍 喺瀏覽器直接 Google 搜最新價
+- **困難**：每日全量抓價令封鎖越來越頻密，價錢更新風險大
+- **決策**：價錢改為**快照策略**——不再每日更新，有新機時每月最多分批更新一次（分 7 日）；點擊 🔍 在瀏覽器直接 Google 搜最新價
 
 ### 4. 官方數據缺口
 
-- **困難**：Gree/TOSOT 代理官網冇窗口機產品頁；EMSD 原始品牌名五花八門（如「日立牌」vs HITACHI），令品牌篩選分裂
+- **困難**：Gree/TOSOT 代理官網沒有窗口機產品頁；EMSD 原始品牌名五花八門（如「日立牌」vs HITACHI），令品牌篩選分裂
 - **決策**：維持 EMSD / 零售商雙源並標註「待查」，**絕不編造**；建立品牌名稱統一映射表
 
 ### 5. 自動化穩定性
 
 - **困難**：GitHub Actions 並行 push 衝突；可重用工作流 timeout 配置位置報錯
-- **決策**：push 失敗自動 `git pull --rebase` 重試；timeout 表達式移入可重用工作流內部；設 concurrency + 數據驗證閘門，驗證唔過就唔提交
+- **決策**：push 失敗自動 `git pull --rebase` 重試；timeout 表達式移入可重用工作流內部；設 concurrency + 數據驗證閘門，驗證不過就不提交
 
 **價錢優先級**：BigGo 實抓 ＞ PricesAPI 核心 29 驗收 ＞ Gemini AI 搜 ＞ Price 舊快照（後備）
 
@@ -201,7 +208,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 | 版本 | 日期 | 重點 |
 | --- | --- | --- |
-| **v1.2.8** | 2026-08-26 | 治理落地（門禁 + metadata.json + 功能註冊表 15 項綁定）+ PDF 報告導出 + BigGo 改官方 JSON API（解決 GitHub IP 限流） |
+| **v1.2.8** | 2026-08-26 | 治理落地（門禁 + metadata.json + 功能註冊表 15 項綁定）+ PDF 報告導出 + BigGo 改官方 JSON API（解決 GitHub IP 限流）+ 文檔全面書面語化 |
 | **v1.2.7** | 2026-08-25 | 皮膚/深色模式全面恢復（Blue Fantasy 壁紙 + whale-girl 吉祥物 + 元件級對比度）+ 響應式適配修正（手機下拉溢出/吉祥物重疊）+ 工具複用整理 |
 | **v1.2.6** | 2026-08-25 | 代碼重構（`models_data.py` / `batch_utils.py` + `fetch_*` 統一重試）· 深色模式對比度修正 · 生成效能優化（版本號維持） |
 | **v1.2.6** | 2026-08-20 | 網頁 hero 顯示成功更新日期時間（`last_deploy` 香港時間） |
@@ -209,7 +216,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | **v1.2.4** | 2026-08-18 | 本地全量 BigGo 搜索完成：有價 734；確認第一版淘汰黑名單 1,103 個 |
 | **v1.2.3** | 2026-08-18 | BigGo 線上 smoke 防護 + 型號淘汰黑名單機制（6 個 2020 舊型號自動停止更新） |
 | **v1.2.2** | 2026-08-16 | 全項目說明文件同步、每日檢查打卡（`last_check`）、BigGo 驗證閘門、抽取 `price_utils.py` 重用工具 |
-| **v1.2.1** | 2026-08-16 | 主力價錢源確定用返 **BigGo 官方 JSON API**；PricesAPI 改為核心 29 驗收/後備 |
+| **v1.2.1** | 2026-08-16 | 主力價錢源確定用回 **BigGo 官方 JSON API**；PricesAPI 改為核心 29 驗收/後備 |
 | **v1.2.0** | 2026-08-16 | 主力價錢源改用 **PricesAPI 香港格價**（免費 1,000 calls/月、核心 29 優先）；BigGo/Price 舊快照做後備 |
 | **v1.1.1** | 2026-08-16 | 修正 TOSOT/Gree 規格被重複 dict key 覆蓋丟失；代碼重構（crawl_utils 共用 + 單元測試 + XSS 加固 + 版本號單一來源） |
 | **v1.1.0** | 2026-08-16 | BigGo 官方 JSON API 全量實抓（731 型號）+ 深海女仆（DeepSeek 鯨魚娘）主題 UI |
@@ -224,8 +231,10 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | 類別 | 內容 |
 | ------ | ------ |
 | 🏛️ 治理 | 落地 `docs/AIRCON_COMPARE_GOVERNANCE.md`；四道 CI 門禁（GATE-01/03/05/06）；`metadata.json` 部署事實源（版本/部署時間 HKT/資料日期） |
-| 📄 PDF | 新增 `generate_pdf.py`：PDF 報告導出（reportlab 內置中文字體，同 Web 用同一 metadata） |
+| 📄 PDF | 新增 `generate_pdf.py`：PDF 報告導出（reportlab 內置中文字體，與 Web 共用同一 metadata） |
 | 💰 價錢源 | BigGo 由網頁 scrape 改用**官方 JSON API**（`api.biggo.com`）——解決 GitHub Actions IP 被網頁版限流問題 |
+| 📝 決策 | 新增 `docs/DECISIONS.md`：人類決策項與技術轉向均註明背景、選項、決策與原因（D1-D8） |
+| ✍️ 文檔 | 說明文檔全面改為書面語（README/需求摘要/要求/報告/AGENTS/CONTRIBUTING/copilot-instructions） |
 | ✅ 測試 | pytest 28 項 + 瀏覽器 smoke 5 項；功能註冊表 15 項 required 全部有測試綁定 |
 
 ### 2026-08-25 — v1.2.7 皮膚恢復 + 響應式適配
@@ -261,23 +270,23 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | 類別 | 內容 |
 | ------ | ------ |
 | 🏷️ 標籤 | 每部機增加「停售 / 官方價 / 有價 / 無價」狀態標籤 + 價位標籤 |
-| 🔍 篩選 | 比較器新增「狀態」同「價位」下拉篩選；品牌、匹數、機型、能源繼續可用 |
-| 🚫 停售 | 淘汰黑名單唔再只係隱藏，而係以「🚫停售」標籤展示，用戶可以自由開關 |
+| 🔍 篩選 | 比較器新增「狀態」與「價位」下拉篩選；品牌、匹數、機型、能源繼續可用 |
+| 🚫 停售 | 淘汰黑名單不再只是隱藏，而是以「🚫停售」標籤展示，用戶可以自由開關 |
 
 ### 2026-08-18 — v1.2.4 第一版淘汰黑名單
 
 | 類別 | 內容 |
 | ------ | ------ |
 | 🔎 全量 | 本地強行完成 1,829 個型號 BigGo 全量搜索；有市售報價 732 / 無市售 1,097 / 網絡失敗 0 |
-| 🚫 黑名單 | 確認第一版黑名單 1,103 個型號；保留 EMSD/Price 舊版，停止更新並喺網站標註 |
-| 🛡 保護 | 核心 29 + 有官方網店價型號唔會因為一次無結果就淘汰 |
+| 🚫 黑名單 | 確認第一版黑名單 1,103 個型號；保留 EMSD/Price 舊版，停止更新並在網站標註 |
+| 🛡 保護 | 核心 29 + 有官方網店價型號不會因為一次無結果就淘汰 |
 
 ### 2026-08-18 — v1.2.3 淘汰黑名單
 
 | 類別 | 內容 |
 | ------ | ------ |
 | 🚫 淘汰 | 新增 `model_blacklist.json`；6 個 2020 年舊型號（RC-X7U、CHK09SNE、FWAD19M18、SWH-18F3X1、SWH-09F3X1、SWH-24F3U1）確認無市售報價，停止更新並保留 EMSD 舊版 |
-| 🛡 防護 | 新增 BigGo `--smoke` 連線測試；GitHub Actions 發現 BigGo 封鎖 IP 時唔再死等，直接保留現有快照 |
+| 🛡 防護 | 新增 BigGo `--smoke` 連線測試；GitHub Actions 發現 BigGo 封鎖 IP 時不再等待，直接保留現有快照 |
 | 🧰 工具 | 新增 `model_lifecycle.py` 自動追蹤連續無市售報價，達標自動掉入黑名單 |
 
 ### 2026-08-16 — v1.2.2 全項目優化
@@ -293,7 +302,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 | 類別 | 內容 |
 | ------ | ------ |
-| 💰 價錢 | 價錢源新增 **BigGo 香港格價**（多商戶報價，替代被 Cloudflare 攔截嘅 Price.com.hk）；曾試用 PricesAPI，實測 BigGo MCP Server 後主力確定用返 BigGo，PricesAPI 改為核心 29 驗收/後備 |
+| 💰 價錢 | 價錢源新增 **BigGo 香港格價**（多商戶報價，替代被 Cloudflare 攔截的 Price.com.hk）；曾試用 PricesAPI，實測 BigGo MCP Server 後主力確定用回 BigGo，PricesAPI 改為核心 29 驗收/後備 |
 | 🤖 Gemini | 放棄 Gemini 全量路線；保留 21 個有價結果做補充源 |
 | 🎨 介面 | 新增深海女仆（DeepSeek 鯨魚娘）主題 UI：深海藍紫 + 金色配色、角色立繪、泡泡/海浪氛圍 |
 | 🛡 防護 | 修正 TOSOT/Gree 尺寸/重量/遙控被重複 dict key 覆蓋丟失；開發困難與決策紀錄寫入 README |

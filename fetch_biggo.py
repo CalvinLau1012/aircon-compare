@@ -39,27 +39,69 @@ API_HEADERS = {'Content-Type': 'application/json', 'site': 'biggo.hk', 'region':
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36')
 
+# 全局冷卻狀態：遇 429 就冷卻 60-120s，期間所有新請求停喺度等（防止批次被限流打死）
+_COOLDOWN_UNTIL = 0.0
+_NEXT_SLOT = 0.0
+_LOCK = __import__('threading').Lock()
 
-def _api_search(model, jitter=(0.4, 1.0)):
+# 主動限速：批次內全局最小請求間隔（2 個 worker 共用；每秒最多約 0.4 個請求）
+MIN_PACE = 2.5
+
+
+def _global_cooldown(seconds):
+    """全局冷卻：批次內任何 worker 觸發 429 後，所有請求一齊等"""
+    global _COOLDOWN_UNTIL
+    with _LOCK:
+        _COOLDOWN_UNTIL = max(_COOLDOWN_UNTIL, time.time() + seconds)
+
+
+def _wait_cooldown():
+    """喺發請求前等待全局冷卻結束"""
+    with _LOCK:
+        remain = _COOLDOWN_UNTIL - time.time()
+    while remain > 0:
+        time.sleep(min(remain, 5))
+        with _LOCK:
+            remain = _COOLDOWN_UNTIL - time.time()
+
+
+def _wait_pace():
+    """全局最小請求間隔（主動限速，避免觸發 API rate limit）"""
+    global _NEXT_SLOT
+    with _LOCK:
+        wait = _NEXT_SLOT - time.time()
+        _NEXT_SLOT = max(time.time(), _NEXT_SLOT) + MIN_PACE
+    if wait > 0:
+        time.sleep(wait)
+
+
+def _api_search(model, jitter=(0.2, 0.6)):
     """官方 API 搜尋：回 (data, reachable)
     reachable=True  → API 有正常回覆（data 可能係空結果 = 乾淨無匹配）
     reachable=False → 網絡/限流錯誤（唔計入淘汰統計）
     """
-    for attempt in range(3):
+    for attempt in range(5):
         try:
-            time.sleep(random.uniform(*jitter))
+            _wait_cooldown()
+            _wait_pace()
             req = urllib.request.Request(API_URL.format(q=urllib.parse.quote(model, safe='')), headers={
                 'User-Agent': UA, **API_HEADERS,
                 'Accept': 'application/json',
             })
-            data = json.loads(urllib.request.urlopen(req, timeout=15).read().decode('utf-8', 'ignore'))
+            data = json.loads(urllib.request.urlopen(req, timeout=20).read().decode('utf-8', 'ignore'))
             return data, True
         except urllib.error.HTTPError as e:
-            if e.code in (403, 429) and attempt < 2:
-                wait = int(e.headers.get('Retry-After') or 0) or 10 * (attempt + 1)
-                time.sleep(wait)
+            if e.code == 429:
+                # 尊重 Retry-After；冇就 60s 全局冷卻（批次內所有 worker 一齊停）
+                wait = int(e.headers.get('Retry-After') or 0) or 60
+                print(f'  ⏳ 429 限流：全局冷卻 {wait}s 後重試（{model}，第 {attempt + 1} 次）', flush=True)
+                _global_cooldown(wait)
+            elif e.code in (403,):
+                _global_cooldown(60)
+            else:
+                time.sleep(5 * (attempt + 1))
         except Exception:
-            time.sleep(2 * (attempt + 1))
+            time.sleep(3 * (attempt + 1))
     return None, False
 
 
@@ -176,7 +218,9 @@ def run_force_batch(limit=None):
                        'url': 'https://biggo.hk/s/?q=' + urllib.parse.quote(model),
                        'updated': time.strftime('%Y-%m-%d')}, True
 
-    with ThreadPoolExecutor(max_workers=3) as ex:
+    aborted = False
+    ex = ThreadPoolExecutor(max_workers=2)
+    try:
         futures = {ex.submit(_one, m): m for m in todo}
         done_count = 0
         for fut in as_completed(futures):
@@ -192,18 +236,30 @@ def run_force_batch(limit=None):
                 net_err.append(model)
                 consec_fail += 1
             done_count += 1
-            if done_count % 50 == 0:
+            if done_count % 25 == 0:
                 el = time.time() - t0
                 print(f'  進度 {done_count}/{len(todo)}（得價 {len(got)} · 無報價 {len(clean_miss)} · 錯誤 {len(net_err)}）· {el:.0f}s', flush=True)
                 with open(OUT_PATH, 'w', encoding='utf-8') as f:
                     json.dump(results, f, ensure_ascii=False)
+            # 連續失敗就全局冷卻 90s 再繼續；要 40 連錯先中止（冷卻後仍全錯 = 真係唔友好）
+            if consec_fail >= 12 and done_count < len(todo):
+                print(f'  ⏳ 連續 {consec_fail} 個失敗：全局冷卻 90s 再繼續', flush=True)
+                _global_cooldown(90)
+                consec_fail = 0
             if done_count >= 40 and consec_fail >= 40:
                 print('⚠️ 連續 40 個網絡錯誤，疑似被限流，中止本批', flush=True)
                 set_cooldown()
-                sys.exit(1)
+                aborted = True
+                break
+    finally:
+        ex.shutdown(wait=False, cancel_futures=True)
 
     with open(OUT_PATH, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False)
+
+    if aborted:
+        print(f'  （中止前已得價 {len(got)} · 無報價 {len(clean_miss)} · 錯誤 {len(net_err)}）', flush=True)
+        sys.exit(1)
 
     # 淘汰確認（閾值 2；網絡錯誤唔計；受保護唔淘汰）
     rec = [(m, True) for m in got] + [(m, False) for m in clean_miss]
@@ -233,7 +289,8 @@ def run_force_batch(limit=None):
         print(f'\n🔎 黑名單復核開始：{len(black)} 個型號確認「不再賣」狀態...')
         revived, confirmed, blk_err = [], [], []
         consec_fail = 0
-        with ThreadPoolExecutor(max_workers=3) as ex:
+        ex = ThreadPoolExecutor(max_workers=2)
+        try:
             futures = {ex.submit(_one, m): m for m in black}
             done = 0
             for fut in as_completed(futures):
@@ -254,9 +311,16 @@ def run_force_batch(limit=None):
                     print(f'  復核 {done}/{len(black)}（復活 {len(revived)} · 確認不再賣 {len(confirmed)} · 錯誤 {len(blk_err)}）', flush=True)
                     with open(OUT_PATH, 'w', encoding='utf-8') as f:
                         json.dump(results, f, ensure_ascii=False)
+                # 連續失敗就全局冷卻 90s 再繼續（復核可以慢慢嚟）
+                if consec_fail >= 12 and done < len(black):
+                    print(f'  ⏳ 復核連續 {consec_fail} 個失敗：全局冷卻 90s 再繼續', flush=True)
+                    _global_cooldown(90)
+                    consec_fail = 0
                 if done >= 40 and consec_fail >= 40:
                     print('⚠️ 復核階段連續 40 個網絡錯誤，中止復核（已確認嘅結果保留）', flush=True)
                     break
+        finally:
+            ex.shutdown(wait=False, cancel_futures=True)
         with open(OUT_PATH, 'w', encoding='utf-8') as f:
             json.dump(results, f, ensure_ascii=False)
         print(f'\n🔎 黑名單復核完成：♻️ 復活 {len(revived)} ｜ ✅ 確認不再賣 {len(confirmed)} ｜ ⚠️ 網絡錯誤 {len(blk_err)}')
