@@ -294,6 +294,36 @@ def load_gemini():
         return json.load(f)
 
 
+def load_blacklist():
+    """載入淘汰黑名單（model_blacklist.json：{version, updated, models: {型號: {...}}}）"""
+    p = os.path.join(BASE, 'model_blacklist.json')
+    if not os.path.exists(p):
+        return set()
+    with open(p, encoding='utf-8') as f:
+        data = json.load(f)
+    if isinstance(data, dict):
+        data = data.get('models', data)
+    if isinstance(data, dict):
+        return set(data.keys())
+    if isinstance(data, list):
+        return set(str(x) for x in data)
+    return set()
+
+
+def assign_status(item, blacklist):
+    """依治理規則標註狀態：停售（黑名單）→ 官方價 → 有價 → 無價"""
+    mk = norm_model(item.get('model') or '')
+    if mk and mk in blacklist:
+        item['status'] = '停售'
+    elif item.get('price_official'):
+        item['status'] = '官方價'
+    elif item.get('price'):
+        item['status'] = '有價'
+    else:
+        item['status'] = '無價'
+    return item
+
+
 def best_price(model, *sources):
     """價錢優先級：BigGo 實抓 > PricesAPI 核心後備 > Gemini AI 搜 > Price 舊快照
     支援兩種簽名：
@@ -401,6 +431,7 @@ def load_emsd_models():
     biggo = load_biggo()
     gemini = load_gemini()
     specs = load_specs_emsd()
+    blacklist = load_blacklist()
     rows = list(csv.reader(open(csv_path, encoding='utf-8-sig')))[1:]
     rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
     core_keys = set(norm_model(m['model']) for m in MODELS)
@@ -447,6 +478,7 @@ def load_emsd_models():
         apply_official(item)
         if item.get('price_official'):
             item['note'] = 'EMSD 官方登記 · 官網價'
+        assign_status(item, blacklist)
         out.append(item)
     priced = sum(1 for m in out if m['price'])
     sized = sum(1 for m in out if m['size'])
@@ -470,6 +502,7 @@ def build_html():
     prices = load_prices()
     biggo = load_biggo()
     gemini = load_gemini()
+    blacklist = load_blacklist()
     for m in MODELS:
         pinfo = prices.get(m['model'])
         if isinstance(pinfo, dict) and pinfo.get('pid'):
@@ -480,6 +513,7 @@ def build_html():
         bp = best_price(m['model'], biggo, gemini, prices)
         if bp:
             m['price'] = bp
+        assign_status(m, blacklist)
 
     emsd_models = load_emsd_models()
     models_json = json.dumps(MODELS, ensure_ascii=False)
@@ -870,6 +904,12 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
         <select id="fEnergy" onchange="resetShown();renderList()">
           <option value="">全部能源級別</option><option>1級</option><option>2級</option><option>3級</option><option>4級</option><option>5級</option>
         </select>
+        <select id="fStatus" onchange="resetShown();renderList()">
+          <option value="">全部狀態</option><option>有價</option><option>官方價</option><option>無價</option><option>停售</option>
+        </select>
+        <select id="fPrice" onchange="resetShown();renderList()">
+          <option value="">全部價位</option><option>2以下</option><option>2-3</option><option>3-4</option><option>4-5</option><option>5以上</option>
+        </select>
       </div>
     </div>
     <div class="chint">提示：Gree/TOSOT 保養為零售商規格（交叉核實），其餘品牌為官網核實</div>
@@ -950,11 +990,22 @@ function matches(m){
   const br=document.getElementById('fBrand').value;
   const en=document.getElementById('fEnergy').value;
   const mo=document.getElementById('fMount').value;
+  const st=document.getElementById('fStatus').value;
+  const pr=document.getElementById('fPrice').value;
   if(hp && m.hp!==hp) return false;
   if(ty && m.type!==ty) return false;
   if(br && m.brand!==br) return false;
   if(en && m.energy!==en) return false;
   if(mo && m.mount!==mo) return false;
+  if(st && m.status!==st) return false;
+  if(pr){
+    const p=priceMin(m);
+    if(pr==='2以下' && p>=2000) return false;
+    if(pr==='2-3' && (p<2000||p>=3000)) return false;
+    if(pr==='3-4' && (p<3000||p>=4000)) return false;
+    if(pr==='4-5' && (p<4000||p>=5000)) return false;
+    if(pr==='5以上' && p<5000) return false;
+  }
   if(q && !(m.brand.toLowerCase().includes(q)||m.model.toLowerCase().includes(q))) return false;
   if(document.getElementById('fSelOnly').checked && !selected.has(m.brand+'|'+m.model)) return false;
   return true;
@@ -992,6 +1043,7 @@ function renderList(){
       : `<a class="plink" href="${gsearch(m)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔍 搜價</a>`;
     const wifiBadge = m.type==='變頻'?'🔷':'🔶';
     const energyTxt = m.energy ? esc(m.energy) : '—';
+    const statusTxt = m.status && m.status!=='有價' ? ` · <b>${esc(m.status)}</b>` : '';
     const mountTxt = m.mount ? `${esc(m.mount)} ` : '';
     const modeTxt = m.mode ? `${esc(m.mode)} ` : '';
     const remoteTxt = m.remote==='✅' ? '· 有遙控 ' : (m.remote==='➖' ? '· 無遙控 ' : '');
@@ -1000,7 +1052,7 @@ function renderList(){
       <input type="checkbox" ${on?'checked':''} onchange="toggle('${esc(id)}',this)">
       <span class="info">
         <span class="name">${esc(m.brand)} ${esc(m.model)}</span><br>
-        <span class="tag">${mountTxt}${modeTxt}${esc(m.hp||'?匹')} · ${esc(m.btu)} BTU · ${esc(m.type)} · ${energyTxt} ${remoteTxt}${extra}· ${priceHtml}</span>
+        <span class="tag">${mountTxt}${modeTxt}${esc(m.hp||'?匹')} · ${esc(m.btu)} BTU · ${esc(m.type)} · ${energyTxt} ${remoteTxt}${statusTxt}${extra}· ${priceHtml}</span>
       </span>
       <span class="badge">${wifiBadge} ${energyTxt}</span>
     </label>`;
