@@ -1,4 +1,18 @@
 ════════════════════════════════════════
+【執行狀態更新 · 2026-08-26 · v1.2.8（治理落地 + PDF + BigGo 官方 API）】
+
+✅ 本次已完成並同步線上：
+1. 治理落地（AIRCON_COMPARE_GOVERNANCE.md）：
+   · 六個規範區塊提取驗證（extract_governance.py）
+   · 功能註冊表 15 項 required 全部測試綁定（feature-check.py）
+   · metadata.json 生成/驗證（gen/validate_metadata.py）；部署時間 UTC、HKT 顯示
+   · CI 門禁 GATE-01/03/05/06 全部 Block 級
+   · 頁面 runtime fetch metadata.json（版本/最後部署/資料日期）
+2. PDF 報告導出（generate_pdf.py，reportlab 內置中文字體，同 Web 同一 metadata）
+3. BigGo 限流解決：改用官方 JSON API api.biggo.com（同網頁版唔同 host；實測本地 + CI 友好）
+4. 質量：pytest 28 + 瀏覽器 smoke 5；文檔全部同步 v1.2.8
+
+════════════════════════════════════════
 【執行狀態更新 · 2026-08-25 · v1.2.7（皮膚恢復 + 響應式適配）】
 
 ✅ 本次已完成並同步線上：

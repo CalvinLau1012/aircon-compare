@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-BigGo 香港格價（biggo.hk）價錢快照抓取
-- 多商戶報價平台（Price.com.hk 性質一致），公開網頁，無 Cloudflare
+BigGo 香港格價價錢快照抓取（官方 JSON API）
+
+- 用 BigGo 官方 API：https://api.biggo.com/api/v1/spa/search/{query}/product
+  （同網頁版 biggo.hk 係唔同 host；GitHub Actions IP 對 api.biggo.com 友好，
+  2026-08-26 實測 HTTP 200）
 - 每月最多一次、分 7 日分批（批次進度共用 batch_utils）
 輸出：biggo_prices.json {型號: {price: "$X,XXX-YY,YYY", merchants: N, updated: 日期}}
 
@@ -14,7 +17,6 @@ BigGo 香港格價（biggo.hk）價錢快照抓取
 import json
 import os
 import random
-import re
 import sys
 import time
 import urllib.request
@@ -30,20 +32,23 @@ from batch_utils import (PRICE_BATCH_DAYS, load_meta, save_meta, set_cooldown,
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT_PATH = os.path.join(BASE, 'biggo_prices.json')
 
-# BigGo 實測用瀏覽器 UA 先至穩定（bot UA 會被唔同對待）
+# 官方 JSON API（product search 唔使認證；site/region 揀香港）
+API_URL = 'https://api.biggo.com/api/v1/spa/search/{q}/product'
+API_HEADERS = {'Content-Type': 'application/json', 'site': 'biggo.hk', 'region': 'hk'}
 UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36')
 
 
-def _get(url):
-    """帶抖動+退避嘅 GET"""
+def _get_json(url):
+    """帶抖動+退避嘅 GET → JSON"""
     for attempt in range(3):
         try:
             time.sleep(random.uniform(0.4, 1.0))
             req = urllib.request.Request(url, headers={
-                'User-Agent': UA, 'Accept-Language': 'zh-HK,zh;q=0.9',
-                'Referer': 'https://biggo.hk/'})
-            return urllib.request.urlopen(req, timeout=15).read().decode('utf-8', 'ignore')
+                'User-Agent': UA, **API_HEADERS,
+                'Accept': 'application/json',
+            })
+            return json.loads(urllib.request.urlopen(req, timeout=15).read().decode('utf-8', 'ignore'))
         except urllib.error.HTTPError as e:
             if e.code in (403, 429) and attempt < 2:
                 wait = int(e.headers.get('Retry-After') or 0) or 10 * (attempt + 1)
@@ -56,25 +61,24 @@ def _get(url):
 
 
 def fetch_biggo_price(model):
-    """搜一個型號，回傳 {price, merchants, url} 或 None"""
-    html = _get('https://biggo.hk/s/?q=' + urllib.parse.quote(model))
-    if not html:
+    """官方 API 搜一個型號，回傳 {price, merchants, url} 或 None"""
+    data = _get_json(API_URL.format(q=urllib.parse.quote(model)))
+    if not data:
         return None
-    prices = []
     nm = norm_model(model)
-    # 產品區塊按 product-row 分割；區塊內有 title（產品名）同 data-price（價錢）
-    for b in re.split(r'ProductItemListPC_product-row', html)[1:]:
-        t = re.search(r'title="([^"]+)"', b)
-        p = re.search(r'data-price="true">\$([\d,]+(?:\.\d+)?)', b)
-        if not t or not p:
-            continue
-        title = t.group(1).strip()
+    prices = []
+    for it in data.get('list', []):
+        title = (it.get('title') or '').strip()
         # 共用過濾規則（同 PricesAPI 一套）：型號精確匹配 + 冷氣關鍵字 + 排除配件
         if len(nm) < 4 or not is_ac_title(title, nm):
             continue
-        price = _num_price(p.group(1).replace(',', ''))
-        if price:
-            prices.append(price)
+        # 只收香港商戶（排除 us_bid_aliexpress 等外國平台撞名產品）
+        nindex = it.get('nindex') or ''
+        if not nindex.startswith('hk_'):
+            continue
+        p = _num_price(it.get('price'))
+        if p:
+            prices.append(p)
     if not prices:
         return None
     lo, hi = min(prices), max(prices)

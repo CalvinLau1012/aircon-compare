@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """核心 29 型號資料庫（generate_html / fetch_* 共用，避免為咗攞 MODELS 而 import 重型 generate_html）"""
 
-VERSION = '1.2.7'  # 單一版本號來源（升級時只改呢度）
+VERSION = '1.2.8'  # 單一版本號來源（升級時只改呢度）
 
 MODELS = [
     # ---- 1 匹 定頻 ----

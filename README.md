@@ -1,10 +1,10 @@
-# ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/version-v1.2.7-2ea44f)
+# ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/version-v1.2.8-2ea44f)
 
 > 香港市場空調（窗口式 / 分體式 / 流動式；淨冷/冷暖、定頻/變頻）全面對比
 > **能源級別、雪種、年耗電已用機電署 EMSD 官方資料庫（1,927 型號）全量核實**
 > **220 個型號已直接經品牌官網/官方網店/總代理逐型號核實（2026-08-15）**
 > 🎨 **Blue Fantasy 藍色幻想 skin**（dsh-web-ui 皮膚；只套皮膚，其他插件唔加）
-> 📌 **現況（2026-08-25）**：BigGo 主力價錢批次 2/7 完成（731 個有效價）；v1.2.7 已上線——皮膚/深色模式全面恢復 + 響應式適配修正 + 工具複用整理
+> 📌 **現況（2026-08-26）**：v1.2.8——治理落地（門禁 + metadata.json）+ PDF 報告導出；價錢維持快照（GitHub IP 被 BigGo 限流，更新改本地批次）
 
 ## 🚀 立即使用
 
@@ -64,6 +64,46 @@
 - **淘汰機制**：`model_blacklist.json` 自動記錄連續多次「BigGo 冇市售報價」嘅型號；一經確認就停止更新、保留舊快照，並喺報告標註「🚫 已停售/淘汰」
 - **穩定**：抓取後經「數據驗證閘門」(`validate_data.py`) 檢查數量喺安全範圍——唔合格就唔提交，保住現有數據；每次成功提交 = 可回溯快照，壞咗可一鍵還原
 - 亦可喺 GitHub Actions 頁面手動觸發（workflow_dispatch）
+
+## 🏛️ 治理標準
+
+項目依 `docs/AIRCON_COMPARE_GOVERNANCE.md`（唯一治理源）運作，版本/部署時間/資料日期全部由流水線生成嘅 `metadata.json` 提供。
+
+### CI 門禁（全部 Block 級）
+
+| Gate | 階段 | 檢查內容 |
+| --- | --- | --- |
+| GATE-01 | 治理靜態 | 六個規範區塊嚴格提取 + JSON 解析 |
+| GATE-03 | 功能契約 | 功能註冊表 Schema + 15 項 required 測試綁定 |
+| GATE-04 | 數據 | EMSD 行數 / 價格 / 規格安全範圍 |
+| GATE-05 | 測試/Smoke | 單元測試 + 瀏覽器核心路徑 smoke |
+| GATE-06 | Metadata | `metadata.json` 生成（deployTime UTC 自動）+ Schema 驗證 |
+
+### Metadata 鏈路
+
+```mermaid
+flowchart LR
+  A[EMSD 官方來源] --> B[數據驗證 GATE-04]
+  C[generate_html.py] --> D[index.html]
+  C --> P[generate_pdf.py]
+  P --> E2[空調對比報告.pdf]
+  B --> E[gen-metadata.py]
+  D --> E
+  E --> F[metadata.json]
+  F --> G[validate_metadata.py]
+  G --> H[GitHub Pages 部署]
+  F --> I[頁面 runtime fetch 顯示]
+```
+
+### 功能註冊表（15 項 required，全部有測試綁定）
+
+| 類別 | 功能 |
+| --- | --- |
+| core | search · filter · sort · compare · ranking · recommendation |
+| ui | comparison-modal · responsive |
+| data | emsd-verification |
+| report | pdf-export |
+| operations | version-display · last-deploy · dataset-update · build-metadata · github-pages-deploy |
 
 ## 🔧 自行重建
 
@@ -161,6 +201,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 | 版本 | 日期 | 重點 |
 | --- | --- | --- |
+| **v1.2.8** | 2026-08-26 | 治理落地（門禁 + metadata.json + 功能註冊表 15 項綁定）+ PDF 報告導出 + BigGo 改官方 JSON API（解決 GitHub IP 限流） |
 | **v1.2.7** | 2026-08-25 | 皮膚/深色模式全面恢復（Blue Fantasy 壁紙 + whale-girl 吉祥物 + 元件級對比度）+ 響應式適配修正（手機下拉溢出/吉祥物重疊）+ 工具複用整理 |
 | **v1.2.6** | 2026-08-25 | 代碼重構（`models_data.py` / `batch_utils.py` + `fetch_*` 統一重試）· 深色模式對比度修正 · 生成效能優化（版本號維持） |
 | **v1.2.6** | 2026-08-20 | 網頁 hero 顯示成功更新日期時間（`last_deploy` 香港時間） |
@@ -177,6 +218,15 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | v0.1.0 | 2026-08-11 | 報告初版（29 型號統合對比） |
 
 ## 📅 更新日誌
+
+### 2026-08-26 — v1.2.8 治理落地 + PDF + BigGo 官方 API
+
+| 類別 | 內容 |
+| ------ | ------ |
+| 🏛️ 治理 | 落地 `docs/AIRCON_COMPARE_GOVERNANCE.md`；四道 CI 門禁（GATE-01/03/05/06）；`metadata.json` 部署事實源（版本/部署時間 HKT/資料日期） |
+| 📄 PDF | 新增 `generate_pdf.py`：PDF 報告導出（reportlab 內置中文字體，同 Web 用同一 metadata） |
+| 💰 價錢源 | BigGo 由網頁 scrape 改用**官方 JSON API**（`api.biggo.com`）——解決 GitHub Actions IP 被網頁版限流問題 |
+| ✅ 測試 | pytest 28 項 + 瀏覽器 smoke 5 項；功能註冊表 15 項 required 全部有測試綁定 |
 
 ### 2026-08-25 — v1.2.7 皮膚恢復 + 響應式適配
 
@@ -268,4 +318,4 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | ------ | ------ |
 | 📝 內容 | 報告初版（29 型號對比） |
 
-**更新日期**：2026-08-25 · **版本**：v1.2.7
+**更新日期**：2026-08-26 · **版本**：v1.2.8

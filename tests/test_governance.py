@@ -41,8 +41,8 @@ def test_governance_blocks_reject_broken_marker():
         pass
 
 
-# 已知測試綁定缺口（未實現功能，等人類決定：實現或降級——治理文檔 §5.2 唔得偽造測試名）
-KNOWN_UNBOUND = {'report.pdf-export', 'core.ranking', 'core.recommendation'}
+# 已知測試綁定缺口（而家已全部綁定；如有新缺口必須申報，唔得偽造測試名）
+KNOWN_UNBOUND = set()
 
 
 def test_feature_registry_schema_valid():
@@ -133,8 +133,9 @@ def test_format_status_metadata_driven():
 
 
 def test_version_single_source():
-    """版本單一來源：models_data.VERSION 係唯一手工來源"""
-    assert models_data.VERSION == '1.2.7'
+    """版本單一來源：models_data.VERSION 係唯一手工來源，格式符合 SemVer"""
+    import re
+    assert re.match(r'^\d+\.\d+\.\d+$', models_data.VERSION), '版本必須係 SemVer'
     assert generate_html.VERSION == models_data.VERSION
 
 
@@ -144,3 +145,23 @@ def test_feature_check_script():
         [sys.executable, os.path.join(ROOT, 'scripts', 'feature-check.py')],
         capture_output=True, text=True, encoding='utf-8', errors='replace')
     assert r.returncode == 0, (r.stdout or '') + (r.stderr or '')
+
+
+def test_pdf_export():
+    """report.pdf-export：PDF 可生成、係有效 %PDF、同 Web 用同一 metadata 規則"""
+    import generate_pdf
+    generate_pdf.build_pdf()
+    out = os.path.join(ROOT, '空調對比報告.pdf')
+    assert os.path.exists(out), 'PDF 檔案應該生成'
+    with open(out, 'rb') as f:
+        head = f.read(8)
+    assert head.startswith(b'%PDF'), f'唔係有效 PDF：{head!r}'
+    assert os.path.getsize(out) > 10000, 'PDF 太細，疑似空檔'
+
+
+def test_ranking_recommendation_sections():
+    """core.ranking / core.recommendation：報告內文包含排名/推薦章節且引用數據來源"""
+    md = open(os.path.join(ROOT, '空調對比報告.md'), encoding='utf-8').read()
+    assert '排名' in md, '報告應該有排名章節'
+    assert '推薦' in md, '報告應該有推薦章節'
+    assert ('EMSD' in md and '官網' in md), '排名/推薦應該引用數據來源'

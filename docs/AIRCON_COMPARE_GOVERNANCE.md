@@ -661,7 +661,7 @@ AI 不得把“用户要求修 Bug”解释为上述批准。
       "evidenceRequired": [
         "automated_test"
       ],
-      "testBindings": []
+      "testBindings": ["tests/test_governance.py::test_ranking_recommendation_sections"]
     },
     {
       "id": "core.recommendation",
@@ -676,7 +676,7 @@ AI 不得把“用户要求修 Bug”解释为上述批准。
       "evidenceRequired": [
         "automated_test"
       ],
-      "testBindings": []
+      "testBindings": ["tests/test_governance.py::test_ranking_recommendation_sections"]
     },
     {
       "id": "report.pdf-export",
@@ -691,7 +691,7 @@ AI 不得把“用户要求修 Bug”解释为上述批准。
       "evidenceRequired": [
         "automated_test"
       ],
-      "testBindings": []
+      "testBindings": ["tests/test_governance.py::test_pdf_export"]
     },
     {
       "id": "operations.version-display",

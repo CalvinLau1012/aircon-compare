@@ -82,8 +82,9 @@ jobs:
           python fetch_specs.py || true
           python advance_queue.py
 
-      # ============ 第 3 步：價錢快照批次（BigGo；進度由 batch_utils 共用管理） ============
-      - name: 價錢快照分批更新（BigGo 每月一次·分七日；先 smoke 測試 GitHub IP）
+      # ============ 第 3 步：價錢快照批次（BigGo 官方 JSON API；進度由 batch_utils 共用管理） ============
+      # 2026-08-26：改用官方 API api.biggo.com（同被限流嘅網頁版 biggo.hk 唔同 host）
+      - name: 價錢快照分批更新（BigGo API 每月一次·分七日；先 smoke 測試）
         run: |
           if python fetch_biggo.py --smoke; then
             if python -c "import sys; from batch_utils import price_batch_active; sys.exit(0 if price_batch_active() else 1)"; then
@@ -92,10 +93,10 @@ jobs:
               echo "價錢批次未啟動，跳過"
             fi
           else
-            echo "⚠️ BigGo smoke 失敗（GitHub IP 被限流），跳過本批，唔硬碰"
+            echo "⚠️ BigGo API smoke 失敗，跳過本批，唔硬碰"
           fi
 
-      # ============ 第 4 步：安全閘門 + 生成網頁 + 部署元數據 + 上線 ============
+      # ============ 第 4 步：安全閘門 + 生成網頁/PDF + 部署元數據 + 上線 ============
       - name: 數據驗證（防壞數據上線）
         run: python validate_data.py
 
@@ -103,6 +104,9 @@ jobs:
         run: |
           python generate_html.py
           cp 空調對比報告.html index.html
+
+      - name: 生成 PDF 報告（report.pdf-export）
+        run: python generate_pdf.py
 
       # GATE-06：部署元數據只由呢個受信任作業生成（deployTime UTC 自動、非自引用 payload hash）
       - name: 生成部署元數據 metadata.json（GATE-06）

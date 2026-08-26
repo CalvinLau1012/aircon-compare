@@ -379,9 +379,9 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <div class="md-content">
 <h1>🏠 香港空調統合對比報告（窗口式精選 + 全量資料庫）</h1>
 <blockquote>
-<p><strong>報告生成日期</strong>：2026-08-11 ｜ <strong>最後更新</strong>：2026-08-25 ｜ <strong>版本</strong>：v1.2.7
-<strong>更新機制</strong>：GitHub Actions 每日 00:30 HKT 自動檢查（EMSD 新機偵測 + <code>last_check</code> 打卡 + 數據驗證閘門 + 自動重新部署）；有新機先官網核實分兩日；BigGo 價錢批次每月最多一次（分 7 日）；PricesAPI 核心 29 驗收為選用後備
-<strong>現況</strong>：BigGo 主力價錢批次 <strong>2/7 日完成</strong>，維持 731 個有效價；v1.2.7 已重建並同步（2026-08-25 皮膚/深色模式恢復 + 響應式適配 + 工具複用整理）
+<p><strong>報告生成日期</strong>：2026-08-11 ｜ <strong>最後更新</strong>：2026-08-26 ｜ <strong>版本</strong>：v1.2.8
+<strong>更新機制</strong>：GitHub Actions 每日 00:30 HKT 自動檢查（EMSD 新機偵測 + 治理門禁 + metadata.json 生成 + 自動重新部署）；有新機先官網核實分兩日；BigGo 官方 JSON API 價錢批次每月最多一次（分 7 日）
+<strong>現況</strong>：v1.2.8 已同步線上——治理落地（門禁 + metadata.json）+ PDF 報告 + BigGo 官方 API（解決 GitHub IP 限流）
 <strong>數據來源</strong>：機電署 EMSD 官方資料庫（1,927 型號全量核實）· 8 大品牌官網/總代理（220 型號）· BigGo 官方 JSON API 實抓（731 型號，2026-08-16；主力價錢源）· PricesAPI 核心 29 驗收（已配置，選用後備）· Price.com.hk 舊快照（1,847 型號，2026-08-15，🔍 點擊 Google 搜最新價）· 豐澤 · 百老匯 · 友和 · LIHKG 連登（3 帖摘錄）
 <strong>⚠️ 注意</strong>：豐澤與電器幫同屬屈臣氏集團，價格不可互證；獨立驗證以 BigGo 不同商戶 / 官方網店為準
 <strong>額外搜尋</strong>：LIHKG 連登（電器台）、HKEPC、香港討論區
@@ -2273,6 +2273,33 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </blockquote>
 <hr />
 <h2>📅 更新日誌</h2>
+<h3>2026-08-26 — v1.2.8 治理落地 + PDF + BigGo 官方 API</h3>
+<table>
+<thead>
+<tr>
+<th>類別</th>
+<th>內容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🏛️ 治理</td>
+<td>治理文檔落地；GATE-01/03/05/06 門禁；metadata.json 部署事實源</td>
+</tr>
+<tr>
+<td>📄 PDF</td>
+<td>新增 PDF 報告（同 Web 同一 metadata）</td>
+</tr>
+<tr>
+<td>💰 價錢源</td>
+<td>BigGo 改官方 JSON API（api.biggo.com），解決 GitHub IP 限流</td>
+</tr>
+<tr>
+<td>✅ 測試</td>
+<td>pytest 28 + 瀏覽器 smoke 5；15 項 required 全部綁定</td>
+</tr>
+</tbody>
+</table>
 <h3>2026-08-25 — v1.2.7 皮膚恢復 + 響應式適配</h3>
 <table>
 <thead>
@@ -2555,7 +2582,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </main>
 
 <footer>
-  <b>香港空調對比報告 · <span id="verInfo">v1.2.7</span></b><br>
+  <b>香港空調對比報告 · <span id="verInfo">v1.2.8</span></b><br>
   能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號
 
   <div class="blk">

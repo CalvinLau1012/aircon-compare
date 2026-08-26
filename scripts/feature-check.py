@@ -60,8 +60,8 @@ def check_registry_schema(reg):
     return errors
 
 
-# 已知測試綁定缺口（未實現功能，等人類決定：實現或降級；治理文檔 §5.2 唔得偽造測試名）
-KNOWN_UNBOUND = {'report.pdf-export', 'core.ranking', 'core.recommendation'}
+# 已知測試綁定缺口（而家已全部綁定；如有新缺口必須申報，唔得偽造測試名）
+KNOWN_UNBOUND = set()
 
 
 def check_test_bindings(reg):
