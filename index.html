@@ -290,7 +290,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
     <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
-    <div class="date">📅 2026 年 8 月 15 日 更新 · v1.2.7 · 🔄 每日偵測新機 · 有機先更新</div>
+    <div class="date" id="deployInfo">📅 資料日期暫不可用 · 部署資訊暫不可用</div>
   </div>
 </header>
 
@@ -2555,7 +2555,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </main>
 
 <footer>
-  <b>香港空調對比報告 · v1.2.7</b><br>
+  <b>香港空調對比報告 · <span id="verInfo">v1.2.7</span></b><br>
   能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號
 
   <div class="blk">
@@ -2579,7 +2579,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 
   <span class="ai">🤖 Powered by DeepSeek AI</span><br>
   <span class="line">──────</span><br>
-  🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 價錢為 2026-08-15 快照僅供參考 · 最後更新 2026-08-20<br>
+  <span id="footStatus">🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 資料日期暫不可用 · 價錢為快照僅供參考</span><br>
   本報告僅供選購參考，不構成購買建議 · 價格及供應隨時變動，請以商戶實時報價為準
 </footer>
 
@@ -2947,6 +2947,38 @@ window.addEventListener('scroll',()=>{
   const b=document.getElementById('backTop');
   if(b) b.classList.toggle('show', window.scrollY>300);
 });
+
+// ===== 部署資訊（治理文檔 §7.2.7：只讀取已部署 metadata.json） =====
+// Last Deploy：metadata.json.deployTime（UTC）→ HKT 顯示
+// Last Update：metadata.json.datasetDate；載入失敗顯示「暫不可用」，唔回退硬編舊值
+(function loadDeployInfo(){
+  const el = document.getElementById('deployInfo');
+  const foot = document.getElementById('footStatus');
+  const ver = document.getElementById('verInfo');
+  fetch('metadata.json', {cache:'no-store'})
+    .then(r => { if(!r.ok) throw new Error('http '+r.status); return r.json(); })
+    .then(m => {
+      if (ver && m.version) ver.textContent = 'v' + m.version;
+      const ds = m.datasetDate;
+      const dt = m.deployTime;
+      let line = (ds ? ('📅 資料日期 ' + ds) : '📅 資料日期暫不可用');
+      if (m.version) line += ' · v' + m.version;
+      if (dt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(dt)) {
+        const hkt = new Date(new Date(dt).getTime() + 8*3600*1000);
+        const p = hkt.toISOString().slice(0,16).replace('T',' ');
+        line += ' · ✅ 最後部署 ' + p + ' HKT';
+      } else {
+        line += ' · 🔄 每日偵測新機 · 有機先更新';
+      }
+      if (el) el.textContent = line;
+      if (foot) foot.textContent = '🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · '
+        + (ds ? ('資料日期 ' + ds) : '資料日期暫不可用') + ' · 價錢為快照僅供參考';
+    })
+    .catch(() => {
+      if (el) el.textContent = '📅 資料日期暫不可用 · 部署資訊暫不可用';
+      if (ver) ver.textContent = 'v?';
+    });
+})();
 </script>
 </body>
 </html>

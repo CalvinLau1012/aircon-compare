@@ -2,6 +2,20 @@
 
 呢個 repo 係「香港空調對比報告」自動更新項目。Agent 修改前請先讀呢份指引。
 
+## 治理源（必讀）
+
+**`docs/AIRCON_COMPARE_GOVERNANCE.md`** 係唯一項目治理源（內嵌功能註冊表、metadata Schema、成功標準）。修改前必須完整讀取，並：
+- 區分 `REQUIREMENT` / `HISTORICAL_CLAIM` / `TARGET_STATE` / `OBSERVED` / `UNKNOWN`；
+- 唔得降級 `required` 功能、唔得偽造 metadata/測試證據、唔得軟化阻斷門禁；
+- 版本號只改 `models_data.py` 嘅 `VERSION`；部署事實由流水線生成嘅 `metadata.json` 提供。
+
+治理檢查命令：
+```bash
+python scripts/extract-governance.py     # 六個規範區塊提取驗證
+python scripts/feature-check.py          # Registry Schema + 測試綁定檢查
+python scripts/validate-metadata.py      # metadata.json Schema 驗證
+```
+
 ## 項目一句話
 
 EMSD 官方空調資料 + 品牌官網規格 + BigGo 市場價，生成單一 `index.html` 互動比較器，每日由 GitHub Actions 自動更新。

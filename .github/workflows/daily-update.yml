@@ -36,7 +36,22 @@ jobs:
 
       # ============ 閘門：共享工具契約測試（複用契約一變即刻失敗） ============
       - name: 測試閘門
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q --ignore=tests/browser_smoke.py
+
+      # ============ GATE-05 瀏覽器核心路徑 smoke（Registry required 功能行為證據） ============
+      - name: 瀏覽器核心路徑 smoke（GATE-05）
+        run: |
+          pip install playwright
+          playwright install chromium --with-deps
+          python -m pytest tests/browser_smoke.py -q
+
+      # ============ GATE-01 治理區塊驗證（六個規範塊嚴格提取） ============
+      - name: 治理區塊驗證（GATE-01）
+        run: python scripts/extract-governance.py
+
+      # ============ GATE-03 功能註冊表檢查（Schema + 測試綁定） ============
+      - name: 功能註冊表檢查（GATE-03）
+        run: python scripts/feature-check.py
 
       # ============ 第 1 步：EMSD 官方資料庫 + 新機偵測 ============
       - name: 抓取 EMSD + 新機偵測
@@ -80,7 +95,7 @@ jobs:
             echo "⚠️ BigGo smoke 失敗（GitHub IP 被限流），跳過本批，唔硬碰"
           fi
 
-      # ============ 第 4 步：安全閘門 + 生成網頁 + 上線 ============
+      # ============ 第 4 步：安全閘門 + 生成網頁 + 部署元數據 + 上線 ============
       - name: 數據驗證（防壞數據上線）
         run: python validate_data.py
 
@@ -88,6 +103,27 @@ jobs:
         run: |
           python generate_html.py
           cp 空調對比報告.html index.html
+
+      # GATE-06：部署元數據只由呢個受信任作業生成（deployTime UTC 自動、非自引用 payload hash）
+      - name: 生成部署元數據 metadata.json（GATE-06）
+        run: |
+          DATASET_HASH="sha256:$(sha256sum emsd_空調能源標籤.csv | cut -d' ' -f1)"
+          RECORDS=$(python -c "import csv;print(sum(1 for r in csv.reader(open('emsd_空調能源標籤.csv',encoding='utf-8-sig'))) - 1)")
+          python scripts/gen-metadata.py \
+            --version "$(python -c 'import models_data;print(models_data.VERSION)')" \
+            --build "B$(date -u +%Y%m%d).${GITHUB_RUN_NUMBER}" \
+            --commit "$GITHUB_SHA" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --dataset-date "$(date +%F)" \
+            --dataset-date-basis retrieval-date-fallback \
+            --dataset-source-url "https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php" \
+            --dataset-snapshot-id "emsd-$(date +%F)" \
+            --dataset-hash "$DATASET_HASH" \
+            --record-count "$RECORDS" \
+            --payload-dir .
+
+      - name: 驗證 metadata.json（GATE-06）
+        run: python scripts/validate-metadata.py
 
       - name: 提交並推送（有變更先提交）
         run: |

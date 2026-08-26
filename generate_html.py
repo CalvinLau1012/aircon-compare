@@ -9,6 +9,7 @@
 import json
 import os
 import csv
+import calendar
 import time
 import markdown
 import re
@@ -321,18 +322,39 @@ def load_specs_emsd():
         return json.load(f)
 
 
-def update_status():
-    """讀取 meta 生成更新狀態文字（網站自動顯示有冇更新）"""
-    p = os.path.join(BASE, 'prices_meta.json')
-    meta = {}
-    try:
-        with open(p, encoding='utf-8') as f:
-            meta = json.load(f)
-    except Exception:
-        pass
-    last_run = meta.get('last_run') or '2026-08-15'
-    return ('📅 2026 年 8 月 15 日 更新 · v' + VERSION + ' · 🔄 每日偵測新機 · 有機先更新',
-            f'🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 價錢為 2026-08-15 快照僅供參考 · 最後更新 {last_run}')
+def format_status(meta_dict, version):
+    """純函數：metadata dict → (hero 狀態行, 頁腳狀態行)
+
+    治理要求（AIRCON_COMPARE_GOVERNANCE.md §7.2）：
+    - Last Deploy 讀 metadata.json.deployTime（UTC）並以 HKT 顯示
+    - Last Update 讀 metadata.json.datasetDate，唔用靜態舊值
+    - 載入失敗顯示「暫不可用」，唔回退硬編舊值
+
+    注意：Web 版由 index.html 內 JS 於 runtime fetch metadata.json（同呢套規則）；
+    本函數供測試同未來 PDF 生成共用（PDF 同 Web 必須用同一套 metadata）。
+    """
+    deploy_hkt = None
+    dataset_date = None
+    if meta_dict:
+        dt = meta_dict.get('deployTime')
+        if dt:
+            try:
+                t = time.strptime(dt, '%Y-%m-%dT%H:%M:%SZ')
+                epoch = calendar.timegm(t) + 8 * 3600  # UTC → HKT
+                deploy_hkt = time.strftime('%Y-%m-%d %H:%M', time.gmtime(epoch))
+            except (ValueError, OverflowError):
+                deploy_hkt = None
+        dataset_date = meta_dict.get('datasetDate')
+        v = meta_dict.get('version') or version
+    else:
+        v = version
+    date_text = f'📅 資料日期 {dataset_date}' if dataset_date else '📅 資料日期暫不可用'
+    deploy_text = f'✅ 最後部署 {deploy_hkt} HKT' if deploy_hkt else '🔄 每日偵測新機 · 有機先更新'
+    line1 = f'{date_text} · v{v} · {deploy_text}'
+    line2 = ('🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · '
+             + (f'資料日期 {dataset_date}' if dataset_date else '資料日期暫不可用')
+             + ' · 價錢為快照僅供參考')
+    return line1, line2
 
 
 def load_new_models():
@@ -436,7 +458,11 @@ def build_html():
     with open(os.path.join(BASE, '空調對比報告.md'), encoding='utf-8') as f:
         md_text = f.read()
     content_html = md_to_html(md_text)
-    date_status, foot_status = update_status()
+    # 部署資訊由瀏覽器 runtime fetch metadata.json 顯示（治理文檔 §7.2.7）；
+    # build 只寫初始骨架；載入失敗顯示「暫不可用」（JS 處理）
+    date_status = '📅 資料日期暫不可用 · 部署資訊暫不可用'
+    foot_status = ('🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · '
+                   '資料日期暫不可用 · 價錢為快照僅供參考')
     new_hint = new_models_hint()
 
     # 套用雙源確認規格 + 填核心型號 Price 產品 ID（做價格連結）
@@ -781,7 +807,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
     <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
-    <div class="date">__DATE_STATUS__</div>
+    <div class="date" id="deployInfo">__DATE_STATUS__</div>
   </div>
 </header>
 
@@ -874,7 +900,7 @@ __CONTENT__
 </main>
 
 <footer>
-  <b>香港空調對比報告 · v__VERSION__</b><br>
+  <b>香港空調對比報告 · <span id="verInfo">v__VERSION__</span></b><br>
   能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號
 
   <div class="blk">
@@ -898,7 +924,7 @@ __CONTENT__
 
   <span class="ai">🤖 Powered by DeepSeek AI</span><br>
   <span class="line">──────</span><br>
-  __FOOT_STATUS__<br>
+  <span id="footStatus">__FOOT_STATUS__</span><br>
   本報告僅供選購參考，不構成購買建議 · 價格及供應隨時變動，請以商戶實時報價為準
 </footer>
 
@@ -1266,6 +1292,38 @@ window.addEventListener('scroll',()=>{
   const b=document.getElementById('backTop');
   if(b) b.classList.toggle('show', window.scrollY>300);
 });
+
+// ===== 部署資訊（治理文檔 §7.2.7：只讀取已部署 metadata.json） =====
+// Last Deploy：metadata.json.deployTime（UTC）→ HKT 顯示
+// Last Update：metadata.json.datasetDate；載入失敗顯示「暫不可用」，唔回退硬編舊值
+(function loadDeployInfo(){
+  const el = document.getElementById('deployInfo');
+  const foot = document.getElementById('footStatus');
+  const ver = document.getElementById('verInfo');
+  fetch('metadata.json', {cache:'no-store'})
+    .then(r => { if(!r.ok) throw new Error('http '+r.status); return r.json(); })
+    .then(m => {
+      if (ver && m.version) ver.textContent = 'v' + m.version;
+      const ds = m.datasetDate;
+      const dt = m.deployTime;
+      let line = (ds ? ('📅 資料日期 ' + ds) : '📅 資料日期暫不可用');
+      if (m.version) line += ' · v' + m.version;
+      if (dt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(dt)) {
+        const hkt = new Date(new Date(dt).getTime() + 8*3600*1000);
+        const p = hkt.toISOString().slice(0,16).replace('T',' ');
+        line += ' · ✅ 最後部署 ' + p + ' HKT';
+      } else {
+        line += ' · 🔄 每日偵測新機 · 有機先更新';
+      }
+      if (el) el.textContent = line;
+      if (foot) foot.textContent = '🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · '
+        + (ds ? ('資料日期 ' + ds) : '資料日期暫不可用') + ' · 價錢為快照僅供參考';
+    })
+    .catch(() => {
+      if (el) el.textContent = '📅 資料日期暫不可用 · 部署資訊暫不可用';
+      if (ver) ver.textContent = 'v?';
+    });
+})();
 </script>
 </body>
 </html>
