@@ -179,6 +179,59 @@ flowchart LR
 
 人類決策項與因技術限制導致的方案轉向，見 `docs/DECISIONS.md`（含背景、選項、決策與原因）。
 
+### 治理範疇一覽（完整版見治理文檔）
+
+| 範疇 | 治理文檔章節 | 現況 |
+| --- | --- | --- |
+| AI Governance | §0 執行契約 · §3 執行流程 · §14 交付報告 | ✅ 已落地 |
+| Architecture Governance | §1 單一事實源 · §16 落地結構 | ✅ 已落地 |
+| Feature Governance | §5 功能註冊表（15 項 required） | ✅ 已落地 |
+| DevOps Governance | §11 部署後驗證 · §17 核對表 | ✅ 已落地 |
+| CI/CD Governance | §9 門禁 GATE-01~09 | ✅ GATE-01/03/05/06 已上 CI |
+| Version Governance | §8.1 SemVer + `models_data.VERSION` 單一來源 | ✅ 已落地 |
+| Release Governance | §8.3 發布資產 · §17 | ✅ 已落地 |
+| Rollback Governance | §7.3 回滾元數據 · §11.3 四級回滾 · §11.4 七步流程 | ✅ 已落地 |
+| Monitoring Governance | §11.2 最低監控 | ✅ 規範就緒 |
+| AI Agent Governance | §0.3 任務模式 · §4 角色/風險/批准 · §4.4 權限模型 | ✅ 已落地 |
+
+### DevOps 最終目標
+
+| 目標 | 狀態 | 機制 |
+| --- | --- | --- |
+| 每次部署自動產生版本資訊 | ✅ | GATE-06 `metadata.json.version` |
+| 每次部署自動產生最後部署時間 | ✅ | `metadata.json.deployTime`（HKT 顯示） |
+| EMSD 更新自動檢測 | ✅ | 每日 00:30 HKT cron + 新機偵測 |
+| Feature 不得被 AI 誤刪 | ✅ | 功能註冊表 + GATE-03 feature-check |
+| 所有重要功能有 Smoke Test | ✅ | GATE-05 瀏覽器核心路徑 5 項 |
+| 所有變更有 Changelog | ✅ | `CHANGELOG.md` + 各文檔更新日誌 |
+| 支援多人協作 | ⚠️ | git + concurrency group；PR 審批流程待完善 |
+| 支援多 AI 協作 | ✅ | 治理文檔面向人類 + AI + CI 三類執行者 |
+| 支援未來 v2.0 平台化 | ⚠️ | §16 目標結構已定義；未啟動 |
+
+### 回滾與版本策略（摘要）
+
+- **版本**：SemVer；版本號唯一手動來源 `models_data.py` 的 `VERSION`；部署事實一律由流水線 `metadata.json` 提供
+- **回滾**：四級（L1 代碼修復 → L2 應用回滾 → L3 數據快照 → L4 全站）；目標必須由 tag/commit/發布摘要/快照 ID 唯一確定；每次成功提交 = 可回溯快照
+
+### 治理架構圖（完整四圖見治理文檔 §1.1.1/§3.5/§4.4/§9.1.1）
+
+```mermaid
+flowchart TB
+  GOV["治理文檔（唯一治理源）"]
+  subgraph CI["受信任流水線"]
+    G01["GATE-01 治理區塊"] --> G03["GATE-03 功能契約"]
+    G03 --> G05["GATE-05 測試/Smoke"]
+    G05 --> G06["GATE-06 Metadata"]
+    G06 --> DEP["部署 + 線上驗證"]
+  end
+  HUM["人類維護者（R2-R3 批准）"] --> AI["AI Agent（分析/修改/測試/交付報告）"]
+  GOV --> AI
+  GOV --> CI
+  AI -->|代碼 + 證據| CI
+  DEP --> META["metadata.json（版本/部署時間/資料日期）"]
+  META --> WEB["線上站點 runtime fetch 顯示"]
+```
+
 ## 🔧 自行重建
 
 ```bash

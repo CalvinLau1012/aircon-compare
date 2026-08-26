@@ -105,6 +105,38 @@ AI 必须遵守：
 
 结构化清单、枚举与字段约束只以内嵌规范机器块为准；权限、流程与行为边界以规范正文为准。如果二者出现冲突，应视为文档缺陷并停止相关高风险动作，不得由 AI 选择对自己更方便的一项。
 
+### 1.1.1 整体治理架构图
+
+```mermaid
+flowchart TB
+  GOV["本治理文档<br/>（唯一治理源）"]
+  subgraph HUM["人类维护者"]
+    DEC["决策 / 批准<br/>（R2-R3 高风险变更）"]
+  end
+  subgraph AI["AI Agent"]
+    EXEC["分析 / 修改 / 测试<br/>（任务模式 ANALYZE→CHANGE）"]
+    REP["交付报告<br/>（改动/验证/风险/回滚）"]
+  end
+  subgraph CI["CI/CD 受信任流水线"]
+    G01["GATE-01 治理区块"] --> G03["GATE-03 功能契约"]
+    G03 --> G05["GATE-05 测试/Smoke"]
+    G05 --> G06["GATE-06 Metadata"]
+    G06 --> DEP["部署 + 线上验证"]
+  end
+  subgraph FACTS["机器可读事实"]
+    REG["功能注册表（15 项 required）"]
+    META["metadata.json Schema"]
+    CRIT["成功标准 Schema"]
+  end
+  GOV --> FACTS
+  GOV --> AI
+  GOV --> CI
+  HUM -->|批准 R2-R3| AI
+  AI -->|代码 + 测试证据| CI
+  DEP -->|deployTime/version| META
+  META -->|页面 runtime fetch| WEB["index.html 在线站点"]
+```
+
 ### 1.2 机器区块规则
 
 规范性机器区块由唯一的 HTML 边界标记包围。提取器必须：
@@ -328,6 +360,26 @@ AI 每次接手任务必须按顺序完成：
   → 仅在明确授权时发布 / 部署
 ```
 
+### 3.5 AI Governance 流程图
+
+```mermaid
+flowchart LR
+  S["任务输入"] --> M{"任务模式判定"}
+  M -->|ANALYZE| R0["只读检查 + 报告<br/>不修改"]
+  M -->|DIAGNOSE| R1["只读 + 复现诊断"]
+  M -->|CHANGE| C1["识别受影响功能 ID"]
+  C1 --> C2{"风险级别？"}
+  C2 -->|R0-R1| V["本地测试验证"]
+  C2 -->|R2-R3| A{"人类批准？"}
+  A -->|否| STOP["停止并请求决定"]
+  A -->|是| V
+  V --> G["运行门禁（GATE-01/03/05/06）"]
+  G -->|失败| FIX["修复或回退"]
+  G -->|通过| REP["交付报告：改动/验证/未执行/影响/风险/回滚"]
+  FIX --> G
+  REP --> END["仅在 RELEASE 明确授权时部署"]
+```
+
 ---
 
 ## 4. 角色、权限与高风险边界
@@ -366,6 +418,32 @@ AI 每次接手任务必须按顺序完成：
 - 修改本文件硬性规则或建立例外。
 
 AI 不得把“用户要求修 Bug”解释为上述批准。
+
+### 4.4 AI Agent 权限模型
+
+```mermaid
+flowchart TB
+  subgraph ALLOW["AI Agent 可直接执行"]
+    A1["ANALYZE：只读分析/报告"]
+    A2["DIAGNOSE：复现/诊断"]
+    A3["CHANGE（R0-R1）：测试补充/行为不变重构"]
+  end
+  subgraph APPROVE["需人类明确批准"]
+    B1["功能降级/移除（R3）"]
+    B2["破坏性 Schema / 数据来源变更"]
+    B3["软化或跳过阻断门禁"]
+    B4["生产操作/密钥/部署/回滚"]
+  end
+  subgraph NEVER["绝对禁止"]
+    C1["伪造 metadata / 测试证据"]
+    C2["用历史声明当运行证据"]
+    C3["手改部署元数据模拟 CI"]
+    C4["越过指令优先级"]
+  end
+  ALLOW -->|R2-R3| APPROVE
+  APPROVE -->|批准后| EX["按门禁执行并交付报告"]
+  EX --> NEVER["全程受禁止清单约束"]
+```
 
 ---
 
@@ -1051,6 +1129,23 @@ Hash 只能证明字节一致，不能单独证明来源真实。
 | GATE-09 | Release Archive | 资产、Hash、报告、tag 与 Changelog 可追溯 | 不得标记发布完成 |
 
 不存在“关键 Metadata 失败但仅警告”的合规路径。
+
+### 9.1.1 DevOps Governance 流水线图
+
+```mermaid
+flowchart LR
+  SRC["代码 + 数据快照"] --> G1["GATE-01 治理静态"]
+  G1 --> G2["GATE-02 构建（Web+PDF）"]
+  G2 --> G3["GATE-03 功能契约"]
+  G3 --> G4["GATE-04 数据校验"]
+  G4 --> G5["GATE-05 测试/Smoke"]
+  G5 --> G6["GATE-06 Metadata 生成+校验"]
+  G6 --> G7["GATE-07 部署不可变包"]
+  G7 --> G8["GATE-08 线上验证"]
+  G8 --> G9["GATE-09 Release 归档"]
+  G9 --> OK["发布完成"]
+  G1 & G2 & G3 & G4 & G5 & G6 & G7 & G8 -->|任一失败| BLK["Block 阻断：按批准策略回滚或事件流程"]
+```
 
 ### 9.2 Feature Check
 
