@@ -50,6 +50,9 @@ python fetch_biggo.py --blacklist
 | `model_blacklist.json` | 停售模型清單 |
 | `biggo_prices.json` | BigGo 價錢快照 |
 | `prices.json` | Price 舊快照後備 |
+| `docs/AIRCON_COMPARE_GOVERNANCE.md` | 唯一治理源（內嵌功能註冊表/metadata Schema/成功標準） |
+| `docs/DECISIONS.md` | 決策記錄（人類決策與技術轉向，按模板追加） |
+| `CHANGELOG.md` | 版本變更記錄（Keep a Changelog 風格；發布時歸檔 Unreleased） |
 | `空調對比報告.md` / `README.md` / `需求摘要.md` | 報告與說明文件（改動要同步更新日誌） |
 
 ## 必須遵守
