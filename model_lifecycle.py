@@ -60,6 +60,22 @@ def blacklist_model(model, reason, status='auto_discontinued', source='biggo', k
     return models[str(model)]
 
 
+def revive_model(model):
+    """黑名單復活：官方 API 正常查到市售報價 → 移除黑名單 + 清除連續失敗記錄"""
+    model = str(model)
+    models = load_blacklist()
+    if model not in models:
+        return False
+    models.pop(model, None)
+    save_blacklist(models)
+    tracking = load_json(TRACKING_PATH, {})
+    if isinstance(tracking, dict) and model in tracking:
+        tracking.pop(model, None)
+        save_json(TRACKING_PATH, tracking, indent=2)
+    print(f'  ♻️ 復活：{model}（黑名單 → 有市售報價）')
+    return True
+
+
 def filter_active(models):
     black = load_blacklist()
     skipped = [m for m in models if str(m) in black]

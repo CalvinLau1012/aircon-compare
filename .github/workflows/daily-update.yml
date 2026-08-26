@@ -5,7 +5,12 @@ on:
     # 香港時間每日 00:30（UTC 16:30）輕量偵測；有新機先觸發分批更新
     - cron: '30 16 * * *'
   # 亦可以喺 GitHub Actions 頁面手動觸發
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force_price_batch:
+        description: '強行一次過跑晒全部型號嘅 BigGo 價錢批次 + 淘汰確認（一次性測試）'
+        required: false
+        default: 'false'
 
 # 安全：只授予寫內容嘅最低權限，唔需要任何密鑰/Token
 permissions:
@@ -86,7 +91,10 @@ jobs:
       # 2026-08-26：改用官方 API api.biggo.com（同被限流嘅網頁版 biggo.hk 唔同 host）
       - name: 價錢快照分批更新（BigGo API 每月一次·分七日；先 smoke 測試）
         run: |
-          if python fetch_biggo.py --smoke; then
+          if [ "${{ github.event.inputs.force_price_batch }}" = "true" ]; then
+            echo "🚀 強行全量批次（一次性測試）：全部型號一次過 + 淘汰確認"
+            python fetch_biggo.py --force-batch || true
+          elif python fetch_biggo.py --smoke; then
             if python -c "import sys; from batch_utils import price_batch_active; sys.exit(0 if price_batch_active() else 1)"; then
               python fetch_biggo.py --price-batch || true
             else

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-08-18",
+  "updated": "2026-08-26",
   "models": {
     "RC-X7U": {
       "status": "auto_discontinued",
@@ -6473,16 +6473,6 @@
       "note": "自動淘汰：保留舊快照，唔再做更新"
     },
     "42HAC18VF/36HAC18VC": {
-      "status": "auto_discontinued",
-      "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
-      "source": "biggo",
-      "kept_price_source": "biggo_prices.json 如有舊快照會保留",
-      "first_missed": "2026-08-18",
-      "last_checked": "2026-08-18",
-      "blacklisted_at": "2026-08-18",
-      "note": "自動淘汰：保留舊快照，唔再做更新"
-    },
-    "42HAC12VF/36HAC12VC": {
       "status": "auto_discontinued",
       "reason": "連續 1 個更新週期 BigGo 商品搜索都無市售報價",
       "source": "biggo",
