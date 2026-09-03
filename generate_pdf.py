@@ -9,7 +9,11 @@
 - 技術：reportlab（純 Python）+ 內置 STSong-Light CID 中文字體（唔使外置字型檔）
 
 用法：
-  python generate_pdf.py
+  python generate_pdf.py                 # 輸出 repo 根目錄 空調對比報告.pdf
+  build_pdf(output_path)                 # 測試／建置可指定輸出路徑（如 tmp_path）
+
+可重現性：同輸入連續兩次 build 必須 byte-for-byte 相同（GATE-02／SC-014）；
+reportlab 寫入嘅 CreationDate/ModDate 會被固定化。
 """
 import json
 import os
@@ -80,7 +84,21 @@ def load_metadata():
         return {}
 
 
-def build_pdf():
+_FIXED_PDF_DATE = "D:20200101000000+00'00'"
+
+
+def _normalize_pdf_bytes(data):
+    """固定 reportlab 寫入嘅 CreationDate/ModDate/ID，令同輸入兩次 build byte-for-byte 相同"""
+    fixed = _FIXED_PDF_DATE.encode('ascii')
+    data = re.sub(rb'/CreationDate \\(D:[^)]*\\)', b'/CreationDate (' + fixed + b')', data)
+    data = re.sub(rb'/ModDate \\(D:[^)]*\\)', b'/ModDate (' + fixed + b')', data)
+    data = re.sub(rb'/ID \s*\[<[0-9a-f]+><[0-9a-f]+>\]',
+                  b'/ID [<00000000000000000000000000000000><00000000000000000000000000000000>]',
+                  data)
+    return data
+
+
+def build_pdf(output_path=None):
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
     from reportlab.pdfbase import pdfmetrics
@@ -113,7 +131,8 @@ def build_pdf():
     meta = load_metadata()
     line1, line2 = format_status(meta, VERSION)
 
-    doc = SimpleDocTemplate(OUT_PATH, pagesize=A4,
+    out_path = output_path or OUT_PATH
+    doc = SimpleDocTemplate(out_path, pagesize=A4,
                             leftMargin=15 * mm, rightMargin=15 * mm,
                             topMargin=15 * mm, bottomMargin=15 * mm,
                             title='香港空調對比報告')
@@ -168,7 +187,14 @@ def build_pdf():
     story.append(Paragraph('本報告僅供選購參考，不構成購買建議；價格及供應隨時變動，'
                            '請以商戶實時報價為準。', st_q))
     doc.build(story)
-    print(f'✅ PDF 已生成：{OUT_PATH}（{os.path.getsize(OUT_PATH) / 1024:.0f} KB）· v{VERSION}')
+    with open(out_path, 'rb') as f:
+        raw = f.read()
+    normalized = _normalize_pdf_bytes(raw)
+    if normalized != raw:
+        with open(out_path, 'wb') as f:
+            f.write(normalized)
+    print(f'✅ PDF 已生成：{out_path}（{os.path.getsize(out_path) / 1024:.0f} KB）· v{VERSION}')
+    return out_path
 
 
 if __name__ == '__main__':
