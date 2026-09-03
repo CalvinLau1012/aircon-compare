@@ -295,25 +295,45 @@ def load_gemini():
 
 
 def load_blacklist():
-    """載入淘汰黑名單（model_blacklist.json：{version, updated, models: {型號: {...}}}）"""
+    """載入淘汰黑名單 → (canonical_keys, legacy_norm_keys)
+
+    - canonical_keys：`BRAND|NORM` 格式（遷移後嘅正式 key）
+    - legacy_norm_keys：冇 `|` 嘅舊格式 key 嘅 norm（過渡兼容，遷移報告見 docs/）
+    """
     p = os.path.join(BASE, 'model_blacklist.json')
     if not os.path.exists(p):
-        return set()
+        return set(), set()
     with open(p, encoding='utf-8') as f:
         data = json.load(f)
     if isinstance(data, dict):
         data = data.get('models', data)
     if isinstance(data, dict):
-        return set(data.keys())
-    if isinstance(data, list):
-        return set(str(x) for x in data)
-    return set()
+        keys = list(data.keys())
+    elif isinstance(data, list):
+        keys = [str(x) for x in data]
+    else:
+        keys = []
+    canonical = set()
+    legacy = set()
+    for k in keys:
+        k = str(k)
+        if '|' in k:
+            canonical.add(k)
+        else:
+            legacy.add(norm_model(k))
+    return canonical, legacy
 
 
 def assign_status(item, blacklist):
-    """依治理規則標註狀態：停售（黑名單）→ 官方價 → 有價 → 無價"""
+    """依治理規則標註狀態：停售（黑名單，canonical 比對）→ 官方價 → 有價 → 無價
+
+    blacklist 係 load_blacklist() 嘅 (canonical, legacy_norm) tuple。
+    """
+    from crawl_utils import canonical_model_key
     mk = norm_model(item.get('model') or '')
-    if mk and mk in blacklist:
+    canonical, legacy = blacklist
+    key = canonical_model_key(item.get('brand'), item.get('model')) if mk else ''
+    if mk and (key in canonical or mk in legacy):
         item['status'] = '停售'
     elif item.get('price_official'):
         item['status'] = '官方價'
