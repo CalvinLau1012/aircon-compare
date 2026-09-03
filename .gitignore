@@ -32,3 +32,6 @@ desktop.ini
 # API æ†‘è­‰ï¼ˆPricesAPI key åªæ”¾ç’°å¢ƒè®Šæ•¸ / GitHub Secretsï¼‰
 .env
 .env.*
+
+# SSH ¶EÂ_¸}¥»¡]¥»¾÷¥Î¡A¤Å¤W½u¡^
+ssh*.ps1
