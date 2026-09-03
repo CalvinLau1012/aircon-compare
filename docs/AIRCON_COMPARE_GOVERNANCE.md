@@ -158,7 +158,7 @@ AI 不得编辑生成投影来规避修改本文件和相应评审。
   "normative": true,
   "document": {
     "name": "AIRCON_COMPARE_GOVERNANCE.md",
-    "version": "3.1.0",
+    "version": "3.1.1",
     "versionScope": "governance-document",
     "status": "living"
   },
@@ -1025,6 +1025,18 @@ Hash 只能证明字节一致，不能单独证明来源真实。
     "recordCount": {
       "type": "integer",
       "minimum": 1
+    },
+    "rawRecordCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "registrationCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "modelCount": {
+      "type": "integer",
+      "minimum": 0
     }
   },
   "allOf": [
@@ -1049,6 +1061,10 @@ Hash 只能证明字节一致，不能单独证明来源真实。
 }
 ```
 <!-- AIRCON:NORMATIVE:METADATA_SCHEMA_V1:END -->
+
+> 2026-09-03（D12）：新增 optional `rawRecordCount`／`registrationCount`／`modelCount`
+> （integer、minimum 0），向後兼容；`recordCount` 繼續表示唯一型號／產品計數。
+> CI 未傳入新欄位時可以省略。
 
 ### 7.2 生成、发布与读取
 
@@ -1782,6 +1798,10 @@ aircon-compare/
 
 - 新增 4 个 Mermaid 图：整体治理架构图（§1.1.1）、AI Governance 流程图（§3.5）、AI Agent 权限模型（§4.4）、DevOps Governance 流水线图（§9.1.1）；
 - 3 个历史 ASCII 图保留不变（§3.4 任务授权路径、§6.1 EMSD 数据链路、§16.1 目标结构）。
+
+#### v3.1.1 — 2026-09-03
+
+- Metadata Schema 新增 optional `rawRecordCount`／`registrationCount`／`modelCount`（D12：EMSD 重复登记保留全部 registration + canonical product view）；向后兼容，schemaVersion 维持 1.0.0。
 
 ---
 

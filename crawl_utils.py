@@ -220,18 +220,32 @@ def no_verify_ssl_context():
     return ctx
 
 
-def load_models(csv_path=None):
-    """載入 EMSD CSV 型號清單（去重，按 norm_model 比對）"""
+def load_registrations(csv_path=None):
+    """載入 EMSD CSV 全部登記記錄（唔去重）→ [(brand, model), ...]（D12）"""
     path = csv_path or EMSD_CSV
     with open(path, encoding='utf-8-sig') as f:
         rows = list(csv.reader(f))[1:]
-    rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
+    out = []
+    for r in rows:
+        if len(r) < 15 or r[1].strip() == '型號':
+            continue
+        out.append((r[0].strip(), r[1].strip()))
+    return out
+
+
+def load_models(csv_path=None):
+    """載入 EMSD CSV 型號清單（canonical product view：按 canonical key 去重，D11/D12）"""
+    path = csv_path or EMSD_CSV
+    with open(path, encoding='utf-8-sig') as f:
+        rows = list(csv.reader(f))[1:]
     models = []
     seen = set()
     for r in rows:
+        if len(r) < 15 or r[1].strip() == '型號':
+            continue
         m = r[1].strip()
-        k = norm_model(m)
-        if not k or k in seen:
+        k = canonical_model_key(r[0], m)
+        if not norm_model(m) or k in seen:
             continue
         seen.add(k)
         models.append(m)

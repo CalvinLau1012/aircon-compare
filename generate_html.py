@@ -17,6 +17,7 @@ import re
 BASE = os.path.dirname(os.path.abspath(__file__))
 
 from models_data import MODELS, VERSION
+from crawl_utils import canonical_model_key, load_registrations
 
 # ============================================================
 # 型號資料庫（整合報告 + EMSD 官方）
@@ -460,9 +461,10 @@ def load_emsd_models():
     for r in rows:
         brand, model = normalize_brand(r[0]), r[1].strip()
         mk = norm_model(model)
-        if not mk or mk in core_keys or mk in seen:
+        seen_key = canonical_model_key(brand, model)
+        if not mk or mk in core_keys or seen_key in seen:
             continue
-        seen.add(mk)
+        seen.add(seen_key)
         try:
             kw = float(r[6])
         except (ValueError, TypeError):
@@ -539,6 +541,9 @@ def build_html():
     models_json = json.dumps(MODELS, ensure_ascii=False)
     emsd_json = json.dumps(emsd_models, ensure_ascii=False, separators=(',', ':'))
     fields_json = json.dumps(COMPARE_FIELDS, ensure_ascii=False)
+    # 動態計數（治理 F-11：唔好手填容易變嘅數字，由實際資料計出）
+    total_models = len(MODELS) + len(emsd_models)
+    emsd_registrations = len(load_registrations())
 
     # 皮膚資源（Blue Fantasy 壁紙 + whale-girl 吉祥物；檔案唔喺就留空，唔整死生成）
     import base64 as _b64
@@ -561,6 +566,8 @@ def build_html():
                         .replace('__FOOT_STATUS__', foot_status) \
                         .replace('__NEW_HINT__', new_hint) \
                         .replace('__VERSION__', VERSION) \
+                        .replace('__TOTAL_MODELS__', f'{total_models:,}') \
+                        .replace('__EMSD_REGISTRATIONS__', f'{emsd_registrations:,}') \
                         .replace('__MASCOT_IMG__', mascot_img) \
                         .replace('__BLUE_FANTASY_ART__', blue_fantasy_art)
     out = os.path.join(BASE, '空調對比報告.html')
@@ -575,10 +582,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>香港空調對比報告</title>
-<meta property="og:title" content="香港空調對比報告 · 1,854 型號 · EMSD + 官網核實">
-<meta property="og:description" content="香港市場 1,854 個空調型號全面對比：窗口式 / 分體式 / 流動式，EMSD 官方能源數據 + 8 品牌官網 220 型號核實，18 項屬性互動比較器。">
+<meta property="og:title" content="香港空調對比報告 · __TOTAL_MODELS__ 型號 · EMSD + 官網核實">
+<meta property="og:description" content="香港市場 __TOTAL_MODELS__ 個空調型號全面對比：窗口式 / 分體式 / 流動式，EMSD 官方能源數據 + 8 品牌官網 220 型號核實，18 項屬性互動比較器。">
 <meta property="og:type" content="website">
-<meta name="description" content="香港空調對比報告：1,854 型號 · EMSD 官方能源標籤全量核實 · 8 品牌官網核實 · 互動比較器">
+<meta name="description" content="香港空調對比報告：__TOTAL_MODELS__ 型號 · EMSD 官方能源標籤全量核實 · 8 品牌官網核實 · 互動比較器">
 <link rel="icon" href="__MASCOT_IMG__">
 <style>
 :root{
@@ -860,7 +867,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（__EMSD_REGISTRATIONS__ 筆登記 · __TOTAL_MODELS__ 型號）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
     <div class="date" id="deployInfo">__DATE_STATUS__</div>
   </div>
 </header>
