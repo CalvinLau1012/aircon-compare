@@ -1,5470 +1,5470 @@
 {
-  "CHK021FBVX": {
+  "CARRIER|CHK021FBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK018FBVX": {
+  "CARRIER|CHK018FBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK012FBVX": {
+  "CARRIER|CHK012FBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK009FBVX": {
+  "CARRIER|CHK009FBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK007FBVX": {
+  "CARRIER|CHK007FBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-SUL90B": {
+  "RASONIC|RCSUL90B": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-SUL70B": {
+  "RASONIC|RCSUL70B": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WFQ12VW": {
+  "CARRIER|WFQ12VW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WFQ09VW": {
+  "CARRIER|WFQ09VW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WFQ07VW": {
+  "CARRIER|WFQ07VW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KHWIC24A1": {
+  "晶弘|KHWIC24A1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KHWIC12A1": {
+  "晶弘|KHWIC12A1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KHWIC18A1": {
+  "晶弘|KHWIC18A1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KHWIC09A1": {
+  "晶弘|KHWIC09A1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-H24HR": {
+  "RASONIC|RCH24HR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-H18HR": {
+  "RASONIC|RCH18HR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-H12HR": {
+  "RASONIC|RCH12HR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-H9HR": {
+  "RASONIC|RCH9HR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KHWIC07A1": {
+  "晶弘|KHWIC07A1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WWN18CRV2": {
+  "WHITEWESTINGHOUSE|WWN18CRV2": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WWN12CRV2": {
+  "WHITEWESTINGHOUSE|WWN12CRV2": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WWN07CRV2": {
+  "WHITEWESTINGHOUSE|WWN07CRV2": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WWN09CRV2": {
+  "WHITEWESTINGHOUSE|WWN09CRV2": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KHWRCFC24": {
+  "晶弘|KHWRCFC24": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KHWRCFC18": {
+  "晶弘|KHWRCFC18": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KHWRCFC12": {
+  "晶弘|KHWRCFC12": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KHWRCFC09": {
+  "晶弘|KHWRCFC09": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W189R-PAC": {
+  "快意寶|W189RPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KHWRCFC07": {
+  "晶弘|KHWRCFC07": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W129R-PAC": {
+  "快意寶|W129RPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W099R-PAC": {
+  "快意寶|W099RPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W079R-PAC": {
+  "快意寶|W079RPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W182-PAC": {
+  "快意寶|W182PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W122A-PAC": {
+  "快意寶|W122APAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W092-PAC": {
+  "快意寶|W092PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W072-PAC": {
+  "快意寶|W072PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ZWACR12N": {
+  "金章牌|ZWACR12N": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W1291-PACV": {
+  "快意寶|W1291PACV": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W0791-PACV": {
+  "快意寶|W0791PACV": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CWV-09CRFN9-AD5": {
+  "COMFEE|CWV09CRFN9AD5": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W0991-PACV": {
+  "快意寶|W0991PACV": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ZWACR18N": {
+  "金章牌|ZWACR18N": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CWV-07CRFN9-AD5": {
+  "COMFEE|CWV07CRFN9AD5": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S18PA": {
+  "RASONIC|RCS18PA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S24PA": {
+  "RASONIC|RCS24PA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S12PA": {
+  "RASONIC|RCS12PA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S9PA": {
+  "RASONIC|RCS9PA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S7PA": {
+  "RASONIC|RCS7PA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CWV-18CRFN9-AD5": {
+  "COMFEE|CWV18CRFN9AD5": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CWV-12CRFN9-AD5": {
+  "COMFEE|CWV12CRFN9AD5": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FR-KV18": {
+  "冰雪牌|FRKV18": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FR-KV9": {
+  "冰雪牌|FRKV9": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FR-KV12": {
+  "冰雪牌|FRKV12": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W1891-PACV": {
+  "快意寶|W1891PACV": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FR-KV7": {
+  "冰雪牌|FRKV7": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ZWACR09N": {
+  "金章牌|ZWACR09N": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ZWACR07N": {
+  "金章牌|ZWACR07N": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TAC-16CWI/UJE": {
+  "TCL|TAC16CWIUJE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TAC-22CWI/UJE": {
+  "TCL|TAC22CWIUJE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TAC-12CWI/UJE": {
+  "TCL|TAC12CWIUJE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MW-12CRF8EP": {
+  "MIDEA|MW12CRF8EP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MW-09CRF8EP": {
+  "MIDEA|MW09CRF8EP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MW-07CRF8EP": {
+  "MIDEA|MW07CRF8EP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TAC-07CWI/UJE": {
+  "TCL|TAC07CWIUJE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TAC-09CWI/UJE": {
+  "TCL|TAC09CWIUJE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GA09VXP": {
+  "海格|GA09VXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PVZ18R": {
+  "飛歌|PVZ18R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PVZ12R": {
+  "飛歌|PVZ12R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PVZ09R": {
+  "飛歌|PVZ09R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PVZ07R": {
+  "飛歌|PVZ07R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "HIP09HK2": {
+  "白河馬|HIP09HK2": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "HIP07HK2": {
+  "白河馬|HIP07HK2": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC09HVX": {
+  "MECAN|MC09HVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC12HVX": {
+  "MECAN|MC12HVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC07HVX": {
+  "MECAN|MC07HVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GA18VXP": {
+  "海格|GA18VXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GA12VXP": {
+  "海格|GA12VXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GA07VXP": {
+  "海格|GA07VXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S1212V": {
+  "卓爾|WACS1212V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S1812V": {
+  "卓爾|WACS1812V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S912V": {
+  "卓爾|WACS912V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GA21VXP": {
+  "海格|GA21VXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S712V": {
+  "卓爾|WACS712V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S709R": {
+  "卓爾|WACS709R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09SBVXPN": {
+  "CARRIER|CHK09SBVXPN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S1209R": {
+  "卓爾|WACS1209R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S702": {
+  "卓爾|WACS702": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AF-X24CCA": {
+  "SHARP|AFX24CCA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S1809R": {
+  "卓爾|WACS1809R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S909R": {
+  "卓爾|WACS909R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W3NQ24RSAD0": {
+  "LG|W3NQ24RSAD0": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MW-18CRF8EP": {
+  "MIDEA|MW18CRF8EP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GWA24MZ": {
+  "GREE|GWA24MZ": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S1801AC": {
+  "RASONIC|RCS1801AC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S901AC": {
+  "RASONIC|RCS901AC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S701AC": {
+  "RASONIC|RCS701AC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S1201AC": {
+  "RASONIC|RCS1201AC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-V18AC": {
+  "RASONIC|RCV18AC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-V9AC": {
+  "RASONIC|RCV9AC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC21VX": {
+  "MECAN|MC21VX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12000TP": {
+  "CARRIER|CHK12000TP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12XP": {
+  "CARRIER|CHK12XP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-21BVXP-1": {
+  "CANOPUS|TA21BVXP1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK7000TP": {
+  "CARRIER|CHK7000TP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK21SBVXPN": {
+  "CARRIER|CHK21SBVXPN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK21FBVXPN": {
+  "CARRIER|CHK21FBVXPN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CKM09VSP": {
+  "CARRIER|CKM09VSP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK9000TP": {
+  "CARRIER|CHK9000TP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09XP": {
+  "CARRIER|CHK09XP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09FBVXP": {
+  "CARRIER|CHK09FBVXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CKM07VSP": {
+  "CARRIER|CKM07VSP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09EAVXP": {
+  "CARRIER開利|CHK09EAVXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK07XP": {
+  "CARRIER|CHK07XP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK07FBVXP": {
+  "CARRIER|CHK07FBVXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK07SBVXP": {
+  "CARRIER|CHK07SBVXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK07EAVXP": {
+  "CARRIER|CHK07EAVXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CKM21VP": {
+  "CARRIER|CKM21VP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CKM18VSP": {
+  "CARRIER|CKM18VSP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK18FBVXP": {
+  "CARRIER|CHK18FBVXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK21000TP": {
+  "CARRIER|CHK21000TP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK18SBVXP": {
+  "CARRIER|CHK18SBVXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK18000TP": {
+  "CARRIER|CHK18000TP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AWV18301R": {
+  "WHIRLPOOL|AWV18301R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AWV12301R": {
+  "WHIRLPOOL|AWV12301R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09SBVXP": {
+  "CARRIER|CHK09SBVXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09VFP": {
+  "CARRIER|CHK09VFP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09EX": {
+  "CARRIER|CHK09EX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-12G3CVG-HK1": {
+  "TOSHIBA|RAC12G3CVGHK1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FWAD13BIR24": {
+  "FORTRESS|FWAD13BIR24": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AF-X18BCA": {
+  "SHARP|AFX18BCA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AF-X12BCA": {
+  "SHARP|AFX12BCA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AF-X9BCA": {
+  "SHARP|AFX9BCA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AF-X7BCA": {
+  "SHARP|AFX7BCA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK1200T": {
+  "CARRIER|CHK1200T": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK1800T": {
+  "CARRIER|CHK1800T": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK900T": {
+  "CARRIER|CHK900T": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK700T": {
+  "CARRIER|CHK700T": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-18G3RGR-HK": {
+  "TOSHIBA|RAC18G3RGRHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-12G3RGR-HK": {
+  "TOSHIBA|RAC12G3RGRHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-18G3G-HK": {
+  "TOSHIBA|RAC18G3GHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-12G3G-HK": {
+  "TOSHIBA|RAC12G3GHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-09G3RGR-HK": {
+  "TOSHIBA|RAC09G3RGRHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-09G3G-HK": {
+  "TOSHIBA|RAC09G3GHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-07G3RGR-HK": {
+  "TOSHIBA|RAC07G3RGRHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-07G3G-HK": {
+  "TOSHIBA|RAC07G3GHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-07G3RG-HK": {
+  "TOSHIBA|RAC07G3RGHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FWAD19IR23": {
+  "FORTRESS|FWAD19IR23": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FWAD13IR23": {
+  "FORTRESS|FWAD13IR23": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FWAD10IR23": {
+  "FORTRESS|FWAD10IR23": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12VFP": {
+  "CARRIER|CHK12VFP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12SBVXP": {
+  "CARRIER|CHK12SBVXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12EAVXP": {
+  "CARRIER開利|CHK12EAVXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GWV63EG": {
+  "GREE|GWV63EG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S24PG1": {
+  "RASONIC|RCS24PG1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK21EAVXP-1": {
+  "CARRIER|CHK21EAVXP1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK21FBVXP-1": {
+  "CARRIER|CHK21FBVXP1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12VF": {
+  "CARRIER|CHK12VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09VF": {
+  "CARRIER|CHK09VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK21SBVXP-1": {
+  "CARRIER|CHK21SBVXP1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CFW-09FF-H": {
+  "COMFEE|CFW09FFH": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CFW-12FF-H": {
+  "COMFEE|CFW12FFH": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CFW-07FF-H": {
+  "COMFEE|CFW07FFH": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09LAN": {
+  "CARRIER|CHK09LAN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK07LAN": {
+  "CARRIER|CHK07LAN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK18EAN": {
+  "CARRIER|CHK18EAN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09EAN": {
+  "CARRIER|CHK09EAN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12EAN": {
+  "CARRIER|CHK12EAN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK07EAN": {
+  "CARRIER|CHK07EAN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK18EAE": {
+  "CARRIER|CHK18EAE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12EAE": {
+  "CARRIER|CHK12EAE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK21FBVXP": {
+  "CARRIER|CHK21FBVXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK21SBVXP": {
+  "CARRIER|CHK21SBVXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK21EAVXP": {
+  "CARRIER|CHK21EAVXP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-X18R": {
+  "RASONIC|RCX18R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-X12R": {
+  "RASONIC|RCX12R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-X9R": {
+  "RASONIC|RCX9R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-X7R": {
+  "RASONIC|RCX7R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WWN09CRV": {
+  "WHITEWESTINGHOUSE|WWN09CRV": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WWN18CRV": {
+  "WHITEWESTINGHOUSE|WWN18CRV": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W24V5A": {
+  "TOSOT|W24V5A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W12V5A": {
+  "TOSOT|W12V5A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MW-22CRF8D-1": {
+  "MIDEA|MW22CRF8D1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PVR21R": {
+  "飛歌|PVR21R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PVR18R": {
+  "飛歌|PVR18R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PVR12R": {
+  "飛歌|PVR12R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PVR09R": {
+  "飛歌|PVR09R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PVR07R": {
+  "飛歌|PVR07R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "NMDWA12CRF8B": {
+  "MORITADENKO|NMDWA12CRF8B": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "NMDWA18CRF8B": {
+  "MORITADENKO|NMDWA18CRF8B": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "NMDWA09CRF8B": {
+  "MORITADENKO|NMDWA09CRF8B": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "NMDWA07CRF8B": {
+  "MORITADENKO|NMDWA07CRF8B": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S24PG": {
+  "RASONIC|RCS24PG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S18PG": {
+  "RASONIC|RCS18PG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S12PG": {
+  "RASONIC|RCS12PG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S9PG": {
+  "RASONIC|RCS9PG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S7PG": {
+  "RASONIC|RCS7PG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ZWACR2123V": {
+  "金章牌|ZWACR2123V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ZWACR1823V": {
+  "金章牌|ZWACR1823V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ZWACR1223V": {
+  "金章牌|ZWACR1223V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ZWACR0723V": {
+  "金章牌|ZWACR0723V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWV075CR1WA": {
+  "ELECTROLUX|EWV075CR1WA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWV095CR1WA": {
+  "ELECTROLUX|EWV095CR1WA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWV125CR1WA": {
+  "ELECTROLUX|EWV125CR1WA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-09G3CVG-HK": {
+  "TOSHIBA|RAC09G3CVGHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-07G3CVG-HK": {
+  "TOSHIBA|RAC07G3CVGHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-18G3CVG-HK": {
+  "TOSHIBA|RAC18G3CVGHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-12G3CVG-HK": {
+  "TOSHIBA|RAC12G3CVGHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GWV70EG": {
+  "GREE|GWV70EG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GWV53EG": {
+  "GREE|GWV53EG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GWV35EG": {
+  "GREE|GWV35EG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GWV26EG": {
+  "GREE|GWV26EG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GWV20EG": {
+  "GREE|GWV20EG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MW-12CRF8C": {
+  "MIDEA|MW12CRF8C": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MW-09CR8C": {
+  "MIDEA美的|MW09CR8C": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MW-07CR8C": {
+  "MIDEA|MW07CR8C": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MW-22CRF8D": {
+  "MIDEA|MW22CRF8D": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KA-W182M": {
+  "金田|KAW182M": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KA-W122M": {
+  "金田|KAW122M": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YC-18XA-R": {
+  "YORK|YC18XAR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YC-24XA-R": {
+  "YORK|YC24XAR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YC-12XA-R": {
+  "YORK|YC12XAR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S240U": {
+  "RASONIC|RCS240U": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YC-7XA-R": {
+  "YORK|YC7XAR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YC-9XA-R": {
+  "YORK|YC9XAR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S180U": {
+  "RASONIC|RCS180U": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S90U": {
+  "RASONIC|RCS90U": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S120U": {
+  "RASONIC|RCS120U": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S70U": {
+  "RASONIC|RCS70U": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK18SBVX": {
+  "CARRIER|CHK18SBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK21SBVX": {
+  "CARRIER|CHK21SBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12SBVX": {
+  "CARRIER|CHK12SBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09SBVX": {
+  "CARRIER|CHK09SBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK07SBVX": {
+  "CARRIER|CHK07SBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK18FBVX": {
+  "CARRIER|CHK18FBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12FBVX": {
+  "CARRIER|CHK12FBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09FBVX": {
+  "CARRIER|CHK09FBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK07FBVX": {
+  "CARRIER|CHK07FBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-21BVX": {
+  "CANOPUS|TA21BVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-12BVX": {
+  "CANOPUS|TA12BVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-09BVX": {
+  "CANOPUS|TA09BVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-21AVX": {
+  "CANOPUS|TA21AVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-07BVX": {
+  "CANOPUS|TA07BVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-21OBVX": {
+  "CANOPUS|TA21OBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-18OBVX": {
+  "CANOPUS|TA18OBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-12OBVX": {
+  "CANOPUS|TA12OBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-09OBVX": {
+  "CANOPUS|TA09OBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-07OBVX": {
+  "CANOPUS|TA07OBVX": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W3NQ08UNNP2": {
+  "LG|W3NQ08UNNP2": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MW-22CRF8C": {
+  "MIDEA|MW22CRF8C": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RKB07GPTN": {
+  "FUJI|RKB07GPTN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK18FTE": {
+  "CARRIER|CHK18FTE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK07FTE": {
+  "CARRIER|CHK07FTE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12FTE": {
+  "CARRIER|CHK12FTE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09FTE": {
+  "CARRIER|CHK09FTE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ZWACR1222": {
+  "金章牌|ZWACR1222": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ZWACR1822": {
+  "金章牌|ZWACR1822": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ZWACR0922": {
+  "金章牌|ZWACR0922": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ZWACM0922": {
+  "金章牌|ZWACM0922": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ZWACR0722": {
+  "金章牌|ZWACR0722": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ZWACM0722": {
+  "金章牌|ZWACM0722": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AC24CR": {
+  "HYUNDAI|AC24CR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AC18CR": {
+  "HYUNDAI|AC18CR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AC09CR": {
+  "HYUNDAI|AC09CR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AC12CR": {
+  "HYUNDAI|AC12CR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AC07CR": {
+  "HYUNDAI|AC07CR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AC60": {
+  "HYUNDAI|AC60": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AC50": {
+  "HYUNDAI|AC50": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AC35": {
+  "HYUNDAI|AC35": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AC20": {
+  "HYUNDAI|AC20": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AC25": {
+  "HYUNDAI|AC25": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAW-VJ18SCASK": {
+  "HITACHI|RAWVJ18SCASK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-XN1221V": {
+  "RASONIC|RCXN1221V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-XN1821E": {
+  "RASONIC|RCXN1821E": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAW-VJ24SCASK": {
+  "HITACHI|RAWVJ24SCASK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-XN921J": {
+  "RASONIC|RCXN921J": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-XN721J": {
+  "RASONIC|RCXN721J": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWF123CR6WA": {
+  "ELECTROLUX|EWF123CR6WA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWF183CR6WA": {
+  "ELECTROLUX|EWF183CR6WA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWF093CR6WA": {
+  "ELECTROLUX|EWF093CR6WA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWF073CM5WA": {
+  "ELECTROLUX|EWF073CM5WA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWF093CM5WA": {
+  "ELECTROLUX|EWF093CM5WA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWF073CR6WA": {
+  "ELECTROLUX|EWF073CR6WA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CW-XN1821EA": {
+  "PANASONIC|CWXN1821EA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CW-XN1221VA": {
+  "PANASONIC|CWXN1221VA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CW-XN921JA": {
+  "PANASONIC|CWXN921JA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CW-XN721JA": {
+  "PANASONIC|CWXN721JA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAW-VJ13SCASK": {
+  "HITACHI|RAWVJ13SCASK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAW-VJ10SCASK": {
+  "HITACHI|RAWVJ10SCASK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PWV2218R": {
+  "飛歌|PWV2218R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAW-VJ07SCASK": {
+  "HITACHI|RAWVJ07SCASK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PWV2207R": {
+  "飛歌|PWV2207R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PWV2212R": {
+  "飛歌|PWV2212R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PWV2209R": {
+  "飛歌|PWV2209R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PWV2224M": {
+  "飛歌|PWV2224M": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PVA2224R": {
+  "飛歌|PVA2224R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PVA2218R": {
+  "飛歌|PVA2218R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PVA2212R": {
+  "飛歌|PVA2212R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PVA2209R": {
+  "飛歌|PVA2209R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PVA2207R": {
+  "飛歌|PVA2207R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FWA2218R": {
+  "北極|FWA2218R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FWA2212R": {
+  "北極|FWA2212R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FWA2209R": {
+  "北極|FWA2209R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FWA2207R": {
+  "北極|FWA2207R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W187-PAC": {
+  "快意寶|W187PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W127-PAC": {
+  "快意寶|W127PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W097-PAC": {
+  "快意寶|W097PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W077-PAC": {
+  "快意寶|W077PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W128R-PAC": {
+  "快意寶|W128RPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W098R-PAC": {
+  "快意寶|W098RPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W078R-PAC": {
+  "快意寶|W078RPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S1207": {
+  "卓爾|WACS1207": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S1807": {
+  "卓爾|WACS1807": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S907": {
+  "卓爾|WACS907": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S707": {
+  "卓爾|WACS707": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S908R": {
+  "卓爾|WACS908R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S1208R": {
+  "卓爾|WACS1208R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S708R": {
+  "卓爾|WACS708R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AWA18020R": {
+  "WHIRLPOOL|AWA18020R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AWA09220R": {
+  "WHIRLPOOL|AWA09220R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AWA07520R": {
+  "WHIRLPOOL|AWA07520R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AWV18001R": {
+  "WHIRLPOOL|AWV18001R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AWV18000R": {
+  "WHIRLPOOL|AWV18000R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AWV12001R": {
+  "WHIRLPOOL|AWV12001R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AWV12000R": {
+  "WHIRLPOOL|AWV12000R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AWV09000R": {
+  "WHIRLPOOL|AWV09000R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AWV07000R": {
+  "WHIRLPOOL|AWV07000R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-X18HA": {
+  "RASONIC|RCX18HA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-X18A": {
+  "RASONIC|RCX18A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-X12A": {
+  "RASONIC|RCX12A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-X7A": {
+  "RASONIC|RCX7A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-X9A": {
+  "RASONIC|RCX9A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FR-E18A": {
+  "冰雪|FRE18A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FR-E9A": {
+  "冰雪|FRE9A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FR-E12A": {
+  "冰雪|FRE12A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FR-E7A": {
+  "冰雪|FRE7A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-XV1821G": {
+  "RASONIC|RCXV1821G": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-XV2421G": {
+  "RASONIC|RCXV2421G": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-XV1221G": {
+  "RASONIC|RCXV1221G": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-XV921G": {
+  "RASONIC|RCXV921G": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-XV721G": {
+  "RASONIC|RCXV721G": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "IMW-FC24": {
+  "IMASU|IMWFC24": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "IMW-FC18": {
+  "IMASU|IMWFC18": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-V2421G": {
+  "RASONIC|RCV2421G": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-V1821G": {
+  "RASONIC|RCV1821G": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-V1221G": {
+  "RASONIC|RCV1221G": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-V921G": {
+  "RASONIC|RCV921G": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G224RN": {
+  "GREE|G224RN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G218RN": {
+  "GREE|G218RN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-V721G": {
+  "RASONIC|RCV721G": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G212RN": {
+  "GREE|G212RN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G209RN": {
+  "GREE|G209RN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G207RN": {
+  "GREE|G207RN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G224MN": {
+  "GREE|G224MN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G218MN": {
+  "GREE|G218MN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G212MN": {
+  "GREE|G212MN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G209MN": {
+  "GREE|G209MN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GWA2124BRN": {
+  "GREE|GWA2124BRN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GWA2124BMN": {
+  "GREE|GWA2124BMN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "NMDWA12F3X1": {
+  "MORITADENKO|NMDWA12F3X1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "NMDWA18F3X1": {
+  "MORITADENKO|NMDWA18F3X1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "NMDWA09F3X1": {
+  "MORITADENKO|NMDWA09F3X1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "NMDWA07F3X1": {
+  "MORITADENKO|NMDWA07F3X1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S90B": {
+  "RASONIC|RCS90B": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S70B": {
+  "RASONIC|RCS70B": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-H90B": {
+  "RASONIC|RCH90B": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-H70B": {
+  "RASONIC|RCH70B": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-S240H": {
+  "RASONIC|RCS240H": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RA-10RDF": {
+  "HITACHI|RA10RDF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RA-08RDF": {
+  "HITACHI|RA08RDF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-XN2421E": {
+  "RASONIC|RCXN2421E": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-HZ240Z": {
+  "RASONIC|RCHZ240Z": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-12NR-HK": {
+  "TOSHIBA|RAC12NRHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-07NR-HK": {
+  "TOSHIBA|RAC07NRHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-09NR-HK": {
+  "TOSHIBA|RAC09NRHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-18N-HK": {
+  "TOSHIBA|RAC18NHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-12N-HK": {
+  "TOSHIBA|RAC12NHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-09N-HK": {
+  "TOSHIBA|RAC09NHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAC-07N-HK": {
+  "TOSHIBA|RAC07NHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-X9KM": {
+  "RASONIC|RCX9KM": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FWA2109R": {
+  "北極|FWA2109R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-X7KM": {
+  "RASONIC|RCX7KM": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FWA2118R": {
+  "北極|FWA2118R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FWA2112R": {
+  "北極|FWA2112R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-24CC": {
+  "UNKNOWN|RB24CC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-12CC": {
+  "UNKNOWN|RB12CC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-09CC": {
+  "UNKNOWN|RB09CC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-18CC": {
+  "UNKNOWN|RB18CC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GWA2124BR": {
+  "GREE|GWA2124BR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-07CC": {
+  "UNKNOWN|RB07CC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12EPG": {
+  "CARRIER|CHK12EPG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK23EPG": {
+  "CARRIER|CHK23EPG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W3NQ10UNNP1": {
+  "LG|W3NQ10UNNP1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W3NQ12LNNP1": {
+  "LG|W3NQ12LNNP1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W3NQ08UNNP1": {
+  "LG|W3NQ08UNNP1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-18MB": {
+  "UNKNOWN|RB18MB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-24MB": {
+  "UNKNOWN|RB24MB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-12MB": {
+  "UNKNOWN|RB12MB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-07MB": {
+  "UNKNOWN|RB07MB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-09MB": {
+  "UNKNOWN|RB09MB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-24CB": {
+  "UNKNOWN|RB24CB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-18CB": {
+  "UNKNOWN|RB18CB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-12CB": {
+  "UNKNOWN|RB12CB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-09CB": {
+  "UNKNOWN|RB09CB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G2018BR": {
+  "GREE|G2018BR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G2024BM": {
+  "GREE|G2024BM": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-07CB": {
+  "UNKNOWN|RB07CB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G2018BM": {
+  "GREE|G2018BM": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G2012BR": {
+  "GREE|G2012BR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G2012BM": {
+  "GREE|G2012BM": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G2007BR": {
+  "GREE|G2007BR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G2007BM": {
+  "GREE|G2007BM": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G2009BR": {
+  "GREE|G2009BR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G2009BM": {
+  "GREE|G2009BM": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PWV2009R": {
+  "飛歌|PWV2009R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PWV2018R": {
+  "飛歌|PWV2018R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PWV2012R": {
+  "飛歌|PWV2012R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PWV2018M": {
+  "飛歌|PWV2018M": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PWV2007R": {
+  "飛歌|PWV2007R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PWV2024M": {
+  "飛歌|PWV2024M": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PWV2012M": {
+  "飛歌|PWV2012M": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PWV2009M": {
+  "飛歌|PWV2009M": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PWV2007M": {
+  "飛歌|PWV2007M": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MWH-09HR3U1": {
+  "MIDEA|MWH09HR3U1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-XN1819E": {
+  "RASONIC|RCXN1819E": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-XN919J": {
+  "RASONIC|RCXN919J": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-XN1219V": {
+  "RASONIC|RCXN1219V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-XN719J": {
+  "RASONIC|RCXN719J": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-N919J": {
+  "RASONIC|RCN919J": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-N1819E": {
+  "RASONIC|RCN1819E": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12HPE": {
+  "CARRIER|CHK12HPE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09HPE": {
+  "CARRIER|CHK09HPE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK07SNE": {
+  "CARRIER|CHK07SNE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK18SNE": {
+  "CARRIER|CHK18SNE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12SNE": {
+  "CARRIER|CHK12SNE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK18FPE": {
+  "CARRIER|CHK18FPE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12FPE": {
+  "CARRIER|CHK12FPE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09FPE": {
+  "CARRIER|CHK09FPE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK07FPE": {
+  "CARRIER|CHK07FPE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK23EPE": {
+  "CARRIER|CHK23EPE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FWAD10M18": {
+  "FORTRESS|FWAD10M18": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RFR18FNTN": {
+  "FUJI富士|RFR18FNTN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FWAC19M18": {
+  "FORTRESS|FWAC19M18": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RMR12FPTN": {
+  "FUJI|RMR12FPTN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FWAC13M18": {
+  "FORTRESS|FWAC13M18": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SWH-07F3X1": {
+  "LITTLESWAN|SWH07F3X1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SWH-12F3X1": {
+  "LITTLESWAN|SWH12F3X1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-X7": {
+  "RASONIC|RCX7": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RC-X9": {
+  "RASONIC|RCX9": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWN09CMC-D5": {
+  "ELECTROLUX|EWN09CMCD5": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWN12CRC-D5": {
+  "ELECTROLUX|EWN12CRCD5": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWN07CMC-D5": {
+  "ELECTROLUX|EWN07CMCD5": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWN18CRC-D5": {
+  "ELECTROLUX|EWN18CRCD5": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-24MA": {
+  "RYOBISHI|RB24MA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWN07CRC-D5": {
+  "ELECTROLUX|EWN07CRCD5": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "EWN09CRC-D5": {
+  "ELECTROLUX|EWN09CRCD5": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-09MA": {
+  "RYOBISHI|RB09MA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-18MA": {
+  "RYOBISHI|RB18MA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-12MA": {
+  "RYOBISHI|RB12MA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-18CA": {
+  "RYOBISHI|RB18CA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-24CA": {
+  "RYOBISHI|RB24CA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-12CA": {
+  "RYOBISHI|RB12CA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-09CA": {
+  "RYOBISHI|RB09CA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RB-07CA": {
+  "RYOBISHI|RB07CA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-18EAE": {
+  "CANOPUS|TA18EAE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-12EAE": {
+  "CANOPUS|TA12EAE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-09EAE": {
+  "CANOPUS|TA09EAE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-07EAE": {
+  "CANOPUS|TA07EAE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK23LNE": {
+  "CARRIER|CHK23LNE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK18LNE": {
+  "CARRIER|CHK18LNE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12LNE": {
+  "CARRIER|CHK12LNE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09LNE": {
+  "CARRIER|CHK09LNE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK18ENE": {
+  "CARRIER|CHK18ENE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK23ENE": {
+  "CARRIER|CHK23ENE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12ENE": {
+  "CARRIER|CHK12ENE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK07ENE": {
+  "CARRIER|CHK07ENE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09ENE": {
+  "CARRIER|CHK09ENE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK07LNE": {
+  "CARRIER|CHK07LNE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MWH-18CM3X1": {
+  "MIDEA|MWH18CM3X1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MWH-07CM3X1": {
+  "MIDEA|MWH07CM3X1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MWH-09CM3X1": {
+  "MIDEA|MWH09CM3X1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G1818VR": {
+  "GREE|G1818VR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G1812VR": {
+  "GREE|G1812VR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G1809VR": {
+  "GREE|G1809VR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G1807VR": {
+  "GREE|G1807VR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G1818VM": {
+  "GREE|G1818VM": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G1809VM": {
+  "GREE|G1809VM": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G1812VM": {
+  "GREE|G1812VM": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "G1807VM": {
+  "GREE|G1807VM": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YC-24GB-R": {
+  "YORK|YC24GBR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YC-24GB": {
+  "YORK|YC24GB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YC-18GB-R": {
+  "YORK|YC18GBR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YC-12GB-R": {
+  "YORK|YC12GBR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YC-12GB": {
+  "YORK|YC12GB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YC-9GB": {
+  "YORK|YC9GB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YC-9GB-R": {
+  "YORK|YC9GBR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YC-7GB-R": {
+  "YORK|YC7GBR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YC-7GB": {
+  "YORK|YC7GB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-18CRE": {
+  "CANOPUS|TA18CRE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-12CRE": {
+  "CANOPUS|TA12CRE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-18CAE": {
+  "CANOPUS|TA18CAE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-12CAE": {
+  "CANOPUS|TA12CAE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK18LKE": {
+  "CARRIER|CHK18LKE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK12LKE": {
+  "CARRIER|CHK12LKE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-09CRE": {
+  "CANOPUS|TA09CRE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-09CAE": {
+  "CANOPUS|TA09CAE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-07CRE": {
+  "CANOPUS|TA07CRE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-07CAE": {
+  "CANOPUS|TA07CAE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK23LKE": {
+  "CARRIER|CHK23LKE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK09LKE": {
+  "CARRIER|CHK09LKE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CHK07LKE": {
+  "CARRIER|CHK07LKE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GAC-W09R": {
+  "奧瑪|GACW09R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GAC-W12R": {
+  "奧瑪|GACW12R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GAC-W07R": {
+  "奧瑪|GACW07R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GAC-W12": {
+  "奧瑪|GACW12": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GAC-W18": {
+  "奧瑪|GACW18": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GAC-W09": {
+  "奧瑪|GACW09": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GAC-W07": {
+  "奧瑪|GACW07": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S1206R": {
+  "卓爾|WACS1206R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S906R": {
+  "卓爾|WACS906R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S706R": {
+  "卓爾|WACS706R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S1805": {
+  "卓爾|WACS1805": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S1205": {
+  "卓爾|WACS1205": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S905": {
+  "卓爾|WACS905": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W126R-PAC": {
+  "快意寶|W126RPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WAC-S705": {
+  "卓爾|WACS705": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W096R-PAC": {
+  "快意寶|W096RPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W076R-PAC": {
+  "快意寶|W076RPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W185-PAC": {
+  "快意寶|W185PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W125-PAC": {
+  "快意寶|W125PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W095-PAC": {
+  "快意寶|W095PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "W075-PAC": {
+  "快意寶|W075PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ACR-B112": {
+  "BNO|ACRB112": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ACR-B109": {
+  "BNO|ACRB109": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ACR-B107": {
+  "BNO|ACRB107": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AC-B18": {
+  "BNO|ACB18": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AC-B12": {
+  "BNO|ACB12": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AC-B09": {
+  "BNO|ACB09": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AC-B07": {
+  "BNO|ACB07": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MWH-24CM3U1": {
+  "MIDEA|MWH24CM3U1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WWN12CRA-D3": {
+  "WHITEWESTINGHOUSE|WWN12CRAD3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WWN18CRA-D3": {
+  "WHITEWESTINGHOUSE|WWN18CRAD3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WWN09CRA-D3": {
+  "WHITEWESTINGHOUSE|WWN09CRAD3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WWN07CRA-D3": {
+  "WHITEWESTINGHOUSE|WWN07CRAD3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WWN12CMA-D3": {
+  "WHITEWESTINGHOUSE|WWN12CMAD3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WWN07CMA-D3": {
+  "WHITEWESTINGHOUSE|WWN07CMAD3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "WWN09CMA-D3": {
+  "WHITEWESTINGHOUSE|WWN09CMAD3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MWH-12CR3U1": {
+  "MIDEA|MWH12CR3U1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MWH-18CR3U1": {
+  "MIDEA|MWH18CR3U1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MWH-07CR3U1": {
+  "MIDEA|MWH07CR3U1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TAC-BR18CSV/TA": {
+  "TCL|TACBR18CSVTA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TAC-BR12CSV/TA": {
+  "TCL|TACBR12CSVTA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MCH024WMIPN/MCH024WMOPN": {
+  "MECAN|MCH024WMIPNMCH024WMOPN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TAC-BR09CSV/TA": {
+  "TCL|TACBR09CSVTA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MCH024WMIP/MCH024WMOP": {
+  "MECAN|MCH024WMIPMCH024WMOP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MCH018WMIP/MCH018WMOP": {
+  "MECAN|MCH018WMIPMCH018WMOP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MCH012WMIP/MCH012WMOP": {
+  "MECAN|MCH012WMIPMCH012WMOP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MCH009WMIP/MCH009WMOP": {
+  "MECAN|MCH009WMIPMCH009WMOP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GEC63ZE/GEC63ZC": {
+  "GREE|GEC63ZEGEC63ZC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GEC35ZE/GEC35ZC": {
+  "GREE|GEC35ZEGEC35ZC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GEC53ZE/GEC53ZC": {
+  "GREE|GEC53ZEGEC53ZC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GEC26ZE/GEC26ZC": {
+  "GREE|GEC26ZEGEC26ZC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC024WMIP/MC024WMOP": {
+  "MECAN|MC024WMIPMC024WMOP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC018WMIP/MC018WMOP": {
+  "MECAN|MC018WMIPMC018WMOP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC012WMIP/MC012WMOP": {
+  "MECAN|MC012WMIPMC012WMOP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC009WMIP/MC009WMOP": {
+  "MECAN|MC009WMIPMC009WMOP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "HQS024KBB/HQS024KBBA": {
+  "海迅|HQS024KBBHQS024KBBA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "HQS018KBB/HQS018KBBA": {
+  "海迅|HQS018KBBHQS018KBBA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "HQS012KBB/HQS012KBBA": {
+  "海迅|HQS012KBBHQS012KBBA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "HQS009KBB/HQS009KBBA": {
+  "海迅|HQS009KBBHQS009KBBA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-HGQ22VW/TA-HGQ22VC": {
+  "CANOPUS|TAHGQ22VWTAHGQ22VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HMC12VW/36HMC12VC": {
+  "CARRIER|42HMC12VW36HMC12VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASW-24G3/CAR3": {
+  "AUX|ASW24G3CAR3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASW-24G2/CDR3": {
+  "AUX|ASW24G2CDR3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASW-09B6/CDR3": {
+  "AUX|ASW09B6CDR3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASW-18E4/CDR3": {
+  "AUX|ASW18E4CDR3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASW-18E3/CAR3": {
+  "AUX|ASW18E3CAR3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-HGQ18VW/TA-HGQ18VC": {
+  "CANOPUS|TAHGQ18VWTAHGQ18VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-HGC22VW/TA-HGC22VC": {
+  "CANOPUS|TAHGC22VWTAHGC22VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-HGQ12VW/TA-HGQ12VC": {
+  "CANOPUS|TAHGQ12VWTAHGQ12VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-HGC18VW/TA-HGC18VC": {
+  "CANOPUS|TAHGC18VWTAHGC18VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-HGC09VW/TA-HGC09VC": {
+  "CANOPUS|TAHGC09VWTAHGC09VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-HGC12VW/TA-HGC12VC": {
+  "CANOPUS|TAHGC12VWTAHGC12VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FAC24CD-Cb5KBA1H": {
+  "PHILIPS|FAC24CDCB5KBA1H": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-HGQ09VW/TA-HGQ09VC": {
+  "CANOPUS|TAHGQ09VWTAHGQ09VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FAC18CD-Cb5KBA1H": {
+  "PHILIPS|FAC18CDCB5KBA1H": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HMQ22VW/36HMQ22VC": {
+  "CARRIER|42HMQ22VW36HMQ22VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HMQ12VW/36HMQ12VC": {
+  "CARRIER|42HMQ12VW36HMQ12VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HMQ18VW/36HMQ18VC": {
+  "CARRIER|42HMQ18VW36HMQ18VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HMQ09VW/36HMQ09VC": {
+  "CARRIER|42HMQ09VW36HMQ09VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HMC18VW/36HMC18VC": {
+  "CARRIER|42HMC18VW36HMC18VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HMC22VW/36HMC22VC": {
+  "CARRIER|42HMC22VW36HMC22VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HMC09VW/36HMC09VC": {
+  "CARRIER|42HMC09VW36HMC09VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FAC12CB-Cb5KBA2H": {
+  "PHILIPS|FAC12CBCB5KBA2H": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FAC09CB-Cb5KBA4H": {
+  "PHILIPS|FAC09CBCB5KBA4H": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S1820-PAC": {
+  "快意寶|S1820PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S1220-PAC": {
+  "快意寶|S1220PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S920-PAC": {
+  "快意寶|S920PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASW-12C8/CDR3": {
+  "AUX|ASW12C8CDR3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASW-12C5/CAR3": {
+  "AUX|ASW12C5CAR3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASW-09B6/CAR3": {
+  "AUX|ASW09B6CAR3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASW-H18E4/CAR3": {
+  "AUX|ASWH18E4CAR3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASW-H09C5/CAR3": {
+  "AUX|ASWH09C5CAR3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KHCSIIC24A1/KHCSOIC24A1": {
+  "晶弘|KHCSIIC24A1KHCSOIC24A1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KHCSIIC18A1/KHCSOIC18A1": {
+  "晶弘|KHCSIIC18A1KHCSOIC18A1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KHCSIIC12A1/KHCSOIC12A1": {
+  "晶弘|KHCSIIC12A1KHCSOIC12A1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KHCSIIC09A1/KHCSOIC09A1": {
+  "晶弘|KHCSIIC09A1KHCSOIC09A1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YJJF24XETBFM-RX/YJJF24YE": {
+  "YORK|YJJF24XETBFMRXYJJF24YE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YJJF18XETBFM-RX/YJJF18YE": {
+  "YORK|YJJF18XETBFMRXYJJF18YE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YJJF12XETBFM-RX/YJJF12YE": {
+  "YORK|YJJF12XETBFMRXYJJF12YE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-AP71VG / MUZ-AP71VG": {
+  "MITSUBISHIELECTRIC|MSZAP71VGMUZAP71VG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YJJF09XETBFM-RX/YJJF09YE": {
+  "YORK|YJJF09XETBFMRXYJJF09YE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-AP50VG / MUZ-AP50VG": {
+  "MITSUBISHIELECTRIC|MSZAP50VGMUZAP50VG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-AP60VG / MUZ-AP60VG": {
+  "MITSUBISHIELECTRIC|MSZAP60VGMUZAP60VG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-AP35VG / MUZ-AP35VG": {
+  "MITSUBISHIELECTRIC|MSZAP35VGMUZAP35VG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-AP25VG / MUZ-AP25VG": {
+  "MITSUBISHIELECTRIC|MSZAP25VGMUZAP25VG": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AH-XP18DMA/AU-X18DMA": {
+  "SHARP|AHXP18DMAAUX18DMA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AH-XP13DMA/AU-X13DMA": {
+  "SHARP|AHXP13DMAAUX13DMA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-TS24R/RU-TS24R": {
+  "RASONIC|RSTS24RRUTS24R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AH-XP10DMA/AU-X10DMA": {
+  "SHARP|AHXP10DMAAUX10DMA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-TS9R/RU-TS9R": {
+  "RASONIC|RSTS9RRUTS9R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-U18CWA/CU-U18CWA": {
+  "PANASONIC|CSU18CWACUU18CWA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-U12CWA/CU-U12CWA": {
+  "PANASONIC|CSU12CWACUU12CWA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-U9CWA/CU-U9CWA": {
+  "PANASONIC|CSU9CWACUU9CWA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HAC18VWB/36HAC18VC": {
+  "CARRIER|42HAC18VWB36HAC18VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HAC12VWB/36HAC12VC": {
+  "CARRIER|42HAC12VWB36HAC12VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HAC24VWB/36HAC24VC": {
+  "CARRIER|42HAC24VWB36HAC24VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HAC09VWB/36HAC09VC": {
+  "CARRIER|42HAC09VWB36HAC09VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-U18CW/RU-U18CW": {
+  "RASONIC|RSU18CWRUU18CW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-U12CW/RU-U12CW": {
+  "RASONIC|RSU12CWRUU12CW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-U9CW/RU-U9CW": {
+  "RASONIC|RSU9CWRUU9CW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GIMH12UZE/GIMH12UZC": {
+  "GREE|GIMH12UZEGIMH12UZC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GIMH09UZE/GIMH09UZC": {
+  "GREE|GIMH09UZEGIMH09UZC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GIMC12UZE/GIMC12UZC": {
+  "GREE|GIMC12UZEGIMC12UZC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HAC24VF/36HAC24VC": {
+  "CARRIER|42HAC24VF36HAC24VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HAC18VF/36HAC18VC": {
+  "CARRIER|42HAC18VF36HAC18VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC24PGI/MC24PGO": {
+  "MECAN|MC24PGIMC24PGO": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC18PGI/MC18PGO": {
+  "MECAN|MC18PGIMC18PGO": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC09PGI/MC09PGO": {
+  "MECAN|MC09PGIMC09PGO": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC12PGI/MC12PGO": {
+  "MECAN|MC12PGIMC12PGO": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42HAC09VF/36HAC09VC": {
+  "CARRIER|42HAC09VF36HAC09VC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S12K23V": {
+  "卓爾|SACS12K23V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S18K23V": {
+  "卓爾|SACS18K23V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S9K23V": {
+  "卓爾|SACS9K23V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S18K20": {
+  "卓爾|SACS18K20": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S12K20": {
+  "卓爾|SACS12K20": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S9K20": {
+  "卓爾|SACS9K20": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-18VCMA-HK": {
+  "MBO|MS18VCMAHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-12VCMA-HK": {
+  "MBO|MS12VCMAHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-09VCMA-HK": {
+  "MBO|MS09VCMAHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S24VC200N / S24VC200U": {
+  "TOSOT|S24VC200NS24VC200U": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S18VC200N / S18VC200U": {
+  "TOSOT|S18VC200NS18VC200U": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S09VC200N / S09VC200U": {
+  "TOSOT|S09VC200NS09VC200U": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S18C5AN / S18C5AU": {
+  "TOSOT|S18C5ANS18C5AU": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S24C5AN / S24C5AU": {
+  "TOSOT|S24C5ANS24C5AU": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S12C5AN / S12C5AU": {
+  "TOSOT|S12C5ANS12C5AU": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S09C5AN / S09C5AU": {
+  "TOSOT|S09C5ANS09C5AU": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "M3WMY25A/M3LCY25A": {
+  "MCQUAY|M3WMY25AM3LCY25A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "M3WMY20A/M3LCY20A": {
+  "MCQUAY|M3WMY20AM3LCY20A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "M3WMY15A/M3LCY15A": {
+  "MCQUAY|M3WMY15AM3LCY15A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "M3WMY10A/M3LCY10A": {
+  "MCQUAY|M3WMY10AM3LCY10A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK18YYSH-WF/SRC18YYSH-W": {
+  "MITSUBISHIHEAVY|SRK18YYSHWFSRC18YYSHW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSY-JY24VF / MUY-JY24VF": {
+  "MITSUBISHIELECTRIC|MSYJY24VFMUYJY24VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-HZ12BWA/CU-HZ12BWA": {
+  "PANASONIC|CSHZ12BWACUHZ12BWA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-HZ18BWA/CU-HZ18BWA": {
+  "PANASONIC|CSHZ18BWACUHZ18BWA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-HZ9BWA/CU-HZ9BWA": {
+  "PANASONIC|CSHZ9BWACUHZ9BWA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-VA12R / RU-VA12R": {
+  "RASONIC|RSVA12RRUVA12R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-VA24R / RU-VA24R": {
+  "RASONIC|RSVA24RRUVA24R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-VA18R / RU-VA18R": {
+  "RASONIC|RSVA18RRUVA18R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-VA9R / RU-VA9R": {
+  "RASONIC|RSVA9RRUVA9R": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK35ZSH-WF/SRC35ZSH-W": {
+  "MITSUBISHIHEAVY|SRK35ZSHWFSRC35ZSHW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC12WMIP/MC12WMOP": {
+  "MECAN|MC12WMIPMC12WMOP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK13YYMH-W/SRC13YYMH-W": {
+  "MITSUBISHIHEAVY|SRK13YYMHWSRC13YYMHW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK18YYMH-W/SRC18YYMH-W": {
+  "MITSUBISHIHEAVY|SRK18YYMHWSRC18YYMHW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK10YYMH-W/SRC10YYMH-W": {
+  "MITSUBISHIHEAVY|SRK10YYMHWSRC10YYMHW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FTXJ60MV1HB/RXJ60MV1H": {
+  "DAIKIN|FTXJ60MV1HBRXJ60MV1H": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42BKK18/38BKK18": {
+  "CARRIER|42BKK1838BKK18": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK15ZTLH-WF/SRC15ZTLH-W": {
+  "MITSUBISHIHEAVY|SRK15ZTLHWFSRC15ZTLHW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42BKK24/38BKK24": {
+  "CARRIER|42BKK2438BKK24": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42BKK12/38BKK12": {
+  "CARRIER|42BKK1238BKK12": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42BKK09/38BKK09": {
+  "CARRIER|42BKK0938BKK09": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GCC63ZE/GCC63ZC": {
+  "GREE|GCC63ZEGCC63ZC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GCC35ZE/GCC35ZC": {
+  "GREE|GCC35ZEGCC35ZC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GCC53ZE/GCC53ZC": {
+  "GREE|GCC53ZEGCC53ZC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GCC26ZE/GCC26ZC": {
+  "GREE|GCC26ZEGCC26ZC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "NMDSA24CRF8B": {
+  "MORITADENKO|NMDSA24CRF8B": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC24WMI/MC24WMO": {
+  "MECAN|MC24WMIMC24WMO": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-09RV/TA-09RAV": {
+  "CANOPUS|TA09RVTA09RAV": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CAA-10CFN8-AC6": {
+  "COMFEE|CAA10CFN8AC6": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CAC-18CFN8-AC1": {
+  "COMFEE|CAC18CFN8AC1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CAA-12CFN8-AC4": {
+  "COMFEE|CAA12CFN8AC4": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC18WMI/MC18WMO": {
+  "MECAN|MC18WMIMC18WMO": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC09WMI/MC09WMO": {
+  "MECAN|MC09WMIMC09WMO": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MC12WMI/MC12WMO": {
+  "MECAN|MC12WMIMC12WMO": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KLF022V8S/38KLF022V8S": {
+  "CARRIER|42KLF022V8S38KLF022V8S": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK53MUVPH1/SRC53MUVPH1": {
+  "MITSUBISHIHEAVY|SRK53MUVPH1SRC53MUVPH1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK35MUVPH1/SRC35MUVPH1": {
+  "MITSUBISHIHEAVY|SRK35MUVPH1SRC35MUVPH1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK25MUVPH1/SRC25MUVPH1": {
+  "MITSUBISHIHEAVY|SRK25MUVPH1SRC25MUVPH1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KLF018V8S/38KLF018V8S": {
+  "CARRIER|42KLF018V8S38KLF018V8S": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KLF009V8S/38KLF009V8S": {
+  "CARRIER|42KLF009V8S38KLF009V8S": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KLF012V8S/38KLF012V8S": {
+  "CARRIER|42KLF012V8S38KLF012V8S": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-RZ28BKA / CU-RZ28BKA": {
+  "PANASONIC|CSRZ28BKACURZ28BKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK60ZSX-WF/SRC60ZSXH-S": {
+  "MITSUBISHIHEAVY|SRK60ZSXWFSRC60ZSXHS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK35QEH1/SRC35QEH1": {
+  "MITSUBISHIHEAVY|SRK35QEH1SRC35QEH1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK25QEH1/SRC25QEH1": {
+  "MITSUBISHIHEAVY|SRK25QEH1SRC25QEH1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-RZ24BKA / CU-RZ24BKA": {
+  "PANASONIC|CSRZ24BKACURZ24BKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-RZ18BKA / CU-RZ18BKA": {
+  "PANASONIC|CSRZ18BKACURZ18BKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-RZ9BKA / CU-RZ9BKA": {
+  "PANASONIC|CSRZ9BKACURZ9BKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-RZ12BKA / CU-RZ12BKA": {
+  "PANASONIC|CSRZ12BKACURZ12BKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-YU24BK / RU-YU24BK": {
+  "RASONIC|RSYU24BKRUYU24BK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-YU12BK / RU-YU12BK": {
+  "RASONIC|RSYU12BKRUYU12BK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-YU18BK / RU-YU18BK": {
+  "RASONIC|RSYU18BKRUYU18BK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-RZ18BK / RU-RZ18BK": {
+  "RASONIC|RSRZ18BKRURZ18BK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-RZ24BK / RU-RZ24BK": {
+  "RASONIC|RSRZ24BKRURZ24BK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-YU9BK / RU-YU9BK": {
+  "RASONIC|RSYU9BKRUYU9BK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-RZ12BK / RU-RZ12BK": {
+  "RASONIC|RSRZ12BKRURZ12BK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-RZ9BK / RU-RZ9BK": {
+  "RASONIC|RSRZ9BKRURZ9BK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAK-DJ18CBK/RAC-DJ18CBK": {
+  "HITACHI|RAKDJ18CBKRACDJ18CBK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAK-DJ13CBK/RAC-DJ13CBK": {
+  "HITACHI|RAKDJ13CBKRACDJ13CBK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAK-DJ10CBK/RAC-DJ10CBK": {
+  "HITACHI|RAKDJ10CBKRACDJ10CBK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAK-DJ13HBK/RAC-DJ13HBK": {
+  "HITACHI|RAKDJ13HBKRACDJ13HBK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAK-DJ18HBK/RAC-DJ18HBK": {
+  "HITACHI|RAKDJ18HBKRACDJ18HBK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAK-GJ24HBK/RAC-GJ24HBK": {
+  "HITACHI|RAKGJ24HBKRACGJ24HBK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAK-DJ10HBK/RAC-DJ10HBK": {
+  "HITACHI|RAKDJ10HBKRACDJ10HBK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAK-CJ24CAK/RAC-CJ24CAK": {
+  "HITACHI|RAKCJ24CAKRACCJ24CAK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAK-CJ13CAK/RAC-CJ13CAK": {
+  "HITACHI|RAKCJ13CAKRACCJ13CAK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAK-CJ18CAK/RAC-CJ18CAK": {
+  "HITACHI|RAKCJ18CAKRACCJ18CAK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAK-CJ10CAK/RAC-CJ10CAK": {
+  "HITACHI|RAKCJ10CAKRACCJ10CAK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-KWS18DA/TA-KWS18DAV": {
+  "CANOPUS|TAKWS18DATAKWS18DAV": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FTXP35MV1H/RXP35MV1H": {
+  "DAIKIN|FTXP35MV1HRXP35MV1H": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-KWS12DA/TA-KWS12DAV": {
+  "CANOPUS|TAKWS12DATAKWS12DAV": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TA-KWS09DA/TA-KWS09DAV": {
+  "CANOPUS|TAKWS09DATAKWS09DAV": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK53MWKHC1/SRC53MWKHC1": {
+  "MITSUBISHIHEAVY|SRK53MWKHC1SRC53MWKHC1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK25MWKHC1/SRC25MWKHC1": {
+  "MITSUBISHIHEAVY|SRK25MWKHC1SRC25MWKHC1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK35MWKHC1/SRC35MWKHC1": {
+  "MITSUBISHIHEAVY|SRK35MWKHC1SRC35MWKHC1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S1212-PAC": {
+  "快意寶|S1212PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S912-PAC": {
+  "快意寶|S912PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KHE024VS/38KHE024VS": {
+  "CARRIER|42KHE024VS38KHE024VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KOC024/38KOC024": {
+  "CARRIER|42KOC02438KOC024": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KME024VS/38KME024VS": {
+  "CARRIER|42KME024VS38KME024VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KOC012/38KOC012": {
+  "CARRIER|42KOC01238KOC012": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KOC009/38KOC009": {
+  "CARRIER|42KOC00938KOC009": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KME018VS/38KME018VS": {
+  "CARRIER|42KME018VS38KME018VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KME009VS/38KME009VS": {
+  "CARRIER|42KME009VS38KME009VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KHE018VS/38KHE018VS": {
+  "CARRIER|42KHE018VS38KHE018VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KOC018/38KOC018": {
+  "CARRIER|42KOC01838KOC018": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KHE012VS/38KHE012VS": {
+  "CARRIER|42KHE012VS38KHE012VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KHE009VS/38KHE009VS": {
+  "CARRIER|42KHE009VS38KHE009VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KLF018VS/38KLF018VS": {
+  "CARRIER|42KLF018VS38KLF018VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KLF022VS/38KLF022VS": {
+  "CARRIER|42KLF022VS38KLF022VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KLF012VS/38KLF012VS": {
+  "CARRIER|42KLF012VS38KLF012VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KHP012/38KHP012": {
+  "CARRIER|42KHP01238KHP012": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KLF009VS/38KLF009VS": {
+  "CARRIER|42KLF009VS38KLF009VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KHP009/38KHP009": {
+  "CARRIER|42KHP00938KHP009": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GISF24DBE / GISF24DBC": {
+  "GREE|GISF24DBEGISF24DBC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GISF18DBE / GISF18DBC": {
+  "GREE|GISF18DBEGISF18DBC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GISF12DBE / GISF12DBC": {
+  "GREE|GISF12DBEGISF12DBC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GISF09DBE / GISF09DBC": {
+  "GREE|GISF09DBEGISF09DBC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GICF24DBE / GICF24DBC": {
+  "GREE|GICF24DBEGICF24DBC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GICF12DBE / GICF12DBC": {
+  "GREE|GICF12DBEGICF12DBC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GICF18DBE / GICF18DBC": {
+  "GREE|GICF18DBEGICF18DBC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GICF09DBE / GICF09DBC": {
+  "GREE|GICF09DBEGICF09DBC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GSAF24DBE / GSAF24DBC": {
+  "GREE|GSAF24DBEGSAF24DBC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GSAF18DBE / GSAF18DBC": {
+  "GREE|GSAF18DBEGSAF18DBC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GSAF09DBE / GSAF09DBC": {
+  "GREE|GSAF09DBEGSAF09DBC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "HS024K/HS024KA": {
+  "海迅|HS024KHS024KA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "HS012K/HS012KA": {
+  "海迅|HS012KHS012KA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "HS009K/HS009KA": {
+  "海迅|HS009KHS009KA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S12K12": {
+  "卓爾|SACS12K12": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S9K12": {
+  "卓爾|SACS9K12": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-18CRF1D": {
+  "MIDEA|MS18CRF1D": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-09CRF1D": {
+  "MIDEA|MS09CRF1D": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-12CRF1D": {
+  "MIDEA|MS12CRF1D": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AS24PE1HRA/1U24WT1ERS": {
+  "HAIER|AS24PE1HRA1U24WT1ERS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AS18PD1HRA/1U18WT1ERS": {
+  "HAIER|AS18PD1HRA1U18WT1ERS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AS12PB1HRA/1U12MT1ERS": {
+  "HAIER|AS12PB1HRA1U12MT1ERS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK10YN-S7 / SRC10YN-S7": {
+  "MITSUBISHIHEAVY|SRK10YNS7SRC10YNS7": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AS09PB2HRA/1U09YA1ERA": {
+  "HAIER|AS09PB2HRA1U09YA1ERA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK24CS-S / SRC24CS-S": {
+  "MITSUBISHIHEAVY|SRK24CSSSRC24CSS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK18CS-S / SRC18CS-S": {
+  "MITSUBISHIHEAVY|SRK18CSSSRC18CSS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK12CT-S / SRC12CT-S": {
+  "MITSUBISHIHEAVY|SRK12CTSSRC12CTS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK09CTR-S / SRC09CTR-S": {
+  "MITSUBISHIHEAVY|SRK09CTRSSRC09CTRS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK18YN-S7 / SRC18YN-S7": {
+  "MITSUBISHIHEAVY|SRK18YNS7SRC18YNS7": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK13YN-S7 / SRC13YN-S7": {
+  "MITSUBISHIHEAVY|SRK13YNS7SRC13YNS7": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK35MUVP1 / SRC35MUVP1": {
+  "MITSUBISHIHEAVY|SRK35MUVP1SRC35MUVP1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK25MUVP1 / SRC25MUVP1": {
+  "MITSUBISHIHEAVY|SRK25MUVP1SRC25MUVP1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK50REC1 / SRC50REC1": {
+  "MITSUBISHIHEAVY|SRK50REC1SRC50REC1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK35REC1 / SRC35REC1": {
+  "MITSUBISHIHEAVY|SRK35REC1SRC35REC1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK25REC1 / SRC25REC1": {
+  "MITSUBISHIHEAVY|SRK25REC1SRC25REC1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GSY12BXAE / GSY12BXAC": {
+  "GREE|GSY12BXAEGSY12BXAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GSY18BXAE / GSY18BXAC": {
+  "GREE|GSY18BXAEGSY18BXAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GSY09BXAE / GSY09BXAC": {
+  "GREE|GSY09BXAEGSY09BXAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KHG022DSP/38KHG022DSP": {
+  "CARRIER|42KHG022DSP38KHG022DSP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KHG018DSP/38KHG018DSP": {
+  "CARRIER|42KHG018DSP38KHG018DSP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KHG012DSP/38KHG012DSP": {
+  "CARRIER|42KHG012DSP38KHG012DSP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KHG009DSP/38KHG009DSP": {
+  "CARRIER|42KHG009DSP38KHG009DSP": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-LZ18ZKA / CU-LZ18ZKA": {
+  "PANASONIC|CSLZ18ZKACULZ18ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-LZ9ZKA / CU-LZ9ZKA": {
+  "PANASONIC|CSLZ9ZKACULZ9ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-LZ12ZKA / CU-LZ12ZKA": {
+  "PANASONIC|CSLZ12ZKACULZ12ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-Z12ZKA / CU-Z12ZKA": {
+  "PANASONIC|CSZ12ZKACUZ12ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-Z18ZKA / CU-Z18ZKA": {
+  "PANASONIC|CSZ18ZKACUZ18ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-Z9ZKA / CU-Z9ZKA": {
+  "PANASONIC|CSZ9ZKACUZ9ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-LU18ZKA / CU-LU18ZKA": {
+  "PANASONIC|CSLU18ZKACULU18ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-LU12ZKA / CU-LU12ZKA": {
+  "PANASONIC|CSLU12ZKACULU12ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-LU9ZKA / CU-LU9ZKA": {
+  "PANASONIC|CSLU9ZKACULU9ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-LU12ZK / RU-LU12ZK": {
+  "RASONIC|RSLU12ZKRULU12ZK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK53QE3 / SRC53QE3": {
+  "MITSUBISHIHEAVY|SRK53QE3SRC53QE3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK25QE3 / SRC25QE3": {
+  "MITSUBISHIHEAVY|SRK25QE3SRC25QE3": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-LZ12ZK / RU-LZ12ZK": {
+  "RASONIC|RSLZ12ZKRULZ12ZK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KAF022/38KAF022": {
+  "CARRIER|42KAF02238KAF022": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KAF018/38KAF018": {
+  "CARRIER|42KAF01838KAF018": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KAF012/38KAF012": {
+  "CARRIER|42KAF01238KAF012": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KAF009/38KAF009": {
+  "CARRIER|42KAF00938KAF009": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S12VC100N / S12VC100U": {
+  "TOSOT|S12VC100NS12VC100U": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S09VC100N / S09VC100U": {
+  "TOSOT|S09VC100NS09VC100U": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-22HRF1C": {
+  "MIDEA|MS22HRF1C": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-18HRF1C": {
+  "MIDEA|MS18HRF1C": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-12HRF1C": {
+  "MIDEA|MS12HRF1C": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-09HRF1C": {
+  "MIDEA|MS09HRF1C": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YU24ZKA / CU-YU24ZKA": {
+  "PANASONIC|CSYU24ZKACUYU24ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YU18ZKA / CU-YU18ZKA": {
+  "PANASONIC|CSYU18ZKACUYU18ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-PN24ZKA / CU-PN24ZKA": {
+  "PANASONIC|CSPN24ZKACUPN24ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-PN18ZKA / CU-PN18ZKA": {
+  "PANASONIC|CSPN18ZKACUPN18ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YU9ZKA / CU-YU9ZKA": {
+  "PANASONIC|CSYU9ZKACUYU9ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-PN12ZKA / CU-PN12ZKA": {
+  "PANASONIC|CSPN12ZKACUPN12ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-PN9ZKA / CU-PN9ZKA": {
+  "PANASONIC|CSPN9ZKACUPN9ZKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-YU24ZK / RU-YU24ZK": {
+  "RASONIC|RSYU24ZKRUYU24ZK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-YU12ZK / RU-YU12ZK": {
+  "RASONIC|RSYU12ZKRUYU12ZK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASWX09BNTA / AOWX09BNTA": {
+  "GENERAL|ASWX09BNTAAOWX09BNTA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-RZ28YKA / CU-RZ28YKA": {
+  "PANASONIC|CSRZ28YKACURZ28YKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "LGHP09S": {
+  "LG|LGHP09S": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "M5WM15L/M5LC15F": {
+  "MCQUAY|M5WM15LM5LC15F": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASWG24CPTA / AOWG24CPTA": {
+  "GENERAL|ASWG24CPTAAOWG24CPTA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "M5WM10L/M5LC10F": {
+  "MCQUAY|M5WM10LM5LC10F": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-S18KI / RU-S18KI": {
+  "RASONIC|RSS18KIRUS18KI": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-S12KI / RU-S12KI": {
+  "RASONIC|RSS12KIRUS12KI": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-S9KI / RU-S9KI": {
+  "RASONIC|RSS9KIRUS9KI": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42QHE018VS/38QHE018VS": {
+  "CARRIER|42QHE018VS38QHE018VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42QHE024VS/38QHE024VS": {
+  "CARRIER|42QHE024VS38QHE024VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-U12YWA/CU-U12YWA": {
+  "PANASONIC|CSU12YWACUU12YWA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-U9YW/RU-U9YW": {
+  "RASONIC|RSU9YWRUU9YW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-U18YWA/CU-U18YWA": {
+  "PANASONIC|CSU18YWACUU18YWA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-U9YWA/CU-U9YWA": {
+  "PANASONIC|CSU9YWACUU9YWA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FSAV18M22": {
+  "FORTRESS|FSAV18M22": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FSAV09M22": {
+  "FORTRESS|FSAV09M22": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FSAV12M22": {
+  "FORTRESS|FSAV12M22": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GIMC2212XAE/GIMC2212XAC": {
+  "GREE|GIMC2212XAEGIMC2212XAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-RU24YKA/CU-RU24YKA": {
+  "PANASONIC|CSRU24YKACURU24YKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GIMC2209XAE/GIMC2209XAC": {
+  "GREE|GIMC2209XAEGIMC2209XAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-RU18YKA/CU-RU18YKA": {
+  "PANASONIC|CSRU18YKACURU18YKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-RU12YKA/CU-RU12YKA": {
+  "PANASONIC|CSRU12YKACURU12YKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-RU9YKA/CU-RU9YKA": {
+  "PANASONIC|CSRU9YKACURU9YKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-RZ18YKA/CU-RZ18YKA": {
+  "PANASONIC|CSRZ18YKACURZ18YKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-RZ24YKA/CU-RZ24YKA": {
+  "PANASONIC|CSRZ24YKACURZ24YKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-RZ12YKA/CU-RZ12YKA": {
+  "PANASONIC|CSRZ12YKACURZ12YKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-RZ9YKA/CU-RZ9YKA": {
+  "PANASONIC|CSRZ9YKACURZ9YKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-RZ24YK / RU-RZ24YK": {
+  "RASONIC|RSRZ24YKRURZ24YK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CF-22VAGF-H": {
+  "COMFEE|CF22VAGFH": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "NMDSA22CF1A": {
+  "MORITADENKO|NMDSA22CF1A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "NMDSA18CF1A": {
+  "MORITADENKO|NMDSA18CF1A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "NMDSA12CF1A": {
+  "MORITADENKO|NMDSA12CF1A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "NMDSA09CF1A": {
+  "MORITADENKO|NMDSA09CF1A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TS-18DV/TS-18DAV": {
+  "CANOPUS|TS18DVTS18DAV": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TS-12DV/TS-12DAV": {
+  "CANOPUS|TS12DVTS12DAV": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "TS-09DV/TS-09DAV": {
+  "CANOPUS|TS09DVTS09DAV": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KHA022VS/38KHA022VS": {
+  "CARRIER|42KHA022VS38KHA022VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KHA018VS/38KHA018VS": {
+  "CARRIER|42KHA018VS38KHA018VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KHA012VS/38KHA012VS": {
+  "CARRIER|42KHA012VS38KHA012VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "42KHA009VS/38KHA009VS": {
+  "CARRIER|42KHA009VS38KHA009VS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-GS27VF / MUZ-GS27VF": {
+  "MITSUBISHIELECTRIC|MSZGS27VFMUZGS27VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-GS24VF / MUZ-GS24VF": {
+  "MITSUBISHIELECTRIC|MSZGS24VFMUZGS24VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSY-GS27VF / MUY-GS27VF": {
+  "MITSUBISHIELECTRIC|MSYGS27VFMUYGS27VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSY-GS24VF / MUY-GS24VF": {
+  "MITSUBISHIELECTRIC|MSYGS24VFMUYGS24VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-LN18VFV / MUZ-LN18VF": {
+  "MITSUBISHIELECTRIC|MSZLN18VFVMUZLN18VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-LN12VFV / MUZ-LN12VF": {
+  "MITSUBISHIELECTRIC|MSZLN12VFVMUZLN12VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-LN18VFR / MUZ-LN18VF": {
+  "MITSUBISHIELECTRIC|MSZLN18VFRMUZLN18VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-LN09VFV / MUZ-LN09VF": {
+  "MITSUBISHIELECTRIC|MSZLN09VFVMUZLN09VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-LN12VFR / MUZ-LN12VF": {
+  "MITSUBISHIELECTRIC|MSZLN12VFRMUZLN12VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-LN09VFR / MUZ-LN09VF": {
+  "MITSUBISHIELECTRIC|MSZLN09VFRMUZLN09VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-LN18VFB / MUZ-LN18VF": {
+  "MITSUBISHIELECTRIC|MSZLN18VFBMUZLN18VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-LN12VFB / MUZ-LN12VF": {
+  "MITSUBISHIELECTRIC|MSZLN12VFBMUZLN12VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S18H35N / S18H35U": {
+  "TOSOT|S18H35NS18H35U": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-LN09VFB / MUZ-LN09VF": {
+  "MITSUBISHIELECTRIC|MSZLN09VFBMUZLN09VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S18C4AN / S18C4AU": {
+  "TOSOT|S18C4ANS18C4AU": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S12C4AN / S12C4AU": {
+  "TOSOT|S12C4ANS12C4AU": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S24C4AN / S24C4AU": {
+  "TOSOT|S24C4ANS24C4AU": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S09C4AN / S09C4AU": {
+  "TOSOT|S09C4ANS09C4AU": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-GS18VF / MUZ-GS18VF": {
+  "MITSUBISHIELECTRIC|MSZGS18VFMUZGS18VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSY-GS12VF / MUY-GS12VF": {
+  "MITSUBISHIELECTRIC|MSYGS12VFMUYGS12VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSY-GS18VF / MUY-GS18VF": {
+  "MITSUBISHIELECTRIC|MSYGS18VFMUYGS18VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSY-GS09VF / MUY-GS09VF": {
+  "MITSUBISHIELECTRIC|MSYGS09VFMUYGS09VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSY-GS07VF / MUY-GS07VF": {
+  "MITSUBISHIELECTRIC|MSYGS07VFMUYGS07VF": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "PKA-RP50HAL": {
+  "MITSUBISHIELECTRIC|PKARP50HAL": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-S24KE / RU-S24KE": {
+  "RASONIC|RSS24KERUS24KE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FI-40HRA / FU-40HRA": {
+  "冰點|FI40HRAFU40HRA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FI-40CRA / FU-40CRA": {
+  "冰點|FI40CRAFU40CRA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-V24KE / RU-V24KE": {
+  "RASONIC|RSV24KERUV24KE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-V18KE / RU-V18KE": {
+  "RASONIC|RSV18KERUV18KE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-V12KE / RU-V12KE": {
+  "RASONIC|RSV12KERUV12KE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-V9KE / RU-V9KE": {
+  "RASONIC|RSV9KERUV9KE": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FSA12M20": {
+  "FORTRESS|FSA12M20": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FSA18M20": {
+  "FORTRESS|FSA18M20": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FI-50CRA / FU-50CRA": {
+  "冰點|FI50CRAFU50CRA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-LS18WK / RU-LS18WK": {
+  "RASONIC|RSLS18WKRULS18WK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-LS12WK / RU-LS12WK": {
+  "RASONIC|RSLS12WKRULS12WK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-LS9WK / RU-LS9WK": {
+  "RASONIC|RSLS9WKRULS9WK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-LE12WK / RU-LE12WK": {
+  "RASONIC|RSLE12WKRULE12WK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-LE18WK / RU-LE18WK": {
+  "RASONIC|RSLE18WKRULE18WK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-LE9WK / RU-LE9WK": {
+  "RASONIC|RSLE9WKRULE9WK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-LS18WKA / CU-LS18WKA": {
+  "PANASONIC|CSLS18WKACULS18WKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-LS12WKA / CU-LS12WKA": {
+  "PANASONIC|CSLS12WKACULS12WKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-LE18WKA / CU-LE18WKA": {
+  "PANASONIC|CSLE18WKACULE18WKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-LS9WKA / CU-LS9WKA": {
+  "PANASONIC|CSLS9WKACULS9WKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-LE12WKA / CU-LE12WKA": {
+  "PANASONIC|CSLE12WKACULE12WKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AR24TXHAAWKN": {
+  "SAMSUNG|AR24TXHAAWKN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-LE9WKA / CU-LE9WKA": {
+  "PANASONIC|CSLE9WKACULE9WKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AR24TXEAAWKN": {
+  "SAMSUNG|AR24TXEAAWKN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AR09TXHAAWKN": {
+  "SAMSUNG|AR09TXHAAWKN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AR12TXEAAWKN": {
+  "SAMSUNG|AR12TXEAAWKN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AR18TXEAAWKN": {
+  "SAMSUNG|AR18TXEAAWKN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AR09TXEAAWKN": {
+  "SAMSUNG|AR09TXEAAWKN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-09HRF8A": {
+  "MIDEA|MS09HRF8A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-12HRF8A": {
+  "MIDEA|MS12HRF8A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-18CRF8A": {
+  "MIDEA|MS18CRF8A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-12CRF8A": {
+  "MIDEA|MS12CRF8A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MS-09CRF8A": {
+  "MIDEA|MS09CRF8A": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GISF224BXAE/GISF224BXAC": {
+  "GREE|GISF224BXAEGISF224BXAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GISF218BXAE/GISF218BXAC": {
+  "GREE|GISF218BXAEGISF218BXAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GISF212BXAE/GISF212BXAC": {
+  "GREE|GISF212BXAEGISF212BXAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GISF209BXAE/GISF209BXAC": {
+  "GREE|GISF209BXAEGISF209BXAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GICF224BXAE/GICF224BXAC": {
+  "GREE|GICF224BXAEGICF224BXAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GICF218BXAE/GICF218BXAC": {
+  "GREE|GICF218BXAEGICF218BXAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GICF212BXAE/GICF212BXAC": {
+  "GREE|GICF212BXAEGICF212BXAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GICF209BXAE/GICF209BXAC": {
+  "GREE|GICF209BXAEGICF209BXAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GSAF218XAE / GSAF218XAC": {
+  "GREE|GSAF218XAEGSAF218XAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GSAF212XAE / GSAF212XAC": {
+  "GREE|GSAF212XAEGSAF212XAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GSAF224XAE / GSAF224XAC": {
+  "GREE|GSAF224XAEGSAF224XAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GSAF209XAE / GSAF209XAC": {
+  "GREE|GSAF209XAEGSAF209XAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "FI-50HRA/FU-50HRA": {
+  "冰點|FI50HRAFU50HRA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GAC-S1825H": {
+  "奧瑪|GACS1825H": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GAC-S1226SH": {
+  "奧瑪|GACS1226SH": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GAC-S926SH": {
+  "奧瑪|GACS926SH": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S1815H-PAC": {
+  "快意寶|S1815HPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S1216H-PAC": {
+  "快意寶|S1216HPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S0916H-PAC": {
+  "快意寶|S0916HPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S18K15H": {
+  "卓爾|SACS18K15H": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK50ZSXH-S/SRC50ZSXH-S": {
+  "MITSUBISHIHEAVY|SRK50ZSXHSSRC50ZSXHS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S12K16SH": {
+  "卓爾|SACS12K16SH": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK50ZSH-S / SRC50ZSH-S": {
+  "MITSUBISHIHEAVY|SRK50ZSHSSRC50ZSHS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK35ZSH-S / SRC35ZSH-S": {
+  "MITSUBISHIHEAVY|SRK35ZSHSSRC35ZSHS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S9K16SH": {
+  "卓爾|SACS9K16SH": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK25ZSH-S / SRC25ZSH-S": {
+  "MITSUBISHIHEAVY|SRK25ZSHSSRC25ZSHS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSABE-24HRFN1": {
+  "MIDEA|MSABE24HRFN1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSABE-18HRFN1": {
+  "MIDEA|MSABE18HRFN1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSABB-12HRFN1": {
+  "MIDEA|MSABB12HRFN1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSABB-09HRFN1": {
+  "MIDEA|MSABB09HRFN1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AR12NXPXBWKN": {
+  "SAMSUNG|AR12NXPXBWKN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AR09NXPXBWKN": {
+  "SAMSUNG|AR09NXPXBWKN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK50ZS-S / SRC50ZS-S": {
+  "MITSUBISHIHEAVY|SRK50ZSSSRC50ZSS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK25ZS-S / SRC25ZS-S": {
+  "MITSUBISHIHEAVY|SRK25ZSSSRC25ZSS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK35ZS-S / SRC35ZS-S": {
+  "MITSUBISHIHEAVY|SRK35ZSSSRC35ZSS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AR12NVWSBWKN": {
+  "SAMSUNG|AR12NVWSBWKN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AR18NVWSBWKN": {
+  "SAMSUNG|AR18NVWSBWKN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AR18NSPXBWKN": {
+  "SAMSUNG|AR18NSPXBWKN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "AR24NVWSBWKN": {
+  "SAMSUNG|AR24NVWSBWKN": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASWX09LECA/AOWX09LETA": {
+  "GENERAL|ASWX09LECAAOWX09LETA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASWX12LECA/AOWX12LETA": {
+  "GENERAL|ASWX12LECAAOWX12LETA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "4MYW4509HABAA": {
+  "TRANE|4MYW4509HABAA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "4MYW4524HABAA": {
+  "TRANE|4MYW4524HABAA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "4MYW4512HABAA": {
+  "TRANE|4MYW4512HABAA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "4MYW4518HABAA": {
+  "TRANE|4MYW4518HABAA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-B10N3KV2-E": {
+  "TOSHIBA|RASB10N3KV2E": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YS24UKA1/CU-YS24UKA1": {
+  "PANASONIC|CSYS24UKA1CUYS24UKA1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-YS24UK / RU-YS24UK": {
+  "RASONIC|RSYS24UKRUYS24UK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YS24UKA / CU-YS24UKA": {
+  "PANASONIC|CSYS24UKACUYS24UKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S12H35N / S12H35U": {
+  "TOSOT|S12H35NS12H35U": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-PS24UKA / CU-PS24UKA": {
+  "PANASONIC|CSPS24UKACUPS24UKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-X24CCK / RAC-X24CCK": {
+  "HITACHI|RASX24CCKRACX24CCK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S09H35N / S09H35U": {
+  "TOSOT|S09H35NS09H35U": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YS18UKA1/CU-YS18UKA1": {
+  "PANASONIC|CSYS18UKA1CUYS18UKA1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YS12UKA1/CU-YS12UKA1": {
+  "PANASONIC|CSYS12UKA1CUYS12UKA1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YE24UKA1/CU-YE24UKA1": {
+  "PANASONIC|CSYE24UKA1CUYE24UKA1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YS9UKA1/CU-YS9UKA1": {
+  "PANASONIC|CSYS9UKA1CUYS9UKA1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YE18UKA1/CU-YE18UKA1": {
+  "PANASONIC|CSYE18UKA1CUYE18UKA1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YE12UKA1/CU-YE12UKA1": {
+  "PANASONIC|CSYE12UKA1CUYE12UKA1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YE9UKA1/CU-YE9UKA1": {
+  "PANASONIC|CSYE9UKA1CUYE9UKA1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YS18UKA / CU-YS18UKA": {
+  "PANASONIC|CSYS18UKACUYS18UKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YS12UKA / CU-YS12UKA": {
+  "PANASONIC|CSYS12UKACUYS12UKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YS9UKA / CU-YS9UKA": {
+  "PANASONIC|CSYS9UKACUYS9UKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-PS18UKA / CU-PS18UKA": {
+  "PANASONIC|CSPS18UKACUPS18UKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-PS9UKA / CU-PS9UKA": {
+  "PANASONIC|CSPS9UKACUPS9UKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-PS12UKA / CU-PS12UKA": {
+  "PANASONIC|CSPS12UKACUPS12UKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-YS18UK / RU-YS18UK": {
+  "RASONIC|RSYS18UKRUYS18UK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-YS12UK / RU-YS12UK": {
+  "RASONIC|RSYS12UKRUYS12UK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-YS9UK / RU-YS9UK": {
+  "RASONIC|RSYS9UKRUYS9UK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-RE24UK / RU-RE24UK": {
+  "RASONIC|RSRE24UKRURE24UK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-RE18UK / RU-RE18UK": {
+  "RASONIC|RSRE18UKRURE18UK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-RE12UK / RU-RE12UK": {
+  "RASONIC|RSRE12UKRURE12UK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-RE9UK / RU-RE9UK": {
+  "RASONIC|RSRE9UKRURE9UK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASWX18LECA/AOWX18LETA": {
+  "GENERAL|ASWX18LECAAOWX18LETA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASWX18JECA/AOWX18JETA": {
+  "GENERAL|ASWX18JECAAOWX18JETA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GSA824AE / GSA824AC": {
+  "GREE|GSA824AEGSA824AC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GSA818AE / GSA818AC": {
+  "GREE|GSA818AEGSA818AC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GSA812AE / GSA812AC": {
+  "GREE|GSA812AEGSA812AC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GSA809AE / GSA809AC": {
+  "GREE|GSA809AEGSA809AC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YDEK24 / YDDK24": {
+  "YORK|YDEK24YDDK24": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YDEK18 / YDDK18": {
+  "YORK|YDEK18YDDK18": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YDEK12 / YDDK12": {
+  "YORK|YDEK12YDDK12": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YDEC24 / YDDC24": {
+  "YORK|YDEC24YDDC24": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YDEK09 / YDDK09": {
+  "YORK|YDEK09YDDK09": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YDEC18 / YDDC18": {
+  "YORK|YDEC18YDDC18": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YDEC09 / YDDC09": {
+  "YORK|YDEC09YDDC09": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "YDEC12 / YDDC12": {
+  "YORK|YDEC12YDDC12": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-22N3KCV(HK)1": {
+  "TOSHIBA|RAS22N3KCVHK1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-V7RW-1 / RU-V7RW-1": {
+  "RASONIC|RSV7RW1RUV7RW1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASWX12JECA/AOWX12JETA": {
+  "GENERAL|ASWX12JECAAOWX12JETA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASWX09JECA/AOWX09JETA": {
+  "GENERAL|ASWX09JECAAOWX09JETA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SSAB-18CRU1": {
+  "LITTLESWAN|SSAB18CRU1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SSAB-12CRU1": {
+  "LITTLESWAN|SSAB12CRU1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SSAB-09CRU1": {
+  "LITTLESWAN|SSAB09CRU1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-LS12TK / RU-LS12TK": {
+  "RASONIC|RSLS12TKRULS12TK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S18K13V": {
+  "卓爾|SACS18K13V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S18K12": {
+  "卓爾|SACS18K12": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S12K13V": {
+  "卓爾|SACS12K13V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S9K13V": {
+  "卓爾|SACS9K13V": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S1813V-PAC": {
+  "快意寶|S1813VPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S1812-PAC": {
+  "快意寶|S1812PAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S1213V-PAC": {
+  "快意寶|S1213VPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S0913V-PAC": {
+  "快意寶|S0913VPAC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GIM12AE / GIM12AC": {
+  "GREE|GIM12AEGIM12AC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "GIM09AE / GIM09AC": {
+  "GREE|GIM09AEGIM09AC": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S9K11S": {
+  "卓爾|SACS9K11S": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSSAB-12CRDU1": {
+  "MIDEA|MSSAB12CRDU1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S911-PACS": {
+  "快意寶|S911PACS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSSAB-09CRDU1": {
+  "MIDEA|MSSAB09CRDU1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSAB-18CRU1": {
+  "MIDEA|MSAB18CRU1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSAB-09CRU1": {
+  "MIDEA|MSAB09CRU1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSAB-12CRU1": {
+  "MIDEA|MSAB12CRU1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-DX18HDK/RAC-DX18HDK": {
+  "HITACHI|RASDX18HDKRACDX18HDK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KW18A / KW18B": {
+  "HYUNDAI|KW18AKW18B": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KW12A / KW12B": {
+  "HYUNDAI|KW12AKW12B": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "KW09A / KW09B": {
+  "HYUNDAI|KW09AKW09B": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-LE9SK / RU-LE9SK": {
+  "RASONIC|RSLE9SKRULE9SK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-LE12SK / RU-LE12SK": {
+  "RASONIC|RSLE12SKRULE12SK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK71ZRH-S/SRC71ZRH-S": {
+  "MITSUBISHIHEAVY|SRK71ZRHSSRC71ZRHS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-10N3KCV(HK)1": {
+  "TOSHIBA|RAS10N3KCVHK1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SRK63ZRH-S/SRC63ZRH-S": {
+  "MITSUBISHIHEAVY|SRK63ZRHSSRC63ZRHS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "M5WMY25LR/M5LCY25CR": {
+  "MCQUAY|M5WMY25LRM5LCY25CR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "M5WMY20LR/M5LCY18CR": {
+  "MCQUAY|M5WMY20LRM5LCY18CR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "M5WMY15LR/M5LCY15FR": {
+  "MCQUAY|M5WMY15LRM5LCY15FR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "M5WMY10LR/M5LCY10FR": {
+  "MCQUAY|M5WMY10LRM5LCY10FR": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASWG24LFCB/AOWG24LFCB": {
+  "GENERAL|ASWG24LFCBAOWG24LFCB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASWG24JFCB/AOWG24JFCB": {
+  "GENERAL|ASWG24JFCBAOWG24JFCB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-10N3KV-HK1": {
+  "TOSHIBA|RAS10N3KVHK1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-18BKS-HK": {
+  "TOSHIBA|RAS18BKSHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-13BKS-HK": {
+  "TOSHIBA|RAS13BKSHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-10BKS-HK": {
+  "TOSHIBA|RAS10BKSHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RSG12LMCB-A/ROG12LMCB-A": {
+  "FUJI|RSG12LMCBAROG12LMCBA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RSG09LMCB-A/ROG09LMCB-A": {
+  "FUJI|RSG09LMCBAROG09LMCBA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RSG09JMCB-A/ROG09JMCB-A": {
+  "FUJI|RSG09JMCBAROG09JMCBA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASWG12LMCB/AOWG12LMCB": {
+  "GENERAL|ASWG12LMCBAOWG12LMCB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASWG12JMCB/AOWG12JMCB": {
+  "GENERAL|ASWG12JMCBAOWG12JMCB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASWG09JMCB/AOWG09JMCB": {
+  "GENERAL|ASWG09JMCBAOWG09JMCB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "ASWG09LMCB/AOWG09LMCB": {
+  "GENERAL|ASWG09LMCBAOWG09LMCB": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-GE50VA-E1": {
+  "MITSUBISHIELECTRIC|MSZGE50VAE1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-GE42VA-E1": {
+  "MITSUBISHIELECTRIC|MSZGE42VAE1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-GE35VA-E1": {
+  "MITSUBISHIELECTRIC|MSZGE35VAE1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-YK18VA-H1": {
+  "MITSUBISHIELECTRIC|MSZYK18VAH1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "MSZ-GE25VA-E1": {
+  "MITSUBISHIELECTRIC|MSZGE25VAE1": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "SAC-S12K10S": {
+  "卓爾|SACS12K10S": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "M5WM25L/M5LC25C": {
+  "MCQUAY|M5WM25LM5LC25C": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "S1210-PACS": {
+  "快意寶|S1210PACS": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "M5WM20L/M5LC20C": {
+  "MCQUAY|M5WM20LM5LC20C": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-13N3KV-HK": {
+  "TOSHIBA|RAS13N3KVHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-18N3KV-HK": {
+  "TOSHIBA|RAS18N3KVHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-24N3KV-HK": {
+  "TOSHIBA|RAS24N3KVHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-22N3KV-HK": {
+  "TOSHIBA|RAS22N3KVHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-V18RKA / CU-V18RKA": {
+  "PANASONIC|CSV18RKACUV18RKA": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-V18RW / RU-V18RW": {
+  "RASONIC|RSV18RWRUV18RW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-V12RW / RU-V12RW": {
+  "RASONIC|RSV12RWRUV12RW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-DX13HDK/RAC-DX13HDK": {
+  "HITACHI|RASDX13HDKRACDX13HDK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-V9RW / RU-V9RW": {
+  "RASONIC|RSV9RWRUV9RW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RS-V7RW / RU-V7RW": {
+  "RASONIC|RSV7RWRUV7RW": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-18N3KCV(HK)": {
+  "TOSHIBA|RAS18N3KCVHK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-DX10HDK/RAC-DX10HDK": {
+  "HITACHI|RASDX10HDKRACDX10HDK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-E13CAK / RAC-E13CAK": {
+  "HITACHI|RASE13CAKRACE13CAK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-E24CAK/RAC-E24CAK": {
+  "HITACHI|RASE24CAKRACE24CAK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-S18CAK/RAC-S18CAK": {
+  "HITACHI|RASS18CAKRACS18CAK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "RAS-E10CAK / RAC-E10CAK": {
+  "HITACHI|RASE10CAKRACE10CAK": {
     "first_missed": "2026-08-18",
     "misses": 1,
     "last_checked": "2026-08-18"
   },
-  "CS-YU12ZKA / CU-YU12ZKA": {
+  "PANASONIC|CSYU12ZKACUYU12ZKA": {
     "first_missed": "2026-08-20",
     "misses": 2,
     "last_checked": "2026-08-26"
   },
-  "W18V5B": {
+  "TOSOT|W18V5B": {
     "first_missed": "2026-08-26",
     "misses": 1,
     "last_checked": "2026-08-26"
   },
-  "MWH-12HR3U1": {
+  "MIDEA|MWH12HR3U1": {
     "first_missed": "2026-08-26",
     "misses": 1,
     "last_checked": "2026-08-26"
   },
-  "FWAC08M18": {
+  "FORTRESS|FWAC08M18": {
     "first_missed": "2026-08-26",
     "misses": 1,
     "last_checked": "2026-08-26"
   },
-  "SRK35QE3 / SRC35QE3": {
+  "MITSUBISHIHEAVY|SRK35QE3SRC35QE3": {
     "first_missed": "2026-08-26",
     "misses": 1,
     "last_checked": "2026-08-26"
   },
-  "AR09NVWSBWKN": {
+  "SAMSUNG|AR09NVWSBWKN": {
     "first_missed": "2026-08-26",
     "misses": 1,
     "last_checked": "2026-08-26"

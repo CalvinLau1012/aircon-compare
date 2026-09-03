@@ -70,7 +70,7 @@ def test_blacklist_entries_are_canonical():
     black = load_blacklist()
     assert black, '黑名單唔應該係空'
     for k in black:
-        assert re.fullmatch(r'[A-Z0-9\u4e00-\u9fff]+|[A-Z0-9]+', k), f'非 canonical key：{k!r}'
+        assert re.fullmatch(r'[A-Z0-9\u4e00-\u9fff]+\|[A-Z0-9]+', k), f'非 canonical key：{k!r}'
 
 
 def test_discontinued_models_marked_in_page():

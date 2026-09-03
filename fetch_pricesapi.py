@@ -366,7 +366,11 @@ def run_core_check():
     today = time.strftime('%Y-%m-%d')
     todo = [m for m in models if not (isinstance(results.get(m), dict) and results[m].get('price')
                                       and results[m].get('updated') == today)]
-    todo, skipped = model_lifecycle.filter_active(todo)
+    from crawl_utils import canonical_model_key, load_brand_lookup, norm_model
+    brand_lookup = load_brand_lookup()
+    todo, skipped = model_lifecycle.filter_active(
+        todo, key_of=lambda m: canonical_model_key(
+            brand_lookup.get(norm_model(m)) or 'UNKNOWN', m))
     if skipped:
         print(f'🚫 跳過黑名單核心驗收：{len(skipped)} 個')
     if not todo:
