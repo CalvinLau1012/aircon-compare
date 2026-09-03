@@ -90,8 +90,8 @@ _FIXED_PDF_DATE = "D:20200101000000+00'00'"
 def _normalize_pdf_bytes(data):
     """固定 reportlab 寫入嘅 CreationDate/ModDate/ID，令同輸入兩次 build byte-for-byte 相同"""
     fixed = _FIXED_PDF_DATE.encode('ascii')
-    data = re.sub(rb'/CreationDate \\(D:[^)]*\\)', b'/CreationDate (' + fixed + b')', data)
-    data = re.sub(rb'/ModDate \\(D:[^)]*\\)', b'/ModDate (' + fixed + b')', data)
+    data = re.sub(rb'/CreationDate \(D:[^)]*\)', b'/CreationDate (' + fixed + b')', data)
+    data = re.sub(rb'/ModDate \(D:[^)]*\)', b'/ModDate (' + fixed + b')', data)
     data = re.sub(rb'/ID \s*\[<[0-9a-f]+><[0-9a-f]+>\]',
                   b'/ID [<00000000000000000000000000000000><00000000000000000000000000000000>]',
                   data)

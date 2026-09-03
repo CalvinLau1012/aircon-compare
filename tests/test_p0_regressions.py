@@ -20,10 +20,12 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def test_pdf_build_is_reproducible(tmp_path):
     """同一輸入連續兩次 build 必須 byte-for-byte 相同（GATE-02／SC-014）"""
+    import time
     from generate_pdf import build_pdf
     p1 = tmp_path / 'a.pdf'
     p2 = tmp_path / 'b.pdf'
     build_pdf(str(p1))
+    time.sleep(1.1)  # 跨秒：確保 CreationDate 有被固定化（否則同秒會假綠）
     build_pdf(str(p2))
     assert p1.read_bytes() == p2.read_bytes()
 

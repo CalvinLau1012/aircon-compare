@@ -67,6 +67,9 @@ def main():
     ap.add_argument('--dataset-snapshot-id', required=True)
     ap.add_argument('--dataset-hash', required=True)
     ap.add_argument('--record-count', type=int, required=True)
+    ap.add_argument('--raw-record-count', type=int, default=None)
+    ap.add_argument('--registration-count', type=int, default=None)
+    ap.add_argument('--model-count', type=int, default=None)
     ap.add_argument('--payload-dir', default=None)
     ap.add_argument('--release-payload-hash', default=None)
     ap.add_argument('--out', default=OUT)
@@ -109,6 +112,14 @@ def main():
             print('❌ rollback 部署必須提供 --rollback-of-build', file=sys.stderr)
             return 1
         meta['rollbackOfBuild'] = args.rollback_of_build
+
+    # optional 計數欄位（D12）：CI 未傳就唔寫，保持向後兼容
+    for arg_name, field in (('raw_record_count', 'rawRecordCount'),
+                            ('registration_count', 'registrationCount'),
+                            ('model_count', 'modelCount')):
+        value = getattr(args, arg_name)
+        if value is not None:
+            meta[field] = value
 
     with open(args.out, 'w', encoding='utf-8') as f:
         json.dump(meta, f, ensure_ascii=False, indent=2)

@@ -5,6 +5,31 @@
 
 ## [Unreleased]
 
+### Changed
+
+- 治理改善方案 M1（PR-1／PR-2／PR-3，本地分支；決策 D11-D13）：
+  - **Canonical 型號鍵**：`crawl_utils.canonical_brand()`（品牌跨平台矯正）+ `canonical_model_key()`（`BRAND|NORM`）；黑名單、model_status、protected set、filter_active、record_results、revive_model 全線統一（D11）
+  - **生命週期三態**：`run_price_batch()` 分開有價／乾淨無報價／網絡錯誤（網絡錯誤唔計淘汰，D8）；正常批次照 call `record_results`（batch_id 防同批重跑重複計 miss）；每批次日小額黑名單復核 quota 40（有價自動復活）；並發 3 → 2（回歸 D3）
+  - **EMSD ingestion**：每頁表頭按 signature 排除（唔再靠 p==1）；`emsd_receipt.json` 記錄 pagesExpected/pagesFetched/每頁行數/終止原因；中途網絡錯誤即使累積超過下限都唔覆寫 CSV；保留全部 registration + canonical product view（D12）
+  - **Metadata Schema**：新增 optional `rawRecordCount`／`registrationCount`／`modelCount`（治理文檔 v3.1.1）
+  - **PDF 可重現**：`build_pdf(output_path=...)` 加輸出參數、固定 CreationDate/ModDate/ID，同輸入兩次 build byte-for-byte 相同；`test_pdf_export` 改用 tmp_path（唔再污染受追蹤 PDF）
+
+### Fixed
+
+- 停售標示失效：黑名單 canonical key 匹配修正後，頁面停售型號 289 → 1,079
+- 保護型號失效：`protected_models()` 之前誤將 MODELS dict 整個正規化，核心 29 保護形同虛設；現改為 canonical key 集合
+- EMSD CSV 混入 37 行重複表頭（已清理；1,863 筆登記 / 1,814 型號）
+
+### Data
+
+- `model_blacklist.json` 1,095 個 key 遷移為 canonical（matched 1,079、orphan 16；遷移報告 `docs/blacklist-migration-2026-09.md`）
+- `model_status.json` tracking key 一併遷移
+- `emsd_空調能源標籤.csv` 移除重複表頭（1,900 → 1,863 筆登記）
+- README／需求摘要／報告計數同步實際快照（1,814 型號 · 1,809 有價 · 1,863 筆登記，截至 2026-09-03）
+
+### Security
+
+- 無改動（BigGo 憑證仍只存 GitHub Secrets）
 ## [1.2.8] - 2026-08-26
 
 ### Added
