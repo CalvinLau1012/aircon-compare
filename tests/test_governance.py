@@ -147,11 +147,14 @@ def test_feature_check_script():
     assert r.returncode == 0, (r.stdout or '') + (r.stderr or '')
 
 
-def test_pdf_export():
-    """report.pdf-export：PDF 可生成、係有效 %PDF、同 Web 用同一 metadata 規則"""
+def test_pdf_export(tmp_path):
+    """report.pdf-export：PDF 可生成、係有效 %PDF、同 Web 用同一 metadata 規則
+
+    輸出寫入 tmp_path（PR-1 修正）：測試唔可以覆寫 repo 受追蹤嘅 PDF。
+    """
     import generate_pdf
-    generate_pdf.build_pdf()
-    out = os.path.join(ROOT, '空調對比報告.pdf')
+    out = str(tmp_path / '空調對比報告.pdf')
+    generate_pdf.build_pdf(out)
     assert os.path.exists(out), 'PDF 檔案應該生成'
     with open(out, 'rb') as f:
         head = f.read(8)
