@@ -26,8 +26,7 @@ INDEX = os.path.join(ROOT, 'index.html')
 if not os.path.exists(INDEX):
     INDEX = os.path.join(ROOT, '空調對比報告.html')
 
-playwright = pytest.importorskip('playwright.sync_api')
-from playwright.sync_api import sync_playwright  # noqa: E402
+from playwright.sync_api import sync_playwright  # noqa: E402  # 硬 import：required smoke 唔可以靜靜 skip（SC-013）
 
 URL = 'file:///' + INDEX.replace('\\', '/')
 

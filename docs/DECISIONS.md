@@ -134,6 +134,24 @@
 - **原因**：控制 M1 風險同 diff 大小；價錢快照唔參與淘汰／停售判定。
 - **後果**：黑名單復核復活時新價會以 norm 型號 key 寫入 biggo_prices.json（該等型號頁面唔顯示，只作復核證據保留）。
 
+## D14 · CI PDF／metadata 次序：兩階段封裝（人類決策，R2-R3）
+
+- **日期**：2026-09-13
+- **狀態**：已實行
+- **背景**：舊流水線次序係「生成 HTML → 生成 PDF → 生成 metadata.json」。PDF 讀 repo 內上一 run 嘅 metadata.json，令 PDF 嘅 version／datasetDate／deployTime 落後一拍；之後 metadata 又被新 run 覆寫。直接將 metadata 移前唔可行：`releasePayloadHash` 要覆蓋最終 Web／PDF 負載，同 PDF 需要 metadata 形成循環。
+- **選項**：
+  - A：兩階段封裝——先出同 run 核心事實（無 hash）→ PDF 用核心事實 → PDF 完成後 finalize payload hash 寫正式 metadata
+  - B：維持舊次序（PDF 永遠落後）或 PDF 生成後再改寫內文
+- **決策**：選 A。`scripts/gen-metadata.py` 加 `--stage core|finalize`：
+  1. **core**：由受信任作業生成 version／build／commit／deployTime／dataset 事實（deployTime 仍由腳本 UTC 生成，不接受人手時間）；輸出唔可以叫 `metadata.json`，而且缺 `releasePayloadHash` 過唔到正式 Schema（未 finalize 不可部署）；core 寫入 `$RUNNER_TEMP`（repo 外），`.gitignore` 亦加 `metadata.core.json`。
+  2. **PDF**：`generate_pdf.py --metadata <core>`，用同 run 嘅 version／datasetDate／deployTime。
+  3. **finalize**：以 `deploy_payload.json` 明確 manifest 計 `releasePayloadHash`，只新增 hash 欄位；寫入前按治理內嵌 Schema 自我驗證；最終 metadata 嘅核心事實同 core 逐欄一致。
+- **hash 範圍**：manifest 明確列出 `index.html`、`空調對比報告.pdf`、`emsd_空調能源標籤.csv`；排除 `.git`／`.venv`／`.agents`／cache／測試檔／舊生成物／最終 `metadata.json`（自引用）。framing 用「長度前綴 + 相對路徑 + 長度前綴 + 內容」，排序後計算，確保可重現同無歧義。舊 `--payload-dir .` 只保留兼容，正式流水線唔再用。
+- **原因**：用戶 2026-09-13 明確批准此修正；治理 §7.2.3 要求非自引用 payload hash，舊 `--payload-dir .` 範圍過寬且次序錯配。
+- **相容性**：Metadata Schema 無變更（schemaVersion 維持 1.0.0，無新 required 欄位）；省略 `--stage` 時 CLI 維持舊單階段行為。`recordCount` 按 D12 註釋改為唯一型號數，CI 同時傳 optional `rawRecordCount`／`registrationCount`／`modelCount`。
+- **回滾**：`git revert` 對應 commit（workflow 恢復單階段 `--payload-dir .`；metadata 格式仍係 Schema 1.0.0，無資料遷移）；core 檔只係暫存，無殘留狀態。
+- **後果**：PDF 同最終 metadata 嘅 version／datasetDate／deployTime 同 run 一致；hash 範圍可審計、唔會混入 `.git`／`.venv`／`.agents`／工作區任意檔案。
+
 ---
 
 ## 決策模板

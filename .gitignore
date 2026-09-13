@@ -36,3 +36,6 @@ desktop.ini
 # API 憑證（PricesAPI key 只放環境變數 / GitHub Secrets）
 .env
 .env.*
+
+# metadata 兩階段封裝（D14）：core 檔係未完成件，只應存在於 RUNNER_TEMP／本機暫存，唔入庫
+metadata.core.json

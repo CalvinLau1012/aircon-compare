@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "1.0.0",
+  "description": "GitHub Pages 發布負載清單（releasePayloadHash 計算範圍，DECISIONS.md D14）：只收錄實際交付畀用戶嘅應用、報告同資料快照；唔包含最終 metadata.json（避免自引用）、repo 原始碼、測試、docs、cache 或工作區任意檔案。",
+  "files": [
+    "index.html",
+    "空調對比報告.pdf",
+    "emsd_空調能源標籤.csv"
+  ]
+}

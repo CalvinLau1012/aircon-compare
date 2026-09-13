@@ -115,6 +115,30 @@ def test_metadata_validation_rejects_bad():
     assert validate(bad, schema), '額外欄位應該被拒'
 
 
+def test_metadata_schema_accepts_fractional_seconds():
+    """RFC 3339 date-time 允許小數秒（內嵌 Schema format: date-time）；Web 亦支援顯示"""
+    from validate_metadata import validate
+    with open(GOV_FILE, encoding='utf-8') as f:
+        schema = extract_blocks(f.read())['AIRCON_METADATA_SCHEMA_V1']
+    meta = {
+        'schemaVersion': '1.0.0', 'version': '1.2.7', 'build': 'B1',
+        'commit': 'a' * 40, 'deployTime': '2026-09-02T19:28:14.500Z',
+        'workflowRunId': '1', 'deploymentType': 'release',
+        'releasePayloadHash': 'sha256:' + 'b' * 64,
+        'datasetDate': '2026-09-02', 'datasetDateBasis': 'retrieval-date-fallback',
+        'datasetRetrievedAt': '2026-09-02T19:28:14.500Z',
+        'datasetSourceUrl': 'https://example.com', 'datasetSnapshotId': 's1',
+        'datasetHash': 'sha256:' + 'c' * 64, 'recordCount': 1,
+    }
+    assert validate(meta, schema) == []
+    bad = dict(meta)
+    bad['deployTime'] = '2026-09-02T19:28:14+08:00'
+    assert validate(bad, schema), '非 UTC Z 時間仍然要被拒'
+    bad = dict(meta)
+    bad['deployTime'] = '2026-09-02 19:28:14Z'
+    assert validate(bad, schema), '格式錯要被拒'
+
+
 def test_format_status_metadata_driven():
     """狀態文字嚟自 metadata.json：HKT 轉換 + 資料日期"""
     meta = {

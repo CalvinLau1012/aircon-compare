@@ -20,6 +20,9 @@
   - **PDF 可重現**：`build_pdf(output_path=...)` 加輸出參數、固定 CreationDate/ModDate/ID，同輸入兩次 build byte-for-byte 相同；`test_pdf_export` 改用 tmp_path（唔再污染受追蹤 PDF），並加測試前後 repo PDF hash 不變斷言
 - 比較面板加 `role="dialog"`；搜尋與下拉選單加 `aria-label`
 - 比較工具列、頁腳、hero 統計、`--primary2` 等顏色調整至 WCAG AA（≥4.5:1）
+- **CI 兩階段 metadata 封裝（D14）**：新增 `--stage core|finalize`；core 出同 run 核心事實（無 hash）→ PDF 用 core → PDF 完成後以 `deploy_payload.json` 明確 manifest finalize `releasePayloadHash`；hash 範圍唔再係 `--payload-dir .`
+- **動態型號數字**：Hero／Open Graph／meta description 用建置時實際 `__TOTAL_MODELS__`／`__EMSD_REGISTRATIONS__`；歷史數字（1,927／1,854）只保留喺明確標示歷史嘅文檔段落
+- `tests/browser_smoke.py` 移除 `pytest.importorskip`（required browser smoke 唔可以靜靜 skip）；`requirements-dev.txt` 加 `playwright>=1.40`
 
 ### Fixed
 
@@ -34,6 +37,7 @@
 - Windows 本地生成 HTML 用 CRLF，與 CI／已入庫 LF 唔一致（可重現建置）
 - 「只顯示已選」之下反選後，型號仍留在列表（`core.filter`）
 - `AGENTS.md` 與 `validate_metadata.py` 用法示例檔名（`validate-metadata.py` 不存在，以 CI 實際命令 `validate_metadata.py` 為準）
+- `validate_metadata.py` 之前拒收 RFC 3339 小數秒（`2026-09-02T19:28:14.500Z`）；內嵌 Schema `format: date-time` 本身容許，已對齊（非 UTC `Z` 或格式錯照樣拒）
 
 ### Data
 
@@ -41,6 +45,7 @@
 - `model_status.json` tracking key 一併遷移
 - `emsd_空調能源標籤.csv` 移除重複表頭（1,900 → 1,863 筆登記）
 - README／需求摘要／報告計數同步實際快照（1,814 型號 · 1,809 有價 · 1,863 筆登記，截至 2026-09-03）
+- metadata `recordCount` 按 D12 改為唯一型號數（1,814）；CI 另傳 optional `rawRecordCount`（1,863）／`registrationCount`（1,863）／`modelCount`（1,814）
 
 ### Security
 

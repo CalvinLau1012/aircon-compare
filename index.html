@@ -2286,7 +2286,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </blockquote>
 <hr />
 <h2>📅 更新日誌</h2>
-<h3>2026-09-13 — 網頁本地 Bug 修復（篩選／響應式／無障礙／對比度）</h3>
+<h3>2026-09-13 — 本地整合驗證：網頁 Bug 修復 + 治理 PR-1～PR-3 + 兩階段 metadata</h3>
 <table>
 <thead>
 <tr>
@@ -2317,7 +2317,19 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </tr>
 <tr>
 <td>🧪 測試</td>
-<td><code>pytest tests/</code> 預設收集瀏覽器 smoke（共 42 項）；HTML 固定 LF（Windows 本地 = CI）；<code>test_pdf_export</code> 改用 <code>tmp_path</code>，測試前後 <code>空調對比報告.pdf</code> hash 不變</td>
+<td><code>pytest tests/</code> 預設收集瀏覽器 smoke；HTML 固定 LF（Windows 本地 = CI）；<code>test_pdf_export</code> 改用 <code>tmp_path</code>，測試前後 <code>空調對比報告.pdf</code> hash 不變</td>
+</tr>
+<tr>
+<td>🏛️ 治理</td>
+<td>PR-1～PR-3 整合：canonical 型號鍵（D11）＋生命週期三態（D8）＋EMSD 保留全部登記（D12）＋價錢快照原始 key（D13）</td>
+</tr>
+<tr>
+<td>🔢 動態數字</td>
+<td>Hero／Open Graph／description 改用建置時實際計數（1,863 筆登記 / 1,814 型號）；歷史數字只留喺標明歷史嘅段落</td>
+</tr>
+<tr>
+<td>🔄 流水線</td>
+<td>兩階段 metadata（D14）：核心事實 → PDF 用同 run metadata → finalize payload hash；hash 範圍收斂為 <code>deploy_payload.json</code> 明確 manifest</td>
 </tr>
 </tbody>
 </table>

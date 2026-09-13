@@ -116,15 +116,17 @@ jobs:
           python generate_html.py
           cp 空調對比報告.html index.html
 
-      - name: 生成 PDF 報告（report.pdf-export）
-        run: python generate_pdf.py
-
-      # GATE-06：部署元數據只由呢個受信任作業生成（deployTime UTC 自動、非自引用 payload hash）
-      - name: 生成部署元數據 metadata.json（GATE-06）
+      # GATE-06 兩階段（D14）：核心事實 → PDF 用同 run metadata → finalize payload hash
+      - name: 生成部署核心 metadata（GATE-06 · 階段 1：同 run 核心事實）
         run: |
           DATASET_HASH="sha256:$(sha256sum emsd_空調能源標籤.csv | cut -d' ' -f1)"
-          RECORDS=$(python -c "import csv;print(sum(1 for r in csv.reader(open('emsd_空調能源標籤.csv',encoding='utf-8-sig'))) - 1)")
+          RAW_RECORDS=$(python -c "import csv;print(sum(1 for _ in csv.reader(open('emsd_空調能源標籤.csv',encoding='utf-8-sig'))) - 1)")
+          REGISTRATIONS=$(python -c "from crawl_utils import load_registrations;print(len(load_registrations()))")
+          MODELS=$(python -c "from crawl_utils import load_models;print(len(load_models()))")
+          # core 寫入 RUNNER_TEMP（repo 外），唔會被 commit／部署；未 finalize（無 hash）過唔到正式 Schema
           python scripts/gen-metadata.py \
+            --stage core \
+            --out "$RUNNER_TEMP/metadata.core.json" \
             --version "$(python -c 'import models_data;print(models_data.VERSION)')" \
             --build "B$(date -u +%Y%m%d).${GITHUB_RUN_NUMBER}" \
             --commit "$GITHUB_SHA" \
@@ -134,8 +136,24 @@ jobs:
             --dataset-source-url "https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php" \
             --dataset-snapshot-id "emsd-$(date +%F)" \
             --dataset-hash "$DATASET_HASH" \
-            --record-count "$RECORDS" \
-            --payload-dir .
+            --record-count "$MODELS" \
+            --raw-record-count "$RAW_RECORDS" \
+            --registration-count "$REGISTRATIONS" \
+            --model-count "$MODELS"
+          echo "✅ 核心事實：modelCount=$MODELS · registrationCount=$REGISTRATIONS · rawRecordCount=$RAW_RECORDS"
+
+      - name: 生成 PDF 報告（report.pdf-export · 用同 run 核心 metadata）
+        run: python generate_pdf.py --metadata "$RUNNER_TEMP/metadata.core.json"
+
+      - name: 完成 metadata.json（GATE-06 · 階段 2：payload hash finalize）
+        run: |
+          python scripts/gen-metadata.py \
+            --stage finalize \
+            --core "$RUNNER_TEMP/metadata.core.json" \
+            --payload-manifest deploy_payload.json \
+            --out metadata.json
+          test ! -e metadata.core.json
+          echo "✅ core 檔只喺 RUNNER_TEMP，未 finalize 中間檔唔會進入部署包"
 
       - name: 驗證 metadata.json（GATE-06）
         run: python scripts/validate_metadata.py

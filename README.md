@@ -31,7 +31,7 @@
 | BigGo 香港格價型號 | 742（官方 JSON API + 免費認證；主力價錢源） |
 | PricesAPI 核心驗收型號 | 29（選用驗收/後備，每月免費額度內） |
 | 有尺寸型號 | 1,676 |
-| EMSD 官方核實型號 | 1,863 筆登記（全量） |
+| EMSD 官方核實登記 | 1,863 筆登記（1,814 型號；全量·截至 2026-09-03 快照） |
 | 品牌官網核實型號 | 220（8 品牌） |
 | 對比屬性 | 18 項 |
 
@@ -349,7 +349,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 ## 📅 更新日誌
 
-### 2026-09-13 — 網頁本地 Bug 修復（篩選／響應式／無障礙／對比度）
+### 2026-09-13 — 本地整合驗證：網頁 Bug 修復 + 治理 PR-1～PR-3 + 兩階段 metadata
 
 | 類別 | 內容 |
 | ------ | ------ |
@@ -358,7 +358,10 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | ♿ 無障礙 | 比較面板 Escape 關閉、焦點移入／返回、`role=dialog` + `aria-expanded`；搜尋及下拉加 `aria-label` |
 | 🌗 對比度 | 深色頁腳 1.85:1 → 12.2:1；淺色連結／按鈕／hero 統計／最佳值標示全部 ≥4.5:1 |
 | 🔢 版本 | 頁腳版本只讀 `metadata.json.version`，移除 HTML 內嵌版本常量 |
-| 🧪 測試 | `pytest tests/` 預設收集瀏覽器 smoke（共 42 項）；HTML 固定 LF（Windows 本地 = CI）；`test_pdf_export` 改用 `tmp_path`，測試前後 `空調對比報告.pdf` hash 不變 |
+| 🧪 測試 | `pytest tests/` 預設收集瀏覽器 smoke；HTML 固定 LF（Windows 本地 = CI）；`test_pdf_export` 改用 `tmp_path`，測試前後 `空調對比報告.pdf` hash 不變 |
+| 🏛️ 治理 | PR-1～PR-3 整合：canonical 型號鍵（D11）＋生命週期三態（D8）＋EMSD 保留全部登記（D12）＋價錢快照原始 key（D13） |
+| 🔢 動態數字 | Hero／Open Graph／description 改用建置時實際計數（1,863 筆登記 / 1,814 型號）；歷史數字只留喺標明歷史嘅段落 |
+| 🔄 流水線 | 兩階段 metadata（D14）：核心事實 → PDF 用同 run metadata → finalize payload hash；hash 範圍收斂為 `deploy_payload.json` 明確 manifest |
 
 ### 2026-08-26 — v1.2.8 治理落地 + PDF + BigGo 官方 API
 

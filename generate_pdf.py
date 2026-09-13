@@ -77,6 +77,12 @@ class BlockExtractor(HTMLParser):
             self.buf = []
 
 
+def _safe_text(text):
+    """控制台編碼唔支援 emoji／個別字元時用 replacement，唔可以令建置失敗"""
+    enc = getattr(sys.stdout, 'encoding', None) or 'utf-8'
+    return text.encode(enc, 'replace').decode(enc)
+
+
 def load_metadata(path=None):
     """讀取 metadata；path 預設 repo 根目錄 metadata.json（CI 可傳同 run core 檔）"""
     try:
@@ -201,7 +207,7 @@ def build_pdf(output_path=None, metadata_path=None):
     if normalized != raw:
         with open(out_path, 'wb') as f:
             f.write(normalized)
-    print(f'✅ PDF 已生成：{out_path}（{os.path.getsize(out_path) / 1024:.0f} KB）· v{VERSION}')
+    print(_safe_text(f'✅ PDF 已生成：{out_path}（{os.path.getsize(out_path) / 1024:.0f} KB）· v{VERSION}'))
     return out_path
 
 
