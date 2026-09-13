@@ -26,7 +26,7 @@
 
 ### Fixed
 
-- 停售標示失效：黑名單 canonical key 匹配修正後，頁面停售型號 289 → 1,079
+- 停售標示失效：黑名單 canonical key 匹配修正後，頁面停售型號 289 → 1,075（黑名單 1,095 keys 中 1,079 個可解析品牌；4 個唔喺現行頁面資料）
 - 保護型號失效：`protected_models()` 之前誤將 MODELS dict 整個正規化，核心 29 保護形同虛設；現改為 canonical key 集合
 - EMSD CSV 混入 37 行重複表頭（已清理；1,863 筆登記 / 1,814 型號）
 - 價位篩選「5以上」錯誤包含未知價型號（`core.filter`）
@@ -46,6 +46,7 @@
 - `emsd_空調能源標籤.csv` 移除重複表頭（1,900 → 1,863 筆登記）
 - README／需求摘要／報告計數同步實際快照（1,814 型號 · 1,809 有價 · 1,863 筆登記，截至 2026-09-03）
 - metadata `recordCount` 按 D12 改為唯一型號數（1,814）；CI 另傳 optional `rawRecordCount`（1,863）／`registrationCount`（1,863）／`modelCount`（1,814）
+- README 狀態分佈圖同步實際頁面：有價 674 / 停售 1,075 / 官方價 65（合共 1,814；無價 0）
 
 ### Security
 
