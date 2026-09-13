@@ -14,7 +14,7 @@
 ```bash
 python scripts/extract_governance.py     # 六個規範區塊提取驗證
 python scripts/feature-check.py          # Registry Schema + 測試綁定檢查
-python scripts/validate-metadata.py      # metadata.json Schema 驗證
+python scripts/validate_metadata.py      # metadata.json Schema 驗證
 ```
 
 ## 項目簡介

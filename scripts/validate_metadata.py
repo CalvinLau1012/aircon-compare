@@ -7,7 +7,7 @@
 - 支援 type / pattern / enum / format / min/max 基本驗證
 - rollback 部署必須有 rollbackOfBuild
 用法：
-  python scripts/validate-metadata.py [metadata.json 路徑]
+  python scripts/validate_metadata.py [metadata.json 路徑]
 退出碼：0 = 通過；1 = 失敗
 """
 import json

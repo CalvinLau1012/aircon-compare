@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- `pytest.ini`：`python -m pytest tests/` 預設收集 `tests/browser_smoke.py`（12 項瀏覽器 E2 證據）
+- 瀏覽器回歸測試：價位邊界、Escape／焦點、tooltip 溢出、明暗對比、metadata 小數秒與載入失敗
+
 ### Changed
 
 - 治理改善方案 M1（PR-1／PR-2／PR-3，本地分支；決策 D11-D13）：
@@ -12,13 +17,23 @@
   - **生命週期三態**：`run_price_batch()` 分開有價／乾淨無報價／網絡錯誤（網絡錯誤唔計淘汰，D8）；正常批次照 call `record_results`（batch_id 防同批重跑重複計 miss）；每批次日小額黑名單復核 quota 40（有價自動復活）；並發 3 → 2（回歸 D3）
   - **EMSD ingestion**：每頁表頭按 signature 排除（唔再靠 p==1）；`emsd_receipt.json` 記錄 pagesExpected/pagesFetched/每頁行數/終止原因；中途網絡錯誤即使累積超過下限都唔覆寫 CSV；保留全部 registration + canonical product view（D12）
   - **Metadata Schema**：新增 optional `rawRecordCount`／`registrationCount`／`modelCount`（治理文檔 v3.1.1）
-  - **PDF 可重現**：`build_pdf(output_path=...)` 加輸出參數、固定 CreationDate/ModDate/ID，同輸入兩次 build byte-for-byte 相同；`test_pdf_export` 改用 tmp_path（唔再污染受追蹤 PDF）
+  - **PDF 可重現**：`build_pdf(output_path=...)` 加輸出參數、固定 CreationDate/ModDate/ID，同輸入兩次 build byte-for-byte 相同；`test_pdf_export` 改用 tmp_path（唔再污染受追蹤 PDF），並加測試前後 repo PDF hash 不變斷言
+- 比較面板加 `role="dialog"`；搜尋與下拉選單加 `aria-label`
+- 比較工具列、頁腳、hero 統計、`--primary2` 等顏色調整至 WCAG AA（≥4.5:1）
 
 ### Fixed
 
 - 停售標示失效：黑名單 canonical key 匹配修正後，頁面停售型號 289 → 1,079
 - 保護型號失效：`protected_models()` 之前誤將 MODELS dict 整個正規化，核心 29 保護形同虛設；現改為 canonical key 集合
 - EMSD CSV 混入 37 行重複表頭（已清理；1,863 筆登記 / 1,814 型號）
+- 價位篩選「5以上」錯誤包含未知價型號（`core.filter`）
+- 平板寬度 721–999px 導覽 tooltip 撐出頁面水平滾動（`ui.responsive`）
+- 比較面板唔支援 Escape 關閉、開啟／關閉焦點唔跟隨、缺 `role`/`aria-expanded`（`ui.comparison-modal`）
+- 深色模式頁腳文字對比 1.85:1；淺色模式連結／按鈕／hero 統計／最佳值標示對比不足
+- 頁腳版本內嵌 `models_data.VERSION` 靜態常量（`operations.version-display`，改為只讀 `metadata.json.version`）
+- Windows 本地生成 HTML 用 CRLF，與 CI／已入庫 LF 唔一致（可重現建置）
+- 「只顯示已選」之下反選後，型號仍留在列表（`core.filter`）
+- `AGENTS.md` 與 `validate_metadata.py` 用法示例檔名（`validate-metadata.py` 不存在，以 CI 實際命令 `validate_metadata.py` 為準）
 
 ### Data
 

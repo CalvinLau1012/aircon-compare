@@ -3,14 +3,15 @@
 """
 生成 PDF 報告（治理文檔 report.pdf-export · required 功能）
 
-- 輸入：空調對比報告.md（同 Web 同一發布輸入）+ metadata.json（同 Web 同一 metadata）
-- 輸出：空調對比報告.pdf
+- 輸入：空調對比報告.md（同 Web 同一發布輸入）+ metadata（同 Web 同一 metadata）
+- 輸出：空調對比報告.pdf（`build_pdf(output_path=...)` 可供測試寫入暫存目錄）
 - 版本/資料日期/部署時間：用 generate_html.format_status（同 Web 同一套規則，唔會有第二套來源）
 - 技術：reportlab（純 Python）+ 內置 STSong-Light CID 中文字體（唔使外置字型檔）
 
 用法：
-  python generate_pdf.py                 # 輸出 repo 根目錄 空調對比報告.pdf
-  build_pdf(output_path)                 # 測試／建置可指定輸出路徑（如 tmp_path）
+  python generate_pdf.py                 # 輸出 repo 根目錄 空調對比報告.pdf（讀 repo metadata.json）
+  python generate_pdf.py --metadata metadata.core.json   # CI 兩階段：用同 run 嘅 metadata core
+  build_pdf(output_path, metadata_path)  # 測試／建置可指定輸出路徑及 metadata 來源
 
 可重現性：同輸入連續兩次 build 必須 byte-for-byte 相同（GATE-02／SC-014）；
 reportlab 寫入嘅 CreationDate/ModDate 會被固定化。
@@ -76,9 +77,10 @@ class BlockExtractor(HTMLParser):
             self.buf = []
 
 
-def load_metadata():
+def load_metadata(path=None):
+    """讀取 metadata；path 預設 repo 根目錄 metadata.json（CI 可傳同 run core 檔）"""
     try:
-        with open(METADATA_PATH, encoding='utf-8') as f:
+        with open(path or METADATA_PATH, encoding='utf-8') as f:
             return json.load(f)
     except Exception:
         return {}
@@ -98,7 +100,14 @@ def _normalize_pdf_bytes(data):
     return data
 
 
-def build_pdf(output_path=None):
+def build_pdf(output_path=None, metadata_path=None):
+    """生成 PDF；output_path 預設 repo 根目錄（CI 用），測試應傳 tmp_path 避免覆寫使用者 PDF。
+
+    metadata_path：本次部署嘅 metadata 來源；預設讀 repo 根目錄 metadata.json。
+    CI 兩階段封裝會傳入同 run 嘅 metadata core（見 docs/DECISIONS.md D14），
+    確保 PDF 嘅 version／datasetDate／deployTime 同最終 metadata 完全一致。
+    """
+    out_path = output_path or OUT_PATH
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
     from reportlab.pdfbase import pdfmetrics
@@ -128,10 +137,9 @@ def build_pdf(output_path=None):
     st_cellh = ParagraphStyle('cellh', fontName=CJK, fontSize=8, leading=11,
                               textColor=colors.white)
 
-    meta = load_metadata()
+    meta = load_metadata(metadata_path)
     line1, line2 = format_status(meta, VERSION)
 
-    out_path = output_path or OUT_PATH
     doc = SimpleDocTemplate(out_path, pagesize=A4,
                             leftMargin=15 * mm, rightMargin=15 * mm,
                             topMargin=15 * mm, bottomMargin=15 * mm,
@@ -200,4 +208,9 @@ def build_pdf(output_path=None):
 if __name__ == '__main__':
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-    build_pdf()
+    import argparse
+    ap = argparse.ArgumentParser(description='生成空調對比報告 PDF')
+    ap.add_argument('--metadata', default=None, help='metadata 來源（預設 repo metadata.json）')
+    ap.add_argument('--out', default=None, help='輸出 PDF 路徑（預設 repo 根目錄）')
+    args = ap.parse_args()
+    build_pdf(output_path=args.out, metadata_path=args.metadata)

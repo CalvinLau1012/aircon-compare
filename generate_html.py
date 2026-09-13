@@ -565,15 +565,19 @@ def build_html():
                         .replace('__DATE_STATUS__', date_status) \
                         .replace('__FOOT_STATUS__', foot_status) \
                         .replace('__NEW_HINT__', new_hint) \
-                        .replace('__VERSION__', VERSION) \
                         .replace('__TOTAL_MODELS__', f'{total_models:,}') \
                         .replace('__EMSD_REGISTRATIONS__', f'{emsd_registrations:,}') \
                         .replace('__MASCOT_IMG__', mascot_img) \
                         .replace('__BLUE_FANTASY_ART__', blue_fantasy_art)
     out = os.path.join(BASE, '空調對比報告.html')
-    with open(out, 'w', encoding='utf-8') as f:
-        f.write(html)
+    write_html_output(out, html)
     print('已生成：', out, f'（{os.path.getsize(out)/1024:.0f} KB）· 型號總數 {len(MODELS) + len(emsd_models)}')
+
+
+def write_html_output(path, html):
+    """以 LF 寫出 HTML（Windows 預設 CRLF，會令本地生成結果同 CI/已入庫 index.html 唔一致）"""
+    with open(path, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(html)
 
 
 HTML_TEMPLATE = r"""<!DOCTYPE html>
@@ -589,13 +593,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <link rel="icon" href="__MASCOT_IMG__">
 <style>
 :root{
-  --primary:#4a5fa8; --primary2:#647ebf; --accent:#c08a33;
+  --primary:#4a5fa8; --primary2:#52659e; --accent:#c08a33;
   --bg:#e8ecf5; --text:#1d2539; --muted:#5b6989;
   --line:#c7ccda; --alt:#eef1fb; --warn:#c00000; --ok:#2e8e52;
   --surface:rgba(255,255,255,.78); --surface-strong:rgba(247,248,251,.88);
   --hover:#E8F1F9; --code-bg:#E8F1F9; --checked-bg:#FBF6EC;
   --blockquote-bg:rgba(238,241,251,.72);
-  --best-bg:#F7ECD8; --best-fg:#8A6A2F; --on-accent:#1d2539;
+  --best-bg:#F7ECD8; --best-fg:#7A5A20; --on-accent:#1d2539;
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -643,7 +647,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
 .hero h1{font-size:2.2em; letter-spacing:1px; margin-bottom:8px;}
 .hero .sub{color:#ffffff; font-size:1.15em; margin-bottom:28px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
 .stats{display:flex; justify-content:center; gap:40px; flex-wrap:wrap; margin-bottom:26px;}
-.stats .n{font-size:2.1em; font-weight:700; color:var(--accent); text-shadow:0 1px 3px rgba(15,20,35,.55);}
+.stats .n{font-size:2.1em; font-weight:700; color:#F0D48A; text-shadow:0 1px 3px rgba(15,20,35,.55);}
 .stats .l{font-size:.85em; opacity:.95; text-shadow:0 1px 3px rgba(15,20,35,.6);}
 .hero .src{font-size:.8em; opacity:.98; line-height:1.8; color:#e6ebf7; text-shadow:0 1px 3px rgba(15,20,35,.6);}
 .hero .date{color:#ffffff; font-size:.95em; margin-top:10px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
@@ -714,12 +718,12 @@ ul,ol{margin:8px 0 8px 24px;}
 .compare .head{display:flex; align-items:center; justify-content:space-between;
   padding:10px 16px; background:var(--primary); color:#fff; border-radius:0 0 0 0;}
 .compare .head b{font-size:1em;}
-.compare .head .sel{font-size:.8em; color:var(--accent);}
+.compare .head .sel{font-size:.8em; color:#FFE9B8;}
 .compare-tools{display:flex; gap:8px; flex-wrap:wrap; padding:8px 12px;
   border-bottom:1px solid var(--line);}
 .compare-tools button{background:var(--primary2); color:#fff; border:none;
   padding:6px 14px; border-radius:20px; font-size:.85em; cursor:pointer;}
-.compare-tools button:hover{background:var(--accent); color:var(--primary);}
+.compare-tools button:hover{background:var(--accent); color:var(--on-accent);}
 .compare-tools .filters{display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-left:auto;}
 .compare .chint{font-size:.72em; color:var(--muted); padding:3px 12px 7px; text-align:center;}
 .compare-tools select,.compare-tools input[type=search]{border:1px solid var(--line);
@@ -748,8 +752,9 @@ ul,ol{margin:8px 0 8px 24px;}
 .panel.open{display:flex;}
 .panel .phead{display:flex; align-items:center; justify-content:space-between;
   padding:10px 16px; background:var(--primary); color:#fff;}
-.panel .phead button{background:var(--accent); color:var(--primary); border:none;
+.panel .phead button{background:var(--accent); color:var(--on-accent); border:none;
   padding:4px 12px; border-radius:16px; cursor:pointer; font-size:.85em;}
+.panel .phead button.light{background:#fff; color:#26304D;}
 .panel .pscroll{overflow:auto; padding:12px 16px;}
 .panel table{min-width:420px;}
 .panel td:first-child{font-weight:600; color:var(--primary2); background:var(--alt);
@@ -764,12 +769,12 @@ ul,ol{margin:8px 0 8px 24px;}
 .more-wrap{text-align:center; padding:10px 12px; border-top:1px solid var(--line);}
 #btnMore{background:var(--primary); color:#fff; border:none; padding:8px 22px;
   border-radius:20px; cursor:pointer; font-size:.9em; box-shadow:0 2px 6px rgba(15,61,92,.2);}
-#btnMore:hover{background:var(--accent); color:var(--primary);}
+#btnMore:hover{background:var(--accent); color:var(--on-accent);}
 
 /* ===== 比較器完善 ===== */
 .selonly{font-size:.82em; color:var(--muted); display:flex; align-items:center; gap:4px; cursor:pointer;}
 .selonly input{accent-color:var(--accent);}
-.compare-tools .gocompare{background:var(--accent); color:var(--primary); font-weight:700;
+.compare-tools .gocompare{background:var(--accent); color:var(--on-accent); font-weight:700;
   border:none; padding:7px 18px; border-radius:20px; cursor:pointer; font-size:.9em;
   box-shadow:0 2px 8px rgba(201,162,39,.45);}
 .compare-tools .gocompare:hover{background:#DDB236;}
@@ -787,22 +792,22 @@ ul,ol{margin:8px 0 8px 24px;}
   box-shadow:0 3px 10px rgba(15,61,92,.35);}
 #backTop.show{display:flex; animation:backFade .25s ease;}
 @keyframes backFade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
-#backTop:hover{background:var(--accent); color:var(--primary);}
+#backTop:hover{background:var(--accent); color:var(--on-accent);}
 
 /* ===== 頁腳 ===== */
-footer{background:var(--primary); color:#BFD0DE; text-align:center;
+footer{background:var(--primary); color:#F5F8FD; text-align:center;
   padding:36px 16px 30px; margin-top:50px; font-size:.88em;}
 footer b{color:#fff;}
-footer .line{color:var(--accent);}
+footer .line{color:#FFF1D6;}
 footer .blk{max-width:780px; margin:18px auto 0; text-align:left;
   background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
   border-radius:8px; padding:14px 18px;}
-footer .blk h3{color:var(--accent); font-size:.95em; margin-bottom:6px;}
+footer .blk h3{color:#FFF1D6; font-size:.95em; margin-bottom:6px;}
 footer .blk p{font-size:.84em; line-height:1.8; margin:0;}
-footer .blk a{color:#8FD3FF; text-decoration:none;}
+footer .blk a{color:#E6F0FF; text-decoration:underline;}
 footer .blk a:hover{text-decoration:underline;}
 footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
-  border:1px dashed var(--accent); border-radius:20px; font-size:.8em; color:#E8D9A0;}
+  border:1px dashed #FFF1D6; border-radius:20px; font-size:.8em; color:#FFF1D6;}
 
 /* ===== 響應式 ===== */
 @media (max-width:640px){
@@ -826,6 +831,10 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
   .panel table{font-size:.8em;}
   .topnav a{padding:12px 10px; font-size:.8em;}
 }
+/* 平板寬度（721–999px）：絕對定位 tooltip 會撐出頁面水平滾動 → 同手機一致隱藏 */
+@media (max-width:999px){
+  .topnav a[data-tip]::after{display:none;}
+}
 @media (prefers-color-scheme: dark){
   :root{color-scheme:dark;}
   /* 深色模式 + 玻璃下，深色元件用 --primary 對比不足 → 提亮背景 */
@@ -833,6 +842,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
   a:hover{color:var(--accent);}
   /* 標題欄/徽章/按鈕：深色下用亮藍，唔好用太深嘅 primary */
   th, .compare .head, .panel .phead, .mitem .badge, #btnMore, #backTop, h2.sec .tag{background:#4F66AD;}
+  footer{background:#26304D;}
   .compare .head .sel{color:#fff;}
   .compare-tools button{background:#5A6FB8;}
   /* accent 按鈕喺深色下：文字用深色先夠對比 */
@@ -902,39 +912,39 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <span class="sel" id="selCount">已選 0 個（最少 2 個）</span>
     </div>
     <div class="compare-tools">
-      <button class="gocompare" id="btnCompare" onclick="openCompare()">⚖️ 開始比較</button>
+      <button class="gocompare" id="btnCompare" aria-haspopup="dialog" aria-expanded="false" onclick="openCompare()">⚖️ 開始比較</button>
       <button onclick="clearAll()">🗑 清除選擇</button>
       <button onclick="selectType('變頻')">選範圍內變頻</button>
       <button onclick="selectType('定頻')">選範圍內定頻</button>
       <label class="selonly"><input type="checkbox" id="fSelOnly" onchange="resetShown();renderList()"> 只顯示已選</label>
       <div class="filters">
-        <input type="search" id="q" placeholder="🔍 搜尋品牌/型號" oninput="resetShown();renderList()">
-        <select id="sortBy" onchange="resetShown();renderList()">
+        <input type="search" id="q" aria-label="搜尋品牌或型號" placeholder="🔍 搜尋品牌/型號" oninput="resetShown();renderList()">
+        <select id="sortBy" aria-label="排序方式" onchange="resetShown();renderList()">
           <option value="">預設排序</option>
           <option value="price">價格 低→高</option>
           <option value="energy">能源級別 優→劣</option>
           <option value="kwh">年耗電 低→高</option>
           <option value="cspf">CSPF 高→低</option>
         </select>
-        <select id="fBrand" onchange="resetShown();renderList()">
+        <select id="fBrand" aria-label="品牌篩選" onchange="resetShown();renderList()">
           <option value="">全部品牌</option>
         </select>
-        <select id="fMount" onchange="resetShown();renderList()">
+        <select id="fMount" aria-label="機型篩選" onchange="resetShown();renderList()">
           <option value="">全部機型</option><option>窗口式</option><option>掛牆分體式</option><option>窗口分體式</option><option>座地/移動式</option><option>多聯式</option><option>天花式</option><option>分體式</option><option>流動式</option>
         </select>
-        <select id="fHp" onchange="resetShown();renderList()">
+        <select id="fHp" aria-label="匹數篩選" onchange="resetShown();renderList()">
           <option value="">全部匹數</option><option>3/4匹</option><option>1匹</option><option>1.5匹</option><option>2匹</option><option>2.5匹+</option>
         </select>
-        <select id="fType" onchange="resetShown();renderList()">
+        <select id="fType" aria-label="類型篩選" onchange="resetShown();renderList()">
           <option value="">全部類型</option><option>變頻</option><option>定頻</option>
         </select>
-        <select id="fEnergy" onchange="resetShown();renderList()">
+        <select id="fEnergy" aria-label="能源級別篩選" onchange="resetShown();renderList()">
           <option value="">全部能源級別</option><option>1級</option><option>2級</option><option>3級</option><option>4級</option><option>5級</option>
         </select>
-        <select id="fStatus" onchange="resetShown();renderList()">
+        <select id="fStatus" aria-label="狀態篩選" onchange="resetShown();renderList()">
           <option value="">全部狀態</option><option>有價</option><option>官方價</option><option>無價</option><option>停售</option>
         </select>
-        <select id="fPrice" onchange="resetShown();renderList()">
+        <select id="fPrice" aria-label="價位篩選" onchange="resetShown();renderList()">
           <option value="">全部價位</option><option>2以下</option><option>2-3</option><option>3-4</option><option>4-5</option><option>5以上</option>
         </select>
       </div>
@@ -946,13 +956,13 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
   </div>
 
   <!-- 比較面板 -->
-  <div class="panel" id="panel">
+  <div class="panel" id="panel" role="dialog" aria-labelledby="panelTitle">
     <div class="phead">
       <b id="panelTitle">📋 型號對比</b>
       <span style="display:flex;gap:6px;">
-        <button onclick="copyCompare()" style="background:#fff;color:var(--primary);">📋 複製結果</button>
-        <button onclick="clearAll()" style="background:#fff;color:var(--primary);">🗑 清除</button>
-        <button onclick="closePanel()">✕ 關閉</button>
+        <button class="light" onclick="copyCompare()">📋 複製結果</button>
+        <button class="light" onclick="clearAll()">🗑 清除</button>
+        <button id="btnClosePanel" onclick="closePanel(true)">✕ 關閉</button>
       </span>
     </div>
     <div class="pscroll" id="panelBody"></div>
@@ -967,7 +977,7 @@ __CONTENT__
 </main>
 
 <footer>
-  <b>香港空調對比報告 · <span id="verInfo">v__VERSION__</span></b><br>
+  <b>香港空調對比報告 · <span id="verInfo">v…</span></b><br>
   能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號
 
   <div class="blk">
@@ -1026,7 +1036,10 @@ function matches(m){
   if(mo && m.mount!==mo) return false;
   if(st && m.status!==st) return false;
   if(pr){
-    const p=priceMin(m);
+    // 未知價唔屬於任何價位，唔可以當成「5以上」（priceMin 對無價會回 999999）
+    const m1=String(m.price||'').match(/\$([\d,]+)/);
+    if(!m1) return false;
+    const p=parseInt(m1[1].replace(/,/g,''));
     if(pr==='2以下' && p>=2000) return false;
     if(pr==='2-3' && (p<2000||p>=3000)) return false;
     if(pr==='3-4' && (p<3000||p>=4000)) return false;
@@ -1103,7 +1116,9 @@ function toggle(id,el){
   // 若面板開住，即時更新內容
   const panel=document.getElementById('panel');
   if(panel.classList.contains('open')) buildPanel();
-  if(selected.size<2) panel.classList.remove('open');
+  if(selected.size<2) setPanelOpen(false);
+  // 「只顯示已選」之下，反選要即刻由列表移除，先唔會顯示唔符合過濾條件嘅型號
+  if(document.getElementById('fSelOnly').checked) renderList();
 }
 
 function updateUI(){
@@ -1111,14 +1126,37 @@ function updateUI(){
   document.getElementById('btnCompare').disabled = selected.size < 2;
   const panel=document.getElementById('panel');
   if(panel.classList.contains('open')) buildPanel();
-  if(selected.size<2) panel.classList.remove('open');
+  if(selected.size<2) setPanelOpen(false, true);
   renderList();
+}
+
+let lastPanelFocus=null;
+
+function setPanelOpen(open, restoreFocus){
+  const panel=document.getElementById('panel');
+  const btn=document.getElementById('btnCompare');
+  if(open){
+    if(panel.classList.contains('open')) return;
+    lastPanelFocus=document.activeElement;
+    panel.classList.add('open');
+    if(btn) btn.setAttribute('aria-expanded','true');
+    const closeBtn=document.getElementById('btnClosePanel');
+    if(closeBtn) closeBtn.focus();
+  }else{
+    if(!panel.classList.contains('open')) return;
+    panel.classList.remove('open');
+    if(btn) btn.setAttribute('aria-expanded','false');
+    if(restoreFocus){
+      const target=(lastPanelFocus && document.contains(lastPanelFocus))?lastPanelFocus:btn;
+      if(target) target.focus();
+    }
+  }
 }
 
 function openCompare(){
   if(selected.size<2){ alert('請先揀至少 2 個型號再撳「開始比較」'); return; }
   buildPanel();
-  document.getElementById('panel').classList.add('open');
+  setPanelOpen(true);
 }
 
 function selectedModels(){
@@ -1198,7 +1236,13 @@ function selectType(ty){
   selected=new Set(arr.map(m=>m.brand+'|'+m.model));
   updateUI();
 }
-function closePanel(){document.getElementById('panel').classList.remove('open');}
+function closePanel(restoreFocus){ setPanelOpen(false, restoreFocus !== false); }
+// Escape 關閉對比面板（基本鍵盤可用性）
+document.addEventListener('keydown',(e)=>{
+  if(e.key!=='Escape') return;
+  const panel=document.getElementById('panel');
+  if(panel && panel.classList.contains('open')){ e.preventDefault(); closePanel(true); }
+});
 
 // 將 markdown 表格包裝成可橫向捲動容器（手機友好）
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -1387,7 +1431,7 @@ window.addEventListener('scroll',()=>{
       const dt = m.deployTime;
       let line = (ds ? ('📅 資料日期 ' + ds) : '📅 資料日期暫不可用');
       if (m.version) line += ' · v' + m.version;
-      if (dt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(dt)) {
+      if (dt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(dt)) {
         const hkt = new Date(new Date(dt).getTime() + 8*3600*1000);
         const p = hkt.toISOString().slice(0,16).replace('T',' ');
         line += ' · ✅ 最後部署 ' + p + ' HKT';
