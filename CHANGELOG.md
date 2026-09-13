@@ -28,6 +28,7 @@
 - **能源分佈資訊架構**：核心 29 表明確標示且固定 1→2→3→4→5 次序（0 都顯示）；新增 `<!-- AIRCON:DYNAMIC:ENERGY_DISTRIBUTION -->` 於 build 時由實際快照動態生成全量分佈（canonical model 同 registration 分兩欄），HTML 同 PDF 一齊展開
 - **BigGo smoke 多候選**：`SMOKE_CANDIDATES` 集中管理 3 個跨品牌核心 29／受保護型號，依序探測、首個有價即通過；抽出 `_extract_price` 做共用過濾；`no-price`（個別型號無匹配）同 `unreachable`（網絡／限流／認證粗分類）訊息分開
 - **文件透明化**：README／空調對比報告.md／需求摘要.md／AGENTS.md 加 AI 協作角色說明（Codex／DeepSeek `deepseek-flash` via Pi `ds-exec`／人類維護者）；AGENTS.md 修正唔存在嘅命令（`--full-scan`／`--blacklist` → `--force-batch`／`model_lifecycle.py`）
+- `.gitignore` 加 `.agents/`：ds-exec 工作記錄同整合 worktree 唔係產品內容，防止主工作區 `git add -A` 誤提交
 
 ### Fixed
 

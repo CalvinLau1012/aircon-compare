@@ -39,3 +39,6 @@ desktop.ini
 
 # metadata 兩階段封裝（D14）：core 檔係未完成件，只應存在於 RUNNER_TEMP／本機暫存，唔入庫
 metadata.core.json
+
+# ds-exec／AI 工作記錄及整合 worktree（唔係產品內容；防止 git add -A 誤提交）
+.agents/
