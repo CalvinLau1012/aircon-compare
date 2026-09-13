@@ -9,6 +9,8 @@
 
 - `pytest.ini`：`python -m pytest tests/` 預設收集 `tests/browser_smoke.py`（12 項瀏覽器 E2 證據）
 - 瀏覽器回歸測試：價位邊界、Escape／焦點、tooltip 溢出、明暗對比、metadata 小數秒與載入失敗
+- `tests/test_energy_distribution.py`（8 項）：1–5 次序、核心 29 靜態表防漂移、動態全量分佈來源／總和、PDF 展開動態區塊
+- `tests/test_biggo_smoke.py`（8 項）：smoke 候選本地證據、首個成功只用一次、no-price fallback、全失敗、例外唔洩漏 secret
 
 ### Changed
 
@@ -23,6 +25,9 @@
 - **CI 兩階段 metadata 封裝（D14）**：新增 `--stage core|finalize`；core 出同 run 核心事實（無 hash）→ PDF 用 core → PDF 完成後以 `deploy_payload.json` 明確 manifest finalize `releasePayloadHash`；hash 範圍唔再係 `--payload-dir .`
 - **動態型號數字**：Hero／Open Graph／meta description 用建置時實際 `__TOTAL_MODELS__`／`__EMSD_REGISTRATIONS__`；歷史數字（1,927／1,854）只保留喺明確標示歷史嘅文檔段落
 - `tests/browser_smoke.py` 移除 `pytest.importorskip`（required browser smoke 唔可以靜靜 skip）；`requirements-dev.txt` 加 `playwright>=1.40`
+- **能源分佈資訊架構**：核心 29 表明確標示且固定 1→2→3→4→5 次序（0 都顯示）；新增 `<!-- AIRCON:DYNAMIC:ENERGY_DISTRIBUTION -->` 於 build 時由實際快照動態生成全量分佈（canonical model 同 registration 分兩欄），HTML 同 PDF 一齊展開
+- **BigGo smoke 多候選**：`SMOKE_CANDIDATES` 集中管理 3 個跨品牌核心 29／受保護型號，依序探測、首個有價即通過；抽出 `_extract_price` 做共用過濾；`no-price`（個別型號無匹配）同 `unreachable`（網絡／限流／認證粗分類）訊息分開
+- **文件透明化**：README／空調對比報告.md／需求摘要.md／AGENTS.md 加 AI 協作角色說明（Codex／DeepSeek `deepseek-flash` via Pi `ds-exec`／人類維護者）；AGENTS.md 修正唔存在嘅命令（`--full-scan`／`--blacklist` → `--force-batch`／`model_lifecycle.py`）
 
 ### Fixed
 
@@ -38,6 +43,8 @@
 - 「只顯示已選」之下反選後，型號仍留在列表（`core.filter`）
 - `AGENTS.md` 與 `validate_metadata.py` 用法示例檔名（`validate-metadata.py` 不存在，以 CI 實際命令 `validate_metadata.py` 為準）
 - `validate_metadata.py` 之前拒收 RFC 3339 小數秒（`2026-09-02T19:28:14.500Z`）；內嵌 Schema `format: date-time` 本身容許，已對齊（非 UTC `Z` 或格式錯照樣拒）
+- 能源分析表舊次序 `1,3,4,2,5` → 固定 `1,2,3,4,5`，2／5 級 0 都顯示；「定頻最高只有 3 級」限定為核心 29 語境，唔再同全量 1–5 級資料混淆
+- BigGo smoke 單一硬編 `RA-10RF`：個別型號停售／一時無價會誤判整個 API 失敗 → 多候選 fallback，安全門禁（smoke 不過即跳過批次）不變
 
 ### Data
 
@@ -47,6 +54,7 @@
 - README／需求摘要／報告計數同步實際快照（1,814 型號 · 1,809 有價 · 1,863 筆登記，截至 2026-09-03）
 - metadata `recordCount` 按 D12 改為唯一型號數（1,814）；CI 另傳 optional `rawRecordCount`（1,863）／`registrationCount`（1,863）／`modelCount`（1,814）
 - README 狀態分佈圖同步實際頁面：有價 674 / 停售 1,075 / 官方價 65（合共 1,814；無價 0）
+- README 能源級別圖同步全量 canonical model（1,127／166／168／348／5，合共 1,814），並列 registration（1,172／166／172／348／5，合共 1,863）同核心 29 對照
 
 ### Security
 

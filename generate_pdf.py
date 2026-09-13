@@ -30,7 +30,7 @@ OUT_PATH = os.path.join(BASE, '空調對比報告.pdf')
 METADATA_PATH = os.path.join(BASE, 'metadata.json')
 
 sys.path.insert(0, BASE)
-from generate_html import format_status, VERSION  # noqa: E402
+from generate_html import format_status, VERSION, expand_dynamic_sections  # noqa: E402
 
 
 class BlockExtractor(HTMLParser):
@@ -156,7 +156,8 @@ def build_pdf(output_path=None, metadata_path=None):
              Spacer(1, 6)]
 
     with open(MD_PATH, encoding='utf-8') as f:
-        html = markdown.markdown(f.read(), extensions=['tables', 'fenced_code', 'sane_lists'])
+        md_text = expand_dynamic_sections(f.read())
+    html = markdown.markdown(md_text, extensions=['tables', 'fenced_code', 'sane_lists'])
     ex = BlockExtractor()
     ex.feed(html)
 

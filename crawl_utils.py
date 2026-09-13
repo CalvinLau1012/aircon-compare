@@ -250,3 +250,41 @@ def load_models(csv_path=None):
         seen.add(k)
         models.append(m)
     return models
+
+
+# 能源標籤級別固定次序（1→5；顯示層唔可以因 0 而隱藏）
+ENERGY_LEVELS = ('1級', '2級', '3級', '4級', '5級')
+
+
+def energy_level(value):
+    """EMSD 能源級別欄位值 → 'N級'（只認 1–5）；其他值原樣回傳（空白 → '待查'）"""
+    v = str(value or '').strip()
+    if v in ('1', '2', '3', '4', '5'):
+        return v + '級'
+    return v or '待查'
+
+
+def load_energy_distributions(csv_path=None):
+    """回傳 (registration_counts, canonical_model_counts)：
+    - registration_counts：逐筆登記（同 load_registrations 一致）；
+    - canonical_model_counts：按 canonical key 去重（同 load_models 同一 dedup 規則）。
+    兩者語意唔同（D12）：registrationCount 唔等於 modelCount，唔可以互換或相加。
+    """
+    path = csv_path or EMSD_CSV
+    with open(path, encoding='utf-8-sig') as f:
+        rows = list(csv.reader(f))[1:]
+    reg = {}
+    canon = {}
+    seen = set()
+    for r in rows:
+        if len(r) < 15 or r[1].strip() == '型號':
+            continue
+        lv = energy_level(r[4])
+        reg[lv] = reg.get(lv, 0) + 1
+        model = r[1].strip()
+        k = canonical_model_key(r[0], model)
+        if not norm_model(model) or k in seen:
+            continue
+        seen.add(k)
+        canon[lv] = canon.get(lv, 0) + 1
+    return reg, canon

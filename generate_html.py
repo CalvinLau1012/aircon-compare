@@ -17,7 +17,8 @@ import re
 BASE = os.path.dirname(os.path.abspath(__file__))
 
 from models_data import MODELS, VERSION
-from crawl_utils import canonical_model_key, load_registrations
+from crawl_utils import (canonical_model_key, load_registrations, ENERGY_LEVELS,
+                         load_energy_distributions)
 
 # ============================================================
 # 型號資料庫（整合報告 + EMSD 官方）
@@ -203,8 +204,58 @@ COMPARE_FIELDS = [
 
 
 def md_to_html(md_text):
-    html = markdown.markdown(md_text, extensions=['tables', 'fenced_code', 'sane_lists'])
+    html = markdown.markdown(expand_dynamic_sections(md_text),
+                             extensions=['tables', 'fenced_code', 'sane_lists'])
     return html
+
+
+# md 內動態區塊標記（build 時由實際資料展開；唔可以手填數字）
+ENERGY_DIST_MARKER = '<!-- AIRCON:DYNAMIC:ENERGY_DISTRIBUTION -->'
+
+
+def core_energy_counts():
+    """核心 29 型號嘅能源級別計數（來源：models_data.MODELS）"""
+    counts = {lv: 0 for lv in ENERGY_LEVELS}
+    for m in MODELS:
+        lv = str(m.get('energy') or '').strip()
+        counts[lv] = counts.get(lv, 0) + 1
+    return counts
+
+
+def energy_distribution_markdown():
+    """全量能源級別分佈（build-time 動態生成）：1–5 固定次序，0 都顯示。
+
+    三欄語意分明：核心 29（本報告精選）／全量 canonical model（按 BRAND|NORM 去重）／
+    EMSD registration（逐筆登記）。全部由實際快照計出，避免靜態漂移。
+    """
+    reg, canon = load_energy_distributions()
+    core = core_energy_counts()
+    tpl = '| {lv} | {c:,} | {m:,} | {r:,} |'
+    rows = [
+        '',
+        '> 📊 **全量 EMSD 能源級別分佈（建置時由實際快照動態生成）**：'
+        '核心 29 為本報告精選型號；canonical model 按 `BRAND|NORM` 去重（同 `load_models`）；'
+        'registration 為 EMSD 逐筆登記（同 `load_registrations`）。兩者語意唔同，唔可以互換或相加。',
+        '',
+        '| 能源級別 | 核心 29 型號 | 全量 canonical model | EMSD registration |',
+        '| --- | ---: | ---: | ---: |',
+    ]
+    for lv in ENERGY_LEVELS:
+        rows.append(tpl.format(lv=lv, c=core.get(lv, 0), m=canon.get(lv, 0), r=reg.get(lv, 0)))
+    other = sum(v for k, v in core.items() if k not in ENERGY_LEVELS)
+    other_m = sum(v for k, v in canon.items() if k not in ENERGY_LEVELS)
+    other_r = sum(v for k, v in reg.items() if k not in ENERGY_LEVELS)
+    if other or other_m or other_r:
+        rows.append(tpl.format(lv='其他／待查', c=other, m=other_m, r=other_r))
+    rows.append(tpl.format(lv='**合計**', c=sum(core.values()),
+                           m=sum(canon.values()), r=sum(reg.values())))
+    rows.append('')
+    return '\n'.join(rows)
+
+
+def expand_dynamic_sections(md_text):
+    """展開 md 內動態區塊（現時：能源分佈）；生成物唔應該再有 marker"""
+    return md_text.replace(ENERGY_DIST_MARKER, energy_distribution_markdown())
 
 
 def norm_model(s):

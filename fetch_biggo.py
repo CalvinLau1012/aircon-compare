@@ -139,14 +139,11 @@ def _api_search(model, jitter=(0.2, 0.6)):
     return None, False
 
 
-def fetch_biggo_price(model):
-    """官方 API 搜一個型號，回傳 {price, merchants, url} 或 None"""
-    data, _reachable = _api_search(model)
-    if not data:
-        return None
+def _extract_price(data, model):
+    """從 API data 抽最平價（共用過濾規則：型號精確匹配 + 冷氣關鍵字 + 排除配件 + 香港商戶）；冇匹配回 None"""
     nm = norm_model(model)
     prices = []
-    for it in data.get('list', []):
+    for it in (data or {}).get('list', []):
         title = (it.get('title') or '').strip()
         # 共用過濾規則（同 PricesAPI 一套）：型號精確匹配 + 冷氣關鍵字 + 排除配件
         if len(nm) < 4 or not is_ac_title(title, nm):
@@ -168,6 +165,12 @@ def fetch_biggo_price(model):
         'url': 'https://biggo.hk/s/?q=' + urllib.parse.quote(model),
         'updated': time.strftime('%Y-%m-%d'),
     }
+
+
+def fetch_biggo_price(model):
+    """官方 API 搜一個型號，回傳 {price, merchants, url} 或 None"""
+    data, _reachable = _api_search(model)
+    return _extract_price(data, model)
 
 
 def protected_models():
@@ -205,32 +208,12 @@ def _search_tri_state(model):
     """三態搜尋（force batch 同 price batch 共用）：
     回 (model, result_or_None, ok)
       ok=True   → API 正常回覆（result 可能有價，可能係乾淨無匹配）
-      ok=False  → 網絡/限流錯誤（唔計入淘汰統計）
+      ok=False  → 網絡/限流/認證錯誤（唔計入淘汰統計）
     """
     data, reachable = _api_search(model)
     if not reachable:
         return model, None, False
-    if not data:
-        return model, None, True
-    nm = norm_model(model)
-    prices = []
-    for it in data.get('list', []):
-        title = (it.get('title') or '').strip()
-        if len(nm) < 4 or not is_ac_title(title, nm):
-            continue
-        nindex = it.get('nindex') or ''
-        if not nindex.startswith('hk_'):
-            continue
-        p = _num_price(it.get('price'))
-        if p:
-            prices.append(p)
-    if not prices:
-        return model, None, True
-    lo, hi = min(prices), max(prices)
-    price = f'${lo:,}-{hi:,}' if hi > lo else f'${lo:,}起'
-    return model, {'price': price, 'merchants': len(prices),
-                   'url': 'https://biggo.hk/s/?q=' + urllib.parse.quote(model),
-                   'updated': time.strftime('%Y-%m-%d')}, True
+    return model, _extract_price(data, model), True
 
 
 def _brand_of(brand_lookup):
@@ -519,17 +502,72 @@ def run_price_batch():
         print(f'💰 本批完成（{meta["price_batch_idx"]}/{PRICE_BATCH_DAYS}），聽日繼續')
 
 
-def run_smoke():
-    """連線煙霧測試：抓一個熱門型號確認 BigGo 對當前 IP 友好（批次前一定要過）"""
-    test = 'RA-10RF'
-    try:
-        r = fetch_biggo_price(test)
-    except Exception:
-        r = None
-    if r and r.get('price'):
-        print(f'✅ BigGo smoke test 通過：{test} → {r["price"]}（{r.get("merchants", 0)} 商戶）')
-        return True
-    print(f'⚠️ BigGo smoke test 失敗（{test} 攞唔到價）——可能被 GitHub IP 限流，建議跳過本批')
+# ===== BigGo smoke 候選（集中管理；只喺 API 連線測試用）=====
+# 選取理由（全部由本地資料核實，唔需要真實 API）：
+#   - 核心 29 型號（fetch_biggo.protected_models() 受保護，唔會被自動淘汰）；
+#   - biggo_prices.json 本地快照有可靠報價（2026-08-26 全量復核）；
+#   - 跨 3 個品牌（HITACHI／CARRIER／RASONIC），避免單一品牌搜尋異常就判死；
+#   - 順序探測，首個有價即通過（正常情況只消耗 1 次 API 請求）。
+SMOKE_CANDIDATES = (
+    {'model': 'RA-10RF', 'brand': 'HITACHI 日立',
+     'reason': '核心 29／受保護；長期熱門窗口機；本地快照 $2,500-3,680（多商戶）'},
+    {'model': 'CHK12BE', 'brand': 'Carrier 開利',
+     'reason': '核心 29／受保護；跨品牌；本地快照 $1,750-3,580（多商戶區間）'},
+    {'model': 'RC-XG12', 'brand': 'Rasonic 樂信',
+     'reason': '核心 29／受保護；跨品牌；本地快照 $3,978 起'},
+)
+
+
+def _smoke_probe(model):
+    """Smoke 探測：回 (status, result)
+      'priced'      → API 正常且有匹配報價
+      'no-price'    → API 正常回覆但呢個型號暫時無匹配報價（唔等於限流）
+      'unreachable' → 網絡／限流／認證等錯誤嘅粗分類
+
+    限制（唔虛構）：`_api_search` 目前將 429／403、網絡例外同認證失敗一律回
+    reachable=False，所以呢度唔會細分原因，只如實報 'unreachable'；
+    若日後需要細分，要先改 `_api_search` 嘅錯誤分類契約。
+    """
+    data, reachable = _api_search(model)
+    if not reachable:
+        return 'unreachable', None
+    result = _extract_price(data, model)
+    return ('priced', result) if result else ('no-price', None)
+
+
+def run_smoke(candidates=None):
+    """連線煙霧測試：依序探測候選型號，首個有價即通過（正常情況只用 1 次 API 請求）。
+
+    候選失敗（no-price 或 unreachable）才 fallback 下一個；全部失敗回 False，
+    工作流會跳過本批（安全門禁不變）。
+    """
+    cands = SMOKE_CANDIDATES if candidates is None else candidates
+    failures = []
+    for cand in cands:
+        model = cand['model'] if isinstance(cand, dict) else str(cand)
+        try:
+            status, result = _smoke_probe(model)
+        except Exception as e:
+            # 只記錄例外類型，唔輸出 exception 內容（避免任何 credential 落入 log）
+            failures.append((model, 'exception', type(e).__name__))
+            print(f'  ⚠️ smoke 候選 {model} 例外：{type(e).__name__}（網絡／憑證等，未細分）', flush=True)
+            continue
+        if status == 'priced':
+            print(f'✅ BigGo smoke test 通過：{model} → {result["price"]}'
+                  f'（{result.get("merchants", 0)} 商戶）', flush=True)
+            return True
+        if status == 'no-price':
+            print(f'  ⚠️ smoke 候選 {model}：API 正常但暫時無匹配報價，試下一個候選', flush=True)
+        else:
+            print(f'  ⚠️ smoke 候選 {model}：unreachable（網絡／限流／認證等，現行錯誤分類未細分）',
+                  flush=True)
+        failures.append((model, status, None))
+    print(f'⚠️ BigGo smoke test 全部候選失敗（{len(failures)} 個）：{failures}', flush=True)
+    statuses = {s for _, s, _ in failures}
+    if 'unreachable' in statuses or 'exception' in statuses:
+        print('   含 unreachable／例外：多數係當前 IP 被限流或憑證問題，建議跳過本批，唔硬碰', flush=True)
+    else:
+        print('   API 連線正常但全部候選暫時無匹配報價：屬個別型號情況，唔係限流', flush=True)
     return False
 
 

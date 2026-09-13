@@ -1015,6 +1015,9 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </blockquote>
 <hr />
 <h2>⚡ 能源標籤分析</h2>
+<blockquote>
+<p>下表只統計<strong>本報告核心 29 個精選型號</strong>（來源 <code>models_data.MODELS</code>，由回歸測試防止靜態漂移）；全量 EMSD 分佈見下方動態表。兩者數量級唔同，唔可以混淆。</p>
+</blockquote>
 <table>
 <thead>
 <tr>
@@ -1030,6 +1033,11 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <td>🔷 全部為變頻</td>
 </tr>
 <tr>
+<td>2 級</td>
+<td>0</td>
+<td>—（核心 29 冇）</td>
+</tr>
+<tr>
 <td>3 級</td>
 <td>9</td>
 <td>🔶 定頻（CANOPUS×3、Carrier BE×3、Midea CR8C×2、HITACHI）</td>
@@ -1040,21 +1048,65 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <td>🔶 定頻（TOSOT×4、Rasonic XG×2、FUJI）</td>
 </tr>
 <tr>
-<td>2 級</td>
-<td>0</td>
-<td>—</td>
-</tr>
-<tr>
 <td>5 級</td>
 <td>0</td>
-<td>—</td>
+<td>—（核心 29 冇）</td>
 </tr>
 </tbody>
 </table>
 <blockquote>
-<p>🎯 想慳電 → 只能選變頻（1級）。定頻最高只有 3 級，長期開冷氣電費差距 30-40%。
-✅ <strong>EMSD 官方全量核實</strong>（1,863 筆登記逐個比對）+ <strong>品牌官網複查</strong>（Carrier 世紀開利 79 型號、HITACHI 16 型號能源級別一致）——本表能源級別全部確認無誤。</p>
+<p>🎯 想慳電 → 首選變頻（1級）。<strong>「定頻最高只有 3 級」只適用於上述核心 29 型號</strong>；EMSD 全量資料另有 2 級及 5 級型號，選購時以個別型號能源標籤為準。
+✅ 核心 29 型號全部有 EMSD 官方登記，能源級別逐個核對；全量 1,863 筆登記／1,814 個 canonical model 嘅分佈見下表。</p>
+<p>📊 <strong>全量 EMSD 能源級別分佈（建置時由實際快照動態生成）</strong>：核心 29 為本報告精選型號；canonical model 按 <code>BRAND|NORM</code> 去重（同 <code>load_models</code>）；registration 為 EMSD 逐筆登記（同 <code>load_registrations</code>）。兩者語意唔同，唔可以互換或相加。</p>
 </blockquote>
+<table>
+<thead>
+<tr>
+<th>能源級別</th>
+<th style="text-align: right;">核心 29 型號</th>
+<th style="text-align: right;">全量 canonical model</th>
+<th style="text-align: right;">EMSD registration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1級</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">1,127</td>
+<td style="text-align: right;">1,172</td>
+</tr>
+<tr>
+<td>2級</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">166</td>
+<td style="text-align: right;">166</td>
+</tr>
+<tr>
+<td>3級</td>
+<td style="text-align: right;">9</td>
+<td style="text-align: right;">168</td>
+<td style="text-align: right;">172</td>
+</tr>
+<tr>
+<td>4級</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">348</td>
+<td style="text-align: right;">348</td>
+</tr>
+<tr>
+<td>5級</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr>
+<td><strong>合計</strong></td>
+<td style="text-align: right;">29</td>
+<td style="text-align: right;">1,814</td>
+<td style="text-align: right;">1,863</td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2>📋 重點型號深度分析</h2>
 <h3>⭐ Rasonic 樂信 RC-XG12（用戶指定關注）</h3>
@@ -2331,6 +2383,18 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <td>🔄 流水線</td>
 <td>兩階段 metadata（D14）：核心事實 → PDF 用同 run metadata → finalize payload hash；hash 範圍收斂為 <code>deploy_payload.json</code> 明確 manifest</td>
 </tr>
+<tr>
+<td>⚡ 能源</td>
+<td>核心 29 表明確標示；級別固定 1→2→3→4→5（0 都顯示）；全量 canonical model／registration 分佈建置時動態生成（HTML + PDF）</td>
+</tr>
+<tr>
+<td>🔌 BigGo</td>
+<td>smoke 改 3 個跨品牌候選，依序探測、首個有價即通過；<code>no-price</code>（個別型號無匹配）同 <code>unreachable</code>（限流等粗分類）分開報</td>
+</tr>
+<tr>
+<td>🤖 AI</td>
+<td>協作角色透明說明：Codex（規劃／驗收）、DeepSeek <code>deepseek-flash</code> via Pi <code>ds-exec</code>（實作／測試／整合）、人類維護者（R2/R3 與發布）</td>
+</tr>
 </tbody>
 </table>
 <h3>2026-08-26 — BigGo 官方認證 + 本地全量復核 + 篩選修復</h3>
@@ -2668,7 +2732,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <li>定頻機壓縮機啟動聲為物理特性，非個別型號缺陷</li>
 <li>Carrier 2 匹變頻型號經 EMSD 確認應為 <strong>CHK18EAVX</strong>（報告原文 CHK18EAVXP 為誤）</li>
 <li>「論壇討論精華」為 LIHKG 用戶主觀意見摘錄，不代表本報告立場</li>
-<li>本報告由 AI 輔助製作（DeepSeek），關鍵數據已盡量經官方核實，惟仍可能有錯漏</li>
+<li>本報告由 AI 輔助製作，角色分工：<strong>OpenAI Codex</strong> 負責規劃、治理約束、整合設計與獨立驗收；<strong>DeepSeek <code>deepseek-flash</code>（thinking max）</strong> 經 Pi coding-agent／<code>ds-exec</code> 負責本地診斷、實作、測試同分支整合；<strong>人類維護者</strong>批准 R2/R3 決策及最終 merge／發布。AI 輔助唔等於官方資料已由 AI 證實，數據仍以 EMSD／品牌官網／實際測試證據為準；「DeepSeek 鯨魚娘」屬歷史設計主題鳴謝，同工程協作角色分開。</li>
 <li>新機偵測每日 00:30 HKT 進行；價錢以 BigGo 2026-08-16 快照為主，以商戶實時報價為準；抓取異常時驗證閘門會保留上一版數據</li>
 <li>本報告僅供選購參考，不構成任何購買建議</li>
 </ol>
