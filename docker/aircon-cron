@@ -1,0 +1,5 @@
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+TZ=Asia/Hong_Kong
+
+30 3 * * * root /usr/local/bin/run-update.sh >> /var/log/aircon/update-cron.log 2>&1

@@ -51,6 +51,10 @@ def test_generated_index_counts_match_build_time_snapshot():
     assert f'香港空調對比報告：{models:,} 型號' in html
     # 報告內文（嵌入嘅 空調對比報告.md）亦已同步
     assert f'全量資料庫 {models:,} 型號' in html
+    assert f'{regs:,} 筆登記 · {models:,} 型號' in html
+    assert f'全量 {regs:,} 筆登記／{models:,} 個 canonical model' in html
+    assert f'{regs:,} 筆登記（{models:,} 個型號）' in html
+    assert f'全量 {regs:,} 筆登記逐個核實' in html
     for n in LEGACY_HARDCODED:
         assert n not in html, f'index.html 仍然有舊硬編數字 {n}（歷史數字只可留喺標明歷史嘅文檔）'
 

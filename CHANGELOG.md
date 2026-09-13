@@ -11,8 +11,19 @@
 - 瀏覽器回歸測試：價位邊界、Escape／焦點、tooltip 溢出、明暗對比、metadata 小數秒與載入失敗
 - `tests/test_energy_distribution.py`（8 項）：1–5 次序、核心 29 靜態表防漂移、動態全量分佈來源／總和、PDF 展開動態區塊
 - `tests/test_biggo_smoke.py`（8 項）：smoke 候選本地證據、首個成功只用一次、no-price fallback、全失敗、例外唔洩漏 secret
+- **持久發佈工具（D15）**：`docker/`（Dockerfile 將程式碼放入 `/opt/aircon-src` + 容器內 `run-update.sh` 以 `rsync --delete` 同步程式碼落 volume、兩階段 metadata、PDF/CSV 原子部署）
+- **伺服器入口**：`release/release-299c3e9.sh`（preflight／build／verify／serve／apply／rollback；普通使用者啟動，確認後交由 sudo）
+- **Runtime 資料準備**：`scripts/prepare_runtime_data.py`（黑名單 canonical 遷移守衛，只跑一次）＋ `tests/test_prepare_runtime_data.py`（8 項）
+- **Sandbox 測試**：`release/sandbox/`（12 情境、91 斷言：dry-run、path guard、TOCTOU、備份失敗安全、stopped container、rollback 權限、sync --delete）
 
 ### Changed
+
+- **發佈管線次序**：容器管線喺 `generate_html` 之後才跑非瀏覽器 pytest
+- **程式碼同步**：`run-update.sh` 改為 `rsync -a --delete`（image 為程式碼真源；stale 程式碼清除；runtime 資料／web／快取永久排除；`deploy_payload.json` 照同步）
+- **報告當前狀態數字**：`generate_html.py` 建置時同步報告內文數字；`tests/test_dynamic_counts.py` 加守衛
+- **Rollback 入口**：`rollback latest` 由 root 階段解析備份（普通使用者毋須讀 root-only 備份目錄）；container 改用 `docker ps -aq`（支援 stopped）並拒絕歧義
+- **停機安全**：apply 分 stopped／backup_ready／applying 階段；備份驗證（可讀 + checksum + 檔案清單 + image pre 記錄）完成後才改 volume；停機後備份未完成前失敗只安全重啟原服務；停機前必須成功建立舊 image pre tag 並驗證 ID，失敗即阻斷
+- **回滾可靠性**：`rollback latest` 由 root 從新到舊挑第一個完整備份（跳過不完整並 warning）；回滾前先驗 archive + image tag 可還原，唔會用 volume-only 冒充完整成功
 
 - 治理改善方案 M1（PR-1／PR-2／PR-3，本地分支；決策 D11-D13）：
   - **Canonical 型號鍵**：`crawl_utils.canonical_brand()`（品牌跨平台矯正）+ `canonical_model_key()`（`BRAND|NORM`）；黑名單、model_status、protected set、filter_active、record_results、revive_model 全線統一（D11）
@@ -32,6 +43,11 @@
 
 ### Fixed
 
+- 伺服器 preflight 嘅 `grep -q` + `pipefail` SIGPIPE 誤判（改為先列 tarball 清單再檢查）
+- 同秒重建時備份目錄碰撞（唯一後綴；pre-image tag 跟備份名）
+- 回滾時「部署前不存在」嘅檔案（PDF／CSV／receipt）冇被刪除（完整 volume 還原 + 檔案清單 + hash 比對）
+- 報告內文硬編當前狀態數字（建置時動態同步；歷史更新日誌保持不變）
+- 舊 volume EMSD CSV 每頁重複表頭（release 用 PR-3 ingestion 重抓；`validate_data` 阻斷）
 - 停售標示失效：黑名單 canonical key 匹配修正後，頁面停售型號 289 → 1,075（黑名單 1,095 keys 中 1,079 個可解析品牌；4 個唔喺現行頁面資料）
 - 保護型號失效：`protected_models()` 之前誤將 MODELS dict 整個正規化，核心 29 保護形同虛設；現改為 canonical key 集合
 - EMSD CSV 混入 37 行重複表頭（已清理；1,863 筆登記 / 1,814 型號）

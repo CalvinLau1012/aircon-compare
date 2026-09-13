@@ -23,9 +23,9 @@ EMSD 官方空調資料 + 品牌官網規格 + BigGo 市場價，生成單一 `i
 
 ## AI 協作角色
 
-- **OpenAI Codex**：規劃、治理約束、整合設計、獨立驗收、返修決策。
-- **DeepSeek `deepseek-flash`（thinking max）**，經 Pi coding-agent／`ds-exec`：本地診斷、實作、測試、分支整合。
-- **人類維護者**：批准 R2/R3 決策與最終 merge／發布。
+- **OpenAI Codex**：規劃、治理約束、整合設計、獨立安全審閱、最終驗收、返修決策。
+- **DeepSeek `deepseek-flash`（thinking max）**，經 Pi coding-agent／`ds-exec`：本地診斷、實作、測試、證據整理、分支整合。
+- **人類維護者**：批准 R2/R3 決策、在自己的 SSH 終端輸入 sudo、最終 merge／發布。
 
 AI 輔助唔等於官方資料已由 AI 證實；數據以 EMSD／品牌官網／可重跑測試證據為準。「DeepSeek 鯨魚娘」係歷史設計主題，與工程協作角色分開。
 
@@ -40,6 +40,12 @@ python fetch_biggo.py --smoke     # BigGo 連線測試（多候選，首個有�
 python fetch_biggo.py --price-batch
 python fetch_biggo.py --force-batch [N]
 python model_lifecycle.py         # 顯示停售黑名單
+```
+
+個人伺服器持久發佈（入口喺伺服器 `/home/calvin/aircon-docker/`；**由使用者自己 SSH 執行，AI 不得代跑 sudo／正式 apply**）：
+
+```bash
+bash release-299c3e9.sh preflight|build|verify|serve|apply|rollback
 ```
 
 ## 檔案地圖
@@ -60,6 +66,9 @@ python model_lifecycle.py         # 顯示停售黑名單
 | `prices.json` | Price 舊快照後備 |
 | `docs/AIRCON_COMPARE_GOVERNANCE.md` | 唯一治理源（內嵌功能註冊表/metadata Schema/成功標準） |
 | `docs/DECISIONS.md` | 決策記錄（人類決策與技術轉向，按模板追加） |
+| `docker/` | 容器 image 建置 + 每日發佈管線（`run-update.sh`：程式碼同步、兩階段 metadata、原子部署） |
+| `release/` | 個人伺服器持久發佈入口、staging 驗收工具與 sandbox 測試 |
+| `scripts/prepare_runtime_data.py` | runtime 資料準備（黑名單 canonical 遷移守衛，只跑一次） |
 | `CHANGELOG.md` | 版本變更記錄（Keep a Changelog 風格；發布時歸檔 Unreleased） |
 | `空調對比報告.md` / `README.md` / `需求摘要.md` | 報告與說明文件（改動要同步更新日誌） |
 

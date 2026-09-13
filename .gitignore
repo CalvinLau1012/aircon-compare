@@ -42,3 +42,6 @@ metadata.core.json
 
 # ds-exec／AI 工作記錄及整合 worktree（唔係產品內容；防止 git add -A 誤提交）
 .agents/
+
+# release 打包標記（由 pack 步驟寫入 tarball，唔入庫）
+.release-commit

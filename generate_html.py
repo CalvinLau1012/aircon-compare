@@ -562,6 +562,21 @@ def load_emsd_models():
 def build_html():
     with open(os.path.join(BASE, '空調對比報告.md'), encoding='utf-8') as f:
         md_text = f.read()
+    # 報告內文「當前狀態」數字：建置時由實際資料同步（治理 F-11：唔可以硬編；
+    # test_dynamic_counts 驗證生成物）。只針對帶上下文嘅句式，避免改到歷史更新日誌。
+    emsd_models = load_emsd_models()
+    total_models = len(MODELS) + len(emsd_models)
+    emsd_registrations = len(load_registrations())
+    md_text = re.sub(r'全量資料庫[ \t]*[\d,]+[ \t]*型號',
+                     f'全量資料庫 {total_models:,} 型號', md_text)
+    md_text = re.sub(r'[\d,]+[ \t]*筆登記[ \t]*·[ \t]*[\d,]+[ \t]*型號',
+                     f'{emsd_registrations:,} 筆登記 · {total_models:,} 型號', md_text)
+    md_text = re.sub(r'全量[ \t]*[\d,]+[ \t]*筆登記／[\d,]+[ \t]*個 canonical model',
+                     f'全量 {emsd_registrations:,} 筆登記／{total_models:,} 個 canonical model', md_text)
+    md_text = re.sub(r'[\d,]+[ \t]*筆登記（[\d,]+[ \t]*個型號）',
+                     f'{emsd_registrations:,} 筆登記（{total_models:,} 個型號）', md_text)
+    md_text = re.sub(r'全量[ \t]*[\d,]+[ \t]*筆登記逐個核實',
+                     f'全量 {emsd_registrations:,} 筆登記逐個核實', md_text)
     content_html = md_to_html(md_text)
     # 部署資訊由瀏覽器 runtime fetch metadata.json 顯示（治理文檔 §7.2.7）；
     # build 只寫初始骨架；載入失敗顯示「暫不可用」（JS 處理）
@@ -588,13 +603,10 @@ def build_html():
             m['price'] = bp
         assign_status(m, blacklist)
 
-    emsd_models = load_emsd_models()
     models_json = json.dumps(MODELS, ensure_ascii=False)
     emsd_json = json.dumps(emsd_models, ensure_ascii=False, separators=(',', ':'))
     fields_json = json.dumps(COMPARE_FIELDS, ensure_ascii=False)
-    # 動態計數（治理 F-11：唔好手填容易變嘅數字，由實際資料計出）
-    total_models = len(MODELS) + len(emsd_models)
-    emsd_registrations = len(load_registrations())
+    # 動態計數（治理 F-11）：total_models / emsd_registrations 已喺上面計出
 
     # 皮膚資源（Blue Fantasy 壁紙 + whale-girl 吉祥物；檔案唔喺就留空，唔整死生成）
     import base64 as _b64
