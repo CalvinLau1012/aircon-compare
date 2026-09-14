@@ -221,6 +221,22 @@ def detect_new_models(all_rows):
     return added
 
 
+def write_csv(header, rows, path):
+    """寫 EMSD CSV（原子替換）。
+
+    固定用 LF（`lineterminator='\\n'`）：`.gitattributes` 係 `* text=auto eol=lf`，
+    git add 時會把 CRLF 正規化為 LF；若工作樹係 CRLF，pipeline 對工作樹計算嘅
+    datasetHash／releasePayloadHash 就會同已發佈 bytes 唔一致（GitHub Pages hash 鏈斷）。
+    所以由源頭寫 LF，確保 worktree bytes == git index bytes == 發佈 bytes。
+    """
+    tmp = path + '.tmp'
+    with open(tmp, 'w', newline='', encoding='utf-8-sig') as f:
+        w = csv.writer(f, lineterminator='\n')
+        w.writerow(header)
+        w.writerows(rows)
+    os.replace(tmp, path)  # 原子替換：寫好先換名，唔會整壞現有 CSV
+
+
 def main():
     # Windows 控制台編碼保護（cp950 無法輸出部分字元）
     if hasattr(sys.stdout, 'reconfigure'):
@@ -277,12 +293,7 @@ def main():
 
     out = os.path.join(BASE_DIR, 'emsd_空調能源標籤.csv')
     detect_new_models(all_rows)  # 新機偵測（比較新舊 CSV）
-    tmp = out + '.tmp'
-    with open(tmp, 'w', newline='', encoding='utf-8-sig') as f:
-        w = csv.writer(f)
-        w.writerow(header)
-        w.writerows(all_rows)
-    os.replace(tmp, out)  # 原子替換：寫好先換名，唔會整壞現有 CSV
+    write_csv(header, all_rows, out)
     print('完成！共', len(all_rows), '個型號，存於', out)
     print(f'📦 抓取證據：{RECEIPT_PATH}（頁 {outcome["pagesFetched"]}/{outcome["pagesExpected"]}）')
 
