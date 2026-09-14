@@ -3,7 +3,7 @@
 # aircon-compare 持久正式發佈入口（release 299c3e9）
 #
 # 使用（唯一需要記住嘅命令）：
-#   bash /home/calvin/aircon-docker/release-299c3e9.sh
+#   bash /srv/aircon-compare/aircon-docker/release-299c3e9.sh
 #   → 互動選單：Preflight → Build staging → Verify → Deploy → Rollback
 #
 # 亦支援直接子命令（等價選單選項）：
@@ -28,7 +28,7 @@ PHASE=""
 BK_DIR=""
 
 # ---------- 路徑 / 可注入設定（sandbox 測試用 AIRCON_* 覆寫） ----------
-BASE_DIR="${AIRCON_BASE_DIR:-/home/calvin/aircon-docker}"
+BASE_DIR="${AIRCON_BASE_DIR:-/srv/aircon-compare}"
 STAGE_ROOT="${AIRCON_STAGE_ROOT:-$BASE_DIR/release-299c3e9}"
 BACKUP_ROOT="${AIRCON_BACKUP_ROOT:-$BASE_DIR/release-backups}"
 TARBALL="${AIRCON_TARBALL:-$BASE_DIR/release-299c3e9-src.tar.gz}"
@@ -48,6 +48,7 @@ VOL_DIR_OVERRIDE="${AIRCON_VOL_DIR:-}"
 ALLOW_NONROOT="${AIRCON_ALLOW_NONROOT:-0}"
 ALLOW_ANY_VOL="${AIRCON_ALLOW_ANY_VOL:-0}"
 AUTO_CONFIRM="${AIRCON_SANDBOX_AUTO_CONFIRM:-0}"
+OWNER_USER="${AIRCON_OWNER:-${SUDO_USER:-}}"
 
 WEB_FILES=(index.html "空調對比報告.pdf" "emsd_空調能源標籤.csv" metadata.json)
 
@@ -399,8 +400,8 @@ root_build() {
   staged_count="$(wc -l <"$STAGE_ROOT/data-hashes.staged.txt")"
   ok "staged-data manifest：${staged_manifest_hash:0:16}…（$staged_count 檔）"
 
-  if [ "$(id -u)" -eq 0 ] && id calvin >/dev/null 2>&1; then
-    chown -R "$(id -u calvin):$(id -g calvin)" "$STAGE_ROOT"
+  if [ "$(id -u)" -eq 0 ] && [ -n "$OWNER_USER" ] && id "$OWNER_USER" >/dev/null 2>&1; then
+    chown -R "$OWNER_USER:$OWNER_USER" "$STAGE_ROOT"
   fi
 
   # staging metadata → release-info.json
@@ -698,7 +699,7 @@ print(json.dumps(record, ensure_ascii=False, indent=2))
 PY
   ok "正式部署完成：build=$(python3 -c "import json;print(json.load(open('$VOL_DIR/metadata.json'))['build'])")"
   echo "備份 / 回滾：bash $SELF rollback $(basename "$bk")"
-  echo "公開驗證：bash $SELF status · https://calvin1012.ddns.net/"
+  echo "公開驗證：bash $SELF status"
 }
 
 wait_http() {

@@ -42,7 +42,7 @@ python fetch_biggo.py --force-batch [N]
 python model_lifecycle.py         # 顯示停售黑名單
 ```
 
-個人伺服器持久發佈（入口喺伺服器 `/home/calvin/aircon-docker/`；**由使用者自己 SSH 執行，AI 不得代跑 sudo／正式 apply**）：
+自建伺服器持久發佈（入口喺伺服器 `/srv/aircon-compare/aircon-docker/`；**由使用者自己 SSH 執行，AI 不得代跑 sudo／正式 apply**）：
 
 ```bash
 bash release-299c3e9.sh preflight|build|verify|serve|apply|rollback
@@ -67,7 +67,7 @@ bash release-299c3e9.sh preflight|build|verify|serve|apply|rollback
 | `docs/AIRCON_COMPARE_GOVERNANCE.md` | 唯一治理源（內嵌功能註冊表/metadata Schema/成功標準） |
 | `docs/DECISIONS.md` | 決策記錄（人類決策與技術轉向，按模板追加） |
 | `docker/` | 容器 image 建置 + 每日發佈管線（`run-update.sh`：程式碼同步、兩階段 metadata、原子部署） |
-| `release/` | 個人伺服器持久發佈入口、staging 驗收工具與 sandbox 測試 |
+| `release/` | 自建伺服器持久發佈入口、staging 驗收工具與 sandbox 測試 |
 | `scripts/prepare_runtime_data.py` | runtime 資料準備（黑名單 canonical 遷移守衛，只跑一次） |
 | `CHANGELOG.md` | 版本變更記錄（Keep a Changelog 風格；發布時歸檔 Unreleased） |
 | `空調對比報告.md` / `README.md` / `需求摘要.md` | 報告與說明文件（改動要同步更新日誌） |

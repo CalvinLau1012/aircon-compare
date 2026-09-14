@@ -45,3 +45,7 @@ metadata.core.json
 
 # release 打包標記（由 pack 步驟寫入 tarball，唔入庫）
 .release-commit
+
+# 私人部署筆記／憑證（唔進公開 repo）
+private-server-notes/
+private-deployment/

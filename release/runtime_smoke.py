@@ -2,7 +2,7 @@
 """Release runtime smoke（server staging / 部署後 HTTP 驗收；E4 證據）
 
 用法：
-  python release/runtime_smoke.py --base http://127.0.0.1:8788 [--artifacts-dir <dir>]
+  python release/runtime_smoke.py --base http://127.0.0.1:8080 [--artifacts-dir <dir>]
 
 - 唔硬編記錄數：以伺服器 metadata.json 為事實源，驗證頁面顯示同能源表一致。
 - 能源表用語義定位（h2 → 後續兄弟節點內所有 table），唔用脆弱 XPath。

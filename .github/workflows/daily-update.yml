@@ -166,6 +166,8 @@ jobs:
           # GATE：payload 工作樹 bytes 必須等於 git index bytes
           # （防止 .gitattributes eol=lf 正規化令 datasetHash／releasePayloadHash 同發佈 bytes 唔一致）
           python scripts/check_payload_bytes_vs_index.py
+          # GATE：公開 repo 私隱（HEAD 禁止個人／自建環境識別資料）
+          python scripts/check_public_privacy.py
           if git diff --cached --quiet; then
             echo "無變更，跳過提交"
           else

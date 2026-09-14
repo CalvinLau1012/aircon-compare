@@ -154,23 +154,21 @@
 
 ---
 
-## D15 · 個人伺服器持久發佈：image 重建 + volume 程式碼同步（人類決策，R3）
+## D15 · 自建持久發佈：image 重建 + volume 程式碼同步（人類決策，R3）
 
 - **日期**：2026-09-14
-- **狀態**：已實行（發佈工具已備妥並通過測試；正式 apply 由使用者在自己的 SSH 終端輸入 sudo 執行，AI 未代跑）
-- **背景**：公開站由個人伺服器（`calvin-ubuntu-server`）的 Docker container `aircon` 提供，站點 root 係 named volume `aircon-docker_aircon-data` 內 `/app/web`；容器內 cron 每日 03:30 HKT 用 volume 內程式碼重新抓資料並生成網站。單純替換 web 四檔會被 cron 用舊程式碼覆蓋，而且會把舊快照覆蓋線上較新資料。
+- **狀態**：已實行（發佈工具已備妥並通過測試；正式部署由維護者在自己嘅環境執行）
+- **背景**：本項目可用 Docker 自建部署：容器內 cron 每日以 volume 內程式碼重新抓資料並生成網站；單純替換 web 四檔會被 cron 用舊程式碼覆蓋，而且會把舊快照覆蓋較新資料。
 - **選項**：
   - A：只靜態替換 web 四檔 → 不持久、資料倒退；
-  - B：重建 image（image 內 `/opt/aircon-src` 保存 pristine 程式碼）+ 每次執行由 image 同步程式碼落 volume；
+  - B：重建 image（image 內 pristine source）+ 每次執行由 image 同步程式碼落 volume（runtime 資料永久排除）；
   - C：改 host cron／`docker exec` 直接跑 volume 程式碼 → 改變部署架構、權限更大。
-- **決策**：採 B。容器內 `run-update.sh` 每次執行（cron 或手動）先 `rsync --delete` 由 `/opt/aircon-src` 同步程式碼落 `/app`（排除 `*.json`／`*.csv`／`*-bak*`／`web/`／logs／快取；`deploy_payload.json` 除外），再跑 `validate_data` + GATE-01/03 + 非瀏覽器 pytest + `generate_html` + 兩階段 metadata + PDF，最後原子部署 `index.html`／PDF／CSV／`metadata.json` 到 `/app/web`。Release 入口 `release-299c3e9.sh` 由普通使用者啟動，需要寫入時才經確認交由 `sudo` 執行；入口負責 preflight、隔離 staging build（volume read-only + PR-3 ingestion 重抓 EMSD）、停服務前 TOCTOU 重驗、完整備份、失敗自動處理。
-- **原因**：image 成為程式碼唯一真源，cron 之後新程式碼仍然生效；volume 只保留 runtime 資料；不改變 compose 架構、不擴大權限、不需要加入 docker group；使用者只在自己終端輸入 sudo，AI 不接觸密碼。
-- **安全不變式**：S1 普通使用者 rollback 不讀 root-only 備份目錄（latest 由 root 階段解析）；S2 停服務前重驗 staged-data manifest hash、metadata schema、payload hash、release image ID、volume 資料漂移；S3 停機前必須成功讀取舊 latest image ID 並建立／驗證 pre tag（失敗即阻斷，唔停服務）；停機後分 stopped／backup_ready／applying 階段——備份未驗證前失敗只會安全重啟原服務，備份完成後失敗才回滾；S4 container 解析用 `docker ps -aq`（running／stopped）並拒絕歧義；`rollback latest` 由 root 從新到舊挑第一個完整候選（volume.tar.gz＋checksum＋檔案清單＋image pre ID/tag＋release-info），不完整目錄跳過並 warning、唔會自動刪除；S5 只寫入 allowlist（volume 程式碼 + web 四檔），不碰 proxy／憑證。
-- **後果／風險（R3）**：部署會重建 image 並 recreate `aircon` 服務（短暫停機）；錯誤版本可經完整備份回滾；備份目錄 root-only（700）；`metadata.deployTime`／`build` 於 apply 時重新封裝，語義欄位（version／commit／datasetDate／datasetHash／counts）必須與 staging 一致。
-- **回滾**：`bash release-299c3e9.sh rollback`（root 階段解析最新備份）→ 還原完整 volume + 舊 image tag + 重啟；停機後失敗自動回滾由 EXIT trap 執行。
-- **證據**：分支 `codex/durable-release-299c3e9`；sandbox 91 斷言（含 TOCTOU／備份失敗／stopped container／rollback 權限／sync --delete）；`pytest tests -q` 100；staging pipeline sim + Playwright 46/46；伺服器 preflight 與 fake-sudo 邊界測試（build／rollback latest）。正式 apply 尚未執行。
-
----
+- **決策**：採 B。容器內 `run-update.sh` 每次執行先以 `rsync --checksum --delete` 由 image pristine source 同步程式碼落 `/app`（排除 `*.json`／`*.csv`／`*-bak*`／`web/`／logs／快取），再跑 `validate_data` + 治理閘門 + 非瀏覽器 pytest + `generate_html` + 兩階段 metadata + PDF，最後原子部署 `index.html`／PDF／CSV／`metadata.json`。`release/release-299c3e9.sh` 由普通使用者啟動，需要寫入時經確認交由 `sudo`；部署設定（base dir、compose file、host 等）一律由環境變數提供，冇個人默認值。
+- **原因**：image 成為程式碼唯一真源，cron 之後新程式碼仍然生效；volume 只保留 runtime 資料；不改變 compose 架構、不擴大權限。
+- **安全不變式**：S1 普通使用者 rollback 不讀 root-only 備份目錄（latest 由 root 解析）；S2 停服務前重驗 staged-data manifest hash、metadata schema、payload hash、release image ID、volume 資料漂移；S3 停機後分 stopped／backup_ready／applying 階段——備份未驗證前失敗只會安全重啟原服務；S4 container 解析用 `docker ps -aq`（running／stopped）並拒絕歧義；S5 只寫入 allowlist（volume 程式碼 + web 四檔）。
+- **後果／風險（R3）**：部署會重建 image 並 recreate 服務（短暫停機）；錯誤版本可經完整備份回滾；`metadata.deployTime`／`build` 於 apply 時重新封裝，語義欄位必須一致。
+- **回滾**：`bash release-299c3e9.sh rollback`（root 階段解析最新備份）→ 還原完整 volume + 舊 image tag + 重啟。
+- **證據**：分支 `codex/durable-release-299c3e9`；sandbox 116 斷言；pytest 108；staging runtime 46/46；GitHub Pages hash 鏈自洽（served CSV sha == metadata.datasetHash、payload 重算一致）。
 
 ## 決策模板
 
