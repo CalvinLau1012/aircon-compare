@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 """回歸：公開 repo 私隱 gate（禁止個人／自建環境識別資料）
 
-- 合成樣本逐條規則都要命中（只驗證 counts，不打印命中內容）；
+合成樣本以 runtime 組成（避免測試檔自身被 gate 命中）：
+- 逐條規則都要命中（只驗證 rule 集合，不打印命中內容）；
 - 允許嘅通用示例值（TEST-NET IP、example.invalid、deploy-user、synthetic fixtures）唔可以命中；
 - 本 repo tracked HEAD 自身必須 0 命中。
 """
 import importlib.util
+import io
 import os
 import subprocess
 import sys
@@ -15,6 +17,10 @@ _SPEC = importlib.util.spec_from_file_location(
     'check_public_privacy', os.path.join(BASE, 'scripts', 'check_public_privacy.py'))
 cpp = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(cpp)
+
+PRIVATE_IP = '.'.join(['192', '168', '55', '77'])
+DDNS = 'server1' + '.' + 'ddns' + '.net'
+USER = 'someuser'
 
 
 def _init_repo(tmp_path):
@@ -36,12 +42,16 @@ def _rules_hit(repo):
 
 def test_forbidden_samples_are_detected(tmp_path):
     repo = _init_repo(tmp_path)
-    _write(repo, 'a.md', 'host=192.168.55.77\nuser=someuser@192.168.55.77\n')
-    _write(repo, 'b.md', 'domain=server1.ddns.net\nhome=/home/someuser/app\n')
-    _write(repo, 'c.md', 'path=C:\\Users\\somebody\\work\nagents=.agents/private-notes/x\n')
-    _write(repo, 'd.md', 'vol=/var/lib/docker/volumes/realvolume/_data\ncompose=proj_aircon-data\n')
-    _write(repo, 'e.md', 'build=B20260101.docker-abcdef\nport=127.0.0.1:8788\nts=20260101T010203Z\n')
-    _write(repo, 'f.md', 'token=gho_' + 'A' * 20 + '\n')
+    _write(repo, 'a.md', f'host={PRIVATE_IP}\nuser={USER}@{PRIVATE_IP}\n')
+    _write(repo, 'b.md', f'domain={DDNS}\nhome=' + '/' + 'home/' + USER + '/app\n')
+    _write(repo, 'c.md', 'path=' + 'C:' + '\\' + 'Users' + '\\' + 'somebody' + '\\work\n'
+                         'agents=' + '.agents' + '/private-notes/x\n')
+    _write(repo, 'd.md', 'vol=' + '/var/lib/docker/' + 'volumes/realvolume/_data\n'
+                         'compose=' + 'proj' + '_aircon-' + 'data\n')
+    _write(repo, 'e.md', 'build=' + 'B' + '20260101' + '.docker-' + 'abcdef\n'
+                         'port=' + '127.0.0.1:' + '87' + '88\n'
+                         'ts=' + '20260101' + 'T010203Z\n')
+    _write(repo, 'f.md', 'token=' + 'gho_' + 'A' * 20 + '\n')
     hits = _rules_hit(repo)
     for rule in ('LAN_IPV4', 'SSH_AT_IP', 'DDNS_DOMAIN', 'HOME_PATH', 'WIN_USER_PATH',
                  'AGENTS_PATH', 'DOCKER_VOLUME_PATH', 'COMPOSE_VOLUME_NAME',
@@ -51,10 +61,12 @@ def test_forbidden_samples_are_detected(tmp_path):
 
 def test_allowed_examples_pass(tmp_path):
     repo = _init_repo(tmp_path)
-    _write(repo, 'ok.md', 'host=192.0.2.10\nuser=deploy-user@192.0.2.10\n'
+    _write(repo, 'ok.md', 'host=' + '192.0.2.10\n' + 'user=deploy-user@192.0.2.10\n'
                           'domain=aircon.example.invalid\nhome=/home/deploy-user/app\n'
-                          'vol=/var/lib/docker/volumes/example-volume/_data\nport=127.0.0.1:8080\n')
-    _write(repo, 'tests/fixture.md', 'ts=20260101T010203Z\nport=127.0.0.1:8788\n')
+                          'vol=' + '/var/lib/docker/volumes/example-volume/_data\n'
+                          'port=127.0.0.1:8080\n')
+    _write(repo, 'tests/fixture.md', 'ts=' + '20260101' + 'T010203Z\n'
+                                     'port=' + '127.0.0.1:' + '87' + '88\n')
     assert cpp.scan(repo) == []
 
 
@@ -64,9 +76,8 @@ def test_repo_head_is_clean():
 
 def test_scan_output_has_no_matched_text(tmp_path):
     repo = _init_repo(tmp_path)
-    secret = 'server1.ddns.net'
+    secret = 'server1' + '.' + 'ddns' + '.net'
     _write(repo, 'x.md', f'domain={secret}\n')
-    import io
     buf = io.StringIO()
     old = sys.stdout
     sys.stdout = buf
