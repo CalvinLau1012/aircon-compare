@@ -5468,5 +5468,41 @@
     "first_missed": "2026-08-26",
     "misses": 1,
     "last_checked": "2026-08-26"
+  },
+  "海迅|HS024KBHS024KBA": {
+    "first_missed": "2026-09-14",
+    "misses": 1,
+    "last_checked": "2026-09-14",
+    "batch_id": "2026-09-08:6/7"
+  },
+  "海迅|HS018KBHS018KBA": {
+    "first_missed": "2026-09-14",
+    "misses": 1,
+    "last_checked": "2026-09-14",
+    "batch_id": "2026-09-08:6/7"
+  },
+  "海迅|HS012KBHS012KBA": {
+    "first_missed": "2026-09-14",
+    "misses": 1,
+    "last_checked": "2026-09-14",
+    "batch_id": "2026-09-08:6/7"
+  },
+  "海迅|HS009KBHS009KBA": {
+    "first_missed": "2026-09-14",
+    "misses": 1,
+    "last_checked": "2026-09-14",
+    "batch_id": "2026-09-08:6/7"
+  },
+  "DAIKIN|FTXD35AV1HRXD35AV1H": {
+    "first_missed": "2026-09-14",
+    "misses": 1,
+    "last_checked": "2026-09-14",
+    "batch_id": "2026-09-08:6/7"
+  },
+  "DAIKIN|FTXD25AV1HRXD25AV1H": {
+    "first_missed": "2026-09-14",
+    "misses": 1,
+    "last_checked": "2026-09-14",
+    "batch_id": "2026-09-08:6/7"
   }
 }
