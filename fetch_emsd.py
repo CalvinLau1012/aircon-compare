@@ -17,6 +17,12 @@ from html.parser import HTMLParser
 from crawl_utils import BOT_UA, norm_model
 
 BASE = 'https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50&p='
+MIN_EMSD_ROWS = 1700  # 安全閘門：攞唔齊最少行數就唔覆寫現有 CSV
+HEADER_SIGNATURE = '型號'  # 每頁表頭 signature：第 2 欄係「型號」
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+QUEUE_PATH = os.path.join(BASE_DIR, 'update_queue.json')
+RECEIPT_PATH = os.path.join(BASE_DIR, 'emsd_receipt.json')
 
 
 class TableParser(HTMLParser):
@@ -53,6 +59,57 @@ class TableParser(HTMLParser):
                 self.in_tr = False
         elif tag == 'table':
             self.in_table = False
+
+
+def parse_page_rows(html):
+    """解析一頁 HTML：回 15 欄數據行（表頭按 signature 排除，唔限 p==1）"""
+    parser = TableParser()
+    parser.feed(html)
+    rows = [r for r in parser.rows if len(r) == 15]
+    return [r for r in rows if len(r) < 2 or r[1].strip() != HEADER_SIGNATURE]
+
+
+def page_header(html):
+    """攞一頁嘅表頭行（15 欄 + 第 2 欄係 signature）；冇就回 None"""
+    parser = TableParser()
+    parser.feed(html)
+    for r in parser.rows:
+        if len(r) == 15 and len(r) > 1 and r[1].strip() == HEADER_SIGNATURE:
+            return r
+    return None
+
+
+def fetch_outcome(pages_expected, pages_fetched, aborted, total_rows, error=None):
+    """fetch 結果判定（純函數，供測試）：
+    - 中途網絡錯誤（aborted=True）→ 一律失敗，即使累積行數超過下限
+    - 完整收尾且行數 >= 下限 → 成功
+    """
+    success = (not aborted) and total_rows >= MIN_EMSD_ROWS and pages_fetched > 0
+    return {
+        'success': success,
+        'pagesExpected': pages_expected,
+        'pagesFetched': pages_fetched,
+        'totalRows': total_rows,
+        'aborted': aborted,
+        'error': error,
+    }
+
+
+def write_receipt(outcome, per_page):
+    """寫 emsd_receipt.json（成功／失敗都寫，保留本次抓取證據）"""
+    receipt = {
+        'retrievedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        'sourceUrl': BASE.rstrip('&p='),
+        'success': outcome['success'],
+        'pagesExpected': outcome['pagesExpected'],
+        'pagesFetched': outcome['pagesFetched'],
+        'totalRows': outcome['totalRows'],
+        'aborted': outcome['aborted'],
+        'error': outcome['error'],
+        'perPageRows': per_page,
+    }
+    with open(RECEIPT_PATH, 'w', encoding='utf-8') as f:
+        json.dump(receipt, f, ensure_ascii=False, indent=2)
 
 
 def fetch_page(p):
@@ -170,41 +227,55 @@ def main():
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
     all_rows = []
-    header = []  # 安全閘門用：避免第一頁失敗時 UnboundLocalError
+    header = []
+    per_page = []
+    aborted = False
+    error_msg = None
     p = 1
     while True:
         try:
             html = fetch_page(p)
+        except SystemExit:
+            raise  # 403/429：保護來源，直接中止
         except Exception as e:
+            aborted = True
+            error_msg = f'第 {p} 頁：{e}'
             print('頁', p, '錯誤:', e)
             break
-        parser = TableParser()
-        parser.feed(html)
-        # 過濾：只留 15 欄嘅數據行（表頭 15 欄）
-        rows = [r for r in parser.rows if len(r) == 15]
+        rows = parse_page_rows(html)
         if not rows:
             print('頁', p, '無數據，結束')
             break
-        # 第一頁第一行係表頭
         if p == 1:
-            header = rows[0]
-            data_rows = rows[1:]
+            header = page_header(html) or []
             print('表頭:', header)
-        else:
-            data_rows = rows
-        all_rows.extend(data_rows)
-        print('頁', p, '攞到', len(data_rows), '行，累計', len(all_rows))
-        if len(data_rows) < 50:
+        all_rows.extend(rows)
+        per_page.append(len(rows))
+        print('頁', p, '攞到', len(rows), '行，累計', len(all_rows))
+        if len(rows) < 50:
             break
         p += 1
         time.sleep(random.uniform(1.0, 2.5))  # 分頁隨機抖動，唔畀官方機械式節奏
 
-    MIN_EMSD_ROWS = 1700  # 安全閘門：攞唔齊最少行數就唔覆寫現有 CSV
-    if not all_rows or not header or len(all_rows) < MIN_EMSD_ROWS:
-        print(f'⚠️ EMSD 只攞到 {len(all_rows)} 行，少於安全下限 {MIN_EMSD_ROWS}，唔覆寫現有 CSV', file=sys.stderr)
+    pages_fetched = p - 1 if aborted else p
+    outcome = fetch_outcome(pages_expected=pages_fetched + (1 if aborted else 0),
+                            pages_fetched=pages_fetched,
+                            aborted=aborted,
+                            total_rows=len(all_rows),
+                            error=error_msg)
+    write_receipt(outcome, per_page)
+
+    if not outcome['success']:
+        reason = (f'中途網絡錯誤（{error_msg}）' if aborted
+                  else f'只攞到 {len(all_rows)} 行，少於安全下限 {MIN_EMSD_ROWS}')
+        print(f'⚠️ EMSD 抓取未完整（{reason}），唔覆寫現有 CSV', file=sys.stderr)
         sys.exit(1)
 
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'emsd_空調能源標籤.csv')
+    if not header or len(header) != 15:
+        print('⚠️ 攞唔到有效表頭（15 欄），唔覆寫現有 CSV', file=sys.stderr)
+        sys.exit(1)
+
+    out = os.path.join(BASE_DIR, 'emsd_空調能源標籤.csv')
     detect_new_models(all_rows)  # 新機偵測（比較新舊 CSV）
     tmp = out + '.tmp'
     with open(tmp, 'w', newline='', encoding='utf-8-sig') as f:
@@ -213,6 +284,7 @@ def main():
         w.writerows(all_rows)
     os.replace(tmp, out)  # 原子替換：寫好先換名，唔會整壞現有 CSV
     print('完成！共', len(all_rows), '個型號，存於', out)
+    print(f'📦 抓取證據：{RECEIPT_PATH}（頁 {outcome["pagesFetched"]}/{outcome["pagesExpected"]}）')
 
 
 if __name__ == '__main__':

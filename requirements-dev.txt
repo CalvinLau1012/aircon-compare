@@ -1,3 +1,4 @@
 -r requirements.txt
 pytest>=8.0
 pyyaml>=6.0
+playwright>=1.40

@@ -25,14 +25,18 @@ import urllib.error
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from crawl_utils import norm_model, load_models
+from crawl_utils import norm_model, load_models, canonical_model_key, load_brand_lookup
 from price_utils import num_price as _num_price, is_ac_title
 from batch_utils import (PRICE_BATCH_DAYS, load_meta, save_meta, set_cooldown,
                          get_batch_todo, advance_batch)
-from model_lifecycle import load_blacklist, filter_active, revive_model
+from model_lifecycle import (load_blacklist, filter_active, revive_model,
+                             record_results)
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT_PATH = os.path.join(BASE, 'biggo_prices.json')
+
+# 黑名單復核 quota：每個批次日最多復核 40 個黑名單型號（獨立小額，唔會永遠冇得復活）
+BLACKLIST_REVIEW_QUOTA = 40
 
 # 官方 JSON API（product search 需登入認證；2026-08-26 起免登入通道已關閉，見 docs/DECISIONS.md D10）
 API_URL = 'https://api.biggo.com/api/v1/spa/search/{q}/product'
@@ -135,14 +139,11 @@ def _api_search(model, jitter=(0.2, 0.6)):
     return None, False
 
 
-def fetch_biggo_price(model):
-    """官方 API 搜一個型號，回傳 {price, merchants, url} 或 None"""
-    data, _reachable = _api_search(model)
-    if not data:
-        return None
+def _extract_price(data, model):
+    """從 API data 抽最平價（共用過濾規則：型號精確匹配 + 冷氣關鍵字 + 排除配件 + 香港商戶）；冇匹配回 None"""
     nm = norm_model(model)
     prices = []
-    for it in data.get('list', []):
+    for it in (data or {}).get('list', []):
         title = (it.get('title') or '').strip()
         # 共用過濾規則（同 PricesAPI 一套）：型號精確匹配 + 冷氣關鍵字 + 排除配件
         if len(nm) < 4 or not is_ac_title(title, nm):
@@ -166,15 +167,24 @@ def fetch_biggo_price(model):
     }
 
 
+def fetch_biggo_price(model):
+    """官方 API 搜一個型號，回傳 {price, merchants, url} 或 None"""
+    data, _reachable = _api_search(model)
+    return _extract_price(data, model)
+
+
 def protected_models():
-    """受保護型號：核心 29 + 有官方網店價型號（唔會自動淘汰，治理要求）"""
+    """受保護型號（canonical key）：核心 29 + 有官方網店價型號（唔會自動淘汰，治理要求）"""
     protected = set()
     try:
         from models_data import MODELS
         for m in MODELS:
-            protected.add(norm_model(m))
+            key = canonical_model_key(m.get('brand'), m.get('model'))
+            if key:
+                protected.add(key)
     except Exception:
         pass
+    brand_lookup = load_brand_lookup()
     for fname in ('official_specs.json', 'rasonic_official.json', 'pana_official.json',
                   'midea_official.json', 'shew_official.json', 'general_official.json',
                   'carrier_official.json'):
@@ -186,10 +196,29 @@ def protected_models():
                 data = json.load(f)
             for k, v in data.items():
                 if isinstance(v, dict) and str(v.get('price', '')).startswith('HK$'):
-                    protected.add(norm_model(k))
+                    brand = brand_lookup.get(norm_model(k))
+                    if brand:
+                        protected.add(canonical_model_key(brand, k))
         except Exception:
             pass
     return protected
+
+
+def _search_tri_state(model):
+    """三態搜尋（force batch 同 price batch 共用）：
+    回 (model, result_or_None, ok)
+      ok=True   → API 正常回覆（result 可能有價，可能係乾淨無匹配）
+      ok=False  → 網絡/限流/認證錯誤（唔計入淘汰統計）
+    """
+    data, reachable = _api_search(model)
+    if not reachable:
+        return model, None, False
+    return model, _extract_price(data, model), True
+
+
+def _brand_of(brand_lookup):
+    """型號 → 品牌原文（解唔到就 UNKNOWN，令 key 保持 canonical 一致）"""
+    return lambda m: brand_lookup.get(norm_model(m)) or 'UNKNOWN'
 
 
 def run_force_batch(limit=None):
@@ -202,9 +231,10 @@ def run_force_batch(limit=None):
         print('❌ 強行批次中止：smoke 唔過（BigGo API 對當前 IP 唔友好）')
         sys.exit(1)
 
-    from model_lifecycle import record_results
+    brand_lookup = load_brand_lookup()
     all_models = load_models()
-    todo, skipped = filter_active(all_models)
+    todo, skipped = filter_active(all_models, key_of=lambda m: canonical_model_key(
+        brand_lookup.get(norm_model(m)) or 'UNKNOWN', m))
     if limit:
         todo = todo[:limit]
     print(f'🚀 強行全量批次開始：{len(todo)} 個型號（已排除黑名單 {len(skipped)} 個）')
@@ -222,36 +252,10 @@ def run_force_batch(limit=None):
     consec_fail = 0
     t0 = time.time()
 
-    def _one(model):
-        data, reachable = _api_search(model)
-        if not reachable:
-            return model, None, False
-        if not data:
-            return model, None, True
-        nm = norm_model(model)
-        prices = []
-        for it in data.get('list', []):
-            title = (it.get('title') or '').strip()
-            if len(nm) < 4 or not is_ac_title(title, nm):
-                continue
-            nindex = it.get('nindex') or ''
-            if not nindex.startswith('hk_'):
-                continue
-            p = _num_price(it.get('price'))
-            if p:
-                prices.append(p)
-        if not prices:
-            return model, None, True
-        lo, hi = min(prices), max(prices)
-        price = f'${lo:,}-{hi:,}' if hi > lo else f'${lo:,}起'
-        return model, {'price': price, 'merchants': len(prices),
-                       'url': 'https://biggo.hk/s/?q=' + urllib.parse.quote(model),
-                       'updated': time.strftime('%Y-%m-%d')}, True
-
     aborted = False
     ex = ThreadPoolExecutor(max_workers=2)
     try:
-        futures = {ex.submit(_one, m): m for m in todo}
+        futures = {ex.submit(_search_tri_state, m): m for m in todo}
         done_count = 0
         for fut in as_completed(futures):
             model, result, ok = fut.result()
@@ -291,9 +295,11 @@ def run_force_batch(limit=None):
         print(f'  （中止前已得價 {len(got)} · 無報價 {len(clean_miss)} · 錯誤 {len(net_err)}）', flush=True)
         sys.exit(1)
 
-    # 淘汰確認（閾值 2；網絡錯誤唔計；受保護唔淘汰）
+    # 淘汰確認（閾值 2；網絡錯誤唔計；受保護唔淘汰；batch_id 防同一批重跑重複計 miss）
     rec = [(m, True) for m in got] + [(m, False) for m in clean_miss]
-    record_results(rec, protected=protected)
+    record_results(rec, protected=protected,
+                   batch_id='force-' + time.strftime('%Y%m%d%H%M%S'),
+                   brand_of=_brand_of(brand_lookup))
     after_black = set(load_blacklist())
     new_black = sorted(after_black - before_black)
     el = time.time() - t0
@@ -303,7 +309,8 @@ def run_force_batch(limit=None):
         print(f'  🚫 新自動淘汰：{len(new_black)} 個 — {new_black}')
     else:
         print('  🚫 新自動淘汰：0 個')
-    protected_miss = [m for m in clean_miss if norm_model(m) in protected]
+    protected_miss = [m for m in clean_miss
+                      if canonical_model_key(brand_lookup.get(norm_model(m)) or 'UNKNOWN', m) in protected]
     if protected_miss:
         print(f'  🛡 受保護而唔淘汰（無報價）：{len(protected_miss)} 個 — {protected_miss[:20]}')
     if clean_miss:
@@ -321,20 +328,21 @@ def run_force_batch(limit=None):
         consec_fail = 0
         ex = ThreadPoolExecutor(max_workers=2)
         try:
-            futures = {ex.submit(_one, m): m for m in black}
+            futures = {ex.submit(_search_tri_state, key.split('|', 1)[1]): key for key in black}
             done = 0
             for fut in as_completed(futures):
+                key = futures[fut]
                 model, result, ok = fut.result()
                 if result:
                     results[model] = result
-                    revive_model(model)
-                    revived.append(model)
+                    revive_model(key)
+                    revived.append(key)
                     consec_fail = 0
                 elif ok:
-                    confirmed.append(model)
+                    confirmed.append(key)
                     consec_fail = 0
                 else:
-                    blk_err.append(model)
+                    blk_err.append(key)
                     consec_fail += 1
                 done += 1
                 if done % 100 == 0:
@@ -365,10 +373,66 @@ def run_force_batch(limit=None):
     return True
 
 
+def review_blacklist_batch(idx):
+    """黑名單復核：每個批次日小額 quota，按日輪轉（查到有價 → 自動復活；網絡錯誤唔改狀態）"""
+    black = sorted(load_blacklist())
+    if not black:
+        return
+    chunks = max(1, (len(black) + BLACKLIST_REVIEW_QUOTA - 1) // BLACKLIST_REVIEW_QUOTA)
+    start = (idx % chunks) * BLACKLIST_REVIEW_QUOTA
+    todo = black[start:start + BLACKLIST_REVIEW_QUOTA]
+    if not todo:
+        return
+    print(f'\n🔎 黑名單復核（批次 {idx + 1}）：{len(todo)} 個型號確認「不再賣」狀態...')
+    results = {}
+    if os.path.exists(OUT_PATH):
+        with open(OUT_PATH, encoding='utf-8') as f:
+            results = json.load(f)
+    revived, confirmed, blk_err = [], [], []
+    consec_fail = 0
+    ex = ThreadPoolExecutor(max_workers=2)
+    try:
+        futures = {ex.submit(_search_tri_state, key.split('|', 1)[1]): key for key in todo}
+        for fut in as_completed(futures):
+            key = futures[fut]
+            model, result, ok = fut.result()
+            if result:
+                results[model] = result
+                revive_model(key)
+                revived.append(key)
+                consec_fail = 0
+            elif ok:
+                confirmed.append(key)
+                consec_fail = 0
+            else:
+                blk_err.append(key)
+                consec_fail += 1
+            if consec_fail >= 12:
+                print(f'  ⏳ 復核連續 {consec_fail} 個失敗：全局冷卻 90s 再繼續', flush=True)
+                _global_cooldown(90)
+                consec_fail = 0
+    finally:
+        ex.shutdown(wait=False, cancel_futures=True)
+    with open(OUT_PATH, 'w', encoding='utf-8') as f:
+        json.dump(results, f, ensure_ascii=False)
+    print(f'🔎 復核完成：♻️ 復活 {len(revived)} ｜ ✅ 確認不再賣 {len(confirmed)} ｜ ⚠️ 網絡錯誤 {len(blk_err)}')
+    if revived:
+        print(f'  ♻️ 復活清單（前 30）：{revived[:30]}')
+
+
 def run_price_batch():
-    """執行當日 BigGo 價錢批次（每月一次、分 7 日；切片/推進由 batch_utils 共用）"""
+    """執行當日 BigGo 價錢批次（每月一次、分 7 日；切片/推進由 batch_utils 共用）
+
+    - 黑名單型號完全排除（復核由 review_blacklist_batch 小額輪轉處理）
+    - 三態：有價 / 乾淨無報價 / 網絡錯誤分開計（D8：網絡錯誤唔計淘汰）
+    - 淘汰確認照 call record_results（batch_id 防同一批重跑重複計 miss）
+    - 並發 2（D3）
+    """
     meta = load_meta()
-    batch = get_batch_todo(load_models(), meta)
+    brand_lookup = load_brand_lookup()
+    todo_src, _skipped = filter_active(load_models(), key_of=lambda m: canonical_model_key(
+        brand_lookup.get(norm_model(m)) or 'UNKNOWN', m))
+    batch = get_batch_todo(todo_src, meta)
     if not batch:
         print('💰 BigGo 批次：唔喺進行中，跳過')
         return
@@ -385,28 +449,32 @@ def run_price_batch():
         with open(OUT_PATH, encoding='utf-8') as f:
             results = json.load(f)
 
-    ok = 0
+    got, clean_miss, net_err = [], [], []
     consec_fail = 0
     t0 = time.time()
-    with ThreadPoolExecutor(max_workers=3) as ex:
-        futures = {ex.submit(fetch_biggo_price, m): m for m in todo}
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        futures = {ex.submit(_search_tri_state, m): m for m in todo}
         done_count = 0
         for fut in as_completed(futures):
             m = futures[fut]
             try:
-                result = fut.result()
+                model, result, ok = fut.result()
             except Exception:
-                result = None
+                result, ok = None, False
             if result:
                 results[m] = result
-                ok += 1
+                got.append(m)
+                consec_fail = 0
+            elif ok:
+                clean_miss.append(m)
                 consec_fail = 0
             else:
+                net_err.append(m)
                 consec_fail += 1
             done_count += 1
             if done_count % 50 == 0:
                 el = time.time() - t0
-                print(f'  進度 {done_count}/{len(todo)}（得價 {ok}）· {el:.0f}s', flush=True)
+                print(f'  進度 {done_count}/{len(todo)}（得價 {len(got)} · 無報價 {len(clean_miss)} · 錯誤 {len(net_err)}）· {el:.0f}s', flush=True)
                 with open(OUT_PATH, 'w', encoding='utf-8') as f:
                     json.dump(results, f, ensure_ascii=False)
             if done_count >= 40 and consec_fail >= 40:
@@ -417,6 +485,15 @@ def run_price_batch():
     with open(OUT_PATH, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False)
 
+    # 淘汰確認（三態；batch_id = 批次開始日 + 第幾日，同一批重跑唔重複計 miss）
+    rec = [(m, True) for m in got] + [(m, False) for m in clean_miss]
+    record_results(rec, protected=protected_models(),
+                   batch_id=f"{meta.get('price_batch_start', time.strftime('%Y-%m-%d'))}:{idx + 1}/{PRICE_BATCH_DAYS}",
+                   brand_of=_brand_of(brand_lookup))
+
+    # 小額黑名單復核（每日 quota，按批次日輪轉）
+    review_blacklist_batch(idx)
+
     done = advance_batch(meta)
     save_meta(meta)
     if done:
@@ -425,17 +502,72 @@ def run_price_batch():
         print(f'💰 本批完成（{meta["price_batch_idx"]}/{PRICE_BATCH_DAYS}），聽日繼續')
 
 
-def run_smoke():
-    """連線煙霧測試：抓一個熱門型號確認 BigGo 對當前 IP 友好（批次前一定要過）"""
-    test = 'RA-10RF'
-    try:
-        r = fetch_biggo_price(test)
-    except Exception:
-        r = None
-    if r and r.get('price'):
-        print(f'✅ BigGo smoke test 通過：{test} → {r["price"]}（{r.get("merchants", 0)} 商戶）')
-        return True
-    print(f'⚠️ BigGo smoke test 失敗（{test} 攞唔到價）——可能被 GitHub IP 限流，建議跳過本批')
+# ===== BigGo smoke 候選（集中管理；只喺 API 連線測試用）=====
+# 選取理由（全部由本地資料核實，唔需要真實 API）：
+#   - 核心 29 型號（fetch_biggo.protected_models() 受保護，唔會被自動淘汰）；
+#   - biggo_prices.json 本地快照有可靠報價（2026-08-26 全量復核）；
+#   - 跨 3 個品牌（HITACHI／CARRIER／RASONIC），避免單一品牌搜尋異常就判死；
+#   - 順序探測，首個有價即通過（正常情況只消耗 1 次 API 請求）。
+SMOKE_CANDIDATES = (
+    {'model': 'RA-10RF', 'brand': 'HITACHI 日立',
+     'reason': '核心 29／受保護；長期熱門窗口機；本地快照 $2,500-3,680（多商戶）'},
+    {'model': 'CHK12BE', 'brand': 'Carrier 開利',
+     'reason': '核心 29／受保護；跨品牌；本地快照 $1,750-3,580（多商戶區間）'},
+    {'model': 'RC-XG12', 'brand': 'Rasonic 樂信',
+     'reason': '核心 29／受保護；跨品牌；本地快照 $3,978 起'},
+)
+
+
+def _smoke_probe(model):
+    """Smoke 探測：回 (status, result)
+      'priced'      → API 正常且有匹配報價
+      'no-price'    → API 正常回覆但呢個型號暫時無匹配報價（唔等於限流）
+      'unreachable' → 網絡／限流／認證等錯誤嘅粗分類
+
+    限制（唔虛構）：`_api_search` 目前將 429／403、網絡例外同認證失敗一律回
+    reachable=False，所以呢度唔會細分原因，只如實報 'unreachable'；
+    若日後需要細分，要先改 `_api_search` 嘅錯誤分類契約。
+    """
+    data, reachable = _api_search(model)
+    if not reachable:
+        return 'unreachable', None
+    result = _extract_price(data, model)
+    return ('priced', result) if result else ('no-price', None)
+
+
+def run_smoke(candidates=None):
+    """連線煙霧測試：依序探測候選型號，首個有價即通過（正常情況只用 1 次 API 請求）。
+
+    候選失敗（no-price 或 unreachable）才 fallback 下一個；全部失敗回 False，
+    工作流會跳過本批（安全門禁不變）。
+    """
+    cands = SMOKE_CANDIDATES if candidates is None else candidates
+    failures = []
+    for cand in cands:
+        model = cand['model'] if isinstance(cand, dict) else str(cand)
+        try:
+            status, result = _smoke_probe(model)
+        except Exception as e:
+            # 只記錄例外類型，唔輸出 exception 內容（避免任何 credential 落入 log）
+            failures.append((model, 'exception', type(e).__name__))
+            print(f'  ⚠️ smoke 候選 {model} 例外：{type(e).__name__}（網絡／憑證等，未細分）', flush=True)
+            continue
+        if status == 'priced':
+            print(f'✅ BigGo smoke test 通過：{model} → {result["price"]}'
+                  f'（{result.get("merchants", 0)} 商戶）', flush=True)
+            return True
+        if status == 'no-price':
+            print(f'  ⚠️ smoke 候選 {model}：API 正常但暫時無匹配報價，試下一個候選', flush=True)
+        else:
+            print(f'  ⚠️ smoke 候選 {model}：unreachable（網絡／限流／認證等，現行錯誤分類未細分）',
+                  flush=True)
+        failures.append((model, status, None))
+    print(f'⚠️ BigGo smoke test 全部候選失敗（{len(failures)} 個）：{failures}', flush=True)
+    statuses = {s for _, s, _ in failures}
+    if 'unreachable' in statuses or 'exception' in statuses:
+        print('   含 unreachable／例外：多數係當前 IP 被限流或憑證問題，建議跳過本批，唔硬碰', flush=True)
+    else:
+        print('   API 連線正常但全部候選暫時無匹配報價：屬個別型號情況，唔係限流', flush=True)
     return False
 
 

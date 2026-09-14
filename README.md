@@ -1,7 +1,7 @@
 # ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/version-v1.2.8-2ea44f)
 
 > 香港市場空調（窗口式 / 分體式 / 流動式；淨冷/冷暖、定頻/變頻）全面對比
-> **能源級別、雪種、年耗電已用機電署 EMSD 官方資料庫（1,927 型號）全量核實**
+> **能源級別、雪種、年耗電已用機電署 EMSD 官方資料庫（1,863 筆登記）全量核實**
 > **220 個型號已直接經品牌官網/官方網店/總代理逐型號核實（2026-08-15）**
 > 🎨 **Blue Fantasy 藍色幻想 skin**（dsh-web-ui 皮膚；只套皮膚，其他插件不加）
 > 📌 **現況（2026-08-26）**：v1.2.8——治理落地 + PDF 導出 + BigGo 官方認證（免登入通道已關閉，改用免費 client credentials，見 `docs/DECISIONS.md` D10）；本地全量驗證 742 型號有價
@@ -16,7 +16,7 @@
 
 - ⚖️ **互動比較器**：勾選 2 個或以上型號，即時彈出 18 項屬性對比表（自動高亮最平/最慳電/最高 CSPF）
 - 🔍 搜尋（品牌/型號）+ 自由篩選標籤（品牌、機型、匹數、能源、價位、停售狀態）+ 排序（價格 / 能源 / 年耗電 / CSPF）
-- 🛒 1,848 個型號附價格快照（BigGo 742 主力·2026-08-26 全量復核 + Price 舊快照後備），點擊 🔍 直接在你的瀏覽器用 Google 搜最新價
+- 🛒 1,809 個型號附價格快照（BigGo 742 主力·2026-08-26 全量復核 + Price 舊快照後備），點擊 🔍 直接在你的瀏覽器用 Google 搜最新價
 - 📱 手機 / 平板 / 桌面全響應式（表格可橫向捲動）
 - 🌙 深色模式自動跟隨系統，並已修正目錄連結／表格 hover／code／引用／卡片／按鈕等對比度
 - 📊 完整報告：定頻 vs 變頻、統合總表、官方驗證、能源分析、深度分析、排名、推薦、價格驗證、論壇討論精華
@@ -25,27 +25,28 @@
 
 | 項目 | 數量 |
 | ------ | ------ |
-| 收錄型號 | 1,854（核心 29 + EMSD 全量 1,825） |
+| 收錄型號 | 1,814（核心 29 + EMSD 全量 1,785 · 截至 2026-09-03 快照） |
 | 有價格型號 | BigGo 742（2026-08-26 本地全量實抓·官方認證）+ Price 舊快照 1,847（後備） |
 | 淘汰黑名單 | 1,095（2026-08-26 全量復核；復活 8 個重有市售報價型號） |
 | BigGo 香港格價型號 | 742（官方 JSON API + 免費認證；主力價錢源） |
 | PricesAPI 核心驗收型號 | 29（選用驗收/後備，每月免費額度內） |
 | 有尺寸型號 | 1,676 |
-| EMSD 官方核實型號 | 1,927（全量） |
+| EMSD 官方核實登記 | 1,863 筆登記（1,814 型號；全量·截至 2026-09-03 快照） |
 | 品牌官網核實型號 | 220（8 品牌） |
 | 對比屬性 | 18 項 |
 
 ### 📈 數據統計（2026-08-26 全量實抓後）
 
-#### 狀態分佈（比較器新標籤）
+#### 狀態分佈（比較器新標籤 · canonical 型號鍵修正後）
 
 ```mermaid
 pie showData title 型號狀態分佈（1,814）
-    "有價" : 1432
-    "停售（保留舊快照）" : 286
-    "官方價" : 64
-    "無價" : 32
+    "有價" : 674
+    "停售（保留舊快照）" : 1075
+    "官方價" : 65
 ```
+
+> 2026-09-03 D11 修正後實際頁面狀態：停售由舊顯示 286 → 1,075（canonical `BRAND|NORM` 匹配）；有價 674、官方價 65、無價 0，合共 1,814。
 
 #### 機型分佈
 
@@ -59,15 +60,17 @@ pie showData title 機型分佈
     "多聯式/天花式" : 7
 ```
 
-#### 能源級別
+#### 能源級別（EMSD 全量 canonical model · 截至 2026-09-03）
 
 ```mermaid
 xychart-beta
-    title "能源級別分佈"
+    title "能源級別分佈（canonical model）"
     x-axis ["1級", "2級", "3級", "4級", "5級"]
     y-axis "型號數" 0 --> 1200
-    bar [1114, 166, 159, 341, 5]
+    bar [1127, 166, 168, 348, 5]
 ```
+
+> canonical model 按 `BRAND|NORM` 去重（1,814 個）；EMSD registration（1,863 筆登記）分佈為 1,172／166／172／348／5。核心 29 精選為 1 級 13、3 級 9、4 級 7、2／5 級 0——兩個層次數量級唔同，唔可以混用。
 
 #### 類型與匹數
 
@@ -205,13 +208,31 @@ flowchart LR
 | 所有重要功能有 Smoke Test | ✅ | GATE-05 瀏覽器核心路徑 5 項 |
 | 所有變更有 Changelog | ✅ | `CHANGELOG.md` + 各文檔更新日誌 |
 | 支援多人協作 | ⚠️ | git + concurrency group；PR 審批流程待完善 |
-| 支援多 AI 協作 | ✅ | 治理文檔面向人類 + AI + CI 三類執行者 |
+| 支援多 AI 協作 | ✅ | 治理文檔面向人類 + AI + CI 三類執行者；角色分工見下 |
 | 支援未來 v2.0 平台化 | ⚠️ | §16 目標結構已定義；未啟動 |
+
+### AI 協作角色（透明說明）
+
+| 角色 | 負責範圍 |
+| --- | --- |
+| **OpenAI Codex** | 規劃、治理約束、整合設計、獨立驗收與返修決策 |
+| **DeepSeek `deepseek-flash`（thinking max）** 經 Pi coding-agent／`ds-exec` | 本地診斷、實作、測試、分支整合 |
+| **人類維護者** | 批准 R2/R3 決策、最終 merge 與發布 |
+
+> ⚠️ AI 輔助唔等於官方資料已由 AI 證實：能源／雪種／耗電以 EMSD 官方資料為準，尺寸／保養／官方價以品牌官網為準，價錢為市場快照；所有結論以可重跑測試及實際證據為據。
+> 🎨 歷史設計主題「DeepSeek 鯨魚娘」（skin／角色素材）屬美術來源鳴謝，與上述工程協作角色分開。
 
 ### 回滾與版本策略（摘要）
 
 - **版本**：SemVer；版本號唯一手動來源 `models_data.py` 的 `VERSION`；部署事實一律由流水線 `metadata.json` 提供
 - **回滾**：四級（L1 代碼修復 → L2 應用回滾 → L3 數據快照 → L4 全站）；目標必須由 tag/commit/發布摘要/快照 ID 唯一確定；每次成功提交 = 可回溯快照
+
+### 個人伺服器持久發佈（release 299c3e9 · D15）
+
+- **入口**：`bash /home/calvin/aircon-docker/release-299c3e9.sh`（使用者自己 SSH 執行；需要寫入才經確認交由 `sudo`，密碼只由 sudo 讀取）
+- **持久機制**：image 內 `/opt/aircon-src` 保存 pristine 程式碼；容器內每次更新（cron 03:30 HKT 或手動）以 `rsync --delete` 同步程式碼落 volume `/app`（runtime `*.json`／`*.csv`／`*-bak*`／`web/` 永不刪），再跑閘門 + 兩階段 metadata + 原子部署 web 四檔
+- **流程**：preflight → staging build（隔離、volume read-only、PR-3 ingestion 重抓 EMSD）→ verify → apply（停服務前 TOCTOU 重驗；完整備份並驗證後才改 volume；失敗分階段安全處理／自動回滾）→ rollback（root 階段解析 latest）
+- **驗證**：sandbox 91 斷言（TOCTOU／備份失敗／stopped container／rollback 權限／sync --delete）＋ pytest 100＋ staging Playwright 46/46；伺服器 preflight 與 fake-sudo 邊界已實測；正式 apply 由使用者執行
 
 ### 治理架構圖（完整四圖見治理文檔 §1.1.1/§3.5/§4.4/§9.1.1）
 
@@ -274,7 +295,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | `model_blacklist.json` / `model_status.json` | 淘汰黑名單 / 追蹤記錄 |
 | `validate_data.py` | 數據驗證閘門（自動更新防壞數據） |
 | `tests/` · `requirements-dev.txt` | 單元測試 + 開發依賴（pytest） |
-| `emsd_空調能源標籤.csv` | EMSD 官方資料庫快照（1,927 型號） |
+| `emsd_空調能源標籤.csv` | EMSD 官方資料庫快照（1,863 筆登記 / 1,814 型號） |
 | `prices.json` / `specs_emsd.json` | Price 舊快照 / 規格資料庫（後備） |
 | `biggo_prices.json` | BigGo 官方 JSON API 價錢快照（742 型號，主力價錢源） |
 | `pricesapi_prices.json` | PricesAPI 核心 29 驗收快照（後備，需 API key） |
@@ -348,6 +369,32 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | v0.1.0 | 2026-08-11 | 報告初版（29 型號統合對比） |
 
 ## 📅 更新日誌
+
+### 2026-09-14 — 個人伺服器持久發佈工具（release 299c3e9 · D15）
+
+| 類別 | 內容 |
+| ------ | ------ |
+| 🚀 發佈 | 新增 `docker/`（image 內 `/opt/aircon-src` + `run-update.sh` 每次 `rsync --delete` 同步程式碼落 volume）＋ `release/release-299c3e9.sh` 單一入口（preflight／build／verify／serve／apply／rollback）|
+| 🛡️ 安全 | 停服務前 TOCTOU 重驗（staged-data manifest／metadata／payload／image ID／資料漂移）；停機後分 stopped／backup_ready／applying 階段，備份未驗證前失敗只安全重啟；rollback latest 由 root 解析；container 用 `docker ps -aq` 並拒絕歧義 |
+| 🧹 資料 | EMSD 舊 CSV 重複表頭由 PR-3 ingestion 重抓修復；runtime 資料（價格／黑名單）保留 volume 最新版 |
+| 🧪 測試 | sandbox 91 斷言（12 情境）＋ `tests/test_prepare_runtime_data.py` 8 項；`generate_html` 報告內文當前狀態數字動態同步 |
+
+### 2026-09-13 — 本地整合驗證：網頁 Bug 修復 + 治理 PR-1～PR-3 + 兩階段 metadata
+
+| 類別 | 內容 |
+| ------ | ------ |
+| 🔍 篩選 | 價位篩選修正：未知價型號唔再被歸入「5以上」；「只顯示已選」之下反選即刻由列表移除 |
+| 📱 響應式 | 修復 721–999px 平板水平溢出（導覽 tooltip 絕對定位撐寬頁面 → 1000px 以下隱藏） |
+| ♿ 無障礙 | 比較面板 Escape 關閉、焦點移入／返回、`role=dialog` + `aria-expanded`；搜尋及下拉加 `aria-label` |
+| 🌗 對比度 | 深色頁腳 1.85:1 → 12.2:1；淺色連結／按鈕／hero 統計／最佳值標示全部 ≥4.5:1 |
+| 🔢 版本 | 頁腳版本只讀 `metadata.json.version`，移除 HTML 內嵌版本常量 |
+| 🧪 測試 | `pytest tests/` 預設收集瀏覽器 smoke；HTML 固定 LF（Windows 本地 = CI）；`test_pdf_export` 改用 `tmp_path`，測試前後 `空調對比報告.pdf` hash 不變 |
+| 🏛️ 治理 | PR-1～PR-3 整合：canonical 型號鍵（D11）＋生命週期三態（D8）＋EMSD 保留全部登記（D12）＋價錢快照原始 key（D13） |
+| 🔢 動態數字 | Hero／Open Graph／description 改用建置時實際計數（1,863 筆登記 / 1,814 型號）；歷史數字只留喺標明歷史嘅段落 |
+| 🔄 流水線 | 兩階段 metadata（D14）：核心事實 → PDF 用同 run metadata → finalize payload hash；hash 範圍收斂為 `deploy_payload.json` 明確 manifest |
+| ⚡ 能源 | 核心 29 表明確標示；級別固定 1→2→3→4→5（0 都顯示）；全量 canonical model／registration 分佈建置時動態生成（HTML + PDF） |
+| 🔌 BigGo | smoke 改 3 個跨品牌候選，依序探測、首個有價即通過；`no-price`（個別型號無匹配）同 `unreachable`（限流等粗分類）分開報 |
+| 🤖 AI | 協作角色透明說明：Codex（規劃／驗收）、DeepSeek `deepseek-flash` via Pi `ds-exec`（實作／測試／整合）、人類維護者（R2/R3 與發布） |
 
 ### 2026-08-26 — v1.2.8 治理落地 + PDF + BigGo 官方 API
 
@@ -460,4 +507,4 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | ------ | ------ |
 | 📝 內容 | 報告初版（29 型號對比） |
 
-**更新日期**：2026-08-26 · **版本**：v1.2.8
+**更新日期**：2026-09-13 · **版本**：v1.2.8

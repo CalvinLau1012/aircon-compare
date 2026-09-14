@@ -101,6 +101,75 @@
 - **原因**：BigGo 為免費官方認證（MCP Server 官方推薦方式）；保持主力價源不變、全自動可延續。
 - **後果**：已實施（用戶 2026-08-26 提供憑證，存於 GitHub Secrets）；本地全量復核 728 型號得價 722、黑名單復核復活 8 個，有價型號 731 → 742；CI 帶憑證 smoke 實測通過（run 32979760795）。
 
+## D11 · Canonical 型號鍵：canonical_brand|norm_model（人類決策）
+
+- **日期**：2026-09-03
+- **狀態**：已實行
+- **背景**：改善方案 F-05 審計發現三套 key 語意分裂——黑名單用原始字串（含 `-`／`/`／空格）、`protected_models()` 回傳正規化 key（且核心 29 實際上誤將整個 dict 正規化）、`record_results()` 用原始字串做 membership check——令含符號嘅型號保護失效、頁面只標示 289 個停售（應為 1,079）。
+- **選項**：
+  - A：`canonical_brand|norm_model`（唯一品牌 ID + 型號正規化）
+  - B：只用 `norm_model` + 跨品牌碰撞閘門
+- **決策**：選 A；`crawl_utils.canonical_brand()` 以已核實別名表做跨平台品牌矯正（中文／英文／顯示名 → 統一 ID，例如 日立牌／HITACHI 日立 → HITACHI），未知品牌做大寫化 fallback；`canonical_model_key(brand, model)` 輸出 `BRAND|NORM`。黑名單、model_status tracking、protected set、filter_active、record_results、revive_model 全部共用同一 key。
+- **原因**：用戶選定 A，並要求注意品牌名喺各平台唔一致要矯正；跨品牌碰撞從根本上防範。
+- **後果**：`model_blacklist.json` 1,095 個 key 遷移為 canonical（matched 1,079、orphan 16 → `UNKNOWN|NORM`、碰撞 0），遷移報告見 `docs/blacklist-migration-2026-09.md`，備份 `model_blacklist.json-bak-canonical-migration`；頁面停售標示由 289 → 1,079。同時修正 `run_price_batch` 並發 3 → 2（回歸 D3）。
+
+## D12 · EMSD 重複登記：保留全部 registration + canonical product view（人類決策，R3）
+
+- **日期**：2026-09-03
+- **狀態**：已決定（PR-3 實施中；metadata Schema 更新同 load_registrations 喺 PR-3 落地）
+- **背景**：EMSD CSV 同一型號可有多個登記記錄（1,863 registrations / 1,814 models），舊 `load_models()` 靜默「第一筆勝出」，無審計規則。
+- **選項**：
+  - A：保留全部登記 + 另出 canonical product view；metadata 分開記錄計數
+  - B：維持首筆勝出
+- **決策**：選 A；CSV 保留全部 registration，`crawl_utils.load_registrations()` 回傳全部登記、`load_models()` 按 canonical key 去重回傳 product view；metadata.json Schema 新增 optional `rawRecordCount`／`registrationCount`／`modelCount`（向後兼容，CI 未傳就唔寫）。
+- **原因**：用戶選定 A；令 1,863 registrations 與 1,814 models 嘅關係可審計。
+- **後果**：治理文檔 `AIRCON_METADATA_SCHEMA_V1` 區塊更新（schemaVersion 維持 1.0.0、新欄位 optional）；`validate_metadata.py` 接受新欄位。
+
+## D13 · 價錢快照 key：M1 保留原始型號 key（技術範圍決策）
+
+- **日期**：2026-09-03
+- **狀態**：已實行
+- **背景**：canonical key 全面統一（D11）時，`biggo_prices.json`（742 項）等價錢快照亦以型號字串做 key；全量遷移會波及 generate_html 價格 lookup 與多個 loader。
+- **決策**：M1 只遷移黑名單、tracking 同保護集；價錢快照（biggo_prices.json / prices.json / gemini_prices.json）保留原始型號字串 key，需要時以 `norm_model` helper 雙讀。全量價錢 key 遷移延後到後續 PR。
+- **原因**：控制 M1 風險同 diff 大小；價錢快照唔參與淘汰／停售判定。
+- **後果**：黑名單復核復活時新價會以 norm 型號 key 寫入 biggo_prices.json（該等型號頁面唔顯示，只作復核證據保留）。
+
+## D14 · CI PDF／metadata 次序：兩階段封裝（人類決策，R2-R3）
+
+- **日期**：2026-09-13
+- **狀態**：已實行
+- **背景**：舊流水線次序係「生成 HTML → 生成 PDF → 生成 metadata.json」。PDF 讀 repo 內上一 run 嘅 metadata.json，令 PDF 嘅 version／datasetDate／deployTime 落後一拍；之後 metadata 又被新 run 覆寫。直接將 metadata 移前唔可行：`releasePayloadHash` 要覆蓋最終 Web／PDF 負載，同 PDF 需要 metadata 形成循環。
+- **選項**：
+  - A：兩階段封裝——先出同 run 核心事實（無 hash）→ PDF 用核心事實 → PDF 完成後 finalize payload hash 寫正式 metadata
+  - B：維持舊次序（PDF 永遠落後）或 PDF 生成後再改寫內文
+- **決策**：選 A。`scripts/gen-metadata.py` 加 `--stage core|finalize`：
+  1. **core**：由受信任作業生成 version／build／commit／deployTime／dataset 事實（deployTime 仍由腳本 UTC 生成，不接受人手時間）；輸出唔可以叫 `metadata.json`，而且缺 `releasePayloadHash` 過唔到正式 Schema（未 finalize 不可部署）；core 寫入 `$RUNNER_TEMP`（repo 外），`.gitignore` 亦加 `metadata.core.json`。
+  2. **PDF**：`generate_pdf.py --metadata <core>`，用同 run 嘅 version／datasetDate／deployTime。
+  3. **finalize**：以 `deploy_payload.json` 明確 manifest 計 `releasePayloadHash`，只新增 hash 欄位；寫入前按治理內嵌 Schema 自我驗證；最終 metadata 嘅核心事實同 core 逐欄一致。
+- **hash 範圍**：manifest 明確列出 `index.html`、`空調對比報告.pdf`、`emsd_空調能源標籤.csv`；排除 `.git`／`.venv`／`.agents`／cache／測試檔／舊生成物／最終 `metadata.json`（自引用）。framing 用「長度前綴 + 相對路徑 + 長度前綴 + 內容」，排序後計算，確保可重現同無歧義。舊 `--payload-dir .` 只保留兼容，正式流水線唔再用。
+- **原因**：用戶 2026-09-13 明確批准此修正；治理 §7.2.3 要求非自引用 payload hash，舊 `--payload-dir .` 範圍過寬且次序錯配。
+- **相容性**：Metadata Schema 無變更（schemaVersion 維持 1.0.0，無新 required 欄位）；省略 `--stage` 時 CLI 維持舊單階段行為。`recordCount` 按 D12 註釋改為唯一型號數，CI 同時傳 optional `rawRecordCount`／`registrationCount`／`modelCount`。
+- **回滾**：`git revert` 對應 commit（workflow 恢復單階段 `--payload-dir .`；metadata 格式仍係 Schema 1.0.0，無資料遷移）；core 檔只係暫存，無殘留狀態。
+- **後果**：PDF 同最終 metadata 嘅 version／datasetDate／deployTime 同 run 一致；hash 範圍可審計、唔會混入 `.git`／`.venv`／`.agents`／工作區任意檔案。
+
+---
+
+## D15 · 個人伺服器持久發佈：image 重建 + volume 程式碼同步（人類決策，R3）
+
+- **日期**：2026-09-14
+- **狀態**：已實行（發佈工具已備妥並通過測試；正式 apply 由使用者在自己的 SSH 終端輸入 sudo 執行，AI 未代跑）
+- **背景**：公開站由個人伺服器（`calvin-ubuntu-server`）的 Docker container `aircon` 提供，站點 root 係 named volume `aircon-docker_aircon-data` 內 `/app/web`；容器內 cron 每日 03:30 HKT 用 volume 內程式碼重新抓資料並生成網站。單純替換 web 四檔會被 cron 用舊程式碼覆蓋，而且會把舊快照覆蓋線上較新資料。
+- **選項**：
+  - A：只靜態替換 web 四檔 → 不持久、資料倒退；
+  - B：重建 image（image 內 `/opt/aircon-src` 保存 pristine 程式碼）+ 每次執行由 image 同步程式碼落 volume；
+  - C：改 host cron／`docker exec` 直接跑 volume 程式碼 → 改變部署架構、權限更大。
+- **決策**：採 B。容器內 `run-update.sh` 每次執行（cron 或手動）先 `rsync --delete` 由 `/opt/aircon-src` 同步程式碼落 `/app`（排除 `*.json`／`*.csv`／`*-bak*`／`web/`／logs／快取；`deploy_payload.json` 除外），再跑 `validate_data` + GATE-01/03 + 非瀏覽器 pytest + `generate_html` + 兩階段 metadata + PDF，最後原子部署 `index.html`／PDF／CSV／`metadata.json` 到 `/app/web`。Release 入口 `release-299c3e9.sh` 由普通使用者啟動，需要寫入時才經確認交由 `sudo` 執行；入口負責 preflight、隔離 staging build（volume read-only + PR-3 ingestion 重抓 EMSD）、停服務前 TOCTOU 重驗、完整備份、失敗自動處理。
+- **原因**：image 成為程式碼唯一真源，cron 之後新程式碼仍然生效；volume 只保留 runtime 資料；不改變 compose 架構、不擴大權限、不需要加入 docker group；使用者只在自己終端輸入 sudo，AI 不接觸密碼。
+- **安全不變式**：S1 普通使用者 rollback 不讀 root-only 備份目錄（latest 由 root 階段解析）；S2 停服務前重驗 staged-data manifest hash、metadata schema、payload hash、release image ID、volume 資料漂移；S3 停機前必須成功讀取舊 latest image ID 並建立／驗證 pre tag（失敗即阻斷，唔停服務）；停機後分 stopped／backup_ready／applying 階段——備份未驗證前失敗只會安全重啟原服務，備份完成後失敗才回滾；S4 container 解析用 `docker ps -aq`（running／stopped）並拒絕歧義；`rollback latest` 由 root 從新到舊挑第一個完整候選（volume.tar.gz＋checksum＋檔案清單＋image pre ID/tag＋release-info），不完整目錄跳過並 warning、唔會自動刪除；S5 只寫入 allowlist（volume 程式碼 + web 四檔），不碰 proxy／憑證。
+- **後果／風險（R3）**：部署會重建 image 並 recreate `aircon` 服務（短暫停機）；錯誤版本可經完整備份回滾；備份目錄 root-only（700）；`metadata.deployTime`／`build` 於 apply 時重新封裝，語義欄位（version／commit／datasetDate／datasetHash／counts）必須與 staging 一致。
+- **回滾**：`bash release-299c3e9.sh rollback`（root 階段解析最新備份）→ 還原完整 volume + 舊 image tag + 重啟；停機後失敗自動回滾由 EXIT trap 執行。
+- **證據**：分支 `codex/durable-release-299c3e9`；sandbox 91 斷言（含 TOCTOU／備份失敗／stopped container／rollback 權限／sync --delete）；`pytest tests -q` 100；staging pipeline sim + Playwright 46/46；伺服器 preflight 與 fake-sudo 邊界測試（build／rollback latest）。正式 apply 尚未執行。
+
 ---
 
 ## 決策模板

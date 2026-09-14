@@ -7,7 +7,7 @@
 - 支援 type / pattern / enum / format / min/max 基本驗證
 - rollback 部署必須有 rollbackOfBuild
 用法：
-  python scripts/validate-metadata.py [metadata.json 路徑]
+  python scripts/validate_metadata.py [metadata.json 路徑]
 退出碼：0 = 通過；1 = 失敗
 """
 import json
@@ -55,7 +55,8 @@ def validate(meta, schema):
         if en and v not in en:
             errors.append(f'{key} 唔喺 enum：{v!r}')
         if 'format' in spec and isinstance(v, str):
-            if spec['format'] == 'date-time' and not re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$', v):
+            if spec['format'] == 'date-time' and not re.match(
+                    r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$', v):
                 errors.append(f'{key} 唔符合 date-time：{v!r}')
             if spec['format'] == 'date' and not re.match(r'^\d{4}-\d{2}-\d{2}$', v):
                 errors.append(f'{key} 唔符合 date：{v!r}')

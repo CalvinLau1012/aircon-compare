@@ -32,6 +32,123 @@ def norm_model(s):
     return re.sub(r'[^A-Z0-9]', '', str(s).upper())
 
 
+# 品牌 canonical ID 表（跨平台矯正：中文／英文／顯示名 → 統一 ID）。
+# 只收錄已核實嘅別名（治理文檔 §0.4：唔可以編造映射）；
+# 未知品牌用 canonical_brand() 嘅大寫化 fallback。
+_CANONICAL_BRAND = {
+    '開利': 'CARRIER', 'CARRIER': 'CARRIER', 'CAREER': 'CARRIER',
+    '肯特': 'CANOPUS', 'CANOPUS': 'CANOPUS',
+    '樂信牌': 'RASONIC', '樂信': 'RASONIC', 'RASONIC': 'RASONIC',
+    '格力': 'GREE', 'GREE': 'GREE',
+    '大松': 'TOSOT', 'TOSOT': 'TOSOT',
+    'PANASONIC': 'PANASONIC', '樂聲': 'PANASONIC', '樂聲牌': 'PANASONIC',
+    '美的': 'MIDEA', 'MIDEA': 'MIDEA',
+    '日立牌': 'HITACHI', '日立': 'HITACHI', 'HITACHI': 'HITACHI',
+    '珍寶': 'GENERAL', 'GENERAL': 'GENERAL',
+    'COMFEE': 'COMFEE', "COMFEE'": 'COMFEE',
+    '富士電機': 'FUJI', '富士': 'FUJI', 'FUJI': 'FUJI',
+    '東芝': 'TOSHIBA', 'TOSHIBA': 'TOSHIBA',
+    '三菱重工': 'MITSUBISHIHEAVY', 'MITSUBISHI HEAVY': 'MITSUBISHIHEAVY',
+    '三菱電機': 'MITSUBISHIELECTRIC', 'MITSUBISHI ELECTRIC': 'MITSUBISHIELECTRIC',
+    '三星': 'SAMSUNG', 'SAMSUNG': 'SAMSUNG',
+    '大金': 'DAIKIN', 'DAIKIN': 'DAIKIN',
+    '惠而浦': 'WHIRLPOOL', 'WHIRLPOOL': 'WHIRLPOOL',
+    '伊萊克斯': 'ELECTROLUX', 'ELECTROLUX': 'ELECTROLUX',
+    '聲寶': 'SHARP', 'SHARP': 'SHARP',
+    '約克': 'YORK', 'YORK': 'YORK',
+    '海爾': 'HAIER', 'HAIER': 'HAIER',
+    '奧克斯': 'AUX', 'AUX': 'AUX',
+    '麥克維爾': 'MCQUAY', 'MCQUAY': 'MCQUAY',
+    'TRANE': 'TRANE',
+    '韓國現代': 'HYUNDAI', '現代': 'HYUNDAI', 'HYUNDAI': 'HYUNDAI',
+    'PHILIPS': 'PHILIPS', '飛利浦': 'PHILIPS',
+    '豐澤牌': 'FORTRESS', '豐澤': 'FORTRESS', 'FORTRESS': 'FORTRESS',
+    'LG': 'LG',
+    'TCL': 'TCL',
+    'WHITE-WESTINGHOUSE': 'WHITEWESTINGHOUSE', 'WHITEWESTINGHOUSE': 'WHITEWESTINGHOUSE',
+    '西屋': 'WHITEWESTINGHOUSE',
+    'FROSTAR': 'FROSTAR', '霜牌': 'FROSTAR',
+    '小天鵝': 'LITTLESWAN', 'LITTLE SWAN': 'LITTLESWAN', 'LITTLESWAN': 'LITTLESWAN',
+    # 顯示名（英文＋中文，清理後形式）→ 統一 ID
+    'CARRIER開利': 'CARRIER', 'CANOPUS肯特': 'CANOPUS', 'RASONIC樂信': 'RASONIC',
+    'GREE格力': 'GREE', 'TOSOT大松': 'TOSOT', 'PANASONIC樂聲': 'PANASONIC',
+    'MIDEA美的': 'MIDEA', 'HITACHI日立': 'HITACHI', 'GENERAL珍寶': 'GENERAL',
+    'FUJI富士': 'FUJI', 'TOSHIBA東芝': 'TOSHIBA', 'MITSUBISHIHEAVY三菱重工': 'MITSUBISHIHEAVY',
+    'MITSUBISHIELECTRIC三菱電機': 'MITSUBISHIELECTRIC', 'SAMSUNG三星': 'SAMSUNG',
+    'DAIKIN大金': 'DAIKIN', 'WHIRLPOOL惠而浦': 'WHIRLPOOL', 'ELECTROLUX伊萊克斯': 'ELECTROLUX',
+    'SHARP聲寶': 'SHARP', 'YORK約克': 'YORK', 'HAIER海爾': 'HAIER',
+    'AUX奧克斯': 'AUX', 'MCQUAY麥克維爾': 'MCQUAY', 'HYUNDAI現代': 'HYUNDAI',
+    'PHILIPS飛利浦': 'PHILIPS', 'FORTRESS豐澤牌': 'FORTRESS',
+    'WHITEWESTINGHOUSE西屋': 'WHITEWESTINGHOUSE',
+}
+
+# 官方 JSON 檔案 → 品牌預設（官方規格檔 key 只有型號，品牌由檔案本身確定）
+_OFFICIAL_BRAND_DEFAULT = {
+    'rasonic_official.json': 'Rasonic',
+    'pana_official.json': 'Panasonic',
+    'midea_official.json': 'Midea',
+    'carrier_official.json': 'Carrier',
+    'general_official.json': 'General',
+    'shew_official.json': 'Rasonic',
+}
+
+
+def canonical_brand(brand):
+    """品牌 canonical ID：跨平台矯正（中文／英文／顯示名 → 統一 ID）
+
+    已核實別名用 _CANONICAL_BRAND（先直接 match，再清理後 match）；
+    未知品牌 fallback 做大寫化（保留 CJK，去除其餘非字母數字），
+    同一個拼寫保證同一個 key。
+    """
+    b = str(brand or '').strip()
+    if b in _CANONICAL_BRAND:
+        return _CANONICAL_BRAND[b]
+    cleaned = re.sub(r'[^A-Z0-9\u4e00-\u9fff]', '', b.upper())
+    return _CANONICAL_BRAND.get(cleaned) or cleaned or 'UNKNOWN'
+
+
+def canonical_model_key(brand, model):
+    """canonical 型號鍵：CANONICAL_BRAND|NORM_MODEL（全部黑名單／狀態／保護集共用）"""
+    return f'{canonical_brand(brand)}|{norm_model(model)}'
+
+
+def load_brand_lookup():
+    """norm_model → 品牌原文 lookup（優先：models_data → EMSD CSV → 官方 JSON 預設）"""
+    lookup = {}
+    try:
+        from models_data import MODELS
+        for m in MODELS:
+            k = norm_model(m.get('model'))
+            if k:
+                lookup.setdefault(k, m.get('brand'))
+    except Exception:
+        pass
+    try:
+        with open(EMSD_CSV, encoding='utf-8-sig') as f:
+            for r in csv.reader(f):
+                if len(r) < 15 or r[1].strip() == '型號':
+                    continue
+                k = norm_model(r[1])
+                if k:
+                    lookup.setdefault(k, r[0].strip())
+    except Exception:
+        pass
+    for fname, brand in _OFFICIAL_BRAND_DEFAULT.items():
+        p = os.path.join(BASE, fname)
+        if not os.path.exists(p):
+            continue
+        try:
+            with open(p, encoding='utf-8') as f:
+                data = json.load(f)
+            for key in data:
+                k = norm_model(key)
+                if k:
+                    lookup.setdefault(k, brand)
+        except Exception:
+            pass
+    return lookup
+
+
 def jitter_sleep(lo=0.3, hi=0.9):
     """隨機抖動延遲，避免機械式固定間隔"""
     time.sleep(random.uniform(lo, hi))
@@ -103,19 +220,71 @@ def no_verify_ssl_context():
     return ctx
 
 
-def load_models(csv_path=None):
-    """載入 EMSD CSV 型號清單（去重，按 norm_model 比對）"""
+def load_registrations(csv_path=None):
+    """載入 EMSD CSV 全部登記記錄（唔去重）→ [(brand, model), ...]（D12）"""
     path = csv_path or EMSD_CSV
     with open(path, encoding='utf-8-sig') as f:
         rows = list(csv.reader(f))[1:]
-    rows = [r for r in rows if len(r) >= 15 and r[1] != '型號']
+    out = []
+    for r in rows:
+        if len(r) < 15 or r[1].strip() == '型號':
+            continue
+        out.append((r[0].strip(), r[1].strip()))
+    return out
+
+
+def load_models(csv_path=None):
+    """載入 EMSD CSV 型號清單（canonical product view：按 canonical key 去重，D11/D12）"""
+    path = csv_path or EMSD_CSV
+    with open(path, encoding='utf-8-sig') as f:
+        rows = list(csv.reader(f))[1:]
     models = []
     seen = set()
     for r in rows:
+        if len(r) < 15 or r[1].strip() == '型號':
+            continue
         m = r[1].strip()
-        k = norm_model(m)
-        if not k or k in seen:
+        k = canonical_model_key(r[0], m)
+        if not norm_model(m) or k in seen:
             continue
         seen.add(k)
         models.append(m)
     return models
+
+
+# 能源標籤級別固定次序（1→5；顯示層唔可以因 0 而隱藏）
+ENERGY_LEVELS = ('1級', '2級', '3級', '4級', '5級')
+
+
+def energy_level(value):
+    """EMSD 能源級別欄位值 → 'N級'（只認 1–5）；其他值原樣回傳（空白 → '待查'）"""
+    v = str(value or '').strip()
+    if v in ('1', '2', '3', '4', '5'):
+        return v + '級'
+    return v or '待查'
+
+
+def load_energy_distributions(csv_path=None):
+    """回傳 (registration_counts, canonical_model_counts)：
+    - registration_counts：逐筆登記（同 load_registrations 一致）；
+    - canonical_model_counts：按 canonical key 去重（同 load_models 同一 dedup 規則）。
+    兩者語意唔同（D12）：registrationCount 唔等於 modelCount，唔可以互換或相加。
+    """
+    path = csv_path or EMSD_CSV
+    with open(path, encoding='utf-8-sig') as f:
+        rows = list(csv.reader(f))[1:]
+    reg = {}
+    canon = {}
+    seen = set()
+    for r in rows:
+        if len(r) < 15 or r[1].strip() == '型號':
+            continue
+        lv = energy_level(r[4])
+        reg[lv] = reg.get(lv, 0) + 1
+        model = r[1].strip()
+        k = canonical_model_key(r[0], model)
+        if not norm_model(model) or k in seen:
+            continue
+        seen.add(k)
+        canon[lv] = canon.get(lv, 0) + 1
+    return reg, canon

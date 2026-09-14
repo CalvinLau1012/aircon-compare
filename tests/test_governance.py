@@ -8,6 +8,7 @@
 """
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -114,6 +115,30 @@ def test_metadata_validation_rejects_bad():
     assert validate(bad, schema), '額外欄位應該被拒'
 
 
+def test_metadata_schema_accepts_fractional_seconds():
+    """RFC 3339 date-time 允許小數秒（內嵌 Schema format: date-time）；Web 亦支援顯示"""
+    from validate_metadata import validate
+    with open(GOV_FILE, encoding='utf-8') as f:
+        schema = extract_blocks(f.read())['AIRCON_METADATA_SCHEMA_V1']
+    meta = {
+        'schemaVersion': '1.0.0', 'version': '1.2.7', 'build': 'B1',
+        'commit': 'a' * 40, 'deployTime': '2026-09-02T19:28:14.500Z',
+        'workflowRunId': '1', 'deploymentType': 'release',
+        'releasePayloadHash': 'sha256:' + 'b' * 64,
+        'datasetDate': '2026-09-02', 'datasetDateBasis': 'retrieval-date-fallback',
+        'datasetRetrievedAt': '2026-09-02T19:28:14.500Z',
+        'datasetSourceUrl': 'https://example.com', 'datasetSnapshotId': 's1',
+        'datasetHash': 'sha256:' + 'c' * 64, 'recordCount': 1,
+    }
+    assert validate(meta, schema) == []
+    bad = dict(meta)
+    bad['deployTime'] = '2026-09-02T19:28:14+08:00'
+    assert validate(bad, schema), '非 UTC Z 時間仍然要被拒'
+    bad = dict(meta)
+    bad['deployTime'] = '2026-09-02 19:28:14Z'
+    assert validate(bad, schema), '格式錯要被拒'
+
+
 def test_format_status_metadata_driven():
     """狀態文字嚟自 metadata.json：HKT 轉換 + 資料日期"""
     meta = {
@@ -139,6 +164,26 @@ def test_version_single_source():
     assert generate_html.VERSION == models_data.VERSION
 
 
+def test_generated_html_has_no_static_version():
+    """operations.version-display：生成物唔可以內嵌手工版本常量（只由 metadata.json 讀）"""
+    p = os.path.join(ROOT, 'index.html')
+    if not os.path.exists(p):
+        p = os.path.join(ROOT, '空調對比報告.html')
+    with open(p, encoding='utf-8') as f:
+        html = f.read()
+    m = re.search(r'id="verInfo">([^<]*)<', html)
+    assert m, '生成物應該有 verInfo 版本顯示位'
+    assert models_data.VERSION not in m.group(1), (
+        f'verInfo 唔可以內嵌 models_data.VERSION（實際：{m.group(1)!r}）')
+
+
+def test_html_output_lf(tmp_path):
+    """生成 HTML 必須用 LF：Windows 預設 CRLF 會令本地生成同 CI/已入庫 index.html 唔一致"""
+    out = tmp_path / 'out.html'
+    generate_html.write_html_output(str(out), 'a\nb\n')
+    assert out.read_bytes() == b'a\nb\n'
+
+
 def test_feature_check_script():
     """feature-check 腳本：綁定完整即通過"""
     r = subprocess.run(
@@ -147,16 +192,33 @@ def test_feature_check_script():
     assert r.returncode == 0, (r.stdout or '') + (r.stderr or '')
 
 
-def test_pdf_export():
-    """report.pdf-export：PDF 可生成、係有效 %PDF、同 Web 用同一 metadata 規則"""
+def _sha256_file(path):
+    import hashlib
+    with open(path, 'rb') as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+def test_pdf_export(tmp_path):
+    """report.pdf-export：PDF 可生成、係有效 %PDF、同 Web 用同一 metadata 規則。
+
+    輸出寫入 pytest tmp_path（PR-1 修正）：測試唔可以覆寫 repo 根目錄嘅
+    空調對比報告.pdf（使用者既有未提交修改必須保留）。
+    """
     import generate_pdf
-    generate_pdf.build_pdf()
-    out = os.path.join(ROOT, '空調對比報告.pdf')
-    assert os.path.exists(out), 'PDF 檔案應該生成'
+    repo_pdf = os.path.join(ROOT, '空調對比報告.pdf')
+    before = _sha256_file(repo_pdf) if os.path.exists(repo_pdf) else None
+
+    out = tmp_path / '空調對比報告.pdf'
+    generate_pdf.build_pdf(str(out))
+    assert out.exists(), 'PDF 檔案應該生成'
     with open(out, 'rb') as f:
         head = f.read(8)
     assert head.startswith(b'%PDF'), f'唔係有效 PDF：{head!r}'
-    assert os.path.getsize(out) > 10000, 'PDF 太細，疑似空檔'
+    assert out.stat().st_size > 10000, 'PDF 太細，疑似空檔'
+
+    # 回歸：測試前後 repo 根目錄 PDF 必須逐位元不變
+    after = _sha256_file(repo_pdf) if os.path.exists(repo_pdf) else None
+    assert after == before, '測試唔可以改動 repo 根目錄嘅 空調對比報告.pdf'
 
 
 def test_ranking_recommendation_sections():

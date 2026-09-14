@@ -17,6 +17,8 @@ import re
 BASE = os.path.dirname(os.path.abspath(__file__))
 
 from models_data import MODELS, VERSION
+from crawl_utils import (canonical_model_key, load_registrations, ENERGY_LEVELS,
+                         load_energy_distributions)
 
 # ============================================================
 # 型號資料庫（整合報告 + EMSD 官方）
@@ -202,8 +204,58 @@ COMPARE_FIELDS = [
 
 
 def md_to_html(md_text):
-    html = markdown.markdown(md_text, extensions=['tables', 'fenced_code', 'sane_lists'])
+    html = markdown.markdown(expand_dynamic_sections(md_text),
+                             extensions=['tables', 'fenced_code', 'sane_lists'])
     return html
+
+
+# md 內動態區塊標記（build 時由實際資料展開；唔可以手填數字）
+ENERGY_DIST_MARKER = '<!-- AIRCON:DYNAMIC:ENERGY_DISTRIBUTION -->'
+
+
+def core_energy_counts():
+    """核心 29 型號嘅能源級別計數（來源：models_data.MODELS）"""
+    counts = {lv: 0 for lv in ENERGY_LEVELS}
+    for m in MODELS:
+        lv = str(m.get('energy') or '').strip()
+        counts[lv] = counts.get(lv, 0) + 1
+    return counts
+
+
+def energy_distribution_markdown():
+    """全量能源級別分佈（build-time 動態生成）：1–5 固定次序，0 都顯示。
+
+    三欄語意分明：核心 29（本報告精選）／全量 canonical model（按 BRAND|NORM 去重）／
+    EMSD registration（逐筆登記）。全部由實際快照計出，避免靜態漂移。
+    """
+    reg, canon = load_energy_distributions()
+    core = core_energy_counts()
+    tpl = '| {lv} | {c:,} | {m:,} | {r:,} |'
+    rows = [
+        '',
+        '> 📊 **全量 EMSD 能源級別分佈（建置時由實際快照動態生成）**：'
+        '核心 29 為本報告精選型號；canonical model 按 `BRAND|NORM` 去重（同 `load_models`）；'
+        'registration 為 EMSD 逐筆登記（同 `load_registrations`）。兩者語意唔同，唔可以互換或相加。',
+        '',
+        '| 能源級別 | 核心 29 型號 | 全量 canonical model | EMSD registration |',
+        '| --- | ---: | ---: | ---: |',
+    ]
+    for lv in ENERGY_LEVELS:
+        rows.append(tpl.format(lv=lv, c=core.get(lv, 0), m=canon.get(lv, 0), r=reg.get(lv, 0)))
+    other = sum(v for k, v in core.items() if k not in ENERGY_LEVELS)
+    other_m = sum(v for k, v in canon.items() if k not in ENERGY_LEVELS)
+    other_r = sum(v for k, v in reg.items() if k not in ENERGY_LEVELS)
+    if other or other_m or other_r:
+        rows.append(tpl.format(lv='其他／待查', c=other, m=other_m, r=other_r))
+    rows.append(tpl.format(lv='**合計**', c=sum(core.values()),
+                           m=sum(canon.values()), r=sum(reg.values())))
+    rows.append('')
+    return '\n'.join(rows)
+
+
+def expand_dynamic_sections(md_text):
+    """展開 md 內動態區塊（現時：能源分佈）；生成物唔應該再有 marker"""
+    return md_text.replace(ENERGY_DIST_MARKER, energy_distribution_markdown())
 
 
 def norm_model(s):
@@ -295,25 +347,45 @@ def load_gemini():
 
 
 def load_blacklist():
-    """載入淘汰黑名單（model_blacklist.json：{version, updated, models: {型號: {...}}}）"""
+    """載入淘汰黑名單 → (canonical_keys, legacy_norm_keys)
+
+    - canonical_keys：`BRAND|NORM` 格式（遷移後嘅正式 key）
+    - legacy_norm_keys：冇 `|` 嘅舊格式 key 嘅 norm（過渡兼容，遷移報告見 docs/）
+    """
     p = os.path.join(BASE, 'model_blacklist.json')
     if not os.path.exists(p):
-        return set()
+        return set(), set()
     with open(p, encoding='utf-8') as f:
         data = json.load(f)
     if isinstance(data, dict):
         data = data.get('models', data)
     if isinstance(data, dict):
-        return set(data.keys())
-    if isinstance(data, list):
-        return set(str(x) for x in data)
-    return set()
+        keys = list(data.keys())
+    elif isinstance(data, list):
+        keys = [str(x) for x in data]
+    else:
+        keys = []
+    canonical = set()
+    legacy = set()
+    for k in keys:
+        k = str(k)
+        if '|' in k:
+            canonical.add(k)
+        else:
+            legacy.add(norm_model(k))
+    return canonical, legacy
 
 
 def assign_status(item, blacklist):
-    """依治理規則標註狀態：停售（黑名單）→ 官方價 → 有價 → 無價"""
+    """依治理規則標註狀態：停售（黑名單，canonical 比對）→ 官方價 → 有價 → 無價
+
+    blacklist 係 load_blacklist() 嘅 (canonical, legacy_norm) tuple。
+    """
+    from crawl_utils import canonical_model_key
     mk = norm_model(item.get('model') or '')
-    if mk and mk in blacklist:
+    canonical, legacy = blacklist
+    key = canonical_model_key(item.get('brand'), item.get('model')) if mk else ''
+    if mk and (key in canonical or mk in legacy):
         item['status'] = '停售'
     elif item.get('price_official'):
         item['status'] = '官方價'
@@ -440,9 +512,10 @@ def load_emsd_models():
     for r in rows:
         brand, model = normalize_brand(r[0]), r[1].strip()
         mk = norm_model(model)
-        if not mk or mk in core_keys or mk in seen:
+        seen_key = canonical_model_key(brand, model)
+        if not mk or mk in core_keys or seen_key in seen:
             continue
-        seen.add(mk)
+        seen.add(seen_key)
         try:
             kw = float(r[6])
         except (ValueError, TypeError):
@@ -489,6 +562,21 @@ def load_emsd_models():
 def build_html():
     with open(os.path.join(BASE, '空調對比報告.md'), encoding='utf-8') as f:
         md_text = f.read()
+    # 報告內文「當前狀態」數字：建置時由實際資料同步（治理 F-11：唔可以硬編；
+    # test_dynamic_counts 驗證生成物）。只針對帶上下文嘅句式，避免改到歷史更新日誌。
+    emsd_models = load_emsd_models()
+    total_models = len(MODELS) + len(emsd_models)
+    emsd_registrations = len(load_registrations())
+    md_text = re.sub(r'全量資料庫[ \t]*[\d,]+[ \t]*型號',
+                     f'全量資料庫 {total_models:,} 型號', md_text)
+    md_text = re.sub(r'[\d,]+[ \t]*筆登記[ \t]*·[ \t]*[\d,]+[ \t]*型號',
+                     f'{emsd_registrations:,} 筆登記 · {total_models:,} 型號', md_text)
+    md_text = re.sub(r'全量[ \t]*[\d,]+[ \t]*筆登記／[\d,]+[ \t]*個 canonical model',
+                     f'全量 {emsd_registrations:,} 筆登記／{total_models:,} 個 canonical model', md_text)
+    md_text = re.sub(r'[\d,]+[ \t]*筆登記（[\d,]+[ \t]*個型號）',
+                     f'{emsd_registrations:,} 筆登記（{total_models:,} 個型號）', md_text)
+    md_text = re.sub(r'全量[ \t]*[\d,]+[ \t]*筆登記逐個核實',
+                     f'全量 {emsd_registrations:,} 筆登記逐個核實', md_text)
     content_html = md_to_html(md_text)
     # 部署資訊由瀏覽器 runtime fetch metadata.json 顯示（治理文檔 §7.2.7）；
     # build 只寫初始骨架；載入失敗顯示「暫不可用」（JS 處理）
@@ -515,10 +603,10 @@ def build_html():
             m['price'] = bp
         assign_status(m, blacklist)
 
-    emsd_models = load_emsd_models()
     models_json = json.dumps(MODELS, ensure_ascii=False)
     emsd_json = json.dumps(emsd_models, ensure_ascii=False, separators=(',', ':'))
     fields_json = json.dumps(COMPARE_FIELDS, ensure_ascii=False)
+    # 動態計數（治理 F-11）：total_models / emsd_registrations 已喺上面計出
 
     # 皮膚資源（Blue Fantasy 壁紙 + whale-girl 吉祥物；檔案唔喺就留空，唔整死生成）
     import base64 as _b64
@@ -540,13 +628,19 @@ def build_html():
                         .replace('__DATE_STATUS__', date_status) \
                         .replace('__FOOT_STATUS__', foot_status) \
                         .replace('__NEW_HINT__', new_hint) \
-                        .replace('__VERSION__', VERSION) \
+                        .replace('__TOTAL_MODELS__', f'{total_models:,}') \
+                        .replace('__EMSD_REGISTRATIONS__', f'{emsd_registrations:,}') \
                         .replace('__MASCOT_IMG__', mascot_img) \
                         .replace('__BLUE_FANTASY_ART__', blue_fantasy_art)
     out = os.path.join(BASE, '空調對比報告.html')
-    with open(out, 'w', encoding='utf-8') as f:
-        f.write(html)
+    write_html_output(out, html)
     print('已生成：', out, f'（{os.path.getsize(out)/1024:.0f} KB）· 型號總數 {len(MODELS) + len(emsd_models)}')
+
+
+def write_html_output(path, html):
+    """以 LF 寫出 HTML（Windows 預設 CRLF，會令本地生成結果同 CI/已入庫 index.html 唔一致）"""
+    with open(path, 'w', encoding='utf-8', newline='\n') as f:
+        f.write(html)
 
 
 HTML_TEMPLATE = r"""<!DOCTYPE html>
@@ -555,20 +649,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>香港空調對比報告</title>
-<meta property="og:title" content="香港空調對比報告 · 1,854 型號 · EMSD + 官網核實">
-<meta property="og:description" content="香港市場 1,854 個空調型號全面對比：窗口式 / 分體式 / 流動式，EMSD 官方能源數據 + 8 品牌官網 220 型號核實，18 項屬性互動比較器。">
+<meta property="og:title" content="香港空調對比報告 · __TOTAL_MODELS__ 型號 · EMSD + 官網核實">
+<meta property="og:description" content="香港市場 __TOTAL_MODELS__ 個空調型號全面對比：窗口式 / 分體式 / 流動式，EMSD 官方能源數據 + 8 品牌官網 220 型號核實，18 項屬性互動比較器。">
 <meta property="og:type" content="website">
-<meta name="description" content="香港空調對比報告：1,854 型號 · EMSD 官方能源標籤全量核實 · 8 品牌官網核實 · 互動比較器">
+<meta name="description" content="香港空調對比報告：__TOTAL_MODELS__ 型號 · EMSD 官方能源標籤全量核實 · 8 品牌官網核實 · 互動比較器">
 <link rel="icon" href="__MASCOT_IMG__">
 <style>
 :root{
-  --primary:#4a5fa8; --primary2:#647ebf; --accent:#c08a33;
+  --primary:#4a5fa8; --primary2:#52659e; --accent:#c08a33;
   --bg:#e8ecf5; --text:#1d2539; --muted:#5b6989;
   --line:#c7ccda; --alt:#eef1fb; --warn:#c00000; --ok:#2e8e52;
   --surface:rgba(255,255,255,.78); --surface-strong:rgba(247,248,251,.88);
   --hover:#E8F1F9; --code-bg:#E8F1F9; --checked-bg:#FBF6EC;
   --blockquote-bg:rgba(238,241,251,.72);
-  --best-bg:#F7ECD8; --best-fg:#8A6A2F; --on-accent:#1d2539;
+  --best-bg:#F7ECD8; --best-fg:#7A5A20; --on-accent:#1d2539;
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -616,7 +710,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
 .hero h1{font-size:2.2em; letter-spacing:1px; margin-bottom:8px;}
 .hero .sub{color:#ffffff; font-size:1.15em; margin-bottom:28px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
 .stats{display:flex; justify-content:center; gap:40px; flex-wrap:wrap; margin-bottom:26px;}
-.stats .n{font-size:2.1em; font-weight:700; color:var(--accent); text-shadow:0 1px 3px rgba(15,20,35,.55);}
+.stats .n{font-size:2.1em; font-weight:700; color:#F0D48A; text-shadow:0 1px 3px rgba(15,20,35,.55);}
 .stats .l{font-size:.85em; opacity:.95; text-shadow:0 1px 3px rgba(15,20,35,.6);}
 .hero .src{font-size:.8em; opacity:.98; line-height:1.8; color:#e6ebf7; text-shadow:0 1px 3px rgba(15,20,35,.6);}
 .hero .date{color:#ffffff; font-size:.95em; margin-top:10px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
@@ -687,12 +781,12 @@ ul,ol{margin:8px 0 8px 24px;}
 .compare .head{display:flex; align-items:center; justify-content:space-between;
   padding:10px 16px; background:var(--primary); color:#fff; border-radius:0 0 0 0;}
 .compare .head b{font-size:1em;}
-.compare .head .sel{font-size:.8em; color:var(--accent);}
+.compare .head .sel{font-size:.8em; color:#FFE9B8;}
 .compare-tools{display:flex; gap:8px; flex-wrap:wrap; padding:8px 12px;
   border-bottom:1px solid var(--line);}
 .compare-tools button{background:var(--primary2); color:#fff; border:none;
   padding:6px 14px; border-radius:20px; font-size:.85em; cursor:pointer;}
-.compare-tools button:hover{background:var(--accent); color:var(--primary);}
+.compare-tools button:hover{background:var(--accent); color:var(--on-accent);}
 .compare-tools .filters{display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-left:auto;}
 .compare .chint{font-size:.72em; color:var(--muted); padding:3px 12px 7px; text-align:center;}
 .compare-tools select,.compare-tools input[type=search]{border:1px solid var(--line);
@@ -721,8 +815,9 @@ ul,ol{margin:8px 0 8px 24px;}
 .panel.open{display:flex;}
 .panel .phead{display:flex; align-items:center; justify-content:space-between;
   padding:10px 16px; background:var(--primary); color:#fff;}
-.panel .phead button{background:var(--accent); color:var(--primary); border:none;
+.panel .phead button{background:var(--accent); color:var(--on-accent); border:none;
   padding:4px 12px; border-radius:16px; cursor:pointer; font-size:.85em;}
+.panel .phead button.light{background:#fff; color:#26304D;}
 .panel .pscroll{overflow:auto; padding:12px 16px;}
 .panel table{min-width:420px;}
 .panel td:first-child{font-weight:600; color:var(--primary2); background:var(--alt);
@@ -737,12 +832,12 @@ ul,ol{margin:8px 0 8px 24px;}
 .more-wrap{text-align:center; padding:10px 12px; border-top:1px solid var(--line);}
 #btnMore{background:var(--primary); color:#fff; border:none; padding:8px 22px;
   border-radius:20px; cursor:pointer; font-size:.9em; box-shadow:0 2px 6px rgba(15,61,92,.2);}
-#btnMore:hover{background:var(--accent); color:var(--primary);}
+#btnMore:hover{background:var(--accent); color:var(--on-accent);}
 
 /* ===== 比較器完善 ===== */
 .selonly{font-size:.82em; color:var(--muted); display:flex; align-items:center; gap:4px; cursor:pointer;}
 .selonly input{accent-color:var(--accent);}
-.compare-tools .gocompare{background:var(--accent); color:var(--primary); font-weight:700;
+.compare-tools .gocompare{background:var(--accent); color:var(--on-accent); font-weight:700;
   border:none; padding:7px 18px; border-radius:20px; cursor:pointer; font-size:.9em;
   box-shadow:0 2px 8px rgba(201,162,39,.45);}
 .compare-tools .gocompare:hover{background:#DDB236;}
@@ -760,22 +855,22 @@ ul,ol{margin:8px 0 8px 24px;}
   box-shadow:0 3px 10px rgba(15,61,92,.35);}
 #backTop.show{display:flex; animation:backFade .25s ease;}
 @keyframes backFade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
-#backTop:hover{background:var(--accent); color:var(--primary);}
+#backTop:hover{background:var(--accent); color:var(--on-accent);}
 
 /* ===== 頁腳 ===== */
-footer{background:var(--primary); color:#BFD0DE; text-align:center;
+footer{background:var(--primary); color:#F5F8FD; text-align:center;
   padding:36px 16px 30px; margin-top:50px; font-size:.88em;}
 footer b{color:#fff;}
-footer .line{color:var(--accent);}
+footer .line{color:#FFF1D6;}
 footer .blk{max-width:780px; margin:18px auto 0; text-align:left;
   background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
   border-radius:8px; padding:14px 18px;}
-footer .blk h3{color:var(--accent); font-size:.95em; margin-bottom:6px;}
+footer .blk h3{color:#FFF1D6; font-size:.95em; margin-bottom:6px;}
 footer .blk p{font-size:.84em; line-height:1.8; margin:0;}
-footer .blk a{color:#8FD3FF; text-decoration:none;}
+footer .blk a{color:#E6F0FF; text-decoration:underline;}
 footer .blk a:hover{text-decoration:underline;}
 footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
-  border:1px dashed var(--accent); border-radius:20px; font-size:.8em; color:#E8D9A0;}
+  border:1px dashed #FFF1D6; border-radius:20px; font-size:.8em; color:#FFF1D6;}
 
 /* ===== 響應式 ===== */
 @media (max-width:640px){
@@ -799,6 +894,10 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
   .panel table{font-size:.8em;}
   .topnav a{padding:12px 10px; font-size:.8em;}
 }
+/* 平板寬度（721–999px）：絕對定位 tooltip 會撐出頁面水平滾動 → 同手機一致隱藏 */
+@media (max-width:999px){
+  .topnav a[data-tip]::after{display:none;}
+}
 @media (prefers-color-scheme: dark){
   :root{color-scheme:dark;}
   /* 深色模式 + 玻璃下，深色元件用 --primary 對比不足 → 提亮背景 */
@@ -806,6 +905,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
   a:hover{color:var(--accent);}
   /* 標題欄/徽章/按鈕：深色下用亮藍，唔好用太深嘅 primary */
   th, .compare .head, .panel .phead, .mitem .badge, #btnMore, #backTop, h2.sec .tag{background:#4F66AD;}
+  footer{background:#26304D;}
   .compare .head .sel{color:#fff;}
   .compare-tools button{background:#5A6FB8;}
   /* accent 按鈕喺深色下：文字用深色先夠對比 */
@@ -840,7 +940,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,927 型號全量核實）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（__EMSD_REGISTRATIONS__ 筆登記 · __TOTAL_MODELS__ 型號）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
     <div class="date" id="deployInfo">__DATE_STATUS__</div>
   </div>
 </header>
@@ -875,39 +975,39 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <span class="sel" id="selCount">已選 0 個（最少 2 個）</span>
     </div>
     <div class="compare-tools">
-      <button class="gocompare" id="btnCompare" onclick="openCompare()">⚖️ 開始比較</button>
+      <button class="gocompare" id="btnCompare" aria-haspopup="dialog" aria-expanded="false" onclick="openCompare()">⚖️ 開始比較</button>
       <button onclick="clearAll()">🗑 清除選擇</button>
       <button onclick="selectType('變頻')">選範圍內變頻</button>
       <button onclick="selectType('定頻')">選範圍內定頻</button>
       <label class="selonly"><input type="checkbox" id="fSelOnly" onchange="resetShown();renderList()"> 只顯示已選</label>
       <div class="filters">
-        <input type="search" id="q" placeholder="🔍 搜尋品牌/型號" oninput="resetShown();renderList()">
-        <select id="sortBy" onchange="resetShown();renderList()">
+        <input type="search" id="q" aria-label="搜尋品牌或型號" placeholder="🔍 搜尋品牌/型號" oninput="resetShown();renderList()">
+        <select id="sortBy" aria-label="排序方式" onchange="resetShown();renderList()">
           <option value="">預設排序</option>
           <option value="price">價格 低→高</option>
           <option value="energy">能源級別 優→劣</option>
           <option value="kwh">年耗電 低→高</option>
           <option value="cspf">CSPF 高→低</option>
         </select>
-        <select id="fBrand" onchange="resetShown();renderList()">
+        <select id="fBrand" aria-label="品牌篩選" onchange="resetShown();renderList()">
           <option value="">全部品牌</option>
         </select>
-        <select id="fMount" onchange="resetShown();renderList()">
+        <select id="fMount" aria-label="機型篩選" onchange="resetShown();renderList()">
           <option value="">全部機型</option><option>窗口式</option><option>掛牆分體式</option><option>窗口分體式</option><option>座地/移動式</option><option>多聯式</option><option>天花式</option><option>分體式</option><option>流動式</option>
         </select>
-        <select id="fHp" onchange="resetShown();renderList()">
+        <select id="fHp" aria-label="匹數篩選" onchange="resetShown();renderList()">
           <option value="">全部匹數</option><option>3/4匹</option><option>1匹</option><option>1.5匹</option><option>2匹</option><option>2.5匹+</option>
         </select>
-        <select id="fType" onchange="resetShown();renderList()">
+        <select id="fType" aria-label="類型篩選" onchange="resetShown();renderList()">
           <option value="">全部類型</option><option>變頻</option><option>定頻</option>
         </select>
-        <select id="fEnergy" onchange="resetShown();renderList()">
+        <select id="fEnergy" aria-label="能源級別篩選" onchange="resetShown();renderList()">
           <option value="">全部能源級別</option><option>1級</option><option>2級</option><option>3級</option><option>4級</option><option>5級</option>
         </select>
-        <select id="fStatus" onchange="resetShown();renderList()">
+        <select id="fStatus" aria-label="狀態篩選" onchange="resetShown();renderList()">
           <option value="">全部狀態</option><option>有價</option><option>官方價</option><option>無價</option><option>停售</option>
         </select>
-        <select id="fPrice" onchange="resetShown();renderList()">
+        <select id="fPrice" aria-label="價位篩選" onchange="resetShown();renderList()">
           <option value="">全部價位</option><option>2以下</option><option>2-3</option><option>3-4</option><option>4-5</option><option>5以上</option>
         </select>
       </div>
@@ -919,13 +1019,13 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
   </div>
 
   <!-- 比較面板 -->
-  <div class="panel" id="panel">
+  <div class="panel" id="panel" role="dialog" aria-labelledby="panelTitle">
     <div class="phead">
       <b id="panelTitle">📋 型號對比</b>
       <span style="display:flex;gap:6px;">
-        <button onclick="copyCompare()" style="background:#fff;color:var(--primary);">📋 複製結果</button>
-        <button onclick="clearAll()" style="background:#fff;color:var(--primary);">🗑 清除</button>
-        <button onclick="closePanel()">✕ 關閉</button>
+        <button class="light" onclick="copyCompare()">📋 複製結果</button>
+        <button class="light" onclick="clearAll()">🗑 清除</button>
+        <button id="btnClosePanel" onclick="closePanel(true)">✕ 關閉</button>
       </span>
     </div>
     <div class="pscroll" id="panelBody"></div>
@@ -940,7 +1040,7 @@ __CONTENT__
 </main>
 
 <footer>
-  <b>香港空調對比報告 · <span id="verInfo">v__VERSION__</span></b><br>
+  <b>香港空調對比報告 · <span id="verInfo">v…</span></b><br>
   能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號
 
   <div class="blk">
@@ -999,7 +1099,10 @@ function matches(m){
   if(mo && m.mount!==mo) return false;
   if(st && m.status!==st) return false;
   if(pr){
-    const p=priceMin(m);
+    // 未知價唔屬於任何價位，唔可以當成「5以上」（priceMin 對無價會回 999999）
+    const m1=String(m.price||'').match(/\$([\d,]+)/);
+    if(!m1) return false;
+    const p=parseInt(m1[1].replace(/,/g,''));
     if(pr==='2以下' && p>=2000) return false;
     if(pr==='2-3' && (p<2000||p>=3000)) return false;
     if(pr==='3-4' && (p<3000||p>=4000)) return false;
@@ -1076,7 +1179,9 @@ function toggle(id,el){
   // 若面板開住，即時更新內容
   const panel=document.getElementById('panel');
   if(panel.classList.contains('open')) buildPanel();
-  if(selected.size<2) panel.classList.remove('open');
+  if(selected.size<2) setPanelOpen(false);
+  // 「只顯示已選」之下，反選要即刻由列表移除，先唔會顯示唔符合過濾條件嘅型號
+  if(document.getElementById('fSelOnly').checked) renderList();
 }
 
 function updateUI(){
@@ -1084,14 +1189,37 @@ function updateUI(){
   document.getElementById('btnCompare').disabled = selected.size < 2;
   const panel=document.getElementById('panel');
   if(panel.classList.contains('open')) buildPanel();
-  if(selected.size<2) panel.classList.remove('open');
+  if(selected.size<2) setPanelOpen(false, true);
   renderList();
+}
+
+let lastPanelFocus=null;
+
+function setPanelOpen(open, restoreFocus){
+  const panel=document.getElementById('panel');
+  const btn=document.getElementById('btnCompare');
+  if(open){
+    if(panel.classList.contains('open')) return;
+    lastPanelFocus=document.activeElement;
+    panel.classList.add('open');
+    if(btn) btn.setAttribute('aria-expanded','true');
+    const closeBtn=document.getElementById('btnClosePanel');
+    if(closeBtn) closeBtn.focus();
+  }else{
+    if(!panel.classList.contains('open')) return;
+    panel.classList.remove('open');
+    if(btn) btn.setAttribute('aria-expanded','false');
+    if(restoreFocus){
+      const target=(lastPanelFocus && document.contains(lastPanelFocus))?lastPanelFocus:btn;
+      if(target) target.focus();
+    }
+  }
 }
 
 function openCompare(){
   if(selected.size<2){ alert('請先揀至少 2 個型號再撳「開始比較」'); return; }
   buildPanel();
-  document.getElementById('panel').classList.add('open');
+  setPanelOpen(true);
 }
 
 function selectedModels(){
@@ -1171,7 +1299,13 @@ function selectType(ty){
   selected=new Set(arr.map(m=>m.brand+'|'+m.model));
   updateUI();
 }
-function closePanel(){document.getElementById('panel').classList.remove('open');}
+function closePanel(restoreFocus){ setPanelOpen(false, restoreFocus !== false); }
+// Escape 關閉對比面板（基本鍵盤可用性）
+document.addEventListener('keydown',(e)=>{
+  if(e.key!=='Escape') return;
+  const panel=document.getElementById('panel');
+  if(panel && panel.classList.contains('open')){ e.preventDefault(); closePanel(true); }
+});
 
 // 將 markdown 表格包裝成可橫向捲動容器（手機友好）
 document.addEventListener('DOMContentLoaded', ()=>{
@@ -1360,7 +1494,7 @@ window.addEventListener('scroll',()=>{
       const dt = m.deployTime;
       let line = (ds ? ('📅 資料日期 ' + ds) : '📅 資料日期暫不可用');
       if (m.version) line += ' · v' + m.version;
-      if (dt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(dt)) {
+      if (dt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(dt)) {
         const hkt = new Date(new Date(dt).getTime() + 8*3600*1000);
         const p = hkt.toISOString().slice(0,16).replace('T',' ');
         line += ' · ✅ 最後部署 ' + p + ' HKT';
