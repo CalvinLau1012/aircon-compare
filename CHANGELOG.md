@@ -43,6 +43,9 @@
 
 ### Fixed
 
+- **GitHub Pages hash 鏈**：`fetch_emsd.py` 寫 CSV 改用 `lineterminator='\n'`（原生 LF），令 worktree bytes == git index bytes == 發佈 bytes；之前 CRLF 工作樹經 `.gitattributes eol=lf` 正規化後，線上 `datasetHash`／`releasePayloadHash` 同實際 bytes 唔一致
+- 新增 CI 防線 `scripts/check_payload_bytes_vs_index.py`（workflow 在 `git add -A` 之後、commit 之前阻斷任何 worktree/index bytes 不一致）
+- 新增回歸測試：`tests/test_emsd_csv_lf.py`（實走 `fetch_emsd.write_csv` 斷言 LF-only + loader 可讀 + 已入庫 CSV 與 metadata.datasetHash 自洽）、`tests/test_payload_bytes_vs_index.py`（LF 通過、CRLF／未 stage／缺檔阻斷）
 - 伺服器 preflight 嘅 `grep -q` + `pipefail` SIGPIPE 誤判（改為先列 tarball 清單再檢查）
 - 同秒重建時備份目錄碰撞（唯一後綴；pre-image tag 跟備份名）
 - 回滾時「部署前不存在」嘅檔案（PDF／CSV／receipt）冇被刪除（完整 volume 還原 + 檔案清單 + hash 比對）
