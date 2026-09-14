@@ -227,9 +227,9 @@ flowchart LR
 - **版本**：SemVer；版本號唯一手動來源 `models_data.py` 的 `VERSION`；部署事實一律由流水線 `metadata.json` 提供
 - **回滾**：四級（L1 代碼修復 → L2 應用回滾 → L3 數據快照 → L4 全站）；目標必須由 tag/commit/發布摘要/快照 ID 唯一確定；每次成功提交 = 可回溯快照
 
-### 個人伺服器持久發佈（release 299c3e9 · D15）
+### 自建伺服器持久發佈（release 299c3e9 · D15）
 
-- **入口**：`bash /home/calvin/aircon-docker/release-299c3e9.sh`（使用者自己 SSH 執行；需要寫入才經確認交由 `sudo`，密碼只由 sudo 讀取）
+- **入口**：`bash /srv/aircon-compare/aircon-docker/release-299c3e9.sh`（使用者自己 SSH 執行；需要寫入才經確認交由 `sudo`，密碼只由 sudo 讀取）
 - **持久機制**：image 內 `/opt/aircon-src` 保存 pristine 程式碼；容器內每次更新（cron 03:30 HKT 或手動）以 `rsync --delete` 同步程式碼落 volume `/app`（runtime `*.json`／`*.csv`／`*-bak*`／`web/` 永不刪），再跑閘門 + 兩階段 metadata + 原子部署 web 四檔
 - **流程**：preflight → staging build（隔離、volume read-only、PR-3 ingestion 重抓 EMSD）→ verify → apply（停服務前 TOCTOU 重驗；完整備份並驗證後才改 volume；失敗分階段安全處理／自動回滾）→ rollback（root 階段解析 latest）
 - **驗證**：sandbox 91 斷言（TOCTOU／備份失敗／stopped container／rollback 權限／sync --delete）＋ pytest 100＋ staging Playwright 46/46；伺服器 preflight 與 fake-sudo 邊界已實測；正式 apply 由使用者執行
@@ -370,7 +370,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 ## 📅 更新日誌
 
-### 2026-09-14 — 個人伺服器持久發佈工具（release 299c3e9 · D15）
+### 2026-09-14 — 自建伺服器持久發佈工具（release 299c3e9 · D15）
 
 | 類別 | 內容 |
 | ------ | ------ |

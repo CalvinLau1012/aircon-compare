@@ -11,7 +11,9 @@
 - 瀏覽器回歸測試：價位邊界、Escape／焦點、tooltip 溢出、明暗對比、metadata 小數秒與載入失敗
 - `tests/test_energy_distribution.py`（8 項）：1–5 次序、核心 29 靜態表防漂移、動態全量分佈來源／總和、PDF 展開動態區塊
 - `tests/test_biggo_smoke.py`（8 項）：smoke 候選本地證據、首個成功只用一次、no-price fallback、全失敗、例外唔洩漏 secret
-- **持久發佈工具（D15）**：`docker/`（Dockerfile 將程式碼放入 `/opt/aircon-src` + 容器內 `run-update.sh` 以 `rsync --delete` 同步程式碼落 volume、兩階段 metadata、PDF/CSV 原子部署）
+- **持久發佈工具（D15）**：`docker/`（Dockerfile 將程式碼放入 `/opt/aircon-src` + 容器內 `run-update.sh` 以 `rsync --checksum --delete` 同步程式碼落 volume、兩階段 metadata、PDF/CSV 原子部署）
+- **公開 repo 私隱 gate**：`scripts/check_public_privacy.py`（掃描 tracked HEAD 禁止個人／自建環境識別資料；只列規則 ID／檔名，不打印命中內容）＋ `tests/test_public_privacy.py`（合成樣本命中、通用示例值放行、repo HEAD 自掃 0 命中）
+- **自建部署配置泛化**：`release/release-299c3e9.sh` 部署路徑／host 等一律由環境變數提供（base dir 預設 `/srv/aircon-compare`，缺失即 fail closed）；`docker/nginx.conf` 改為通用模板；`release/README.md` 改寫為通用 self-host 文檔
 - **伺服器入口**：`release/release-299c3e9.sh`（preflight／build／verify／serve／apply／rollback；普通使用者啟動，確認後交由 sudo）
 - **Runtime 資料準備**：`scripts/prepare_runtime_data.py`（黑名單 canonical 遷移守衛，只跑一次）＋ `tests/test_prepare_runtime_data.py`（8 項）
 - **Sandbox 測試**：`release/sandbox/`（12 情境、91 斷言：dry-run、path guard、TOCTOU、備份失敗安全、stopped container、rollback 權限、sync --delete）
@@ -43,6 +45,7 @@
 
 ### Fixed
 
+- **公開 repo 私隱**：移除／泛化自建環境識別資料（文件、release 工具、nginx 模板）；新增 `scripts/check_public_privacy.py` CI gate 及回歸測試，防止再次寫入私人 host／IP／路徑／build id
 - **GitHub Pages hash 鏈**：`fetch_emsd.py` 寫 CSV 改用 `lineterminator='\n'`（原生 LF），令 worktree bytes == git index bytes == 發佈 bytes；之前 CRLF 工作樹經 `.gitattributes eol=lf` 正規化後，線上 `datasetHash`／`releasePayloadHash` 同實際 bytes 唔一致
 - 新增 CI 防線 `scripts/check_payload_bytes_vs_index.py`（workflow 在 `git add -A` 之後、commit 之前阻斷任何 worktree/index bytes 不一致）
 - 新增回歸測試：`tests/test_emsd_csv_lf.py`（實走 `fetch_emsd.write_csv` 斷言 LF-only + loader 可讀 + 已入庫 CSV 與 metadata.datasetHash 自洽）、`tests/test_payload_bytes_vs_index.py`（LF 通過、CRLF／未 stage／缺檔阻斷）

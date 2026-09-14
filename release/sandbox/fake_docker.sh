@@ -44,8 +44,8 @@ case "$cmd" in
     fmt="${3:-}"
     case "$fmt" in
       *".Name"*) echo "${FAKE_VOL_NAME:-fakevol}" ;;
-      *".Source"*) echo "${FAKE_INSPECT_SRC:-/var/lib/docker/volumes/fake/_data}" ;;
-      *) echo "${FAKE_INSPECT_SRC:-/var/lib/docker/volumes/fake/_data}" ;;
+      *".Source"*) echo "${FAKE_INSPECT_SRC:-/var/lib/docker/volumes/example-volume/_data}" ;;
+      *) echo "${FAKE_INSPECT_SRC:-/var/lib/docker/volumes/example-volume/_data}" ;;
     esac
     ;;
   image)
