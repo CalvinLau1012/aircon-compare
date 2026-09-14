@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-09-03",
+  "updated": "2026-09-14",
   "models": {
     "UNKNOWN|RCX7U": {
       "status": "auto_discontinued",
@@ -10950,6 +10950,26 @@
       "first_missed": "2026-08-20",
       "last_checked": "2026-08-26",
       "blacklisted_at": "2026-08-26",
+      "note": "自動淘汰：保留舊快照，唔再做更新"
+    },
+    "MITSUBISHIHEAVY|SRK35QE3SRC35QE3": {
+      "status": "auto_discontinued",
+      "reason": "連續 2 個更新週期 BigGo 商品搜索都無市售報價",
+      "source": "biggo",
+      "kept_price_source": "biggo_prices.json 如有舊快照會保留",
+      "first_missed": "2026-08-26",
+      "last_checked": "2026-09-14",
+      "blacklisted_at": "2026-09-14",
+      "note": "自動淘汰：保留舊快照，唔再做更新"
+    },
+    "SAMSUNG|AR09NVWSBWKN": {
+      "status": "auto_discontinued",
+      "reason": "連續 2 個更新週期 BigGo 商品搜索都無市售報價",
+      "source": "biggo",
+      "kept_price_source": "biggo_prices.json 如有舊快照會保留",
+      "first_missed": "2026-08-26",
+      "last_checked": "2026-09-14",
+      "blacklisted_at": "2026-09-14",
       "note": "自動淘汰：保留舊快照，唔再做更新"
     }
   }

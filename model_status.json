@@ -5461,13 +5461,15 @@
   },
   "MITSUBISHIHEAVY|SRK35QE3SRC35QE3": {
     "first_missed": "2026-08-26",
-    "misses": 1,
-    "last_checked": "2026-08-26"
+    "misses": 2,
+    "last_checked": "2026-09-14",
+    "batch_id": "2026-09-08:7/7"
   },
   "SAMSUNG|AR09NVWSBWKN": {
     "first_missed": "2026-08-26",
-    "misses": 1,
-    "last_checked": "2026-08-26"
+    "misses": 2,
+    "last_checked": "2026-09-14",
+    "batch_id": "2026-09-08:7/7"
   },
   "海迅|HS024KBHS024KBA": {
     "first_missed": "2026-09-14",
@@ -5504,5 +5506,11 @@
     "misses": 1,
     "last_checked": "2026-09-14",
     "batch_id": "2026-09-08:6/7"
+  },
+  "GENERAL|ASWG18LFCBAOWG18LFCB": {
+    "first_missed": "2026-09-14",
+    "misses": 1,
+    "last_checked": "2026-09-14",
+    "batch_id": "2026-09-08:7/7"
   }
 }
