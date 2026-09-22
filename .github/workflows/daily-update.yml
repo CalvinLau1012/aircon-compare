@@ -63,6 +63,14 @@ jobs:
             --report "$RUNNER_TEMP/pr-acceptance.json" \
             --log-dir "$RUNNER_TEMP/pr-acceptance-logs"
 
+      - name: 失敗時輸出 acceptance 證據（唔上載 artifact）
+        if: failure()
+        run: |
+          for f in "$RUNNER_TEMP"/pr-acceptance-logs/*.log; do
+            echo "===== $f ====="
+            cat "$f"
+          done
+
       - name: D4-A 全歷史審計（PR）
         run: |
           python scripts/check_public_history.py --all-refs \
