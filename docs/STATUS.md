@@ -44,6 +44,12 @@
 
 ## 3. 資料口徑
 
+> 2026-09-22 合併 `origin/master` `f688794`（自動更新 2026-09-21）後，最新 production
+> snapshot 為 datasetDate 2026-09-21、build `B20260921.75`、1,834 registrations／1,773 models；
+> 本節以下數字係先前 `3e2958d` 基準嘅歷史快照，唔可當最新數量。最新 metadata 以
+> `metadata.json`／trusted pipeline 為準。
+
+
 生產基準 [metadata.json](https://github.com/CalvinLau1012/aircon-compare/blob/3e2958d5852c035b4a09c5831fa66187f615d6ce/metadata.json) 與收據（歷史快照）：
 
 | 數據 | 值／口徑 |

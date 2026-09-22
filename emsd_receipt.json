@@ -1,10 +1,10 @@
 {
-  "retrievedAt": "2026-09-20T18:59:57Z",
+  "retrievedAt": "2026-09-21T20:31:52Z",
   "sourceUrl": "https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50",
   "success": true,
-  "pagesExpected": 38,
-  "pagesFetched": 38,
-  "totalRows": 1885,
+  "pagesExpected": 37,
+  "pagesFetched": 37,
+  "totalRows": 1834,
   "aborted": false,
   "error": null,
   "perPageRows": [
@@ -44,7 +44,6 @@
     50,
     50,
     50,
-    50,
-    35
+    34
   ]
 }
