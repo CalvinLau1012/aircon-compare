@@ -660,7 +660,12 @@ def build_html():
                         .replace('__BLUE_FANTASY_ART__', blue_fantasy_art)
     out = os.path.join(BASE, '空調對比報告.html')
     write_html_output(out, html)
-    print('已生成：', out, f'（{os.path.getsize(out)/1024:.0f} KB）· 型號總數 {len(MODELS) + len(emsd_models)}')
+    try:
+        size_kb = os.path.getsize(out) / 1024
+    except OSError:
+        # 測試／自訂 writer 可能只捕獲 html 而唔寫檔；唔可以因此失敗。
+        size_kb = len(html.encode('utf-8')) / 1024
+    print('已生成：', out, f'（{size_kb:.0f} KB）· 型號總數 {len(MODELS) + len(emsd_models)}')
 
 
 def write_html_output(path, html):
