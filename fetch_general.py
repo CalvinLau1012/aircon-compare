@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """GENERAL 珍寶香港總代理 general-aircon.com 窗口機規格抓取"""
 import json, re, sys, os, time
-from crawl_utils import fetch, html_to_text, no_verify_ssl_context
+from crawl_utils import fetch, html_to_text, no_verify_ssl_context, batch_failed, save_json, emit_fetch_receipt
 
 CTX = no_verify_ssl_context()
 
@@ -36,7 +36,10 @@ def main():
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     base = os.path.dirname(os.path.abspath(__file__))
     out = {}
+    attempted = errors = 0
+    error_models = []
     for model, url in URLS:
+        attempted += 1
         try:
             h = get(url)
             t = html_to_text(h)
@@ -51,13 +54,25 @@ def main():
                     'wifi': '✅' if re.search(r'Wi-?Fi', t, re.I) else '',
                     'gas': 'R32' if 'R32' in t[:8000] else ('R410A' if 'R410A' in t[:8000] else ''),
                     'url': url}
+            if not any((size, weight, mode, item['gas'])):
+                raise ValueError('冇有效規格（可能係空白／登入／錯誤頁）')
             out[model] = item
             print(f"{model}: {size} | {weight} | {item['gas']} | {mode}")
         except Exception as e:
+            errors += 1
+            error_models.append(model)
             print(f'{model}: ERR {str(e)[:50]}')
         time.sleep(0.2)
-    with open(os.path.join(base, 'general_official.json'), 'w', encoding='utf-8') as f:
-        json.dump(out, f, ensure_ascii=False, indent=1)
+    emit_fetch_receipt('fetch_general.py', attempted, attempted - errors, errors,
+                       succeeded_models=list(out.keys()), failed_models=error_models)
+    if batch_failed(attempted, errors):
+        print(f'❌ GENERAL {errors}/{attempted} 個目標失敗，唔覆寫現有快照，留待下次重試', file=sys.stderr)
+        sys.exit(1)
+    out_path = os.path.join(base, 'general_official.json')
+    if not out and os.path.exists(out_path):
+        print('ℹ️ GENERAL 冇任何目標資料，保留現有快照', file=sys.stderr)
+        return
+    save_json(out_path, out, indent=1)
     print('完成', len(out))
 
 

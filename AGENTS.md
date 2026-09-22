@@ -42,11 +42,8 @@ python fetch_biggo.py --force-batch [N]
 python model_lifecycle.py         # 顯示停售黑名單
 ```
 
-自建伺服器持久發佈（入口喺伺服器 `/srv/aircon-compare/aircon-docker/`；**由使用者自己 SSH 執行，AI 不得代跑 sudo／正式 apply**）：
-
-```bash
-bash release-299c3e9.sh preflight|build|verify|serve|apply|rollback
-```
+> 自建／私人部署線（容器、持久發佈、sandbox）已移離公開 repo，詳見私人包；
+> 公開候選只保留 CI 每日更新與 Pages 發佈路徑。正式部署／回滾仍由維護者喺自己環境執行。
 
 ## 檔案地圖
 
@@ -66,9 +63,20 @@ bash release-299c3e9.sh preflight|build|verify|serve|apply|rollback
 | `prices.json` | Price 舊快照後備 |
 | `docs/AIRCON_COMPARE_GOVERNANCE.md` | 唯一治理源（內嵌功能註冊表/metadata Schema/成功標準） |
 | `docs/DECISIONS.md` | 決策記錄（人類決策與技術轉向，按模板追加） |
-| `docker/` | 容器 image 建置 + 每日發佈管線（`run-update.sh`：程式碼同步、兩階段 metadata、原子部署） |
-| `release/` | 自建伺服器持久發佈入口、staging 驗收工具與 sandbox 測試 |
 | `scripts/prepare_runtime_data.py` | runtime 資料準備（黑名單 canonical 遷移守衛，只跑一次） |
+| `scripts/gen-metadata.py` | 兩階段 metadata；`--emsd-receipt` 收據事實（hash-bound、實際 UTC→HKT 日期） |
+| `scripts/validate_metadata.py` | 完整 Draft 2020-12 metadata 驗證；`--core` 驗未 finalize 核心事實 |
+| `scripts/feature-check.py` | GATE-03 功能契約：pytest collection node id＋靜態斷言＋`--run-tests` 執行證據 |
+| `scripts/run_official_batch.py` | 官網批次推進閘門（有實際輸出證據先 `advance_queue`） |
+| `scripts/postdeploy_check.py` | GATE-08 部署後核對（線上 metadata／payload hash／瀏覽器 runtime 顯示） |
+| `scripts/archive_release.py` | GATE-09 長期歸檔（CHECKSUMS＋PROVENANCE；同 tag 唔可 clobber） |
+| `.github/workflows/pages-deploy.yml` | D2-A：PR build／gates 不 deploy；master deploy `needs` build，`github-pages` environment＋最小 Pages 權限 |
+| `scripts/build_pages_artifact.py` | D2-A：Pages artifact 只可含 `deploy_payload.json` 公開檔；拒 symlink／缺檔／traversal／額外私人檔 |
+| `scripts/check_public_history.py` | D4-A：全 reachable Git history credential audit；credential findings 必須 0；報告寫 repo 外 |
+| `fetch_emsd.py` raw receipt | D7-A：逐頁原始 bytes hash＋公開 `emsd_raw_receipt.json`；private sink 失敗阻斷；90 日 retention |
+| `.github/workflows/freshness-monitor.yml` / `scripts/check_freshness.py` | D8-A：`age > 72h` monitor；issue 去重、狀態改變 update、恢復 close |
+| `scripts/run_official_batch.py` pending | D1-B：純 coverage 缺口可 `queue-kept-pending-coverage` 保留 queue；硬失敗仍非零阻斷 |
+| `tests/test_restore_drill.py` | 公開 fixture-only 應用＋數據恢復演練（無 sudo／docker／生產） |
 | `CHANGELOG.md` | 版本變更記錄（Keep a Changelog 風格；發布時歸檔 Unreleased） |
 | `空調對比報告.md` / `README.md` / `需求摘要.md` | 報告與說明文件（改動要同步更新日誌） |
 

@@ -98,15 +98,21 @@ def test_filter_brand(page):
 
 
 def test_sort_price(page):
+    _reset_controls(page)
     page.select_option('#sortBy', 'price')
     page.evaluate('resetShown();renderList()')
-    prices = page.evaluate(
-        "() => [...document.querySelectorAll('.mitem .plink')].map(e => {"
-        "const s = e.textContent.split('🔍')[0].replace(/[^0-9]/g,'');"
-        "return s ? parseInt(s.slice(0, -4) || s.slice(0, 4), 10) || 999999 : 999999; })")
+    items = page.evaluate(
+        "() => [...document.querySelectorAll('.mitem')].map(e => ({"
+        "name: e.querySelector('.info .name').textContent.trim(),"
+        "price: (e.querySelector('.plink') ? e.querySelector('.plink').textContent.match(/\\$([\\d,]+)/) : null)}))")
+    names = [x['name'] for x in items]
+    assert names, '價格排序應該有結果'
+    assert len(names) == len(set(names)), '排序唔可以有重複型號'
+    all_names = page.evaluate("() => ALL.map(m => (m.brand + ' ' + m.model).trim())")
+    assert all(n in all_names for n in names), '排序結果唔可以出現唔喺資料集嘅型號'
+    prices = [int(x['price'][1].replace(',', '')) if x['price'] else 999999 for x in items]
     assert prices == sorted(prices), f'價格排序錯：{prices[:6]}'
-    page.select_option('#sortBy', '')
-    page.evaluate('resetShown();renderList()')
+    _reset_controls(page)
 
 
 def test_filter_price_excludes_unknown(page):

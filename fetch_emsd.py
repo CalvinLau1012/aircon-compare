@@ -7,11 +7,15 @@
 import urllib.request
 import urllib.error
 import csv
+import hashlib
+import io
 import json
 import os
 import random
 import sys
 import time
+import shutil
+import tempfile
 from html.parser import HTMLParser
 
 from crawl_utils import BOT_UA, norm_model
@@ -23,6 +27,8 @@ HEADER_SIGNATURE = '型號'  # 每頁表頭 signature：第 2 欄係「型號」
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 QUEUE_PATH = os.path.join(BASE_DIR, 'update_queue.json')
 RECEIPT_PATH = os.path.join(BASE_DIR, 'emsd_receipt.json')
+RAW_RECEIPT_PATH = os.path.join(BASE_DIR, 'emsd_raw_receipt.json')
+_LAST_HTTP = {}
 
 
 class TableParser(HTMLParser):
@@ -95,10 +101,170 @@ def fetch_outcome(pages_expected, pages_fetched, aborted, total_rows, error=None
     }
 
 
-def write_receipt(outcome, per_page):
-    """寫 emsd_receipt.json（成功／失敗都寫，保留本次抓取證據）"""
+def raw_page_record(page, raw_bytes, headers=None):
+    """單頁原始 HTTP bytes 證據（唔會 re-serialize）。"""
+    if not isinstance(raw_bytes, (bytes, bytearray)):
+        raise ValueError('raw_bytes 必須係 bytes')
+    headers = headers or {}
+    return {
+        'page': int(page),
+        'byteLength': len(raw_bytes),
+        'sha256': 'sha256:' + hashlib.sha256(bytes(raw_bytes)).hexdigest(),
+        'lastModified': headers.get('lastModified') or headers.get('last-modified'),
+        'etag': headers.get('etag') or headers.get('ETag'),
+        '_raw': bytes(raw_bytes),
+    }
+
+
+def archive_hash(records):
+    """以頁序＋長度前綴 framing 計整批 raw bytes hash（可重現、無歧義）。"""
+    h = hashlib.sha256()
+    for rec in sorted(records, key=lambda r: r['page']):
+        page = str(rec['page']).encode('ascii')
+        data = rec['_raw']
+        h.update(len(page).to_bytes(8, 'big'))
+        h.update(page)
+        h.update(len(data).to_bytes(8, 'big'))
+        h.update(data)
+    return 'sha256:' + h.hexdigest()
+
+
+def build_raw_receipt(records, dataset_hash, retrieved_at, source_url, total_rows,
+                      per_page_rows):
+    """由完整頁面 raw bytes 建立公開 raw receipt（只含 hash／metadata，無 bytes）。
+
+    缺頁、重複頁、0 頁一律 ValueError；唔准把 CSV hash 冒充 raw hash。
+    """
+    if not isinstance(records, list) or not records:
+        raise ValueError('raw records 唔可以空')
+    pages = sorted(int(r['page']) for r in records)
+    if pages != list(range(1, len(pages) + 1)):
+        raise ValueError(f'raw pages 必須由 1 連續至 N（got {pages}）')
+    public_pages = []
+    for rec in sorted(records, key=lambda r: r['page']):
+        public_pages.append({k: v for k, v in rec.items() if k != '_raw'})
+    return {
+        'schemaVersion': 1,
+        'retrievedAt': retrieved_at,
+        'sourceUrl': source_url,
+        'success': True,
+        'pageCount': len(records),
+        'totalRows': total_rows,
+        'perPageRows': list(per_page_rows),
+        'datasetHash': dataset_hash,
+        'archiveHash': archive_hash(records),
+        'pages': public_pages,
+    }
+
+
+def write_raw_receipt_atomic(receipt):
+    tmp = RAW_RECEIPT_PATH + '.tmp'
+    with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
+        json.dump(receipt, f, ensure_ascii=False, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, RAW_RECEIPT_PATH)
+
+
+def cleanup_expired_raw_sink(sink_dir, now=None, max_age_days=90):
+    """刪除 sink 內超過 max_age_days 嘅 run 目錄；回傳被刪目錄名 list。
+
+    以 manifest.json.createdAt 為準；parse 唔到就用 mtime。90 日邊界唔刪。
+    """
+    import datetime as _dt
+    if not sink_dir or not os.path.isdir(sink_dir):
+        return []
+    now = now or _dt.datetime.now(_dt.timezone.utc)
+    removed = []
+    for name in sorted(os.listdir(sink_dir)):
+        path = os.path.join(sink_dir, name)
+        if not os.path.isdir(path) or not name.startswith('run-'):
+            continue
+        created = None
+        mf = os.path.join(path, 'manifest.json')
+        try:
+            with open(mf, encoding='utf-8') as f:
+                created_raw = json.load(f).get('createdAt')
+            created = _dt.datetime.fromisoformat(created_raw.replace('Z', '+00:00'))
+        except Exception:
+            created = None
+        if created is None:
+            created = _dt.datetime.fromtimestamp(os.path.getmtime(path), _dt.timezone.utc)
+        if now - created > _dt.timedelta(days=max_age_days):
+            shutil.rmtree(path)
+            removed.append(name)
+    return removed
+
+
+def persist_raw_archive(records, sink_dir=None, require=False, now=None):
+    """把 raw bytes 寫入私人 sink（repo 外）；失敗／未配置時按 require fail-closed。
+
+    回傳唔含敏感路徑；只回 persisted／objectId／archiveHash。
+    """
+    import datetime as _dt
+    sink = sink_dir or os.environ.get('AIRCON_EMSD_RAW_SINK_DIR')
+    computed = archive_hash(records)
+    if not sink:
+        if require:
+            raise RuntimeError('private raw sink 未配置（AIRCON_EMSD_RAW_SINK_DIR）')
+        return {'persisted': False, 'archiveHash': computed, 'objectId': None,
+                'reason': 'not_configured'}
+    sink = os.path.abspath(sink)
+    repo = os.path.abspath(BASE_DIR)
+    try:
+        inside_repo = os.path.commonpath([sink, repo]) == repo
+    except ValueError:
+        inside_repo = False  # 唔同 drive／無法比較，當唔喺 repo 內
+    if inside_repo:
+        raise ValueError('private raw sink 唔可以喺公開 repo 工作樹內')
+    os.makedirs(sink, exist_ok=True)
+    run_id = (now or _dt.datetime.now(_dt.timezone.utc)).strftime('%Y%m%dT%H%M%SZ')
+    final_dir = os.path.join(sink, 'run-' + run_id)
+    if os.path.exists(final_dir):
+        final_dir = final_dir + '-' + str(int(time.time() * 1000) % 100000)
+    tmp = tempfile.mkdtemp(prefix='.tmp-run-', dir=sink)
+    try:
+        page_names = []
+        for rec in sorted(records, key=lambda r: r['page']):
+            name = f'p{rec["page"]:02d}.html'
+            with open(os.path.join(tmp, name), 'wb') as f:
+                f.write(rec['_raw'])
+                f.flush()
+                os.fsync(f.fileno())
+            page_names.append(name)
+        manifest = {
+            'schemaVersion': 1,
+            'createdAt': (now or _dt.datetime.now(_dt.timezone.utc)).strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'pageCount': len(records),
+            'archiveHash': computed,
+            'pages': [{k: v for k, v in rec.items() if k != '_raw'}
+                      for rec in sorted(records, key=lambda r: r['page'])],
+        }
+        with open(os.path.join(tmp, 'manifest.json'), 'w', encoding='utf-8', newline='\n') as f:
+            json.dump(manifest, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, final_dir)
+    except Exception:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
+    cleanup_expired_raw_sink(sink, now=now)
+    return {'persisted': True, 'archiveHash': computed, 'objectId': os.path.basename(final_dir),
+            'reason': 'persisted'}
+
+
+def write_receipt(outcome, per_page, csv_path=None, retrieved_at=None, raw_receipt_hash=None):
+    """寫 emsd_receipt.json（成功／失敗都寫，保留本次抓取證據）
+
+    - retrieved_at：實際抓取完成（或中途失敗）嘅 UTC 時間。成功路徑必須由
+      fetch 迴圈收尾後即時傳入，唔可以用寫收據當刻時間冒充抓取完成時間。
+    - csv_path：只可以在 CSV 已成功原子寫入之後傳入；會即場對已寫入檔案計
+      datasetHash，令收據同 CSV bytes 綁定。
+    """
+    if retrieved_at is None:
+        retrieved_at = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
     receipt = {
-        'retrievedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        'retrievedAt': retrieved_at,
         'sourceUrl': BASE.rstrip('&p='),
         'success': outcome['success'],
         'pagesExpected': outcome['pagesExpected'],
@@ -108,8 +274,15 @@ def write_receipt(outcome, per_page):
         'error': outcome['error'],
         'perPageRows': per_page,
     }
-    with open(RECEIPT_PATH, 'w', encoding='utf-8') as f:
+    if csv_path is not None:
+        with open(csv_path, 'rb') as source:
+            receipt['datasetHash'] = 'sha256:' + hashlib.sha256(source.read()).hexdigest()
+    if raw_receipt_hash:
+        receipt['rawReceiptHash'] = raw_receipt_hash
+    tmp = RECEIPT_PATH + '.tmp'
+    with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
         json.dump(receipt, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, RECEIPT_PATH)
 
 
 def fetch_page(p):
@@ -120,7 +293,15 @@ def fetch_page(p):
     last = None
     for attempt in range(3):
         try:
-            return urllib.request.urlopen(req, timeout=30).read().decode('utf-8', 'ignore')
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                raw = resp.read()
+                _LAST_HTTP.clear()
+                _LAST_HTTP.update({
+                    'bytes': raw,
+                    'lastModified': resp.headers.get('Last-Modified'),
+                    'etag': resp.headers.get('ETag'),
+                })
+                return raw.decode('utf-8', 'ignore')
         except urllib.error.HTTPError as e:
             last = e
             if e.code in (403, 429):
@@ -133,31 +314,35 @@ def fetch_page(p):
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-QUEUE_PATH = os.path.join(BASE_DIR, 'update_queue.json')
+
+
+class DatasetCommitError(RuntimeError):
+    """資料提交失敗；rolled_back=False 代表回滾未完成，journal 仍然保留。"""
+
+    def __init__(self, message, rolled_back):
+        super().__init__(message)
+        self.rolled_back = rolled_back
+
+
+def _journal_path():
+    return os.path.join(BASE_DIR, 'dataset_commit.journal')
 
 
 def load_queue():
-    """讀取分批更新隊列"""
-    try:
-        with open(QUEUE_PATH, encoding='utf-8') as f:
-            q = json.load(f)
-            if isinstance(q, dict) and 'stage' in q:
-                return q
-    except Exception:
-        pass
-    return {'stage': 0, 'models': []}
+    """讀取分批更新隊列（共用 queue_utils 契約；損毀唔可以默默重置）。"""
+    from queue_utils import load_queue as _load_queue
+    return _load_queue(QUEUE_PATH)
 
 
-def save_queue(q):
-    with open(QUEUE_PATH, 'w', encoding='utf-8') as f:
-        json.dump(q, f, ensure_ascii=False)
+def plan_new_models(all_rows):
+    """純讀計畫：比較新舊型號，計出本次新增；**唔寫任何檔**。
 
-
-def detect_new_models(all_rows):
-    """比較新舊型號，記錄新上市型號（new_models.json 累積，保留首次發現日期）"""
-    base = os.path.dirname(os.path.abspath(__file__))
-    csv_path = os.path.join(base, 'emsd_空調能源標籤.csv')
-    new_path = os.path.join(base, 'new_models.json')
+    回傳 {'new_models': rec, 'queue': q, 'added': [model, ...]}。
+    真正寫入由 commit_dataset() 以交易方式一次過完成，避免 CSV／
+    new_models.json／update_queue.json 出現半更新狀態。
+    """
+    csv_path = os.path.join(BASE_DIR, 'emsd_空調能源標籤.csv')
+    new_path = os.path.join(BASE_DIR, 'new_models.json')
 
     def nk(s):
         return norm_model(s)  # 共用 crawl_utils（各腳本一字不差）
@@ -170,17 +355,19 @@ def detect_new_models(all_rows):
                 if len(r) >= 15:
                     old_keys.add(nk(r[1]))
 
-    # 已有新機記錄
-    rec = {'updated': time.strftime('%Y-%m-%d'), 'models': []}
+    # 已有新機記錄：損毀／結構錯唔可以默默重置
+    today = time.strftime('%Y-%m-%d')
+    rec = {'updated': today, 'models': []}
     if os.path.exists(new_path):
         try:
             with open(new_path, encoding='utf-8') as f:
                 rec = json.load(f)
-        except Exception:
-            rec = {'updated': time.strftime('%Y-%m-%d'), 'models': []}
-    known_keys = {nk(m.get('model')) for m in rec.get('models', [])}
+        except (OSError, ValueError) as e:
+            raise ValueError(f'new_models.json 損毀，唔可以默默重置：{e}')
+        if not isinstance(rec, dict) or not isinstance(rec.get('models'), list):
+            raise ValueError('new_models.json 結構唔正確，唔可以默默重置')
+    known_keys = {nk(m.get('model')) for m in rec.get('models', []) if isinstance(m, dict)}
 
-    today = time.strftime('%Y-%m-%d')
     added = []
     for r in all_rows:
         model = r[1].strip()
@@ -205,44 +392,177 @@ def detect_new_models(all_rows):
         known_keys.add(key)
         added.append(model)
     rec['updated'] = today
-    with open(new_path, 'w', encoding='utf-8') as f:
-        json.dump(rec, f, ensure_ascii=False)
-    print('🆕 新機偵測：本次新增', len(added), '個', (' · ' + ', '.join(added[:12])) if added else '')
-    # 有新機 → 寫入分批更新隊列（stage 1：官網核實第一批）
+    # 有新機 → 準備分批更新隊列（stage 1：官網核實第一批）
+    q = load_queue()
     if added:
-        q = load_queue()
         if q['stage'] == 0:
             q['stage'] = 1
         for a in added:
             if a not in q['models']:
                 q['models'].append(a)
-        save_queue(q)
-        print('📋 已加入分批更新隊列（stage', q['stage'], '，共', len(q['models']), '個新機待核實）')
-    return added
+    return {'new_models': rec, 'queue': q, 'added': added}
+
+
+def _build_csv_bytes(header, rows):
+    """CSV bytes（utf-8-sig + LF）；寫檔同交易提交共用同一 builder。"""
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator='\n')
+    w.writerow(header)
+    w.writerows(rows)
+    return buf.getvalue().encode('utf-8-sig')
+
+
+def _read_optional(path):
+    """只 FileNotFoundError 當「原本唔存在」；其他讀取錯誤喺變更前阻斷。"""
+    try:
+        with open(path, 'rb') as f:
+            return f.read()
+    except FileNotFoundError:
+        return None
+
+
+def _atomic_write_bytes(path, data):
+    path = os.fspath(path)
+    tmp = path + '.tmp'
+    with open(tmp, 'wb') as f:
+        f.write(data)
+    os.replace(tmp, path)
+
+
+def _json_bytes(obj):
+    return json.dumps(obj, ensure_ascii=False).encode('utf-8')
+
+
+def _write_journal(saved):
+    """寫 crash-recovery journal（舊 bytes base64）。"""
+    import base64
+    payload = {'version': 1, 'targets': {
+        path: (None if data is None else base64.b64encode(data).decode('ascii'))
+        for path, data in saved.items()}}
+    _atomic_write_bytes(_journal_path(), json.dumps(payload, ensure_ascii=False).encode('utf-8'))
+
+
+def recover_commit_journal():
+    """啟動時：若上次提交中途 crash，依 journal 還原；回傳是否有恢復。"""
+    import base64
+    jp = _journal_path()
+    if not os.path.exists(jp):
+        return False
+    try:
+        with open(jp, encoding='utf-8') as f:
+            data = json.load(f)
+        targets = data['targets']
+        if not isinstance(targets, dict):
+            raise ValueError('targets 唔係 object')
+    except (OSError, ValueError, KeyError) as e:
+        raise RuntimeError(f'dataset commit journal 損毀，需人手處理：{e}')
+    for path, b64 in targets.items():
+        try:
+            if b64 is None:
+                if os.path.exists(path):
+                    os.remove(path)
+            else:
+                _atomic_write_bytes(path, base64.b64decode(b64))
+        except (OSError, ValueError) as e:
+            raise RuntimeError(f'journal 恢復失敗（{path}）：{e}（保留 journal 作恢復證據）')
+    os.remove(jp)
+    print('⚠️ 偵測到未完成嘅資料提交，已依 journal 恢復至提交前狀態')
+    return True
+
+
+def commit_dataset(header, rows, csv_path, plan):
+    """交易式提交 CSV + new_models.json + update_queue.json。
+
+    先讀舊 bytes（唯一 FileNotFound 可當 missing）→ 寫 crash journal →
+    寫齊三個 .tmp → 逐個 os.replace。任何一步失敗即回滾已換入嘅檔；
+    回滾完整才清 journal，回滾失敗會保留 journal 並以 rolled_back=False 拋出
+    （呼叫方唔可以聲稱資料原狀）。
+
+    界限：三個 replace 唔係 power-loss atomic；journal 用嚟喺下次啟動恢復。
+    """
+    targets = [
+        (csv_path, _build_csv_bytes(header, rows)),
+        (os.path.join(BASE_DIR, 'new_models.json'), _json_bytes(plan['new_models'])),
+        (QUEUE_PATH, _json_bytes(plan['queue'])),
+    ]
+    saved = {path: _read_optional(path) for path, _ in targets}
+    _write_journal(saved)
+    tmps = []
+    replaced = []
+    try:
+        for path, data in targets:
+            tmp = path + '.tmp'
+            tmps.append((path, tmp))
+            with open(tmp, 'wb') as f:
+                f.write(data)
+        for path, tmp in tmps:
+            os.replace(tmp, path)
+            replaced.append(path)
+    except OSError as e:
+        rollback_errors = []
+        for path in reversed(replaced):
+            old = saved[path]
+            try:
+                if old is None:
+                    os.remove(path)
+                else:
+                    _atomic_write_bytes(path, old)
+            except OSError as re:
+                rollback_errors.append(f'{path}: {re}')
+        if rollback_errors:
+            raise DatasetCommitError(
+                f'提交失敗（{e}）且回滾未完成：' + '；'.join(rollback_errors), rolled_back=False)
+        try:
+            os.remove(_journal_path())
+        except OSError:
+            pass
+        raise DatasetCommitError(f'提交失敗（{e}），已回滾至原狀', rolled_back=True)
+    finally:
+        for _path, tmp in tmps:
+            if os.path.exists(tmp):
+                try:
+                    os.remove(tmp)
+                except OSError:
+                    pass
+    try:
+        os.remove(_journal_path())
+    except OSError:
+        pass
 
 
 def write_csv(header, rows, path):
     """寫 EMSD CSV（原子替換）。
 
-    固定用 LF（`lineterminator='\\n'`）：`.gitattributes` 係 `* text=auto eol=lf`，
+    固定用 LF（`lineterminator='\n'`）：`.gitattributes` 係 `* text=auto eol=lf`，
     git add 時會把 CRLF 正規化為 LF；若工作樹係 CRLF，pipeline 對工作樹計算嘅
     datasetHash／releasePayloadHash 就會同已發佈 bytes 唔一致（GitHub Pages hash 鏈斷）。
     所以由源頭寫 LF，確保 worktree bytes == git index bytes == 發佈 bytes。
     """
-    tmp = path + '.tmp'
-    with open(tmp, 'w', newline='', encoding='utf-8-sig') as f:
-        w = csv.writer(f, lineterminator='\n')
-        w.writerow(header)
-        w.writerows(rows)
-    os.replace(tmp, path)  # 原子替換：寫好先換名，唔會整壞現有 CSV
+    _atomic_write_bytes(path, _build_csv_bytes(header, rows))
 
 
 def main():
     # Windows 控制台編碼保護（cp950 無法輸出部分字元）
-    if hasattr(sys.stdout, 'reconfigure'):
-        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, 'reconfigure'):
+            _stream.reconfigure(encoding='utf-8', errors='replace')
 
+    # 防誤觸：--help／-h 只印用法，绝不連網（本腳本無 argparse，曾經因此意外真抓）
+    if any(arg in ('-h', '--help') for arg in sys.argv[1:]):
+        print('用法：python fetch_emsd.py\n'
+              '  （無參數）抓取 EMSD 全量並原子更新 emsd_空調能源標籤.csv + emsd_receipt.json；\n'
+              '  失敗會寫失敗收據且唔覆寫舊 CSV。')
+        return
+
+    try:
+        recover_commit_journal()
+    except RuntimeError as e:
+        print(f'❌ {e}', file=sys.stderr)
+        sys.exit(1)
+
+    _LAST_HTTP.clear()
     all_rows = []
+    raw_records = []
     header = []
     per_page = []
     aborted = False
@@ -251,8 +571,9 @@ def main():
     while True:
         try:
             html = fetch_page(p)
-        except SystemExit:
-            raise  # 403/429：保護來源，直接中止
+        except SystemExit as exc:
+            write_receipt(fetch_outcome(p, len(per_page), True, len(all_rows), str(exc)), per_page)
+            raise  # 403/429：保護來源，記錄失敗後中止
         except Exception as e:
             aborted = True
             error_msg = f'第 {p} 頁：{e}'
@@ -265,6 +586,14 @@ def main():
         if p == 1:
             header = page_header(html) or []
             print('表頭:', header)
+        # D7-A：保存本頁實際接收 bytes（失敗／空確認頁唔當有數據頁）；測試 fallback
+        # 會由 monkeypatched fetch_page 回傳字串 encode，確保 contract 仍可驗。
+        raw = _LAST_HTTP.get('bytes')
+        if raw is None:
+            raw = html.encode('utf-8')
+        raw_records.append(raw_page_record(
+            p, raw, {'lastModified': _LAST_HTTP.get('lastModified'),
+                     'etag': _LAST_HTTP.get('etag')}))
         all_rows.extend(rows)
         per_page.append(len(rows))
         print('頁', p, '攞到', len(rows), '行，累計', len(all_rows))
@@ -273,29 +602,108 @@ def main():
         p += 1
         time.sleep(random.uniform(1.0, 2.5))  # 分頁隨機抖動，唔畀官方機械式節奏
 
-    pages_fetched = p - 1 if aborted else p
-    outcome = fetch_outcome(pages_expected=pages_fetched + (1 if aborted else 0),
+    # 抓取實際完成時間：由迴圈收尾即時捕捉（唔可以用寫收據當刻時間冒充）
+    retrieved_at = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+
+    # pagesFetched 只計有數據嘅頁。最後一頁剛好 50 行時，下一頁會回空確認到尾，
+    # 該空頁唔算 fetched；唔可以再攞 p 當頁數（會多報一頁）。
+    pages_fetched = len(per_page)
+    pages_expected = pages_fetched + 1 if aborted else pages_fetched
+    outcome = fetch_outcome(pages_expected=pages_expected,
                             pages_fetched=pages_fetched,
                             aborted=aborted,
                             total_rows=len(all_rows),
                             error=error_msg)
-    write_receipt(outcome, per_page)
-
     if not outcome['success']:
+        write_receipt(outcome, per_page, retrieved_at=retrieved_at)
         reason = (f'中途網絡錯誤（{error_msg}）' if aborted
                   else f'只攞到 {len(all_rows)} 行，少於安全下限 {MIN_EMSD_ROWS}')
         print(f'⚠️ EMSD 抓取未完整（{reason}），唔覆寫現有 CSV', file=sys.stderr)
         sys.exit(1)
 
     if not header or len(header) != 15:
+        outcome.update(success=False, aborted=True, error='invalid header')
+        write_receipt(outcome, per_page, retrieved_at=retrieved_at)
         print('⚠️ 攞唔到有效表頭（15 欄），唔覆寫現有 CSV', file=sys.stderr)
         sys.exit(1)
 
     out = os.path.join(BASE_DIR, 'emsd_空調能源標籤.csv')
-    detect_new_models(all_rows)  # 新機偵測（比較新舊 CSV）
-    write_csv(header, all_rows, out)
+    # 先純讀計畫（讀舊 CSV／現有 sidecar），失敗即寫失敗收據，唔改任何資料檔。
+    try:
+        plan = plan_new_models(all_rows)
+    except Exception as e:
+        outcome.update(success=False, aborted=True, error=f'new-model detection failed: {e}')
+        write_receipt(outcome, per_page, retrieved_at=retrieved_at)
+        print(f'❌ 新機偵測失敗（{e}），唔覆寫現有 CSV', file=sys.stderr)
+        sys.exit(1)
+    # 交易式提交 CSV + new_models.json + update_queue.json：
+    # 任何一步失敗即回滾已換入嘅檔，唔會留下半更新狀態。
+    try:
+        commit_dataset(header, all_rows, out, plan)
+    except DatasetCommitError as e:
+        outcome.update(success=False, aborted=True, error=f'dataset commit failed: {e}')
+        try:
+            write_receipt(outcome, per_page, retrieved_at=retrieved_at)
+        except Exception as re:
+            print(f'⚠️ 失敗收據亦寫唔到：{re}', file=sys.stderr)
+        if e.rolled_back:
+            print(f'❌ 資料提交失敗（{e}）；已回滾，三份資料保持原狀', file=sys.stderr)
+        else:
+            print(f'❌ 資料提交失敗而且回滾未完成（{e}）；journal 保留作恢復證據，'
+                  '下游必須阻斷', file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        outcome.update(success=False, aborted=True, error=f'dataset commit failed: {e}')
+        write_receipt(outcome, per_page, retrieved_at=retrieved_at)
+        print(f'❌ 資料提交失敗（{e}）', file=sys.stderr)
+        sys.exit(1)
+    added = plan['added']
+    if added:
+        print('🆕 新機偵測：本次新增', len(added), '個', ' · '.join(added[:12]))
+        print('📋 已加入分批更新隊列（stage', plan['queue']['stage'],
+              '，共', len(plan['queue']['models']), '個新機待核實）')
+    else:
+        print('🆕 新機偵測：本次新增 0 個')
+    # D7-A：先寫 private raw archive（repo 外）。persist 失敗／require 而缺配置即阻斷，
+    # 確保唔會出現「public receipt 聲稱已保存但 private object 唔存在」。
+    require_raw = os.environ.get('AIRCON_EMSD_REQUIRE_RAW_SINK') == '1'
+    try:
+        sink_result = persist_raw_archive(raw_records, require=require_raw)
+    except Exception as e:
+        print(f'❌ private raw archive 保存失敗，阻斷發布（{e}）', file=sys.stderr)
+        sys.exit(1)
+    raw_receipt_hash = None
+    if sink_result.get('persisted'):
+        try:
+            dataset_hash = 'sha256:' + hashlib.sha256(open(out, 'rb').read()).hexdigest()
+            raw_receipt = build_raw_receipt(
+                raw_records, dataset_hash=dataset_hash, retrieved_at=retrieved_at,
+                source_url=BASE.rstrip('&p='), total_rows=len(all_rows),
+                per_page_rows=per_page)
+            raw_receipt['privateArchive'] = {
+                'persisted': True,
+                'objectId': sink_result.get('objectId'),
+                'archiveHash': sink_result.get('archiveHash'),
+            }
+            write_raw_receipt_atomic(raw_receipt)
+            raw_receipt_hash = 'sha256:' + hashlib.sha256(
+                open(RAW_RECEIPT_PATH, 'rb').read()).hexdigest()
+        except Exception as e:
+            print(f'❌ raw receipt 原子寫入失敗，阻斷發布（{e}）', file=sys.stderr)
+            sys.exit(1)
+    else:
+        print('⚠️ private raw sink 未配置（非 require 模式）：今次唔寫 raw receipt；'
+              '正式 CI 必須設定 AIRCON_EMSD_RAW_SINK_DIR／require。', file=sys.stderr)
+    # 成功收據必須喺整組資料提交之後、對已寫入 CSV bytes 計 hash；寫唔到收據即阻斷
+    # （唔可以用舊收據配新 CSV 誤導下游 metadata 生成）。
+    try:
+        write_receipt(outcome, per_page, out, retrieved_at=retrieved_at,
+                      raw_receipt_hash=raw_receipt_hash)
+    except Exception as e:
+        print(f'❌ 收據寫入失敗（{e}）；CSV 已更新但無有效收據，下游必須阻斷', file=sys.stderr)
+        sys.exit(1)
     print('完成！共', len(all_rows), '個型號，存於', out)
-    print(f'📦 抓取證據：{RECEIPT_PATH}（頁 {outcome["pagesFetched"]}/{outcome["pagesExpected"]}）')
+    print(f'📦 抓取證據：{RECEIPT_PATH}（頁 {outcome["pagesFetched"]}/{outcome["pagesExpected"]}，retrievedAt={retrieved_at}）')
 
 
 if __name__ == '__main__':

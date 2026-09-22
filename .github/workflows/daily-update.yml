@@ -4,7 +4,7 @@ on:
   schedule:
     # 香港時間每日 00:30（UTC 16:30）輕量偵測；有新機先觸發分批更新
     - cron: '30 16 * * *'
-  # 亦可以喺 GitHub Actions 頁面手動觸發
+  # 亦可以喺 GitHub Actions 頁面手動觸發（只限 master，見 job if）
   workflow_dispatch:
     inputs:
       force_price_batch:
@@ -12,7 +12,7 @@ on:
         required: false
         default: 'false'
 
-# 安全：只授予寫內容嘅最低權限，唔需要任何密鑰/Token
+# 安全：只授予寫內容嘅最低權限（需要 push 已驗證候選包）
 permissions:
   contents: write
 
@@ -23,21 +23,33 @@ concurrency:
 
 jobs:
   update:
+    # 受信任來源限制：schedule 只喺 default branch；手動 dispatch 只准 master。
+    # 唔接受 PR／fork 上下文（呢個 workflow 亦唔會由 PR 觸發）。
+    if: >
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       # ============ 環境：代碼 + Python + 依賴（含測試） ============
+      # push 需要 checkout 憑證；呢個 job 只喺 master schedule／dispatch 執行。
       - name: 取出代碼
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          persist-credentials: true
 
       - name: 設定 Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
         with:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: 安裝依賴
+      - name: 安裝依賴（含測試）
         run: pip install -r requirements.txt -r requirements-dev.txt
+
+      # Chromium 只安裝一次，喺任何 pytest 之前（test_postdeploy_check 有瀏覽器案例）
+      - name: 安裝 Chromium（一次）
+        run: playwright install chromium --with-deps
 
       # ============ 閘門：共享工具契約測試（複用契約一變即刻失敗） ============
       - name: 測試閘門
@@ -45,47 +57,62 @@ jobs:
 
       # ============ GATE-05 瀏覽器核心路徑 smoke（Registry required 功能行為證據） ============
       - name: 瀏覽器核心路徑 smoke（GATE-05）
-        run: |
-          pip install playwright
-          playwright install chromium --with-deps
-          python -m pytest tests/browser_smoke.py -q
+        run: python -m pytest tests/browser_smoke.py -q
 
       # ============ GATE-01 治理區塊驗證（六個規範塊嚴格提取） ============
       - name: 治理區塊驗證（GATE-01）
         run: python scripts/extract_governance.py
 
-      # ============ GATE-03 功能註冊表檢查（Schema + 測試綁定） ============
+      # ============ GATE-03 功能註冊表檢查（Schema + pytest 實際證據） ============
       - name: 功能註冊表檢查（GATE-03）
-        run: python scripts/feature-check.py
+        run: python scripts/feature-check.py --run-tests
 
       # ============ 第 1 步：EMSD 官方資料庫 + 新機偵測 ============
+      # 失敗即中止：唔可以帶住舊收據／未更新 CSV 去出新 metadata 同上線
       - name: 抓取 EMSD + 新機偵測
+        env:
+          # D7-A：平台完成私人 raw sink 設定後，將 REQUIRE 設為 1；未設定時行為同以前
+          # 一樣（非 require，唔寫 public raw receipt）。真正 secret 值不會寫入 log。
+          AIRCON_EMSD_REQUIRE_RAW_SINK: ${{ secrets.AIRCON_EMSD_REQUIRE_RAW_SINK }}
+          AIRCON_EMSD_RAW_SINK_DIR: ${{ secrets.AIRCON_EMSD_RAW_SINK_DIR }}
         run: python fetch_emsd.py
-        continue-on-error: true
 
-      - name: 讀取更新階段
+      - name: 讀取更新階段（共用 queue 契約；錯誤即失敗，冇 stage-0 fallback）
         id: stage
         run: |
-          STAGE=$(python -c "import json;print(json.load(open('update_queue.json',encoding='utf-8')).get('stage',0))" 2>/dev/null || echo 0)
+          STAGE=$(python -c "import queue_utils;print(queue_utils.load_queue()['stage'])") || {
+            echo "::error::update_queue.json 無效，唔可以當 stage 0 繼續"; exit 1; }
           echo "stage=$STAGE" >> "$GITHUB_OUTPUT"
           echo "今日更新階段：$STAGE"
 
-      # ============ 第 2 步：新機官網核實（分兩日；fetch_* 共用 crawl_utils） ============
+      # ============ 第 2 步：新機官網核實（分兩日；有實際完成證據先推進隊列） ============
       - name: 官網核實第一批（新機後第 1 日）
         if: steps.stage.outputs.stage == '1'
-        run: |
-          python fetch_official.py || true
-          python fetch_shew.py || true
-          python fetch_rasonic.py || true
-          python advance_queue.py
+        env:
+          AIRCON_OFFICIAL_RECEIPT: ${{ runner.temp }}/aircon-official-receipt.json
+        run: python scripts/run_official_batch.py --stage 1
 
       - name: 官網核實第二批（新機後第 2 日）
         if: steps.stage.outputs.stage == '2'
+        env:
+          AIRCON_OFFICIAL_RECEIPT: ${{ runner.temp }}/aircon-official-receipt.json
+        run: python scripts/run_official_batch.py --stage 2
+
+      - name: 投影官網 pending status（D1-B；queue coverage 不足時 UI 顯示待核）
+        if: steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2'
         run: |
-          python fetch_carrier.py || true
-          python fetch_general.py || true
-          python fetch_specs.py || true
-          python advance_queue.py
+          python scripts/publish_official_status.py \
+            --receipt "${{ runner.temp }}/aircon-official-receipt.json" \
+            --out official_batch_status.json
+
+      - name: 上載官網核實 machine receipt（審計；queue 未必已推進）
+        if: always() && (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: official-batch-receipt-${{ github.run_id }}
+          path: ${{ runner.temp }}/aircon-official-receipt.json
+          retention-days: 30
+          if-no-files-found: warn
 
       # ============ 第 3 步：價錢快照批次（BigGo 官方 JSON API；進度由 batch_utils 共用管理） ============
       # 2026-08-26：改用官方 API api.biggo.com（同被限流嘅網頁版 biggo.hk 唔同 host）
@@ -93,18 +120,42 @@ jobs:
         env:
           BIGGO_CLIENT_ID: ${{ secrets.BIGGO_CLIENT_ID }}
           BIGGO_CLIENT_SECRET: ${{ secrets.BIGGO_CLIENT_SECRET }}
+          FORCE_PRICE_BATCH: ${{ github.event.inputs.force_price_batch }}
         run: |
-          if [ "${{ github.event.inputs.force_price_batch }}" = "true" ]; then
-            echo "🚀 強行全量批次（一次性測試）：全部型號一次過 + 淘汰確認"
-            python fetch_biggo.py --force-batch || true
+          set +e
+          mode="skip-not-active"; rc=0
+          if [ "$FORCE_PRICE_BATCH" = "true" ]; then
+            echo "🚀 強行全量批次（一次性測試）：腳本內部會先 smoke，再全部型號一次過 + 淘汰確認"
+            python fetch_biggo.py --force-batch
+            rc=$?; mode="force-batch"
           elif python fetch_biggo.py --smoke; then
-            if python -c "import sys; from batch_utils import price_batch_active; sys.exit(0 if price_batch_active() else 1)"; then
-              python fetch_biggo.py --price-batch || true
+            python scripts/price_batch_state.py >/dev/null 2>&1
+            pb_rc=$?
+            if [ "$pb_rc" -eq 0 ]; then
+              python fetch_biggo.py --price-batch
+              rc=$?; mode="price-batch"
+            elif [ "$pb_rc" -eq 1 ]; then
+              echo "價錢批次未啟動，跳過（未刷新，保留現有價錢快照）"
             else
-              echo "價錢批次未啟動，跳過"
+              echo "::error::prices_meta.json 損毀，阻斷（唔可以當未啟動跳過）"
+              exit 2
             fi
           else
-            echo "⚠️ BigGo API smoke 失敗，跳過本批，唔硬碰"
+            echo "⚠️ BigGo API smoke 失敗，跳過本批（未刷新，保留現有價錢快照），唔硬碰"
+            mode="skip-smoke-failed"
+          fi
+          set -e
+          {
+            echo "### BigGo 價錢快照"
+            echo "- mode: $mode"
+            echo "- exit: $rc"
+            if [ "$mode" = "skip-smoke-failed" ] || [ "$mode" = "skip-not-active" ]; then
+              echo "- 明確結果：本批未刷新，保留現有價錢快照（skip 唔等於抓取成功）"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY" || true
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::BigGo 批次真失敗（exit $rc，代碼 $mode）：未推進批次進度，保留現有快照"
+            exit "$rc"
           fi
 
       # ============ 第 4 步：安全閘門 + 生成網頁/PDF + 部署元數據 + 上線 ============
@@ -117,30 +168,34 @@ jobs:
           cp 空調對比報告.html index.html
 
       # GATE-06 兩階段（D14）：核心事實 → PDF 用同 run metadata → finalize payload hash
+      # datasetDate／datasetRetrievedAt／datasetSourceUrl／datasetSnapshotId 全部由
+      # emsd_receipt.json（成功、hash-bound）提供；唔再手填 runner 日期冒充。
       - name: 生成部署核心 metadata（GATE-06 · 階段 1：同 run 核心事實）
         run: |
           DATASET_HASH="sha256:$(sha256sum emsd_空調能源標籤.csv | cut -d' ' -f1)"
           RAW_RECORDS=$(python -c "import csv;print(sum(1 for _ in csv.reader(open('emsd_空調能源標籤.csv',encoding='utf-8-sig'))) - 1)")
           REGISTRATIONS=$(python -c "from crawl_utils import load_registrations;print(len(load_registrations()))")
           MODELS=$(python -c "from crawl_utils import load_models;print(len(load_models()))")
+          # build 加 run attempt：同一 run number 重跑都有唯一 build（符合 metadata Schema）
           # core 寫入 RUNNER_TEMP（repo 外），唔會被 commit／部署；未 finalize（無 hash）過唔到正式 Schema
           python scripts/gen-metadata.py \
             --stage core \
             --out "$RUNNER_TEMP/metadata.core.json" \
             --version "$(python -c 'import models_data;print(models_data.VERSION)')" \
-            --build "B$(date -u +%Y%m%d).${GITHUB_RUN_NUMBER}" \
+            --build "B$(date -u +%Y%m%d).${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}" \
             --commit "$GITHUB_SHA" \
             --workflow-run-id "$GITHUB_RUN_ID" \
-            --dataset-date "$(date +%F)" \
-            --dataset-date-basis retrieval-date-fallback \
-            --dataset-source-url "https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php" \
-            --dataset-snapshot-id "emsd-$(date +%F)" \
+            --emsd-receipt emsd_receipt.json \
+            --dataset-csv emsd_空調能源標籤.csv \
             --dataset-hash "$DATASET_HASH" \
             --record-count "$MODELS" \
             --raw-record-count "$RAW_RECORDS" \
             --registration-count "$REGISTRATIONS" \
             --model-count "$MODELS"
           echo "✅ 核心事實：modelCount=$MODELS · registrationCount=$REGISTRATIONS · rawRecordCount=$RAW_RECORDS"
+
+      - name: 驗證核心事實（未 finalize 唔可以生成 PDF）
+        run: python scripts/validate_metadata.py --core "$RUNNER_TEMP/metadata.core.json"
 
       - name: 生成 PDF 報告（report.pdf-export · 用同 run 核心 metadata）
         run: python generate_pdf.py --metadata "$RUNNER_TEMP/metadata.core.json"
@@ -158,19 +213,34 @@ jobs:
       - name: 驗證 metadata.json（GATE-06）
         run: python scripts/validate_metadata.py
 
-      - name: 提交並推送（有變更先提交）
+      # 封裝後、提交前：以 loopback 驗證「本次候選」Web/PDF/CSV/metadata 自洽
+      # （E2 本地演練，唔係 live E4；錯版本／錯 bytes 會阻止 commit）
+      - name: 驗證本次候選包（loopback；非 E4）
+        run: |
+          python scripts/verify_candidate.py \
+            --artifacts-dir . \
+            --report "$RUNNER_TEMP/candidate-postdeploy.json"
+          cat "$RUNNER_TEMP/candidate-postdeploy.json"
+
+      - name: 提交並推送（精確 allowlist）
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
+          # 只用明確 allowlist stage（唔會 git add -A；allowlist 以外改動即 fail-closed）
+          python scripts/stage_artifacts.py
           # GATE：payload 工作樹 bytes 必須等於 git index bytes
           # （防止 .gitattributes eol=lf 正規化令 datasetHash／releasePayloadHash 同發佈 bytes 唔一致）
           python scripts/check_payload_bytes_vs_index.py
-          # GATE：公開 repo 私隱（HEAD 禁止個人／自建環境識別資料）
-          python scripts/check_public_privacy.py
+          # GATE：公開 repo 私隱（掃 staged index blob，唔係 worktree 現況）
+          python scripts/check_public_privacy.py --mode index
           if git diff --cached --quiet; then
             echo "無變更，跳過提交"
           else
             git commit -m "自動更新：新機偵測及規格同步（$(date -u +%F)）"
-            git push || { git pull --rebase && git push; }
+            # push fail-closed：唔會 pull --rebase 把未驗證來源混入已封裝 commit；
+            # 失敗即要求重新觸發 run 由頭建包。
+            if ! git push; then
+              echo "::error::push 失敗：候選包已封裝但未上線。唔會 pull/rebase；請重新觸發 run 由頭建包。"
+              exit 1
+            fi
           fi

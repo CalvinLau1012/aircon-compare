@@ -11,7 +11,7 @@ import re
 import sys
 import time
 
-from crawl_utils import fetch, no_verify_ssl_context
+from crawl_utils import fetch, no_verify_ssl_context, batch_failed, save_json, emit_fetch_receipt
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -102,38 +102,61 @@ def parse_panasonic(html):
 
 def fetch_panasonic(existing=None):
     results = {}
+    attempted = errors = 0
+    skipped = []
+    failed = []
     for model, url in PANASONIC:
         if existing and model in existing and existing[model].get('size'):
+            skipped.append(model)
             continue
+        attempted += 1
         try:
             html = get(url)
             spec = parse_panasonic(html)
+            if not any((spec.get('size'), spec.get('weight'), spec.get('warranty'), spec.get('title'))):
+                raise ValueError('冇有效規格（可能係空白／登入／錯誤頁）')
             spec['url'] = url
             results[model] = spec
             print(f"  {model}: {spec.get('size','?')[:40]} | {spec.get('weight','?')[:25]} | heat={spec['heat']} cool={spec['cool']}")
         except Exception as e:
+            errors += 1
+            failed.append(model)
             print(f'  {model}: ERR {str(e)[:60]}')
         time.sleep(0.3)
-    return results
+    return results, attempted, errors, skipped, failed
 
 
 def fetch_hitachi(existing=None):
     results = {}
+    attempted = errors = 0
+    skipped = []
+    failed = []
     models = set()
     for url in HITACHI_PAGES:
+        attempted += 1
         try:
             html = get(url)
             body = strip_html(html)
             for m in re.finditer(r'\b(RAW-[A-Z]{2}\d{2}[A-Z]+|RA-\d{2}[A-Z]+)\b', body):
                 models.add(m.group(1).upper())
         except Exception as e:
+            errors += 1
+            failed.append(f'URL:{url}')
             print(f'  列表頁 {url[-25:]}: ERR {str(e)[:50]}')
         time.sleep(0.2)
+    if not models and attempted:
+        errors += 1
+        for url in HITACHI_PAGES:
+            if f'URL:{url}' not in failed:
+                failed.append(f'URL:{url}')
+        print('  HITACHI 列表頁全部解析唔到型號（可能係空白／登入／錯誤頁），唔可以當成功', file=sys.stderr)
     print(f'HITACHI 在售型號 {len(models)} 個: {sorted(models)}')
     base = 'https://www.hitachi-homeappliances.com.hk/tc/products/'
     for model in sorted(models):
         if existing and model in existing and existing[model].get('size'):
+            skipped.append(model)
             continue
+        attempted += 1
         url = base + model.lower() + '.html'
         try:
             html = get(url)
@@ -149,20 +172,29 @@ def fetch_hitachi(existing=None):
                 'cool': '淨冷' in body or '窗口式冷氣機' in body,
                 'url': url,
             }
+            if not any((spec.get('size'), spec.get('weight'), spec.get('energy'), spec.get('gas'))):
+                raise ValueError('冇有效規格（可能係空白／登入／錯誤頁）')
             results[model] = spec
             print(f"  {model}: {spec.get('size','?')[:50]} | {spec.get('weight','?')[:20]} | {spec.get('gas','?')[:25]}")
         except Exception as e:
+            errors += 1
+            failed.append(model)
             print(f'  {model}: ERR {str(e)[:50]}')
         time.sleep(0.25)
-    return results
+    return results, attempted, errors, skipped, failed
 
 
 def fetch_comfee(existing=None):
     results = {}
+    attempted = errors = 0
+    skipped = []
+    failed = []
     for slug in COMFEE_MODELS:
         key = slug.upper()
         if existing and key in existing and existing[key].get('size'):
+            skipped.append(key)
             continue
+        attempted += 1
         url = f'https://www.feelcomfee.com/hk/products/air-conditioner/{slug}'
         try:
             html = get(url)
@@ -176,12 +208,16 @@ def fetch_comfee(existing=None):
                 'energy': grab(body, ['能源標籤'], 40),
                 'url': url,
             }
+            if not any((spec.get('size'), spec.get('weight'), spec.get('gas'), spec.get('energy'))):
+                raise ValueError('冇有效規格（可能係空白／登入／錯誤頁）')
             results[slug.upper()] = spec
             print(f"  {slug.upper()}: {spec.get('size','?')[:45]} | {spec.get('weight','?')[:22]} | gas={spec.get('gas','?')[:20]}")
         except Exception as e:
+            errors += 1
+            failed.append(key)
             print(f'  {slug.upper()}: ERR {str(e)[:50]}')
         time.sleep(0.25)
-    return results
+    return results, attempted, errors, skipped, failed
 
 
 def main():
@@ -190,21 +226,30 @@ def main():
     if os.path.exists(out_path):
         with open(out_path, encoding='utf-8') as f:
             all_results = json.load(f)
-    r = fetch_panasonic(all_results)
-    all_results.update(r)
-    with open(out_path, 'w', encoding='utf-8') as f:
-        json.dump(all_results, f, ensure_ascii=False, indent=1)
-    print(f'Panasonic 完成，累計 {len(all_results)} 個型號')
-    r2 = fetch_hitachi(all_results)
-    all_results.update(r2)
-    with open(out_path, 'w', encoding='utf-8') as f:
-        json.dump(all_results, f, ensure_ascii=False, indent=1)
-    print(f'HITACHI 完成，累計 {len(all_results)} 個型號')
-    r3 = fetch_comfee(all_results)
-    all_results.update(r3)
-    with open(out_path, 'w', encoding='utf-8') as f:
-        json.dump(all_results, f, ensure_ascii=False, indent=1)
-    print(f'COMFEE 完成，累計 {len(all_results)} 個型號')
+    # 只喺記憶體累積；任何目標失敗都唔會寫出部分結果覆寫上次完整快照。
+    base = dict(all_results)
+    r, pa, pe, ps, pf = fetch_panasonic(base)
+    base.update(r)
+    r2, ha, he, hs, hf = fetch_hitachi(base)
+    base.update(r2)
+    r3, ca, ce, cs, cf = fetch_comfee(base)
+    base.update(r3)
+    attempted = pa + ha + ca
+    errors = pe + he + ce
+    already_verified = list(ps) + list(hs) + list(cs)
+    succeeded_models = (list(r.keys()) + list(r2.keys()) + list(r3.keys()))
+    emit_fetch_receipt('fetch_official.py', attempted, attempted - errors, errors,
+                       succeeded_models=succeeded_models, already_verified=already_verified,
+                       failed_models=list(pf) + list(hf) + list(cf))
+    if batch_failed(attempted, errors):
+        print(f'❌ Panasonic/HITACHI/COMFEE {errors}/{attempted} 個目標失敗，'
+              '唔覆寫現有快照，留待下次重試', file=sys.stderr)
+        sys.exit(1)
+    if base == all_results:
+        print(f'ℹ️ official 冇新資料（全部目標已 skip／庫存已最新），保留現有快照', file=sys.stderr)
+        return
+    save_json(out_path, base, indent=1)
+    print(f'完成，累計 {len(base)} 個型號（Panasonic+HITACHI+COMFEE）')
 
 
 if __name__ == '__main__':

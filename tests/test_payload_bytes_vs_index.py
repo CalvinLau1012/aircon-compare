@@ -79,4 +79,4 @@ def test_missing_payload_is_blocked(tmp_path):
     os.remove(os.path.join(repo, 'a.csv'))
     r = _gate(repo)
     assert r.returncode == 1, r.stdout + r.stderr
-    assert '缺少 payload 檔案' in r.stderr, r.stderr
+    assert ('缺少 payload 檔案' in r.stderr or 'payload 檔案唔存在' in r.stderr), r.stderr

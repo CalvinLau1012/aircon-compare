@@ -154,6 +154,45 @@ def jitter_sleep(lo=0.3, hi=0.9):
     time.sleep(random.uniform(lo, hi))
 
 
+def emit_fetch_receipt(script, attempted, succeeded, failed, succeeded_models=None,
+                       already_verified=None, failed_models=None, covers=None, extra=None):
+    """印出可審計機器 receipt（單行 JSON；wrapper 解析）；唔含 token／私人路徑。
+
+    契約：attempted == succeeded + failed；len(succeededModels)==succeeded；
+    len(failedModels)==failed；covers == canonical union(succeededModels, alreadyVerified)。
+    """
+    import sys as _sys
+    succ = sorted({str(m) for m in (succeeded_models or [])})
+    already = sorted({str(m) for m in (already_verified or [])})
+    failm = sorted({str(m) for m in (failed_models or [])})
+    cov = sorted({str(m) for m in (covers if covers is not None else succ + already)})
+    payload = {
+        'schemaVersion': 1,
+        'script': script,
+        'attempted': int(attempted),
+        'succeeded': int(succeeded),
+        'failed': int(failed),
+        'succeededModels': succ,
+        'failedModels': failm,
+        'alreadyVerified': already,
+        'covers': cov,
+    }
+    if extra:
+        payload.update(extra)
+    _sys.stdout.write('AIRCON_FETCH_RECEIPT ' + json.dumps(payload, ensure_ascii=False) + '\n')
+    _sys.stdout.flush()
+
+
+def batch_failed(attempted, errors):
+    """批次成敗判定：任一「實際嘗試」嘅目標失敗就係失敗（errors > 0）。
+
+    - 已有有效資料而明確 skip 嘅目標唔計 attempted，亦唔算失敗；
+    - attempted=0（完全冇待抓目標）唔算失敗，可成功保留既有快照；
+    - 任何失敗都唔可以寫出部分結果覆寫上次完整快照（呼叫方須先檢查）。
+    """
+    return errors > 0
+
+
 def fetch(url, timeout=15, retries=3, extra_headers=None, context=None):
     """帶退避重試嘅 GET（返回解碼文字）；連續 403/429 會拋出 HTTPError（叫用方應停止而非硬碰）
 
@@ -195,10 +234,13 @@ def load_json(path, default=None):
 
 
 def save_json(path, data, indent=None):
-    """寫 JSON（ensure_ascii=False），自動建 parent directory"""
+    """原子寫 JSON（ensure_ascii=False）；先寫 tmp 再 os.replace，失敗唔會留低半寫檔。"""
+    path = os.fspath(path)
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    with open(path, 'w', encoding='utf-8') as f:
+    tmp = path + '.tmp'
+    with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
         json.dump(data, f, ensure_ascii=False, indent=indent)
+    os.replace(tmp, path)
 
 
 def html_to_text(html, joiner=' ', keep_lines=False):

@@ -11,7 +11,7 @@ import re
 import sys
 import time
 
-from crawl_utils import fetch, no_verify_ssl_context
+from crawl_utils import fetch, no_verify_ssl_context, batch_failed, save_json, emit_fetch_receipt
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -34,7 +34,11 @@ def main():
     with open(os.path.join(BASE, 'rasonic_urls.json'), encoding='utf-8') as f:
         urls = json.load(f)
     out = {}
+    attempted = errors = 0
+    error_models = []
     for i, url in enumerate(urls):
+        attempted += 1
+        model_key = None
         try:
             html = get(url)
             name = desc = price = ''
@@ -50,9 +54,14 @@ def main():
                         price = str(off.get('price', '') or off.get('lowPrice', ''))
                 except Exception:
                     pass
-            # 型號：從名稱提取 RC- 開頭
+            # 型號：從名稱提取 RC- 開頭；提取不到 = 非產品／登入／錯誤頁，唔算成功
             m = re.search(r'\b(RC-[A-Z0-9]+)', name.upper())
-            model = m.group(1) if m else 'UNKNOWN-' + str(i)
+            if not m:
+                raise ValueError('搵唔到有效型號（可能係空白／登入／錯誤頁）')
+            model = m.group(1)
+            model_key = model
+            if not name.strip():
+                raise ValueError('冇產品名稱，無法確認身份')
             if not price:
                 mp = re.search(r'<meta[^>]+property="og:price:amount"[^>]+content="([\d.]+)"', html)
                 price = mp.group(1) if mp else ''
@@ -74,11 +83,21 @@ def main():
             out[model] = item
             print(f"{model}: {price:>9} | {item['mode'] or '-':4} | wifi={item['wifi'] or '-':4} | {name[:50]}")
         except Exception as e:
+            errors += 1
+            error_models.append(model_key or f'URL:{url}')
             print(f'{url[-40:]}: ERR {str(e)[:50]}')
         time.sleep(0.2)
 
-    with open(os.path.join(BASE, 'rasonic_official.json'), 'w', encoding='utf-8') as f:
-        json.dump(out, f, ensure_ascii=False, indent=1)
+    emit_fetch_receipt('fetch_rasonic.py', attempted, attempted - errors, errors,
+                       succeeded_models=list(out.keys()), failed_models=error_models)
+    if batch_failed(attempted, errors):
+        print(f'❌ Rasonic {errors}/{attempted} 個目標失敗，唔覆寫現有快照，留待下次重試', file=sys.stderr)
+        sys.exit(1)
+    out_path = os.path.join(BASE, 'rasonic_official.json')
+    if not out and os.path.exists(out_path):
+        print('ℹ️ Rasonic 冇任何目標資料，保留現有快照', file=sys.stderr)
+        return
+    save_json(out_path, out, indent=1)
     print(f'完成 {len(out)} 個型號')
 
 

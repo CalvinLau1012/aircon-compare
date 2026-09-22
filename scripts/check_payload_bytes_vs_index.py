@@ -35,11 +35,27 @@ def index_blob_bytes(repo, rel):
     return r.stdout
 
 
+def _load_gen_metadata():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        'aircon_gen_metadata_for_index',
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gen-metadata.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def check(repo, manifest_path):
     manifest = json.load(open(manifest_path, encoding='utf-8'))
     files = manifest.get('files')
     if not isinstance(files, list) or not files:
         print('❌ manifest 缺少非空 files 陣列', file=sys.stderr)
+        return 1
+    # 共用 manifest 路徑契約（相對路徑／無 ..／無重複／無 symlink escape）
+    try:
+        files = _load_gen_metadata().validate_manifest_files(files, base=repo)
+    except (ValueError, FileNotFoundError) as e:
+        print(f'❌ manifest 路徑契約失敗：{e}', file=sys.stderr)
         return 1
     bad = 0
     for rel in files:
