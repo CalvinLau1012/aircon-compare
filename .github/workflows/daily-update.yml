@@ -26,9 +26,13 @@ concurrency:
 
 jobs:
   pull-request-gates:
+    # PR 正常路徑：same-repo PR；另准 workflow_dispatch on non-master ref 作 bootstrap
+    # trusted-CI run（唯讀，不 deploy），因為新頁面 workflow 未 merge 前唔會收到 PR event。
     if: >
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref != 'refs/heads/master')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
