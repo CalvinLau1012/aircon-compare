@@ -97,14 +97,18 @@ def test_no_action_uses_major_tag_anywhere():
 
 # ---------------------------------------------------------------- daily-update
 
-def test_daily_playwright_before_first_pytest_and_installed_once():
+def test_daily_playwright_before_first_pytest_and_installed_once_per_job():
     text = _text('daily-update.yml')
-    assert text.count('playwright install chromium --with-deps') == 1, (
-        'Chromium 只應該安裝一次')
+    # 一個係 update job，一個係 PR bootstrap gate job；每個 job 最多一次。
+    assert text.count('playwright install chromium --with-deps') == 2, (
+        '每個 job 只應該安裝 Chromium 一次')
     assert 'pip install playwright' not in text, 'requirements-dev 已有 playwright，唔需要重複 pip install'
-    i_install = text.index('playwright install chromium')
-    i_first_pytest = text.index('python -m pytest tests/ -q --ignore=tests/browser_smoke.py')
+    update_text = text[text.index('  update:'):]
+    i_install = update_text.index('playwright install chromium')
+    i_first_pytest = update_text.index('python -m pytest tests/ -q --ignore=tests/browser_smoke.py')
     assert i_install < i_first_pytest, 'Chromium 必須喺第一次 pytest 之前安裝'
+    pr_text = text[text.index('  pull-request-gates:'):text.index('  update:')]
+    assert pr_text.index('playwright install chromium') < pr_text.index('run_acceptance.py')
 
 
 def test_daily_uses_explicit_staging_allowlist_and_index_privacy():

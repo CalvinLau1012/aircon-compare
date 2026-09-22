@@ -4,6 +4,9 @@ on:
   schedule:
     # 香港時間每日 00:30（UTC 16:30）輕量偵測；有新機先觸發分批更新
     - cron: '30 16 * * *'
+  # PR 只跑唯讀 gates，永不執行 update／deploy（bootstrap：呢個 workflow 已喺 default branch，
+  # 令新 Pages workflow 未 merge 前都有 exact-SHA PR checks）
+  pull_request:
   # 亦可以喺 GitHub Actions 頁面手動觸發（只限 master，見 job if）
   workflow_dispatch:
     inputs:
@@ -22,6 +25,50 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pull-request-gates:
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: 取出 PR head（exact commit）
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 設定 Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 安裝依賴
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: 安裝 Chromium
+        run: playwright install chromium --with-deps
+
+      - name: 完整本機 gates（PR）
+        run: |
+          python scripts/run_acceptance.py \
+            --report "$RUNNER_TEMP/pr-acceptance.json" \
+            --log-dir "$RUNNER_TEMP/pr-acceptance-logs"
+
+      - name: D4-A 全歷史審計（PR）
+        run: |
+          python scripts/check_public_history.py --all-refs \
+            --report "$RUNNER_TEMP/pr-history-audit.json"
+
+      - name: D2-A Pages artifact 驗證（PR 不部署）
+        run: |
+          python scripts/build_pages_artifact.py --check-only \
+            --report "$RUNNER_TEMP/pr-pages-artifact.json"
+
   update:
     # 受信任來源限制：schedule 只喺 default branch；手動 dispatch 只准 master。
     # 唔接受 PR／fork 上下文（呢個 workflow 亦唔會由 PR 觸發）。

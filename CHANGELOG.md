@@ -124,7 +124,9 @@
   `id-token:write`）；新增 `build_pages_artifact.py`，artifact 只可含 manifest 公開檔案，
   拒 symlink／缺檔／額外私人檔／traversal；`postdeploy-verify.yml` 改綁新 workflow 嘅
   `head_sha`，不再接受舊 Pages `dynamic`／latest master fallback；所有新 Actions 固定
-  refs API 核實完整 commit。
+  refs API 核實完整 commit。新 Pages workflow 未存在於 default branch 前，`daily-update.yml`
+  另加唯讀 `pull-request-gates` job（只 same-repo PR、contents:read、exact head SHA、不 deploy），
+  確保呢個 PR 有 trusted CI checks；merge 後由 `pages-deploy.yml` 接手。
 - **D4-A 全歷史秘密審計**：新增 `check_public_history.py`（reachable refs blob 掃描，
   credential 必須 0；self-host path 只列 residual risk，報告不寫 secret 原文）及負向測試；
   Pages workflow 加 `fetch-depth: 0`＋history audit gate。實跑 208 commits／934 blobs：

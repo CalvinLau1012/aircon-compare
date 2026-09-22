@@ -399,7 +399,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | 類別 | 內容 |
 | ------ | ------ |
 | 🚦 D1-B | 官網批次分開硬失敗與 coverage pending；pending 原樣保留 queue／models 並出公開 status，UI 顯示「官網規格待核」；壞 receipt／failed／hash race 仍阻斷 |
-| 🌐 D2-A | 新增 `pages-deploy.yml`：PR build＋7 gates 不部署；master deploy 需 build 通過、`github-pages` environment、最小 Pages 權限；artifact 只含 manifest 公開檔，拒 symlink／traversal／額外私人檔；`postdeploy-verify` 綁 exact head_sha |
+| 🌐 D2-A | 新增 `pages-deploy.yml`：PR build＋7 gates 不部署；master deploy 需 build 通過、`github-pages` environment、最小 Pages 權限；artifact 只含 manifest 公開檔，拒 symlink／traversal／額外私人檔；`postdeploy-verify` 綁 exact head_sha；新 workflow merge 前由 `daily-update.yml` 唯讀 PR gates bootstrap |
 | 🕵️ D4-A | 新增 `check_public_history.py` 全 reachable refs credential audit（實跑 0 credential findings；self-host 只列 residual risk）；報告寫 repo 外 |
 | 🧾 D7-A | `fetch_emsd.py` 保存逐頁原始 bytes hash＋公開 `emsd_raw_receipt.json`；私人 sink 介面／require fail-closed／90 日 retention；raw bytes 不入公開 artifact |
 | ⏱️ D8-A | 72h 新鮮度硬邊界、6 小時 monitor、單一 issue 去重／更新／恢復關閉；postdeploy hash／schema 先驗 |

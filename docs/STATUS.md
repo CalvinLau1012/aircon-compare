@@ -250,6 +250,10 @@
 - D5-A 私人 repo visibility API 回讀 PRIVATE；fresh clone `SHA256SUMS` 25/25 通過，
   逐檔 bytes 與來源 Temp 包一致（Temp 原件未刪）。
 
+- PR bootstrap：新 `pages-deploy.yml` 未存在於 default branch 前唔會 trigger；已喺既有
+  `daily-update.yml` 加唯讀 `pull-request-gates`（same-repo PR、contents:read、exact PR
+  head SHA、跑 acceptance＋history audit＋artifact check-only，不 deploy）作臨時 trusted PR checks。
+
 ### 10.3 外部未執行（不可虛構）
 
 
