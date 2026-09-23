@@ -622,10 +622,11 @@ def main():
                 raw_records, dataset_hash=dataset_hash, retrieved_at=retrieved_at,
                 source_url=BASE.rstrip('&p='), total_rows=len(all_rows),
                 per_page_rows=per_page)
+            # D7-A：公開 receipt 只保留非敏感事實；唔寫 private sink 嘅 objectId／
+            # asset 名（可能含 compact timestamp），避免 private 儲存識別流入公開 repo。
             raw_receipt['privateArchive'] = {
                 'persisted': True,
                 'adapter': sink_result.get('adapter'),
-                'objectId': sink_result.get('objectId'),
                 'archiveHash': sink_result.get('archiveHash'),
                 'verified': sink_result.get('verified') is True,
                 'durableRemote': sink_result.get('durableRemote') is True,

@@ -130,6 +130,12 @@ def test_success_writes_public_raw_receipt_and_private_sink(env, monkeypatch):
     success = json.loads((env / 'emsd_receipt.json').read_text(encoding='utf-8'))
     assert raw_receipt['success'] is True and raw_receipt['pageCount'] == 2
     assert raw_receipt['privateArchive']['persisted'] is True
+    assert 'objectId' not in raw_receipt['privateArchive'], (
+        '公開 raw receipt 唔可以包含 private sink objectId／asset 名')
+    import re as _re
+    assert not _re.search(r'\b\d{8}T\d{6}Z\b',
+                          json.dumps(raw_receipt, ensure_ascii=False)), (
+        '公開 raw receipt 唔可以包含 private compact timestamp')
     assert raw_receipt['archiveHash'] == raw_receipt['privateArchive']['archiveHash']
     assert success['rawReceiptHash'] == 'sha256:' + hashlib.sha256(
         (env / 'emsd_raw_receipt.json').read_bytes()).hexdigest()
