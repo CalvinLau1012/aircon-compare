@@ -84,6 +84,14 @@ jobs:
             --report "$RUNNER_TEMP/reports/acceptance.json" \
             --log-dir "$RUNNER_TEMP/reports/logs"
 
+      - name: 功能契約報告（GATE-09 歸檔前置；機器可讀）
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/reports"
+          python scripts/feature-check.py --run-tests \
+            --report "$RUNNER_TEMP/reports/feature-check.json" \
+            2>&1 | tee "$RUNNER_TEMP/reports/feature-check.txt"
+
       - name: 部署後核對（GATE-08 前置；錯版本／錯 bytes／PDF 唔符阻斷歸檔）
         run: |
           set -euo pipefail
