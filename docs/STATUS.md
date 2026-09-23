@@ -350,3 +350,75 @@
 - **未執行**：未 merge PR、未部署、未建立 tag／Release、未執行 publish、未操作 Secrets；
   E3／E4 及首次真實 approval flow 仍未驗收。
 - **決策記錄**：見 `docs/DECISIONS.md` D19。
+
+## 14. 2026-09-23 R8：remote raw sink 接線與合併前發布路徑核對（PR #10）
+
+> 用戶已批准按序發布（需求摘要「用戶發布授權」／DECISIONS D20）；本節只係合併前候選
+> 證據（E1／E2）。未 merge、未 deploy、未切 Pages Source、未 tag／Release、未操作 Secrets；
+> 生產執行交回獨立驗收後。E3／E4 仍 UNKNOWN。
+
+### 14.1 本次修正（發布阻斷點）
+
+| 項目 | Root cause | 修正 | 證據 |
+| --- | --- | --- | --- |
+| daily remote raw sink 未接線 | `daily-update.yml` fetch step 只傳 `AIRCON_EMSD_REQUIRE_RAW_SINK`／`AIRCON_EMSD_RAW_SINK_DIR`；即使平台設好 remote Secret，adapter 都收唔到 `REPO`／`TOKEN` | fetch step env 接入 `AIRCON_EMSD_RAW_REMOTE_REPO`／`_TOKEN`／`_TAG`／`_RETENTION_DAYS`，全部精確對應 `secrets.*`；註明私人 repo 識別唔准入 repo／Variables／log；local-dir 標明過渡非 durable；require 缺配置／上傳失敗維持阻斷 | `tests/test_workflow_security.py::test_daily_raw_sink_env_wiring_secret_only_and_fail_closed`；`tests/test_private_raw_sink.py`（partial config／未配置 require／下載核驗失敗 raise） |
+
+### 14.2 merge→首次 daily→Pages→postdeploy→archive 前置與失敗條件（現行實作）
+
+1. **merge push 自動觸發 `pages-deploy.yml`（push／production）**：checkout merge commit →
+   `verify_deploy_request --event push`（HEAD==commit、master 祖先）→ 7 gates →
+   `build_pages_artifact`。committed metadata 仍為 1.2.8，`models_data.VERSION=1.2.9`，
+   payload 亦已由候選重建；本機實測 fail-closed（rc=1：`releasePayloadHash 唔一致`＋
+   `metadata.version 1.2.8 != models_data.VERSION 1.2.9`）→ **唔會用舊 metadata 部署**。
+   此為設計行為，唔可以為綠燈放寬。
+2. **首個 daily（schedule 或 master `workflow_dispatch`）**：gates → EMSD 抓取
+   （require sink 未配置即阻斷）→ 1.2.9 收據 hash-bound core metadata → PDF → finalize
+   payload hash → validate → `verify_candidate` → 精確 allowlist stage → privacy index →
+   commit＋push → `repository_dispatch`（精確新 commit＋sourceRunId／attempt）。
+3. **Pages production（repository_dispatch）**：`verify_deploy_request` 有界 polling
+   source run completed/success、workflow path `daily-update.yml`、單親 direct parent ==
+   source head_sha、metadata `workflowRunId`／`commit` 綁定；再 7 gates＋history audit →
+   `build_pages_artifact`（version 1.2.9 一致）→ deploy job（`github-pages` environment）。
+   **平台前置：Pages Source 需由 legacy 切為 GitHub Actions（人手，未執行）**；否則 deploy
+   job 失敗，E4 無法取得。
+4. **postdeploy-verify（workflow_run）**：只接新 Pages workflow success（master／push／
+   dispatch）→ 線上 metadata／payload hash／CSV／PDF／瀏覽器 runtime 比對＝E4。
+5. **Release 歸檔**：E4 通過後人手 dispatch `release-archive.yml`（`environment: release`
+   人工批准；`publish=true` 才建 Release）；tag 必須等於 metadata.version；先跑 GATE-08
+   再打包，任何 hash／報告錯即阻斷。歸檔只讀 production payload；本輪 full acceptance
+   後 worktree 保持 clean（見 14.3）。
+
+### 14.3 本輪實數（OBSERVED / E2；commit `75f3daa`）
+
+- `scripts/run_acceptance.py`：**ok=true、7 gates 全部 rc=0**；machine manifest commit
+  `75f3daa5f33bf9b681c66acd22c0ab5355a3960b`（即 14.1 修正＋D20 之後、STATUS 本節之前；
+  本節只追加文件）。
+- PYTEST gate：**518 passed、0 failed、1 warning**；JUnit／log SHA-256 已寫入 repo 外報告。
+- `feature-check.py --run-tests`：15 項 required、**18 個綁定節點全部 passed**（無 skip／xfail／fail）。
+- D4-A `check_public_history.py --all-refs`：230 commits／1,110 blobs、**credentialFindings=0**、
+  selfHostFindings=35（已知私人部署線殘餘風險，只列類型）。
+- focused：`test_workflow_security.py`＋`test_private_raw_sink.py`＋`test_emsd_raw_receipt.py`
+  37 passed；`test_pages_deploy.py`＋`test_verify_deploy_request.py`＋`test_receipt_metadata.py`＋
+  `test_pages_artifact_e2e.py` 97 passed。
+- merge push fail-closed 實測：`build_pages_artifact --check-only` rc=1（版本＋payload hash 錯配）。
+- 本輪**沒有**修改 production payload；acceptance／history report 一律寫 repo 外；
+  worktree 跑完 gates 後 clean。
+
+### 14.4 仍未執行（UNKNOWN）
+
+- merge PR #10、Pages Source 切換、首次 daily、`repository_dispatch` E3、live E4、tag／Release。
+- D7 remote provider 選擇＋Secrets（repo 目前 Secrets 只有 BigGo／PricesAPI；未讀取／未新增）；
+  require 模式仍未啟用，公開 raw receipt 未產生。
+- 首次真實 `release` environment approval flow。
+
+### 14.5 下一階段（由獲授權執行者；觀察標準）
+
+1. 人手切 Pages Source＝GitHub Actions；確認 D19 `release` environment reviewer 仍在。
+2. merge PR #10；預期 merge push Pages run 於 `build_pages_artifact` fail-closed（唔會 deploy）。
+3. 手動 dispatch daily（master）；觀察：gates 全過、新 commit 帶 1.2.9 metadata
+   （`commit` == source run head_sha、`workflowRunId` == 該 run）、push 成功、dispatch 成功。
+4. 觀察 Pages run：`verify_deploy_request` ok、build／deploy success、online metadata ==
+   checkout metadata（整個 object）、UI version 1.2.9／Last Deploy／Last Update 正確。
+5. 觀察 postdeploy-verify success（E4）；有 issue 即停。
+6. E4 後先 tag `v1.2.9`＋`release-archive.yml publish=true`（release environment 人工批准）；
+   核對 CHECKSUMS／PROVENANCE 同 tag／commit 對應。任何一步失敗：停，唔好靠 bypass 或改 metadata。
