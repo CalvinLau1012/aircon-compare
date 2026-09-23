@@ -316,3 +316,28 @@
 - **原因**：（為什麼這樣決定）
 - **後果**：（已知影響）
 ```
+
+
+## D20 · 用戶批准 v1.2.9 按序發布（合併前核對 → merge → daily deploy → E3／E4 → tag／Release）
+
+- **日期**：2026-09-23
+- **狀態**：已批准（本輪只執行合併前修復與證據；生產執行仍待獨立驗收）
+- **背景**：v1.2.9 候選（D16）及 PR #10 返修（D18／R7）已完成本機 E2，但 merge、真實 daily、
+  Pages E4、Release 歸檔全部未發生。用戶需要決定發布授權同次序。
+- **選項**：A：一次過授權合併、部署、tag／Release；B：分階段授權（合併前核對 → merge →
+  正式 update／deploy → E3／E4 通過後才 tag／Release）；C：暫不發布。
+- **決策**：用戶批准 B 的完整次序並確認授權成立。本輪（2026-09-23 R8）只完成合併前修復與證據：
+  remote raw sink env 接線、合併→daily→Pages→postdeploy→archive 前置／失敗條件核對、測試與門禁證據，
+  交回獨立驗收後才執行生產 merge／deploy；tag／Release 僅在 E3／E4 通過後。
+- **原因**：用戶要求嚴守次序，避免未驗證候選直接上線或提早建立長期資產；同時保留 fail-closed 門禁，
+  不為取得綠燈放寬。
+- **後果**：
+  - `REQUIREMENT`：required 功能、protection、Metadata Schema、成功標準及阻斷門禁不變；本次無降級。
+  - `OBSERVED / E2`：remote env 接線測試、merge push fail-closed 實測（1.2.8 vs 1.2.9 版本／
+    payload hash 錯配）、本機 gates／acceptance 實數（見 STATUS §14）。
+  - `UNKNOWN`：merge、Pages Source 切換、首次 daily、repository_dispatch E3、live E4、
+    tag／Release、D7 provider／Secrets、首次 release environment approval 均未執行。
+  - `BOUNDARY`：本輪沒有執行 merge、deploy、tag、Release、Secrets 操作或 Pages 設定變更；
+    亦沒有建立 PAT／共用憑證。無憑證前唔可以宣稱 D7 完成。
+- **回滾**：本決策只記錄授權與次序，無平台狀態改動；如需撤回，以新決策記錄取代，並維持
+  現有 fail-closed 門禁。
