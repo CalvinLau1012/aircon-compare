@@ -8,7 +8,8 @@
   - `--event repository_dispatch`：經 GitHub API 有界 polling 核實
     `client_payload.sourceRunId`／`sourceRunAttempt` 對應嘅 run：
       * run id／run_attempt 精確等於 payload；workflow path 必須係
-        `.github/workflows/daily-update.yml`（API 帶 `@ref` 會安全解析）；
+        `.github/workflows/daily-update.yml`（可帶單一 `./` 前綴，選擇性後綴只接受
+        `@master` 或 `@refs/heads/master`；其他 ref／workflow／多重 `@` 一律拒絕）；
       * 同 repo、event schedule/workflow_dispatch、head_branch master、
         completed + success；`queued`／`in_progress` 只可以短暫存在，timeout 即失敗；
       * 部署 commit 必須只有一個 parent，而且 parent == source run head_sha
@@ -66,20 +67,35 @@ def _default_api(path, token):
         raise VerifyError(f'GitHub API 連線失敗：{type(e).__name__}') from e
 
 
+_ACCEPTED_WORKFLOW_REFS = ('master', 'refs/heads/master')
+
+
 def _normalize_workflow_path(raw):
+    """正規化 workflow run `path`：
+
+    只接受 `.github/workflows/daily-update.yml`（可先移除單一 `./` 前綴），選擇性
+    後綴只接受 `@master` 或 `@refs/heads/master`（GitHub Actions REST workflow-run
+    回讀兩種格式都可能出現）。多重 `@`、其他 branch／tag、其他 workflow、path
+    traversal 或控制字元一律 raise（唔會回傳未 accept 嘅 path）。
+    """
     if not isinstance(raw, str) or not raw.strip():
         raise VerifyError('source run 缺少 workflow path')
     if any(c in raw for c in ('\x00', '\n', '\r', '\t')):
         raise VerifyError('source run workflow path 有非法字元')
     raw = raw.strip()
+    if raw.count('@') > 1:
+        raise VerifyError('source run workflow path 有歧義（多重 @）')
     if '@' in raw:
         path, ref = raw.split('@', 1)
-        if ref.strip() != 'refs/heads/master':
-            raise VerifyError('source run workflow path ref 唔係 refs/heads/master')
-        raw = path
-    path = raw.strip()
-    while path.startswith('./'):
+        if ref not in _ACCEPTED_WORKFLOW_REFS:
+            raise VerifyError('source run workflow path ref 只接受 master／refs/heads/master')
+    else:
+        path = raw
+    path = path.strip()
+    if path.startswith('./'):
         path = path[2:]
+    if path != DAILY_WORKFLOW_PATH:
+        raise VerifyError('source run workflow path 唔係 daily-update.yml')
     return path
 
 

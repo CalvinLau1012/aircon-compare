@@ -144,7 +144,15 @@ def test_run_id_mismatch_rejected(tmp_path):
 @pytest.mark.parametrize('bad_path', [
     '.github/workflows/release.yml@refs/heads/master',
     '.github/workflows/daily-update.yml@refs/heads/other',
+    '.github/workflows/daily-update.yml@main',
+    '.github/workflows/daily-update.yml@refs/heads/main',
+    '.github/workflows/daily-update.yml@refs/tags/v1',
+    '.github/workflows/daily-update.yml@',
+    '.github/workflows/daily-update.yml@master@',
+    '.github/workflows/daily-update.yml@@refs/heads/master',
     '.github/workflows/../daily-update.yml',
+    '././.github/workflows/daily-update.yml',
+    '.github/workflows/daily-update.yml\x00@master',
     '', None, 123,
 ])
 def test_workflow_path_mismatch_rejected(tmp_path, bad_path):
@@ -156,10 +164,32 @@ def test_workflow_path_mismatch_rejected(tmp_path, bad_path):
 
 def test_workflow_path_at_ref_and_dot_prefix_accepted(tmp_path):
     tmp, src, push = _chain(tmp_path)
-    for good in (DAILY_PATH, './.github/workflows/daily-update.yml@refs/heads/master',
-                 '.github/workflows/daily-update.yml'):
+    base = '.github/workflows/daily-update.yml'
+    for good in (base, './' + base,
+                 base + '@master', './' + base + '@master',
+                 DAILY_PATH, './' + DAILY_PATH):
         api = FakeAPI([(200, _run_obj(src, path=good))])
         assert _verify(tmp, src, push, api)['ok'] is True
+
+
+def test_normalize_workflow_path_unit():
+    assert vdr._normalize_workflow_path('.github/workflows/daily-update.yml') == \
+        vdr.DAILY_WORKFLOW_PATH
+    assert vdr._normalize_workflow_path(
+        '.github/workflows/daily-update.yml@master') == vdr.DAILY_WORKFLOW_PATH
+    assert vdr._normalize_workflow_path(
+        '.github/workflows/daily-update.yml@refs/heads/master') == vdr.DAILY_WORKFLOW_PATH
+    assert vdr._normalize_workflow_path(
+        './.github/workflows/daily-update.yml@master') == vdr.DAILY_WORKFLOW_PATH
+    for bad in ('.github/workflows/daily-update.yml@main',
+                '.github/workflows/daily-update.yml@refs/heads/main',
+                '.github/workflows/daily-update.yml@refs/tags/v1',
+                '.github/workflows/daily-update.yml@master@',
+                '.github/workflows/other.yml@master',
+                '.github/workflows/daily-update.yml@ master',
+                '.github/workflows/../daily-update.yml'):
+        with pytest.raises(vdr.VerifyError, match='workflow path'):
+            vdr._normalize_workflow_path(bad)
 
 
 def test_ancestor_but_not_direct_parent_rejected(tmp_path):
