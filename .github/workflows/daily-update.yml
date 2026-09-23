@@ -19,9 +19,14 @@ on:
 permissions:
   contents: write
 
-# 防止重疊執行
+# 防止重疊執行（生產同 PR 分開 group：PR 唔可以取消 daily 生產 run）
 concurrency:
-  group: weekly-update
+  group: >-
+    daily-${{
+      github.event_name == 'pull_request'
+        && format('pr-{0}', github.event.pull_request.number)
+        || 'production'
+    }}
   cancel-in-progress: true
 
 jobs:
@@ -76,10 +81,22 @@ jobs:
           python scripts/check_public_history.py --all-refs \
             --report "$RUNNER_TEMP/pr-history-audit.json"
 
-      - name: D2-A Pages artifact 驗證（PR 不部署）
+      - name: D2-A Pages artifact 驗證（PR：隔離 fixture 封包 + HTTP／瀏覽器）
         run: |
-          python scripts/build_pages_artifact.py --check-only \
+          python scripts/make_fixture_release.py \
+            --repo . --out "$RUNNER_TEMP/pr-release" \
+            --report "$RUNNER_TEMP/pr-fixture.json"
+          python scripts/build_pages_artifact.py \
+            --repo "$RUNNER_TEMP/pr-release" \
+            --payload-manifest "$RUNNER_TEMP/pr-release/deploy_payload.json" \
+            --envelope "$RUNNER_TEMP/pr-release/deploy_envelope.json" \
+            --metadata "$RUNNER_TEMP/pr-release/metadata.json" \
+            --out "$RUNNER_TEMP/pr-site" \
             --report "$RUNNER_TEMP/pr-pages-artifact.json"
+          python scripts/verify_candidate.py \
+            --artifacts-dir "$RUNNER_TEMP/pr-site" \
+            --manifest "$RUNNER_TEMP/pr-release/deploy_payload.json" \
+            --report "$RUNNER_TEMP/pr-candidate-postdeploy.json"
 
   update:
     # 受信任來源限制：schedule 只喺 default branch；手動 dispatch 只准 master。
@@ -282,6 +299,7 @@ jobs:
           cat "$RUNNER_TEMP/candidate-postdeploy.json"
 
       - name: 提交並推送（精確 allowlist）
+        id: commit_push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -294,6 +312,7 @@ jobs:
           python scripts/check_public_privacy.py --mode index
           if git diff --cached --quiet; then
             echo "無變更，跳過提交"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "自動更新：新機偵測及規格同步（$(date -u +%F)）"
             # push fail-closed：唔會 pull --rebase 把未驗證來源混入已封裝 commit；
@@ -302,4 +321,20 @@ jobs:
               echo "::error::push 失敗：候選包已封裝但未上線。唔會 pull/rebase；請重新觸發 run 由頭建包。"
               exit 1
             fi
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      # GitHub 文件：用預設 GITHUB_TOKEN push 唔會觸發 push workflow；
+      # repository_dispatch 係例外。精確帶住已 push 嘅新產物 commit 同來源 run，
+      # 交由 Pages workflow 用 API 核實成功 run + master 祖先先建置／部署。
+      - name: 觸發 Pages 部署（精確 commit；daily → Pages 真實銜接）
+        if: steps.commit_push.outputs.pushed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          NEW_SHA="$(git rev-parse HEAD)"
+          python scripts/dispatch_pages_deploy.py \
+            --repo "$GITHUB_REPOSITORY" \
+            --commit "$NEW_SHA" \
+            --source-run-id "$GITHUB_RUN_ID" \
+            --source-run-attempt "$GITHUB_RUN_ATTEMPT"

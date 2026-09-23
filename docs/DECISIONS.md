@@ -237,6 +237,46 @@
 - **回滾**：本輪全部改動在 branch `codex/v1.2.9-governance-release` 未 merge；可 revert
   對應 commit；私人 repo 不移除公開 repo 歷史，亦不改 production metadata。
 
+## D18 · PR #10 審查返修：部署封包、daily→Pages 銜接、combined health、可插拔 raw sink（R6）
+
+- **日期**：2026-09-23
+- **狀態**：本機候選已實作（未 commit 前）；remote raw sink live 啟用未批准（UNKNOWN）。
+- **背景**：PR #10（v1.2.9 治理發布候選）審查發現 9 項缺陷：Pages artifact 缺
+  metadata.json；daily 用預設 GITHUB_TOKEN push 唔觸發 Pages workflow；freshness
+  `plan_issue` 忽略 `postdeployOk`；D7 只有 local sink；`pages-deploy.yml`
+  workflow_dispatch 唔會入 production；`build_pages_artifact build` 直接 rmtree 任意
+  `--out`；daily 同 bootstrap 共用 concurrency group 可以互相 cancel；Windows
+  symlink 測試 skip；信任邊界需再審查。
+- **決策**（屬已批准 D2-A／D7-A／D8-A 之實作，無新產品政策）：
+  1. **封包分層**：`deploy_payload.json` 保持唯一 hash 範圍；新增
+     `deploy_envelope.json` = payload + metadata.json + 一致公開 sidecar；封包前驗
+     Schema／version／payload hash／CSV hash／counts，錯配 fail-closed；輸出目錄拒
+     repo 根／祖先／`.git`／link 父層／與輸入重疊／未封印既有目錄，staging + 安全替換。
+     詳見 ADR-003。
+  2. **daily→Pages 銜接**：daily push 成功後以 `repository_dispatch` 帶精確已 push
+     commit + sourceRunId；Pages 用 GitHub API 核實成功 run／master／祖先，PR／fork
+     永不 deploy；concurrency 按 event／ref 隔離。詳見 ADR-003。
+  3. **combined health**：freshness 同 postdeploy 失敗合併判斷，fingerprint 唔含
+     ageSeconds（同一 stale 6 小時後 noop）；分類改變才 update；完全恢復才 close；
+     report 缺失／non-object／network／API 錯誤全部非零且脫敏。
+  4. **可插拔 raw sink**：local-dir 如實標示非 durable；新增 GitHub Release asset
+     adapter（PRIVATE 回讀、唔覆蓋、上傳後下載 hash 核驗、90 日 retention），只有
+     fake HTTP 測試，未建立任何 Release；require 缺配置即阻斷。詳見 ADR-004／
+     `docs/PRIVATE_RAW_SINK_RUNBOOK.md`。
+  5. **測試**：新增真 HTTP + 瀏覽器 runtime + PDF 重建 E2E、fake GitHub API
+     dispatch／verify、remote sink、symlink／junction 無 skip 拒絕測試。
+- **原因**：修復 PR 評審發現嘅 fail-open／覆蓋缺口，同時唔降 required 功能、唔擴權、
+  唔虛報 live 證據。
+- **後果（分類）**：
+  - `REQUIREMENT`：D14 hash 語義、D2-A 最小權限、D7-A fail-closed、D8-A 72h／
+    去重、18 個 required feature nodes 全部保留。
+  - `OBSERVED / E2`：本機 pytest、acceptance 7 gates、fake HTTP／display 證據（見
+    STATUS §11 實數）。
+  - `UNKNOWN`：merge 後首個 daily dispatch、真正 Pages Actions E4、remote raw sink
+    provider 選擇／Secret／首個 live snapshot、D3 required reviewer、D6 self-host 同步。
+- **回滾**：本輪全部改動仍喺 branch；可 revert 對應 commit；唔會回退 production
+  metadata／runtime snapshots。
+
 ## 決策模板
 
 新決策按以下格式追加：

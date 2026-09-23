@@ -348,3 +348,44 @@
 ### Added
 
 - 報告初版（29 型號統合對比）
+
+### PR #10 審查返修（2026-09-23；未發布、未部署）
+
+> PR #10（v1.2.9 治理候選）審查發現 9 項缺陷；以下修復全部本機完成、commit 前 E2 證據見
+> [docs/STATUS.md](docs/STATUS.md) §11。產品版本仍由 `models_data.py` 的 `VERSION` 決定；
+> production `metadata.json` 仍為 1.2.8，未部署、未發布 Release。
+
+#### Added
+
+- **Pages deployment envelope**：新增 `deploy_envelope.json`；`build_pages_artifact.py`
+  同時輸出 payload + 最終 `metadata.json`（+ 一致公開 sidecar），封包前驗完整 Schema、
+  `version == models_data.VERSION`、payload hash、CSV hash 同 counts，錯配 fail-closed。
+- **PR 隔離 fixture 封包**：新增 `scripts/make_fixture_release.py`；PR gate 喺 repo 外用
+  fixture metadata 真生成 PDF、重建 envelope，再以 `verify_candidate.py` 做 loopback HTTP、
+  payload hash、run identity、PDF 重建同 Chromium runtime 驗證，永不部署。
+- **daily→Pages 精確銜接**：新增 `scripts/dispatch_pages_deploy.py`（`repository_dispatch`
+  帶已 push commit＋sourceRunId）同 `scripts/verify_deploy_request.py`（成功 run／master／
+  祖先綁定；唔 fallback 最新 master）。
+- **可插拔私人 raw sink**：新增 `scripts/private_raw_sink.py`——`local-dir` 如實標示非
+  durable，`github-release-asset` 候選 adapter（PRIVATE 回讀、同名拒覆蓋、上傳後下載
+  sha256＋size 核驗、90 日 retention、失敗唔發成功 receipt）；`docs/PRIVATE_RAW_SINK_RUNBOOK.md`
+  列明 live 啟用前置；`docs/adr/ADR-004`。
+- **測試**：真 HTTP＋瀏覽器＋PDF 重建 E2E、fake GitHub API dispatch／verify、remote sink
+  fake HTTP、symlink／junction 無 skip 拒絕測試。
+
+#### Changed
+
+- **freshness monitor combined health**：freshness 同 postdeploy 結果合併判斷；
+  fingerprint 唔含 `ageSeconds`（同一 stale 6 小時後仍 noop）；分類改變才 update、
+  完全恢復才 close；report 缺失／非 object／network／API 錯誤非零且脫敏。
+- **concurrency 隔離**：daily 同 Pages 按 event／ref 分組，PR 再唔可以取消或阻塞生產 run。
+- **archive sidecar**：`archive_release.py` 收錄 `deploy_envelope.json` 同同本次一致的公開
+  receipt／status；舊／錯配 raw receipt 唔會歸檔當成本次證據。
+- **postdeploy-verify**：接受 Pages workflow 嘅 push／workflow_dispatch／
+  repository_dispatch 成功 run；checkout 後再驗 HEAD == 平台記錄而且係 master 祖先。
+
+#### Fixed
+
+- Pages artifact 唔再漏 `metadata.json`；輸出目錄唔再被任意 rmtree；PR 唔會用 production
+  metadata 驗候選；`workflow_dispatch` 只限 master 先入 production；Windows symlink 測試
+  唔再以 skip 當 pass。

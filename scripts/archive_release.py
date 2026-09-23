@@ -148,8 +148,31 @@ def verify_metadata(meta_path, manifest_path, artifacts_dir, source_commit=None,
 def _collect_files(artifacts_dir, manifest, reports_dir):
     """回傳 [(歸檔內相對路徑, 真實來源路徑)]；reports 來源必須喺 reports_dir。"""
     entries = []
-    for rel in list(dict.fromkeys(manifest['files'])) + ['metadata.json', 'deploy_payload.json']:
+    extra = ['metadata.json', 'deploy_payload.json']
+    if os.path.isfile(os.path.join(artifacts_dir, 'deploy_envelope.json')):
+        extra.append('deploy_envelope.json')
+    for rel in list(dict.fromkeys(manifest['files'])) + extra:
         entries.append((rel.replace('\\', '/'), os.path.join(artifacts_dir, rel)))
+    # 公開 sidecar：只有同本次 metadata／CSV 一致才歸檔，避免舊 raw receipt 被誤當本次。
+    meta = None
+    try:
+        with open(os.path.join(artifacts_dir, 'metadata.json'), encoding='utf-8') as f:
+            meta = json.load(f)
+    except (OSError, ValueError):
+        meta = None
+    if meta is not None:
+        for rel in ('emsd_receipt.json', 'emsd_raw_receipt.json', 'official_batch_status.json'):
+            src = os.path.join(artifacts_dir, rel)
+            if not os.path.isfile(src):
+                continue
+            if rel != 'official_batch_status.json':
+                try:
+                    side = json.load(open(src, encoding='utf-8'))
+                    if side.get('success') is not True or side.get('datasetHash') != meta.get('datasetHash'):
+                        continue
+                except (OSError, ValueError):
+                    continue
+            entries.append((rel, src))
     changelog = os.path.join(artifacts_dir, 'CHANGELOG.md')
     if os.path.isfile(changelog):
         entries.append(('CHANGELOG.md', changelog))

@@ -268,3 +268,42 @@
 - 真正 private raw sink Secret／首個 live raw snapshot／私人 Release asset 交叉核對。
 - `release` environment required reviewers（D3 未選）。
 - 私人 self-host 線同步（D6 deferred）。
+
+## 11. 2026-09-23 PR #10 審查返修（v1.2.9 候選；本機完成後 commit／push）
+
+> 全部本地候選：本節數據係 commit 前 E2 證據；未 merge、未部署、未跑 E3／E4。
+> 每個 finding：root cause → 修改 → 負向／正向測試。
+
+| # | Finding（PR 審查） | Root cause | 修改 | 測試證據 |
+| --- | --- | --- | --- | --- |
+| 1 | Pages artifact 冇 `metadata.json` | `build_pages_artifact` 只 copy `deploy_payload.json` 檔案；metadata 又唔可以入自己 hash | 新增 `deploy_envelope.json`（payload＋metadata＋一致 sidecar）；封包前驗 Schema／version／payload hash／CSV hash／counts；PR 用 `make_fixture_release.py` 隔離 fixture metadata + 真 HTTP／瀏覽器／PDF 重建 | `tests/test_pages_deploy.py`（envelope exact files／錯配 fail／stale raw receipt skip）；`tests/test_pages_artifact_e2e.py`（真 loopback＋Chromium＋`pdf_matches_metadata`） |
+| 2 | daily push 唔觸發 Pages workflow | 預設 `GITHUB_TOKEN` 嘅 push 唔產生新 run | daily push 成功後 `dispatch_pages_deploy.py` 帶精確 commit＋sourceRunId `repository_dispatch`；Pages `verify_deploy_request.py` 核實成功 run／master／祖先；唔 fallback 最新 master | `test_daily_workflow_dispatches_pushed_commit_after_push`、`test_verify_deploy_request_binds_master_ancestor_and_source_run`、`test_dispatch_script_rejects_bad_inputs_and_posts_exact_payload` |
+| 3 | freshness 忽略 `postdeployOk` | `plan_issue` 只比較 freshness reason／body | combined health；fingerprint 唔含 `ageSeconds`；錯配／缺 report fail-closed；HTTP／network／API error 非零；report 脫敏 | `test_freshness_monitor.py`：fresh+postdeploy fail 會 alert、同 stale 6 小時後 noop、分類改變 update、恢復 close、report 缺失／non-object／fetch error／API error 非零 |
+| 4 | D7 只有 local sink | runner 目錄唔係 90 日 durable；remote provider 未定 | `scripts/private_raw_sink.py` 可插拔 adapter：local 如實標示非 durable；GitHub Release asset 候選（PRIVATE 回讀、拒覆蓋、上傳後下載 hash 核驗、90 日 retention、失敗唔發 success receipt）；require 缺配置即 raise | `tests/test_private_raw_sink.py`（fake HTTP：private 回讀、下載核驗、上傳失敗、同名拒覆蓋、retention、partial config、symlink／junction escape、token／raw bytes 唔入公開檔） |
+| 5 | `pages-deploy` dispatch 唔會入 production | 所有 package／upload／deploy step 都係 push-only | job／step 以 `steps.target.outputs.mode` 統一控制；workflow_dispatch 只限 master；PR 永不 production；deploy job 用 needs output | `test_pages_deploy_workflow_contract`（trigger／mode／step 次序／deploy 條件） |
+| 6 | `build_pages_artifact build` 亂 rmtree `--out` | 無 out 安全檢查、直接清理 | 拒 repo 根／祖先／`.git`／link 父層／與輸入重疊／未封印既有目錄；staging＋安全替換；失敗唔刪既有內容 | `test_pages_artifact_rejects_dangerous_out_dirs`、`test_pages_artifact_refuses_unsealed_existing_dir_and_preserves_it`、`test_pages_artifact_failure_keeps_existing_content` |
+| 7 | daily／bootstrap 共用 concurrency group | `weekly-update` cancel-in-progress 可被 PR run 取消 | daily 同 Pages 都按 event／ref 分組（PR 一組、production 一組）；PR 唔可以取消／阻塞生產 | `test_daily_workflow_dispatches_pushed_commit_after_push`（group 表達式）、`test_pages_deploy_workflow_contract` |
+| 8 | Windows symlink 測試 skip 當 pass | 建立唔到 symlink 就 `pytest.skip` | 冇 skip：真 symlink／junction 可用就實測；平台唔准就用受控 monkeypatch 驗同一拒絕路徑；cleanup 亦拒 link-like | `test_pages_artifact_rejects_symlink_source_without_skip`、`test_pages_artifact_rejects_symlink_out_parent`、`test_local_sink_rejects_symlink_or_junction_sink`、`test_local_cleanup_skips_symlink_escape_and_outside_content` |
+| 9 | 信任邊界再審查 | dispatch／verify／raw sink／freshness 未有端到端負向覆蓋 | 逐條 API／run／commit／hash 綁定同 fail-closed；報告／log 脫敏 | 上述測試＋feature-check `--run-tests` |
+
+### 11.1 本輪實數（OBSERVED / E2）
+
+- 全套 pytest：**475 passed／0 skipped／0 failed**（`pytest-junit.xml` 可重算；Windows symlink 已無 skip）。
+- `scripts/run_acceptance.py`：7 gates 全部 rc=0；report 寫喺 repo 外 temp
+  （`<repo-external-temp>/acceptance.json`；commit 記 `a6fa0d2`，commit 後再跑最終一次）。
+- `feature-check.py --run-tests`：**18 個 required 綁定節點全部 passed**，無 skip／xfail／fail。
+- `check_public_history.py --all-refs`（commit 前）：216 commits／1042 blobs、
+  **credentialFindings=0**、selfHostFindings=35（已知私人部署線 residual risk）。
+- 端到端：fixture release → envelope → 真 loopback HTTP → metadata／payload hash／run identity →
+  PDF 重建一致 → Chromium runtime（version／last deploy／search／compare）全 PASS。
+- D5 私人包本機 checksum 再核（read-only、唔印名稱）：SHA256SUMS 25/25 一致；私人 repo
+  visibility 本輪未有憑證再回讀，維持先前 OBSERVED、今輪不重複宣稱。
+
+### 11.2 語義同未執行
+
+- `deploy_payload.json` 仍係唯一 `releasePayloadHash` 範圍；`metadata.json` 只入
+  deployment envelope，唔入自己 hash（D14 不變）。
+- master push 只可以部署「payload 同 committed metadata 一致」嘅 commit；有人改 payload
+  但未經 daily 可信流程重新生成 metadata 會 fail-closed，唔可以手改 production metadata。
+- 未執行：merge、首個 daily `repository_dispatch`、Pages Actions E4、remote raw sink
+  provider 選擇／Secret／首個 live snapshot、D3 required reviewer、D6 self-host 同步。

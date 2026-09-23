@@ -139,3 +139,18 @@
 - pytest 433 passed／1 skipped；focused 69 passed／1 skipped；feature-check 18 nodes；
   machine acceptance 7 gates rc=0（manifest repo 外；`ok=true`）；history audit 208 commits／
   934 blobs、credentialFindings=0、selfHostFindings=32。D3／D6／E3／E4 未完成。
+
+## 9. 2026-09-23 PR #10 審查返修（D2-A／D7-A／D8-A 實作）
+
+> 本地候選；未 merge、未部署、未跑 E3／E4。18 個 required feature nodes 同 7 個
+> acceptance gates 無降級。
+
+| 範圍 | 契約 | 證據 |
+| --- | --- | --- |
+| GATE-07 Pages artifact | `deploy_payload.json` 保持唯一 hash 範圍；`deploy_envelope.json` 加 metadata.json／一致 sidecar；封包前 Schema／version／hash／counts 錯配 fail-closed | `tests/test_pages_deploy.py`、`tests/test_pages_artifact_e2e.py`（真 HTTP＋Chromium＋PDF 重建） |
+| GATE-07 deploy | PR 只 fixture 驗證；master push／master dispatch／已驗證 `repository_dispatch` 才 deploy；source run 成功＋master 祖先；postdeploy 綁 Pages run head_sha 並驗祖先 | workflow 契約測試；`verify_deploy_request.py` fake API 測試 |
+| GATE-07 out safety | 拒 repo 根／祖先／`.git`／link／重疊／未封印目錄；staging 安全替換，失敗唔刪既有內容 | 5 組 out safety 測試（temp-only） |
+| GATE-08 | freshness＋postdeploy combined health；fingerprint 不含 ageSeconds；分類改變才 update；完全恢復 close；network／schema／API error 非零 | `tests/test_freshness_monitor.py`（main + fake GitHub API，不發真 issue） |
+| D7-A raw sink | local adapter 如實標示非 durable；GitHub Release asset adapter PRIVATE 回讀／拒覆蓋／下載 hash 核驗／90 日 retention；require 缺配置阻斷 | `tests/test_private_raw_sink.py`（fake HTTP）；`docs/PRIVATE_RAW_SINK_RUNBOOK.md` |
+| 私隱 | raw bytes／token／私人路徑唔入公開 log／worktree／artifact；公開 raw receipt 只有 datasetHash＋CSV 收據 rawReceiptHash 一致才收錄 | `check_public_privacy.py` gate rc=0；sink 測試檔內容掃描 |
+| History audit | 全 reachable refs credentialFindings 必須 0 | commit 前 216 commits／1042 blobs、0 findings（commit 後再跑最終） |

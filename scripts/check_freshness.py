@@ -18,6 +18,7 @@ import urllib.request
 
 THRESHOLD = _dt.timedelta(hours=72)
 REPORT_SCHEMA_VERSION = 1
+FINGERPRINT_RE = re.compile(r'<!-- aircon-freshness-fingerprint: ([a-z0-9_+:.-]+) -->')
 
 
 def parse_utc_z(value):
@@ -53,23 +54,64 @@ def evaluate(metadata, now=None):
     return {'ok': True, 'stale': False, 'ageSeconds': age, 'reason': 'fresh'}
 
 
+def classify(result):
+    """穩定分類指紋：唔含 ageSeconds，同一狀態跨 6 小時重跑要完全一樣。"""
+    if not result.get('ok'):
+        reason = str(result.get('reason') or 'unknown')
+        return 'invalid:' + re.sub(r'[^a-z0-9_.:+-]', '_', reason.lower())
+    if result.get('stale'):
+        return 'stale_over_72h'
+    return 'fresh'
+
+
+def combined_health(result):
+    """回傳 (freshness_bad, postdeploy_bad)；postdeployOk=None 表示未提供。"""
+    freshness_bad = (not result.get('ok')) or bool(result.get('stale'))
+    post = result.get('postdeployOk')
+    return freshness_bad, post is False
+
+
+def fingerprint(result):
+    fp = classify(result)
+    fresh_bad, post_bad = combined_health(result)
+    if post_bad:
+        fp += ':postdeploy_failed'
+    return fp
+
+
+def issue_body(result, fp):
+    freshness_bad, post_bad = combined_health(result)
+    return (
+        f'<!-- aircon-freshness-fingerprint: {fp} -->\n'
+        f'\n'
+        f'Freshness／部署一致性 monitor alert.\n'
+        f'\n'
+        f'- category: `{fp}`\n'
+        f'- freshness failure: {"yes" if freshness_bad else "no"}\n'
+        f'- postdeploy failure: {"yes" if post_bad else "no"}\n'
+        f'- reason: `{result.get("reason")}`\n'
+        f'- ageSeconds: {result.get("ageSeconds")}\n'
+        f'- threshold: age > 72h\n'
+    )
+
+
 def plan_issue(existing_issue, result):
-    """回傳去重告警計劃；existing_issue 係 dict 或 None。"""
-    reason = result.get('reason')
-    stale_or_bad = (not result.get('ok')) or result.get('stale')
-    if not stale_or_bad:
+    """合用 health 去重：fingerprint 穩定（唔含 ageSeconds），狀態改變才 update，
+    完全恢復（freshness + postdeploy 都好）才 close 一次。existing_issue 係 dict 或 None。"""
+    freshness_bad, post_bad = combined_health(result)
+    unhealthy = freshness_bad or post_bad
+    fp = fingerprint(result)
+    if not unhealthy:
         if existing_issue:
-            return {'action': 'close', 'reason': 'recovered'}
-        return {'action': 'noop', 'reason': 'fresh'}
-    body = (f"Freshness monitor alert.\n\n"
-            f"- reason: `{reason}`\n"
-            f"- ageSeconds: {result.get('ageSeconds')}\n"
-            f"- threshold: age > 72h\n")
+            return {'action': 'close', 'reason': 'recovered', 'fingerprint': fp}
+        return {'action': 'noop', 'reason': 'fresh', 'fingerprint': fp}
+    body = issue_body(result, fp)
     if not existing_issue:
-        return {'action': 'create', 'reason': reason, 'body': body}
-    if existing_issue.get('body') == body:
-        return {'action': 'noop', 'reason': 'duplicate'}
-    return {'action': 'update', 'reason': reason, 'body': body}
+        return {'action': 'create', 'reason': fp, 'fingerprint': fp, 'body': body}
+    m = FINGERPRINT_RE.search(existing_issue.get('body') or '')
+    if m and m.group(1) == fp:
+        return {'action': 'noop', 'reason': 'duplicate', 'fingerprint': fp}
+    return {'action': 'update', 'reason': fp, 'fingerprint': fp, 'body': body}
 
 
 def fetch_metadata(url, timeout=30):
@@ -105,6 +147,7 @@ def main(argv=None):
         'schemaVersion': REPORT_SCHEMA_VERSION,
         'thresholdSeconds': int(THRESHOLD.total_seconds()),
         'checkedAt': _dt.datetime.now(_dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'category': classify(result),
         **result,
     }
     # checkedAt 有機會同測試注入 now 不同；只保留結果判定。

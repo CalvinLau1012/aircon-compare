@@ -20,6 +20,11 @@ from html.parser import HTMLParser
 
 from crawl_utils import BOT_UA, norm_model
 
+_SCRIPT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scripts')
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
+import private_raw_sink  # noqa: E402  D7-A：可插拔私人 raw sink adapter
+
 BASE = 'https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50&p='
 MIN_EMSD_ROWS = 1700  # 安全閘門：攞唔齊最少行數就唔覆寫現有 CSV
 HEADER_SIGNATURE = '型號'  # 每頁表頭 signature：第 2 欄係「型號」
@@ -167,90 +172,27 @@ def write_raw_receipt_atomic(receipt):
 
 
 def cleanup_expired_raw_sink(sink_dir, now=None, max_age_days=90):
-    """刪除 sink 內超過 max_age_days 嘅 run 目錄；回傳被刪目錄名 list。
+    """D7-A：保留舊名 API；實作喺 private_raw_sink（只刪安全 run 目錄）。"""
+    return private_raw_sink.cleanup_expired(sink_dir, now=now, max_age_days=max_age_days)
 
-    以 manifest.json.createdAt 為準；parse 唔到就用 mtime。90 日邊界唔刪。
+
+def persist_raw_archive(records, sink_dir=None, require=False, now=None, remote_api=None):
+    """D7-A：保留舊名 API；按環境選 local／remote adapter（remote 未經批准唔會配置）。
+
+    回傳唔含敏感路徑／token；只有下載核驗成功才回 persisted=True。
     """
-    import datetime as _dt
-    if not sink_dir or not os.path.isdir(sink_dir):
-        return []
-    now = now or _dt.datetime.now(_dt.timezone.utc)
-    removed = []
-    for name in sorted(os.listdir(sink_dir)):
-        path = os.path.join(sink_dir, name)
-        if not os.path.isdir(path) or not name.startswith('run-'):
-            continue
-        created = None
-        mf = os.path.join(path, 'manifest.json')
+    explicit = sink_dir or os.environ.get('AIRCON_EMSD_RAW_SINK_DIR')
+    if explicit:
+        sink_abs = os.path.abspath(explicit)
+        repo = os.path.abspath(BASE_DIR)
         try:
-            with open(mf, encoding='utf-8') as f:
-                created_raw = json.load(f).get('createdAt')
-            created = _dt.datetime.fromisoformat(created_raw.replace('Z', '+00:00'))
-        except Exception:
-            created = None
-        if created is None:
-            created = _dt.datetime.fromtimestamp(os.path.getmtime(path), _dt.timezone.utc)
-        if now - created > _dt.timedelta(days=max_age_days):
-            shutil.rmtree(path)
-            removed.append(name)
-    return removed
-
-
-def persist_raw_archive(records, sink_dir=None, require=False, now=None):
-    """把 raw bytes 寫入私人 sink（repo 外）；失敗／未配置時按 require fail-closed。
-
-    回傳唔含敏感路徑；只回 persisted／objectId／archiveHash。
-    """
-    import datetime as _dt
-    sink = sink_dir or os.environ.get('AIRCON_EMSD_RAW_SINK_DIR')
-    computed = archive_hash(records)
-    if not sink:
-        if require:
-            raise RuntimeError('private raw sink 未配置（AIRCON_EMSD_RAW_SINK_DIR）')
-        return {'persisted': False, 'archiveHash': computed, 'objectId': None,
-                'reason': 'not_configured'}
-    sink = os.path.abspath(sink)
-    repo = os.path.abspath(BASE_DIR)
-    try:
-        inside_repo = os.path.commonpath([sink, repo]) == repo
-    except ValueError:
-        inside_repo = False  # 唔同 drive／無法比較，當唔喺 repo 內
-    if inside_repo:
-        raise ValueError('private raw sink 唔可以喺公開 repo 工作樹內')
-    os.makedirs(sink, exist_ok=True)
-    run_id = (now or _dt.datetime.now(_dt.timezone.utc)).strftime('%Y%m%dT%H%M%SZ')
-    final_dir = os.path.join(sink, 'run-' + run_id)
-    if os.path.exists(final_dir):
-        final_dir = final_dir + '-' + str(int(time.time() * 1000) % 100000)
-    tmp = tempfile.mkdtemp(prefix='.tmp-run-', dir=sink)
-    try:
-        page_names = []
-        for rec in sorted(records, key=lambda r: r['page']):
-            name = f'p{rec["page"]:02d}.html'
-            with open(os.path.join(tmp, name), 'wb') as f:
-                f.write(rec['_raw'])
-                f.flush()
-                os.fsync(f.fileno())
-            page_names.append(name)
-        manifest = {
-            'schemaVersion': 1,
-            'createdAt': (now or _dt.datetime.now(_dt.timezone.utc)).strftime('%Y-%m-%dT%H:%M:%SZ'),
-            'pageCount': len(records),
-            'archiveHash': computed,
-            'pages': [{k: v for k, v in rec.items() if k != '_raw'}
-                      for rec in sorted(records, key=lambda r: r['page'])],
-        }
-        with open(os.path.join(tmp, 'manifest.json'), 'w', encoding='utf-8', newline='\n') as f:
-            json.dump(manifest, f, ensure_ascii=False, indent=2)
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(tmp, final_dir)
-    except Exception:
-        shutil.rmtree(tmp, ignore_errors=True)
-        raise
-    cleanup_expired_raw_sink(sink, now=now)
-    return {'persisted': True, 'archiveHash': computed, 'objectId': os.path.basename(final_dir),
-            'reason': 'persisted'}
+            inside = os.path.commonpath([sink_abs, repo]) == repo
+        except ValueError:
+            inside = False
+        if inside:
+            raise ValueError('private raw sink 唔可以喺公開 repo 工作樹內')
+    return private_raw_sink.persist_raw_archive(
+        records, sink_dir=sink_dir, require=require, now=now, remote_api=remote_api)
 
 
 def write_receipt(outcome, per_page, csv_path=None, retrieved_at=None, raw_receipt_hash=None):
@@ -682,8 +624,12 @@ def main():
                 per_page_rows=per_page)
             raw_receipt['privateArchive'] = {
                 'persisted': True,
+                'adapter': sink_result.get('adapter'),
                 'objectId': sink_result.get('objectId'),
                 'archiveHash': sink_result.get('archiveHash'),
+                'verified': sink_result.get('verified') is True,
+                'durableRemote': sink_result.get('durableRemote') is True,
+                'retentionDays': sink_result.get('retentionDays'),
             }
             write_raw_receipt_atomic(raw_receipt)
             raw_receipt_hash = 'sha256:' + hashlib.sha256(
@@ -693,7 +639,8 @@ def main():
             sys.exit(1)
     else:
         print('⚠️ private raw sink 未配置（非 require 模式）：今次唔寫 raw receipt；'
-              '正式 CI 必須設定 AIRCON_EMSD_RAW_SINK_DIR／require。', file=sys.stderr)
+              '正式 CI 必須設定 remote adapter（AIRCON_EMSD_RAW_REMOTE_REPO／TOKEN）'
+              '或者過渡用 AIRCON_EMSD_RAW_SINK_DIR＋require。', file=sys.stderr)
     # 成功收據必須喺整組資料提交之後、對已寫入 CSV bytes 計 hash；寫唔到收據即阻斷
     # （唔可以用舊收據配新 CSV 誤導下游 metadata 生成）。
     try:
