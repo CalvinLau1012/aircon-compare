@@ -389,7 +389,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | 📦 Pages 封包 | `deploy_envelope.json`：payload + 最終 `metadata.json` + 一致公開 sidecar；封包前驗 Schema／version／payload hash／CSV hash／counts；PR 用隔離 fixture metadata + 真 HTTP／瀏覽器／PDF 重建驗證 |
 | 🔁 daily→Pages | push 後以 `repository_dispatch` 帶精確 commit＋sourceRunId／attempt；Pages 有界 polling 核實 completed/success＋workflow path＋單親 direct parent＋metadata `workflowRunId`／`commit`，PR／fork 永不 deploy；concurrency 按 event／ref 隔離＋`queue: max` |
 | 🚨 monitor | freshness 同 postdeploy 合併判斷；fingerprint 不含 ageSeconds；分類改變才 update、完全恢復 close；report／network／API 錯誤非零且脫敏 |
-| 🔐 raw sink | 可插拔 adapter：local 如實標示非 durable；GitHub Release asset 候選（PRIVATE 回讀、拒覆蓋、下載 hash 核驗、90 日 retention）；未經批准唔建 Release |
+| 🔐 raw sink | 可插拔 adapter：local 如實標示非 durable；GitHub Release asset 候選（PRIVATE 回讀、拒覆蓋、下載 hash 核驗、90 日 retention）；daily `抓取 EMSD` step 已接入 remote env（`REPO`／`TOKEN`／`TAG`／`RETENTION_DAYS` 全部只由 `secrets.*`；私人 repo 識別唔准入 repo／Variables／log），require 缺配置／上傳失敗仍 fail-closed；live 啟用待用戶選 provider＋設 Secrets，未經批准唔建 Release |
 | 🛡 輸出安全 | `build_pages_artifact` 拒危險 `--out`、staging 安全替換、失敗唔刪既有內容；symlink／junction 測試無 skip |
 | ✅ 驗證 | 本機 475 passed／0 skipped、feature-check 18 節點 `--run-tests` 全 pass、acceptance 7 gates rc=0；詳見 docs/STATUS §11 |
 | 🔀 R7 同步 | merge `origin/master` `be43b7c`（2026-09-22 自動更新）解除 PR conflict；EMSD 現況日期同步為 datasetDate 2026-09-22（型號／登記數不變）；受影響 docs／PDF／index 按合併後程式與已提交資料重建 |

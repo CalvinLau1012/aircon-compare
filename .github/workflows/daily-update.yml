@@ -148,8 +148,17 @@ jobs:
       - name: 抓取 EMSD + 新機偵測
         env:
           # D7-A：平台完成私人 raw sink 設定後，將 REQUIRE 設為 1；未設定時行為同以前
-          # 一樣（非 require，唔寫 public raw receipt）。真正 secret 值不會寫入 log。
+          # 一樣（非 require，唔寫 public raw receipt）。require 模式缺配置／上傳失敗
+          # 一律由 fetch_emsd.py 阻斷。真正 secret 值不會寫入 log。
           AIRCON_EMSD_REQUIRE_RAW_SINK: ${{ secrets.AIRCON_EMSD_REQUIRE_RAW_SINK }}
+          # Remote adapter（私人 GitHub Release asset；私人 repo 識別只可以放 Secrets，
+          # 唔可以寫入 repo／Variables／log）。未選定 provider 前留空＝未配置；若只設
+          # REPO／TOKEN 其中一個，adapter 會 raise 而唔會靜默降級。
+          AIRCON_EMSD_RAW_REMOTE_REPO: ${{ secrets.AIRCON_EMSD_RAW_REMOTE_REPO }}
+          AIRCON_EMSD_RAW_REMOTE_TOKEN: ${{ secrets.AIRCON_EMSD_RAW_REMOTE_TOKEN }}
+          AIRCON_EMSD_RAW_REMOTE_TAG: ${{ secrets.AIRCON_EMSD_RAW_REMOTE_TAG }}
+          AIRCON_EMSD_RAW_RETENTION_DAYS: ${{ secrets.AIRCON_EMSD_RAW_RETENTION_DAYS }}
+          # 過渡用 local-dir（唔 durable；只喺未配置 remote 時先會被採用）。
           AIRCON_EMSD_RAW_SINK_DIR: ${{ secrets.AIRCON_EMSD_RAW_SINK_DIR }}
         run: python fetch_emsd.py
 

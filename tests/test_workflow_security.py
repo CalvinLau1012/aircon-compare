@@ -236,3 +236,31 @@ def test_daily_workflow_actions_pinned():
     wf = _load('daily-update.yml')
     uses = _all_uses(wf)
     assert all(re.match(r'^[^@\s]+@[0-9a-f]{40}$', u) for u in uses), uses
+
+
+def test_daily_raw_sink_env_wiring_secret_only_and_fail_closed():
+    """D7-A：daily fetch step 必須接入 remote adapter env，私人 repo 識別只准 Secrets。
+
+    未接入 remote env 時，即使平台設好 Secret，daily 都只會用 local／未配置；
+    require 模式缺配置係 fail-closed（由 fetch_emsd.py 阻斷）。呢個測試防止接線
+    再被移除、改走 `vars.*`（可能公開）或改成明文值。
+    """
+    wf = _load('daily-update.yml')
+    fetch_step = next(s for s in wf['jobs']['update']['steps']
+                      if s.get('name') == '抓取 EMSD + 新機偵測')
+    env = fetch_step['env']
+    for name in ('AIRCON_EMSD_REQUIRE_RAW_SINK',
+                 'AIRCON_EMSD_RAW_REMOTE_REPO', 'AIRCON_EMSD_RAW_REMOTE_TOKEN',
+                 'AIRCON_EMSD_RAW_REMOTE_TAG', 'AIRCON_EMSD_RAW_RETENTION_DAYS',
+                 'AIRCON_EMSD_RAW_SINK_DIR'):
+        ref = '${{ secrets.' + name + ' }}'
+        assert env.get(name) == ref, f'{name} 必須由 Secrets 提供：{env.get(name)!r}'
+    assert fetch_step['run'] == 'python fetch_emsd.py'
+    text = _text('daily-update.yml')
+    assert '${{ vars.' not in text, 'raw sink／require 唔可以用 repo Variables（可能公開）'
+    for name in ('AIRCON_EMSD_REQUIRE_RAW_SINK', 'AIRCON_EMSD_RAW_REMOTE_REPO',
+                 'AIRCON_EMSD_RAW_REMOTE_TOKEN', 'AIRCON_EMSD_RAW_SINK_DIR'):
+        values = re.findall(rf'{name}:\s*(\S.*)$', text, re.M)
+        assert values, f'缺 {name} 接線'
+        ref = '${{ secrets.' + name + ' }}'
+        assert all(v.strip() == ref for v in values), f'{name} 有非 Secrets 值：{values}'

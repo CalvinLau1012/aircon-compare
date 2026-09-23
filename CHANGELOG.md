@@ -10,6 +10,15 @@
 - **D3-A release 人工批准關卡**：使用者確認單人維護模式；已建立 GitHub `release`
   environment，以 `CalvinLau1012` 為唯一 required reviewer，`prevent_self_review=false`。
   GitHub API 回讀證實設定；本項沒有 merge、deploy、tag 或建立 Release。
+- **D7-A daily raw sink 接線**：`daily-update.yml` 的 `抓取 EMSD + 新機偵測` step 接入
+  `AIRCON_EMSD_RAW_REMOTE_REPO`／`AIRCON_EMSD_RAW_REMOTE_TOKEN`／`AIRCON_EMSD_RAW_REMOTE_TAG`／
+  `AIRCON_EMSD_RAW_RETENTION_DAYS`（全部只由 `secrets.*` 提供；私人 repo 識別禁止入 repo／
+  Variables／公開 log）；require 模式缺配置或上傳失敗維持 fail-closed。live 啟用仍待用戶
+  選定 provider 並設定 Secrets；本項沒有建立 Release／上傳資產／merge／deploy。
+- **合併前發布路徑核對（本地 E2）**：merge push 會先被 `build_pages_artifact.py` 的
+  `metadata.version == models_data.VERSION`（1.2.8 vs 1.2.9）同 payload hash 檢查 fail-closed
+  攔住，唔會用舊 metadata 部署；首個 daily 成功 push 後才以 `repository_dispatch` 帶精確
+  commit／source run 進入 Pages production。完整順序與證據見 [docs/STATUS.md](docs/STATUS.md) §14。
 
 > 此區分開兩類：(1) v1.2.9 本機候選修復——已實作並通過本機測試，但未建立 Release、未部署、生產 `metadata.json` 仍為 1.2.8；(2) 1.2.8 之後已入 master 但未另立產品版本的維護記錄。精確基準與證據見 [docs/STATUS.md](docs/STATUS.md)。
 

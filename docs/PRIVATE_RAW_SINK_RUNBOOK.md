@@ -11,16 +11,20 @@
 2. 準備最小權限憑證：
    - GitHub Release asset 候選需要可以建立 release／上傳／讀取／刪除 asset 嘅
      token（只限該私人 repo），唔好共用公開 repo token。
-3. 喺 GitHub repo 設定 Secret（值唔會寫入 log）：
+3. 喺 GitHub repo 設定 Secret（值唔會寫入 log；**私人 repo 識別只可以放 Secrets，
+   唔准放 repo 檔／Variables／workflow log**）：
    - `AIRCON_EMSD_RAW_REMOTE_REPO`：`owner/name`（私人 repo）。
    - `AIRCON_EMSD_RAW_REMOTE_TOKEN`：私人 repo 最小權限 token。
    - 可選：`AIRCON_EMSD_RAW_REMOTE_TAG`（預設 `emsd-raw-archive`）、
      `AIRCON_EMSD_RAW_RETENTION_DAYS`（預設 90）。
-4. 設定 `AIRCON_EMSD_REQUIRE_RAW_SINK=1`（Repo Variable 或 Secret）。設定後任何
+4. 設定 `AIRCON_EMSD_REQUIRE_RAW_SINK=1`（現行 daily workflow 由
+   `secrets.AIRCON_EMSD_REQUIRE_RAW_SINK` 讀取；repo 目前未有 Variables）。設定後任何
    raw persist 失敗（包括未配置／配置不完整）都會令 daily 阻斷，唔會寫成功 CSV 收據。
-5. 確認 daily workflow 有傳入以上 env。**現時 daily workflow 尚未接入
-   `AIRCON_EMSD_RAW_REMOTE_REPO`／`AIRCON_EMSD_RAW_REMOTE_TOKEN`（只傳入 require／
-   local dir）；只設定 Secret 唔會啟用 adapter，必須同時改 `fetch_emsd.py` step 嘅 `env:`。**
+5. daily workflow 已經接入以上 env（`.github/workflows/daily-update.yml` 的
+   `抓取 EMSD + 新機偵測` step）：`REQUIRE`、`REMOTE_REPO`、`REMOTE_TOKEN`、
+   `REMOTE_TAG`、`RETENTION_DAYS`、`SINK_DIR` 全部精確對應 `secrets.*`。
+   **只設定 Secret 而未選定 provider 之前，require 模式會照樣阻斷**；local-dir 只係
+   過渡（公開收據會標示非 durable），唔可以當 long-term 保存。
 
 ## 2. 首次 live 驗收（人手，platform）
 
@@ -44,7 +48,8 @@
 - remote 上傳後下載 hash 唔符、上傳 HTTP 非 201、provider 唔係 PRIVATE：一律
   raise，唔會寫公開 raw receipt，亦唔會寫成功 CSV 收據。
 - 未設 `AIRCON_EMSD_REQUIRE_RAW_SINK`：今日仍係非 require 模式（唔寫 raw receipt）。
-  呢個係已知平台缺口（STATUS `UNKNOWN`），唔可以當 D7-A 已完成。
+  呢個係平台 Secret 未配置嘅缺口（STATUS §14 `UNKNOWN`），唔可以當 D7-A 已完成；
+  workflow 接線已存在，平台設定完成後即會生效。
 
 ## 4. 回滾
 
