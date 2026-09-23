@@ -18,8 +18,9 @@
      `AIRCON_EMSD_RAW_RETENTION_DAYS`（預設 90）。
 4. 設定 `AIRCON_EMSD_REQUIRE_RAW_SINK=1`（Repo Variable 或 Secret）。設定後任何
    raw persist 失敗（包括未配置／配置不完整）都會令 daily 阻斷，唔會寫成功 CSV 收據。
-5. 確認 daily workflow 有傳入以上 env（現行 workflow 已傳 require／local dir；
-   remote repo／token 需要喺啟用時加入 `fetch_emsd.py` step 嘅 `env:`）。
+5. 確認 daily workflow 有傳入以上 env。**現時 daily workflow 尚未接入
+   `AIRCON_EMSD_RAW_REMOTE_REPO`／`AIRCON_EMSD_RAW_REMOTE_TOKEN`（只傳入 require／
+   local dir）；只設定 Secret 唔會啟用 adapter，必須同時改 `fetch_emsd.py` step 嘅 `env:`。**
 
 ## 2. 首次 live 驗收（人手，platform）
 
