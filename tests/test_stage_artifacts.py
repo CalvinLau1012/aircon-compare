@@ -88,6 +88,15 @@ def test_no_changes_is_ok(tmp_path):
     assert r.returncode == 0, r.stderr
     assert '無需 stage' in r.stdout
 
+
+def test_generated_metadata_json_is_stageable_runtime_file(tmp_path):
+    # daily pipeline 會生成 metadata.json；佢係受信任 runtime 產物，必須可精確 stage。
+    repo = _setup(tmp_path)
+    (tmp_path / 'metadata.json').write_text('{"version":"1.2.9"}', encoding='utf-8')
+    r = _stage(repo)
+    assert r.returncode == 0, r.stderr
+    assert set(_staged(repo)) == {'metadata.json'}
+
 def test_allowlisted_deletion_blocks(tmp_path):
     repo = _setup(tmp_path)
     os.remove(os.path.join(repo, 'index.html'))
