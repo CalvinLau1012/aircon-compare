@@ -4,7 +4,7 @@
 > **能源級別、雪種、年耗電以機電署 EMSD 官方資料庫全量核實**（最新同步快照 2026-09-22：1,834 筆登記／1,773 型號；2026-09-21 及之前詳細統計段落屬歷史快照，以線上 [`metadata.json`](https://calvinlau1012.github.io/aircon-compare/metadata.json) 為準）
 > **220 個型號已直接經品牌官網/官方網店/總代理逐型號核實（2026-08-15 歷史核實數）**
 > 🎨 **Blue Fantasy 藍色幻想 skin**（dsh-web-ui 皮膚；只套皮膚，其他插件不加）
-> 📌 **現況**：線上部署版本 **v1.2.8**（badge 動態讀取線上 metadata.json）；本機另已建立 **v1.2.9 修復候選**（未發布、未部署）——時間／資料真實性、完整 Schema 驗證、部署後核對與歸檔、恢復演練；2026-09-22 再加 D1-B coverage pending、D2-A Pages Actions、D4-A 全歷史審計、D7-A 原始 EMSD hash receipt、D8-A 72h monitor；2026-09-22 核查的部署 build `B20260922.83`（run 35776119746），EMSD 每日偵測、價錢按批次快照（缺價標「待查」）
+> 📌 **現況**：線上部署版本 **v1.2.8**（badge 動態讀取線上 metadata.json）；本機另已建立 **v1.2.9 修復候選**（未發布、未部署）——時間／資料真實性、完整 Schema 驗證、部署後核對與歸檔、恢復演練；2026-09-22 再加 D1-B coverage pending、D2-A Pages Actions、D4-A 全歷史審計、D7-A 原始 EMSD hash receipt、D8-A 72h monitor；2026-09-23 已套用 D3-A，`release` environment 以維護者為唯一 required reviewer 並允許自行批准；2026-09-22 核查的部署 build `B20260922.83`（run 35776119746），EMSD 每日偵測、價錢按批次快照（缺價標「待查」）
 
 ## 🚀 立即使用
 
@@ -418,7 +418,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | ⏱️ D8-A | 72h 新鮮度硬邊界、6 小時 monitor、單一 issue 去重／更新／恢復關閉；postdeploy hash／schema 先驗 |
 | 🔐 D5-A | 私人包已入 私人 repo（PRIVATE API 回讀；名稱只喺交付報告）；fresh clone 逐檔 checksum 通過；Temp 原件保留 |
 | ✅ 本輪驗證 | pytest 433 passed／1 skipped；focused 69 passed／1 skipped；feature-check 18 nodes；acceptance 7 gates rc=0；history audit credentialFindings=0 |
-| 🧭 平台 | D3 required reviewer 待選 A／B／C；D6 self-host 線同步 deferred；E3／E4 仍 UNKNOWN，未部署 |
+| 🧭 平台 | D3-A 已設定：`release` environment 唯一 required reviewer 為 `CalvinLau1012`，`prevent_self_review=false`（2026-09-23 API 回讀）；D6 self-host 線同步 deferred；E3／E4 仍 UNKNOWN，未部署 |
 
 ### 2026-09-22 — v1.2.9 綜合返修（本機候選，未部署）
 

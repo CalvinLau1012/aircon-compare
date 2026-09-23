@@ -1,9 +1,10 @@
-# 狀態核查 — 2026-09-23（v1.2.9 修復候選；PR #10 R7）
+# 狀態核查 — 2026-09-23（v1.2.9 修復候選；PR #10／D3-A）
 
 > 本文件是指定快照的證據記錄，不取代 [治理要求](AIRCON_COMPARE_GOVERNANCE.md) 或生產 `metadata.json`。
 > **目前狀態**：v1.2.9 修復已實作並通過 E2（本機測試），PR #10 以 draft 形式 push；候選 branch 已
-> merge 最新 `origin/master`（be43b7c，2026-09-22 自動更新）同步生產資料；**未 merge PR、未 deploy、
-> 未發布 Release、未操作 Secrets、未改生產 metadata**。受信任 CI（E3）與部署後核對（E4）仍未發生。
+> merge 最新 `origin/master`（be43b7c，2026-09-22 自動更新）同步生產資料；2026-09-23 已套用 D3-A
+> `release` environment 單人 required reviewer 關卡；**未 merge PR、未 deploy、未發布 Release、
+> 未操作 Secrets、未改生產 metadata**。受信任 CI（E3）與部署後核對（E4）仍未發生。
 
 ## 1. 基準與版本
 
@@ -15,7 +16,7 @@
 | 部署構建 | `B20260922.83`；輸入 commit `f6887941c022c6c67fb4612ca688184830d1ff86`（合併後 metadata.json 流水線事實） | OBSERVED / E1–E3 |
 | 更新流程 | [35776119746](https://github.com/CalvinLau1012/aircon-compare/actions/runs/35776119746)，schedule，success（2026-09-22；合併前 master 流水線） | OBSERVED / E3（歷史） |
 | Pages 流程 | [35530841644](https://github.com/CalvinLau1012/aircon-compare/actions/runs/35530841644)，success | OBSERVED / E3（歷史）；不等於全部 E4 行為已驗證 |
-| 本輪外部動作 | R6/R7 已 push draft PR branch、更新 PR body、merge `origin/master` 同步 base；未 merge PR／deploy／建立 Release／操作 Secrets | OBSERVED / E1 |
+| 本輪外部動作 | R6/R7 已 push draft PR branch、更新 PR body、merge `origin/master` 同步 base；D3-A `release` environment 已 API 設定並回讀；未 merge PR／deploy／建立 Release／操作 Secrets | OBSERVED / E1 |
 
 同步前原有 UI／測試修復已核對；同步前工作另有外部備份及保留的 stash。備份中的私有工作記錄不屬部署負載。`CHANGELOG` 的 Unreleased 已分開「1.2.9 候選」與「1.2.8 之後已部署維護記錄」，唔可以整區視作已發布或未上線。
 
@@ -106,11 +107,12 @@
 
 未執行：commit／push／deploy、Release 發布、Secrets 操作、私人自建環境 apply／rollback、真實 Pages 部署後核對、EMSD 真實網絡重抓、價格／全庫重抓。
 
-## 6. 需要人類決定
+## 6. 需要人類決定／平台後續
 
 1. 治理文檔 3.1.2 及 Registry／門禁變更評審（PR／Code Owner）。
 2. 1.2.9 是否發布：需受信任 CI 全綠 + GATE-08 通過 + 決定 Release tag 與歸檔。
-3. 受保護環境 `release` 的 required reviewers 設定（未設定 = Release 歸檔未啟用）。
+3. D3-A 已於 2026-09-23 完成：`release` environment 唯一 required reviewer 為
+   `CalvinLau1012`，`prevent_self_review=false`；實際 publish 仍需該維護者在等待關卡人工批准。
 4. 私人自建伺服器正式 apply／rollback 演練仍需維護者喺自己環境執行（工具已移出公開 repo）。
 5. Actions 完整 commit 已按 2026-09-21 refs API 核實固定；日後升級需重新核實，不由 AI 猜 SHA。
 
@@ -268,7 +270,7 @@
 - commit／push／draft PR（本輪本地完成後才做）。
 - 受信任 CI（E3）、真實 Pages Actions deploy（E4）、Pages Source 切換。
 - 真正 private raw sink Secret／首個 live raw snapshot／私人 Release asset 交叉核對。
-- `release` environment required reviewers（D3 未選）。
+- `release` environment required reviewers（本輪當時 D3 未選；2026-09-23 已由 D19／§13 解決）。
 - 私人 self-host 線同步（D6 deferred）。
 
 ## 11. 2026-09-23 PR #10 審查返修（v1.2.9 候選；本機完成後 commit／push）
@@ -308,7 +310,7 @@
 - master push 只可以部署「payload 同 committed metadata 一致」嘅 commit；有人改 payload
   但未經 daily 可信流程重新生成 metadata 會 fail-closed，唔可以手改 production metadata。
 - 未執行：merge、首個 daily `repository_dispatch`、Pages Actions E4、remote raw sink
-  provider 選擇／Secret／首個 live snapshot、D3 required reviewer、D6 self-host 同步。
+  provider 選擇／Secret／首個 live snapshot、D3 required reviewer（當時；後續由 D19／§13 解決）、D6 self-host 同步。
 
 ## 12. 2026-09-23 R7：base 同步與 source run 收緊（PR #10）
 
@@ -334,5 +336,17 @@
 
 - merge PR、deploy、Pages Source 切換、E3／E4。
 - remote raw sink provider 選擇／Secret／首個 live snapshot（D7 保持 UNKNOWN）。
-- D3 required reviewer；D6 self-host 同步。
+- D3 required reviewer（R7 當時未完成；後續由 D19／§13 解決）；D6 self-host 同步。
 - PR 首個 `repository_dispatch` 真實 run 綁定（要 merge 後 daily 先遇到）。
+
+## 13. 2026-09-23 D3-A：`release` environment 人工批准關卡
+
+- **人類決策**：項目只有一名維護者，採 D3-A；不要求不存在的第二名 reviewer。
+- **平台事實（GitHub API 回讀）**：environment=`release`；protection rule=`required_reviewers`；
+  reviewer=`CalvinLau1012`（user id `178408566`）；`prevent_self_review=false`；`wait_timer=0`；
+  `deployment_branch_policy=null`；`can_admins_bypass=true`（管理員可另行明確 bypass，並非自動跳過）。
+- **實際效果**：`release-archive.yml` 的 `publish` job 只有 `publish=true` 才執行，並引用
+  `environment: release`；屆時會等待維護者人工批准。build job 及一般 PR gate 不經此關卡。
+- **未執行**：未 merge PR、未部署、未建立 tag／Release、未執行 publish、未操作 Secrets；
+  E3／E4 及首次真實 approval flow 仍未驗收。
+- **決策記錄**：見 `docs/DECISIONS.md` D19。

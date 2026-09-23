@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### 2026-09-23 平台治理
+
+- **D3-A release 人工批准關卡**：使用者確認單人維護模式；已建立 GitHub `release`
+  environment，以 `CalvinLau1012` 為唯一 required reviewer，`prevent_self_review=false`。
+  GitHub API 回讀證實設定；本項沒有 merge、deploy、tag 或建立 Release。
+
 > 此區分開兩類：(1) v1.2.9 本機候選修復——已實作並通過本機測試，但未建立 Release、未部署、生產 `metadata.json` 仍為 1.2.8；(2) 1.2.8 之後已入 master 但未另立產品版本的維護記錄。精確基準與證據見 [docs/STATUS.md](docs/STATUS.md)。
 
 ### 1.2.9 候選（未發布、未部署）— 2026-09-21
@@ -143,8 +149,9 @@
 - **D5-A 私人 repo**：私人 repo 已建立並 API 回讀
   `visibility=PRIVATE`；來源 Temp 包 `SHA256SUMS` 先驗，再 push 後 fresh clone 逐檔
   重算核對通過（LF bytes 以 `.gitattributes * -text` 固定）；Temp 原件保留未刪。
-- **D3 pending／D6 deferred**：`release` environment required reviewer 仍待使用者選
-  D3-A／B／C；公開 PR merge 後才做私人 self-host 線同步，標記 `DEFERRED BY D6-A`。
+- **D3 當時 pending／D6 deferred**：2026-09-22 快照中 `release` environment reviewer
+  仍待選；D3 已於 2026-09-23 以 D3-A 解決（見上方平台治理記錄）。公開 PR merge
+  後才做私人 self-host 線同步，標記 `DEFERRED BY D6-A`。
 - **本輪驗證實數**：全套 pytest **433 passed／1 skipped**（Windows 平台 symlink skip）；note §4.6 focused **69 passed／1 skipped**；feature-check `--run-tests` **18 節點 passed**；machine acceptance 7 gates rc=0（`ok=true`）；history audit 208 commits／934 blobs、credentialFindings=0、selfHostFindings=32。
 - **文件**：ADR-001／ADR-002 更新為已批准及實作候選；DECISIONS 新增 D17；GOVERNANCE_MATRIX、
   STATUS、README、需求摘要、報告及治理版本記錄同步；未虛構 E3／E4。

@@ -1822,7 +1822,9 @@ aircon-compare/
 - D7-A：保存原始 EMSD response bytes 於私人 sink，公開只留 hash receipt；private save
   失敗阻斷發布；raw bytes 不入公開 worktree／artifact；90 日 retention。ADR-001 已由人類批准。
 - D8-A：`age > 72h` 新鮮度 monitor、6 小時排程、issue 去重／恢復關閉。
-- D3 required reviewer 仍待使用者選定；D6 self-host 同步 deferred；E3／E4 仍 UNKNOWN。
+- D3 在 2026-09-22 快照中仍待使用者選定；其後於 2026-09-23 採用 D3-A，
+  GitHub API 回讀 `release` environment 唯一 reviewer 為 `CalvinLau1012`、
+  `prevent_self_review=false`（見 D19）；D6 self-host 同步 deferred；E3／E4 仍 UNKNOWN。
 - 本節只記錄非規範版本歷史；六個規範區塊、Registry、Metadata Schema、成功標準及 fail-closed
   門禁未修改、未降級。治理評審與 merge 批准仍待完成。
 

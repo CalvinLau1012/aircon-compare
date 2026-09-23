@@ -1,9 +1,9 @@
-# 治理落地矩陣（2026-09-22）
+# 治理落地矩陣（2026-09-23）
 
 > 本文件係「要求—證據—缺口—修復／待決定—驗收」盤點，覆蓋 GATE-01..09、15 項
 > required 功能、SC-001..016 及本階段全部 TODO。**證據等級**：E1 靜態／E2 本機
 > 測試／E3 受信任 CI／E4 部署後觀察；未取得嘅一律標 UNKNOWN，不代猜。
-> 本輪係 CHANGE 本機候選：未 commit／push／deploy、未發 Release。
+> v1.2.9 仍為候選：draft PR #10 已 push；未 merge／deploy、未發 Release。D3-A 平台設定已獨立完成並由 API 回讀。
 
 ## 1. GATE-01..09
 
@@ -17,7 +17,7 @@
 | GATE-06 Metadata/Package | 受信任環境唯一 metadata、payload hash | 兩階段 `gen-metadata.py`（收據事實、core fail-closed、finalize 驗 CSV/rawCount、原子輸出、生產必須收據、本地 force 不可覆寫 repo metadata） | E2：`tests/test_metadata_twostage.py`、`tests/test_receipt_metadata.py`；production 必須 receipt、finalize 驗 CSV hash／rawCount | 正式 metadata 由 CI 生成（E3 未有）；核對／封裝順序見 workflow |
 | GATE-07 Deploy | 受保護環境部署不可變包 | Pages：daily workflow push 後由平台 Pages 自動部署；私人自建線已移出公開 repo | E1：`.github/workflows/daily-update.yml`（allowlist、push fail-closed） | Pages root auto-deploy 與完整門禁唔係同一條信任鏈（架構缺口，待人類方案）；無 E4 |
 | GATE-08 Post-deploy | 線上 metadata／payload／行為一致 | `scripts/postdeploy_check.py`（完整 object＋Schema、payload/CSV hash、PDF 同 metadata 重建一致、瀏覽器、報告寫入失敗非零）、`postdeploy-verify.yml`（接受 Pages `dynamic`、master only、read-only、persist-credentials:false） | E2：`tests/test_postdeploy_check.py` | 未對 live Pages 執行過（E4 UNKNOWN）；local loopback 只屬候選驗證 |
-| GATE-09 Release Archive | 可追溯、不可 clobber、報告齊 | `scripts/archive_release.py`（實際 bytes＋zip＋CHECKSUMS＋provenance 分離、嚴格 SemVer、draft/release 等級、私隱掃描）、`release-archive.yml`（pipefail、GH_REPO、tag 指向檢查、publish 無 checkout） | E2：`tests/test_archive_release.py` | 未發布 Release；protected environment `release` 嘅 required reviewers 屬平台設定 UNKNOWN |
+| GATE-09 Release Archive | 可追溯、不可 clobber、報告齊 | `scripts/archive_release.py`（實際 bytes＋zip＋CHECKSUMS＋provenance 分離、嚴格 SemVer、draft/release 等級、私隱掃描）、`release-archive.yml`（pipefail、GH_REPO、tag 指向檢查、publish 無 checkout） | E2：`tests/test_archive_release.py`；2026-09-23 平台 API 回讀 D3-A | 未發布 Release；`release` environment 已設單人 required reviewer，允許維護者自行批准 |
 
 ## 2. 15 項 required 功能（Registry）
 
@@ -76,7 +76,7 @@
 | --- | --- | --- |
 | 監控頻率、新鮮度閾值、告警接收者／靜默 | UNKNOWN | 屬平台／組織設定，repo 無證據，不虛構 |
 | Pages root branch auto-deploy 與完整門禁關係 | 缺口 | 平台部署唔經 GATE-01/03/05/06；修復需改 Pages 設定（未授權） |
-| protected environment `release` required reviewers | UNKNOWN | 平台設定；workflow 有 `environment: release` 但名称本身唔證明已啟用 |
+| protected environment `release` required reviewers | OBSERVED / D3-A | 2026-09-23 GitHub API 回讀：reviewer `CalvinLau1012`、`prevent_self_review=false`、`can_admins_bypass=true`；workflow publish job 使用 `environment: release` |
 | Git 歷史仍含私人部署線 | 待人類私隱評估 | 工作樹移出唔改寫 history；改寫／轉私人 repo 需人類決定 |
 | Release／Deployment／E3／E4 | UNKNOWN | 未執行外部發布與部署 |
 | 原始 EMSD HTTP response 快照與原始 hash | 缺口 | 見 `docs/adr/ADR-001-raw-emsd-snapshot.md`（候選設計，未改資料契約） |
@@ -131,7 +131,8 @@
   timestamp fail-closed；線上 schema／payload hash 由 postdeploy_check 先驗。
 - **D5-A**：私人 repo（名稱只喺交付報告）visibility=PRIVATE；來源包
   SHA256SUMS 先驗，push 後 fresh clone 逐檔 checksum 通過；Temp 原件保留。
-- **D3 pending**：required reviewer 選項 A／B／C 未選，平台未回讀，維持 UNKNOWN。
+- **D3 當時 pending**：本節記錄 2026-09-22 快照；其後使用者於 2026-09-23 選 D3-A，
+  平台設定及 API 回讀已完成（見 `docs/DECISIONS.md` D19）。
 - **D6 deferred**：self-host 線同步待公開 PR merge 後另開私人 repo 工作，公開 PR 不含私人檔案。
 
 ### 8.1 第六輪實數

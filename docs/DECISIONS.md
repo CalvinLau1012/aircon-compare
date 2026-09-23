@@ -273,9 +273,33 @@
   - `OBSERVED / E2`：本機 pytest、acceptance 7 gates、fake HTTP／display 證據（見
     STATUS §11 實數）。
   - `UNKNOWN`：merge 後首個 daily dispatch、真正 Pages Actions E4、remote raw sink
-    provider 選擇／Secret／首個 live snapshot、D3 required reviewer、D6 self-host 同步。
+    provider 選擇／Secret／首個 live snapshot、D3 required reviewer（其後由 D19 解決）、D6 self-host 同步。
 - **回滾**：本輪全部改動仍喺 branch；可 revert 對應 commit；唔會回退 production
   metadata／runtime snapshots。
+
+## D19 · `release` environment 單人 required reviewer（D3-A）
+
+- **日期**：2026-09-23
+- **狀態**：已實行（平台 API 已回讀）
+- **背景**：GATE-09 的 publish job 使用 `environment: release`；D17 留下 A（單人維護、
+  `prevent_self_review=false`）／B（獨立覆核）／C（不設 reviewer）三個選項。項目目前只有一名
+  維護者，因此無法採用需要另一名使用者批准的 B。
+- **選項**：A：維護者本人為 required reviewer 並允許 self-review；B：另一名可信使用者／team
+  獨立批准並禁止 self-review；C：不設 required reviewer。
+- **決策**：採 D3-A。GitHub `release` environment 已建立；唯一 required reviewer 為
+  `CalvinLau1012`（GitHub user id `178408566`），`prevent_self_review=false`、`wait_timer=0`、
+  `deployment_branch_policy=null`、`can_admins_bypass=true`。2026-09-23 GitHub API 建立回應及其後回讀均顯示
+  `required_reviewers` protection rule。
+- **原因**：單人維護條件下仍保留一次明確的人工作業批准，避免手動觸發 `publish=true` 後立即
+  發布；同時不建立實際無人可以通過的獨立覆核關卡。
+- **後果**：
+  - `OBSERVED / 平台`：引用 `environment: release` 的 publish job 會進入 environment approval；
+    維護者可批准自己的 deployment；管理員亦可另行明確 bypass。一般 PR build／只建立歸檔而不 publish 的路徑不因本決策改變。
+  - `UNKNOWN`：本決策沒有執行 publish、Release、tag、deploy、E3 或 E4；首次真實等待／批准流程
+    仍須在獲准發布時驗收。
+  - `SECURITY TRADE-OFF`：批准人與提交者可以是同一人，提供防誤觸關卡，但不構成獨立雙人覆核。
+- **回滾**：可在 GitHub environment 設定移除 reviewer／刪除 `release` environment，並以新決策
+  記錄取代 D19；不得只改文件而留下平台設定漂移。
 
 ## 決策模板
 
