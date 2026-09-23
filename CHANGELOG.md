@@ -365,7 +365,9 @@
   payload hash、run identity、PDF 重建同 Chromium runtime 驗證，永不部署。
 - **daily→Pages 精確銜接**：新增 `scripts/dispatch_pages_deploy.py`（`repository_dispatch`
   帶已 push commit＋sourceRunId）同 `scripts/verify_deploy_request.py`（成功 run／master／
-  祖先綁定；唔 fallback 最新 master）。
+  祖先綁定；唔 fallback 最新 master）。R7 再收緊：有界 polling 等 source run completed/
+  success、精確比對 run attempt、workflow path 必須係 daily-update.yml、部署 commit 必須
+  單親直接 child、checkout `metadata.json` 要 binding `workflowRunId`／`commit`。
 - **可插拔私人 raw sink**：新增 `scripts/private_raw_sink.py`——`local-dir` 如實標示非
   durable，`github-release-asset` 候選 adapter（PRIVATE 回讀、同名拒覆蓋、上傳後下載
   sha256＋size 核驗、90 日 retention、失敗唔發成功 receipt）；`docs/PRIVATE_RAW_SINK_RUNBOOK.md`
@@ -389,3 +391,6 @@
 - Pages artifact 唔再漏 `metadata.json`；輸出目錄唔再被任意 rmtree；PR 唔會用 production
   metadata 驗候選；`workflow_dispatch` 只限 master 先入 production；Windows symlink 測試
   唔再以 skip 當 pass。
+- **R7**：Pages production concurrency 加 `queue: max`（預設 single 會以新 pending 取代舊
+  pending，可能犧牲已驗證部署）；`verify_deploy_request.py` 補 run attempt／workflow path／
+  單親 direct parent／metadata binding／完成時序負向測試（時間可注入，不在測試真等）。

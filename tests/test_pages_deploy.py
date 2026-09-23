@@ -315,6 +315,8 @@ def test_pages_deploy_workflow_contract():
     assert on['repository_dispatch']['types'] == ['aircon-pages-deploy']
     group = wf['concurrency']['group']
     assert 'pull_request' in group and 'production' in group
+    assert wf['concurrency']['cancel-in-progress'] is False
+    assert wf['concurrency']['queue'] == 'max'
     build = wf['jobs']['build']
     deploy = wf['jobs']['deploy']
     assert deploy['needs'] == 'build'
@@ -329,7 +331,10 @@ def test_pages_deploy_workflow_contract():
     i_build = next(i for i, n in enumerate(names) if '建立 Pages artifact' in n)
     i_upload = next(i for i, n in enumerate(names) if '上載 Pages artifact' in n)
     assert i_verify < i_gates < i_fixture < i_build < i_upload
-    assert 'verify_deploy_request.py' in build['steps'][i_verify]['run']
+    verify_run = build['steps'][i_verify]['run']
+    assert 'verify_deploy_request.py' in verify_run
+    assert '--poll-timeout 300' in verify_run and '--poll-interval 10' in verify_run
+    assert '--metadata metadata.json' in verify_run
     fixture_run = build['steps'][i_fixture]['run']
     assert 'make_fixture_release.py' in fixture_run and 'verify_candidate.py' in fixture_run
     build_run = build['steps'][i_build]['run']
@@ -423,6 +428,7 @@ def _git_repo(tmp_path):
 
 
 def test_verify_deploy_request_binds_master_ancestor_and_source_run(tmp_path):
+    """push 路徑基本契約；repository_dispatch 詳細覆蓋喺 test_verify_deploy_request.py。"""
     spec = importlib.util.spec_from_file_location(
         'verify_mod', os.path.join(BASE, 'scripts', 'verify_deploy_request.py'))
     mod = importlib.util.module_from_spec(spec)
@@ -436,23 +442,3 @@ def test_verify_deploy_request_binds_master_ancestor_and_source_run(tmp_path):
     with pytest.raises(mod.VerifyError, match='祖先'):
         mod.verify('push', second, 'owner/repo', cwd=str(tmp_path))
     _git(tmp_path, 'update-ref', 'refs/remotes/origin/master', second)
-
-    run = {'repository': {'full_name': 'owner/repo'}, 'event': 'schedule',
-           'status': 'completed', 'conclusion': 'success', 'head_branch': 'master',
-           'head_sha': first}
-    ok = mod.verify('repository_dispatch', second, 'owner/repo', source_run_id='123',
-                    source_run_attempt='1', api=lambda path, token: (200, run),
-                    token='tok', cwd=str(tmp_path))
-    assert ok['sourceRunId'] == '123'
-    for broken in (dict(run, conclusion='failure'),
-                   dict(run, event='pull_request'),
-                   dict(run, head_sha='b' * 40),
-                   dict(run, repository={'full_name': 'other/repo'})):
-        with pytest.raises(mod.VerifyError):
-            mod.verify('repository_dispatch', second, 'owner/repo', source_run_id='123',
-                       source_run_attempt='1', api=lambda p, t, r=broken: (200, r),
-                       token='tok', cwd=str(tmp_path))
-    with pytest.raises(mod.VerifyError, match='HTTP'):
-        mod.verify('repository_dispatch', second, 'owner/repo', source_run_id='123',
-                   source_run_attempt='1', api=lambda p, t: (500, None),
-                   token='tok', cwd=str(tmp_path))

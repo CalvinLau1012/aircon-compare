@@ -4,8 +4,8 @@ name: Pages 部署（Actions）
 # - PR 只跑完整 gates + 隔離 fixture 封包／HTTP／瀏覽器驗證，永不 deploy；
 # - master push／master workflow_dispatch／每日成功 run dispatch（repository_dispatch）
 #   先由 build job 建立受驗證 artifact，deploy job needs 咗 build 才部署；
-# - repository_dispatch 只接受完整 40-hex commit + 成功 source run，並核實
-#   commit 係 origin/master 祖先；唔會 fallback 去任何「最新 master」。
+# - repository_dispatch 只接受完整 40-hex commit + 已驗證成功 source run（run id／
+#   attempt／workflow path／direct parent／metadata binding），唔會 fallback 最新 master。
 on:
   push:
     branches: [master]
@@ -18,7 +18,8 @@ permissions:
   contents: read
 
 # 生產部署同 PR build 分開 concurrency group：PR 永遠唔會取消／阻塞生產，
-# 生產部署亦唔會被 PR build 排隊阻住。同組 FIFO，最後部署最新請求。
+# 生產部署亦唔會被 PR build 排隊阻住。production 組用 queue: max 保留所有
+# pending run（預設 single 會以新 pending 取代舊 pending，可能犧牲已驗證部署）。
 concurrency:
   group: >-
     pages-${{
@@ -27,6 +28,7 @@ concurrency:
         || 'production'
     }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   build:
@@ -93,6 +95,8 @@ jobs:
               --commit "${{ steps.target.outputs.commit }}" \
               --source-run-id "$PAYLOAD_RUN_ID" \
               --source-run-attempt "$PAYLOAD_RUN_ATTEMPT" \
+              --metadata metadata.json \
+              --poll-timeout 300 --poll-interval 10 \
               --report "$RUNNER_TEMP/deploy-request.json"
           else
             python scripts/verify_deploy_request.py \

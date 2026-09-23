@@ -19,9 +19,11 @@
   - A：reusable workflow 由 daily 直接呼叫。缺點：daily 需要 `pages:write` /
     `id-token:write` 權限，權限面擴大；且呼叫 run 嘅 `GITHUB_SHA` 係 push 前 commit。
   - B：`repository_dispatch`（GitHub 文件確認 GITHUB_TOKEN 嘅例外）帶精確
-    `commit` + `sourceRunId`；Pages workflow checkout 該 commit，用 GitHub API 核實
-    source run 成功、event 可信、head_branch=master，而且 commit 係 `origin/master`
-    祖先。**採用**。
+    `commit` + `sourceRunId`；Pages workflow checkout 該 commit，用 GitHub API 有界
+    polling 核實 source run completed + success、event 可信、`head_branch=master`、
+    `run_attempt` 精確、workflow path 係 `.github/workflows/daily-update.yml`，而且
+    部署 commit 只有一個 parent 且等於 source run `head_sha`，`metadata.json` 嘅
+    `workflowRunId`／`commit` 亦對應。**採用**。
 - **決策**：
   - `deploy_envelope.json`：`requiredFiles` = payload 全部 + `metadata.json`；
     `optionalFiles` = 公開收據／status，只有同本次 `datasetHash`（同 CSV 收據
@@ -35,11 +37,15 @@
     `make_fixture_release.py` 由候選 payload + 收據重建 fixture metadata + PDF，
     再行真 HTTP／瀏覽器／PDF 重建核對（`verify_candidate.py`），永不部署。
   - production：daily 成功 push 後 `dispatch_pages_deploy.py` dispatch；
-    Pages workflow 以 `verify_deploy_request.py` 核實；`postdeploy-verify.yml`
-    只喺 Pages workflow 成功後核對同一 commit，並再驗 HEAD == 平台記錄且係
-    master 祖先。
+    Pages workflow 以 `verify_deploy_request.py` 核實（run id／attempt／path／
+    direct parent／metadata binding；queued／in_progress 只可短暫存在，timeout
+    即失敗）；`postdeploy-verify.yml` 只喺 Pages workflow 成功後核對同一 commit，
+    並再驗 HEAD == 平台記錄且係 master 祖先。
   - concurrency：daily 同 Pages 都按 event／ref 分組（PR 一組、production 一組），
-    PR 唔可以取消或阻塞生產，亦唔會產生過期部署。
+    PR 唔可以取消或阻塞生產。Pages workflow 用 `queue: max`（GitHub 預設
+    `queue: single` 只保留一個 pending run，新 pending 會取代舊 pending，可能令
+    已驗證但未執行嘅 daily 部署被犧牲）；`cancel-in-progress: false` 保持唔會中途
+    取消部署。
 
 - **原因**：保持 D14「metadata 唔喺自己 hash 內」、D2-A「PR 永不 deploy、master 最小
   權限」同 D7-A「證據一致才發布」；同時令 daily 新產物真正觸發部署而唔擴權。
