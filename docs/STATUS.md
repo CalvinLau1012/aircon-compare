@@ -422,3 +422,13 @@
 5. 觀察 postdeploy-verify success（E4）；有 issue 即停。
 6. E4 後先 tag `v1.2.9`＋`release-archive.yml publish=true`（release environment 人工批准）；
    核對 CHECKSUMS／PROVENANCE 同 tag／commit 對應。任何一步失敗：停，唔好靠 bypass 或改 metadata。
+
+### 14.6 新提交 CI 核對（OBSERVED / E3）
+
+- PR head `174dcc2363e21d23cb8f39614208b88617d2fc4e`（即 14.1 修正＋D20＋本節 §14 之後嘅
+  push）：
+  - `每日偵測 · 新機分批更新` → `pull-request-gates` run `35874993642`：**success**（2m31s）；
+    `update` job 正確 `skipping`（PR 唔會跑生產更新）。
+  - `Pages 部署（Actions）` → `build` run `35874993620`：**success**（2m38s）；`deploy` job
+    正確 `skipping`（PR 永不 deploy）。
+- 以上只係 PR build／gate 嘅 E3；production `repository_dispatch` 部署路徑同 live E4 仍未發生。
