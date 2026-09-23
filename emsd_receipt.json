@@ -1,5 +1,5 @@
 {
-  "retrievedAt": "2026-09-23T15:34:27Z",
+  "retrievedAt": "2026-09-23T19:47:53Z",
   "sourceUrl": "https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50",
   "success": true,
   "pagesExpected": 37,
@@ -47,5 +47,5 @@
     34
   ],
   "datasetHash": "sha256:f362a542f8b46daa07f5af08cd49ed50ec231f6f9c1d82bb51ab39892e41dc86",
-  "rawReceiptHash": "sha256:b4166d4ce9f77a0d9b6355f7231436495a4e0034c966d4331ea20d7d2175eb55"
+  "rawReceiptHash": "sha256:7a6a29134f79c8765b03f9618b0782d9a13f800bed1a0a2482bf7ca6d16586b3"
 }
