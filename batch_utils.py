@@ -6,8 +6,10 @@
 - 每月一次、分 7 日嘅批次進度（start / active / slice / advance）
 - 限流冷卻期 + 部署/每日檢查打卡
 """
+import datetime
 import json
 import os
+import re
 import time
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -16,20 +18,96 @@ COOLDOWN_HOURS = 48  # 限流冷卻期：熔斷後 48 小時內唔再試
 PRICE_BATCH_DAYS = 7
 
 
-def load_meta():
-    """讀取 meta（唔存在就空）"""
-    if os.path.exists(META_PATH):
+class MetaError(ValueError):
+    """prices_meta.json 契約錯誤（讀取／解析／型別／範圍）。"""
+
+
+def _validate_meta(meta, label='prices_meta.json'):
+    if not isinstance(meta, dict):
+        raise MetaError(f'{label} 頂層必須係 object（got {type(meta).__name__}）')
+    bu = meta.get('blocked_until')
+    if bu is not None and (isinstance(bu, bool) or not isinstance(bu, (int, float)) or bu < 0):
+        raise MetaError(f'{label} blocked_until 必須係非負數')
+    idx = meta.get('price_batch_idx')
+    if idx is not None and (isinstance(idx, bool) or not isinstance(idx, int)
+                            or not (0 <= idx <= PRICE_BATCH_DAYS)):
+        raise MetaError(f'{label} price_batch_idx 必須係 0–{PRICE_BATCH_DAYS} 整數')
+    def _check_date(field, value):
+        if value is None:
+            return
+        if not isinstance(value, str) or not re.match(r'^\d{4}-\d{2}-\d{2}$', value):
+            raise MetaError(f'{label} {field} 格式唔正確：{value!r}')
         try:
-            with open(META_PATH, encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
+            datetime.date.fromisoformat(value)
+        except ValueError:
+            raise MetaError(f'{label} {field} 唔係真實日曆日期：{value!r}')
+
+    def _check_month(field, value):
+        if value is None:
+            return
+        if not isinstance(value, str) or not re.match(r'^\d{4}-\d{2}$', value):
+            raise MetaError(f'{label} {field} 格式唔正確：{value!r}')
+        try:
+            datetime.datetime.strptime(value, '%Y-%m')
+        except ValueError:
+            raise MetaError(f'{label} {field} 唔係真實年月：{value!r}')
+
+    def _check_stamp(field, value):
+        if value is None:
+            return
+        if not isinstance(value, str):
+            raise MetaError(f'{label} {field} 必須係字串')
+        try:
+            datetime.datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            raise MetaError(f'{label} {field} 時間格式唔正確：{value!r}')
+
+    for field in ('price_batch_start', 'last_full', 'last_run', 'last_check'):
+        _check_date(field, meta.get(field))
+    _check_month('last_price_month', meta.get('last_price_month'))
+    _check_stamp('last_deploy', meta.get('last_deploy'))
+    _check_stamp('last_force_batch', meta.get('last_force_batch'))
+    return meta
+
+
+def load_meta(path=None):
+    """讀取 meta；missing 回 {}；存在但 unreadable／invalid／型別範圍錯 → raise MetaError。"""
+    path = path or META_PATH
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path, 'rb') as f:
+            raw = f.read()
+    except OSError as e:
+        raise MetaError(f'prices_meta.json 讀取失敗：{e}')
+    try:
+        meta = json.loads(raw.decode('utf-8'), parse_constant=lambda c: (_ for _ in ()).throw(
+            MetaError(f'prices_meta.json 唔接受非標準常數：{c}')))
+    except UnicodeDecodeError as e:
+        raise MetaError(f'prices_meta.json 唔係有效 UTF-8：{e}')
+    except json.JSONDecodeError as e:
+        raise MetaError(f'prices_meta.json JSON 解析失敗：{e}')
+    return _validate_meta(meta)
+
+
+def save_meta(meta, path=None):
+    """驗證後原子寫入（同目錄 tmp + flush + fsync + replace）；失敗保留舊 bytes。"""
+    path = path or META_PATH
+    _validate_meta(meta)
+    tmp = path + '.tmp'
+    try:
+        with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
+            json.dump(meta, f, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except OSError as e:
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except OSError:
             pass
-    return {}
-
-
-def save_meta(meta):
-    with open(META_PATH, 'w', encoding='utf-8') as f:
-        json.dump(meta, f, ensure_ascii=False)
+        raise MetaError(f'prices_meta.json 寫入失敗：{e}')
 
 
 def set_cooldown():

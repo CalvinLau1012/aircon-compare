@@ -72,6 +72,7 @@ def test_metadata_generate_and_validate():
         '--workflow-run-id', '123456789',
         '--dataset-date', '2026-08-25',
         '--dataset-date-basis', 'retrieval-date-fallback',
+        '--dataset-retrieved-at', '2026-08-25T00:00:00Z',
         '--dataset-source-url', 'https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php',
         '--dataset-snapshot-id', 'emsd-20260825',
         '--dataset-hash', 'sha256:' + 'b' * 64,
@@ -215,6 +216,19 @@ def test_pdf_export(tmp_path):
         head = f.read(8)
     assert head.startswith(b'%PDF'), f'唔係有效 PDF：{head!r}'
     assert out.stat().st_size > 10000, 'PDF 太細，疑似空檔'
+    # 同輸入重建必須 byte-for-byte 一致（可重現建置）
+    out2 = tmp_path / 'r2.pdf'
+    generate_pdf.build_pdf(str(out2))
+    assert _sha256_file(str(out)) == _sha256_file(str(out2)), '同輸入 PDF 必須可重現'
+    # 狀態行必須反映 PDF 用嘅 metadata（version／datasetDate）
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        'gen_metadata_pdf', os.path.join(ROOT, 'scripts', 'gen-metadata.py'))
+    gm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gm)
+    meta = generate_pdf.load_metadata()
+    line1, _line2 = generate_pdf.format_status(meta, generate_pdf.VERSION)
+    assert str(meta.get('version')) in line1 or '暫不可用' in line1
 
     # 回歸：測試前後 repo 根目錄 PDF 必須逐位元不變
     after = _sha256_file(repo_pdf) if os.path.exists(repo_pdf) else None
@@ -222,8 +236,32 @@ def test_pdf_export(tmp_path):
 
 
 def test_ranking_recommendation_sections():
-    """core.ranking / core.recommendation：報告內文包含排名/推薦章節且引用數據來源"""
+    """core.ranking / core.recommendation：排名／推薦章節存在、引用數據來源，
+    而且大部分型號 token 對得上現有資料（排名本質屬歷史人工推薦，
+    證據上限見 docs/STATUS.md；唔可以當成演算法完全驗證）。"""
+    import csv
+    import json
+    import re
+    import models_data
     md = open(os.path.join(ROOT, '空調對比報告.md'), encoding='utf-8').read()
-    assert '排名' in md, '報告應該有排名章節'
-    assert '推薦' in md, '報告應該有推薦章節'
-    assert ('EMSD' in md and '官網' in md), '排名/推薦應該引用數據來源'
+    start = md.index('## 📈 排名')
+    end = md.find('\n## ', md.index('## 🏆 最終推薦') + 5)
+    section = md[start:end]
+    assert '推薦' in section and '排名' in section
+    assert '官網' in section, '排名/推薦應該引用官網核實來源'
+    assert 'EMSD' in md, '報告整體應該引用 EMSD 來源'
+    known = {r[1].strip().upper()
+             for r in list(csv.reader(open(os.path.join(ROOT, 'emsd_空調能源標籤.csv'),
+                                            encoding='utf-8-sig')))[1:] if len(r) >= 2}
+    known |= {m['model'].strip().upper() for m in models_data.MODELS}
+    for f in ('official_specs.json', 'specs.json', 'specs_emsd.json',
+              'biggo_prices.json', 'prices.json'):
+        p = os.path.join(ROOT, f)
+        if os.path.exists(p):
+            known |= {str(k).strip().upper() for k in json.load(open(p, encoding='utf-8')).keys()}
+    tokens = set(re.findall(r'\b[A-Z]{2,6}-[A-Z0-9-]{2,16}\b', section.upper()))
+    tokens = {t for t in tokens if len(t) >= 5}
+    assert tokens, '排名／推薦應該提到具體型號'
+    matched = [t for t in tokens if t in known]
+    assert len(matched) / len(tokens) >= 0.6, (
+        f'排名／推薦型號 token 大部分要對得上資料：matched={matched} all={sorted(tokens)}')

@@ -425,8 +425,13 @@ def run_price_batch():
 
     - 黑名單型號完全排除（復核由 review_blacklist_batch 小額輪轉處理）
     - 三態：有價 / 乾淨無報價 / 網絡錯誤分開計（D8：網絡錯誤唔計淘汰）
-    - 淘汰確認照 call record_results（batch_id 防同一批重跑重複計 miss）
-    - 並發 2（D3）
+    - **只有整個 slice 零網絡錯誤才 advance_batch**；有任何 net_err 或中止都會保留
+      同一 idx，聽日重跑同一 slice（可重試未完成批次），網絡錯誤永不會當 clean miss
+    - 增量寫入 biggo_prices.json：每個寫入 entry 都係真實抓到嘅證據；部分成功會保留，
+      唔會聲稱整批「全保留原樣」。批次進度／淘汰統計要整批乾淨才推進。
+    - 淘汰確認用 batch_id 去重（同一批重跑唔重複計 miss）；並發 2（D3）
+
+    回傳 status dict（status: not-active／cooldown-skip／aborted／partial-net-errors／completed）。
     """
     meta = load_meta()
     brand_lookup = load_brand_lookup()
@@ -435,12 +440,14 @@ def run_price_batch():
     batch = get_batch_todo(todo_src, meta)
     if not batch:
         print('💰 BigGo 批次：唔喺進行中，跳過')
-        return
+        return {'status': 'not-active'}
     todo, idx, total = batch
     blocked = meta.get('blocked_until')
     if blocked and time.time() < blocked:
         print('🕐 冷卻期內，跳過本批（之後批次會繼續）')
-        return
+        meta['last_batch_status'] = 'cooldown-skip'
+        save_meta(meta)
+        return {'status': 'cooldown-skip'}
 
     print(f'💰 BigGo 批次 {idx + 1}/{PRICE_BATCH_DAYS}：{len(todo)}/{total} 個型號，開始...')
 
@@ -451,6 +458,7 @@ def run_price_batch():
 
     got, clean_miss, net_err = [], [], []
     consec_fail = 0
+    aborted = False
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=2) as ex:
         futures = {ex.submit(_search_tri_state, m): m for m in todo}
@@ -479,27 +487,55 @@ def run_price_batch():
                     json.dump(results, f, ensure_ascii=False)
             if done_count >= 40 and consec_fail >= 40:
                 print('⚠️ 連續 40 個失敗，疑似被限流，中止本批', flush=True)
-                set_cooldown()
-                sys.exit(1)
+                aborted = True
+                break
 
+    # 最終寫入：partial 成功嘅真實報價保留（唔係「全保留原樣」；進度唔會前進）
     with open(OUT_PATH, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False)
 
-    # 淘汰確認（三態；batch_id = 批次開始日 + 第幾日，同一批重跑唔重複計 miss）
+    batch_id = f"{meta.get('price_batch_start', time.strftime('%Y-%m-%d'))}:{idx + 1}/{PRICE_BATCH_DAYS}"
+
+    if aborted:
+        set_cooldown()
+        meta['last_batch_status'] = 'aborted'
+        meta['last_batch_idx'] = idx
+        meta['last_batch_net_errors'] = len(net_err)
+        save_meta(meta)
+        print(f'❌ 本批中止（網絡／限流）：idx 未推進，聽日重試；已得價 {len(got)} 會保留')
+        return {'status': 'aborted', 'idx': idx, 'got': len(got),
+                'cleanMiss': len(clean_miss), 'netErrors': len(net_err), 'advanced': False}
+
+    # 淘汰確認（三態；同一 batch_id 重跑唔重複計 miss）——partial 都記錄真實證據
     rec = [(m, True) for m in got] + [(m, False) for m in clean_miss]
-    record_results(rec, protected=protected_models(),
-                   batch_id=f"{meta.get('price_batch_start', time.strftime('%Y-%m-%d'))}:{idx + 1}/{PRICE_BATCH_DAYS}",
+    record_results(rec, protected=protected_models(), batch_id=batch_id,
                    brand_of=_brand_of(brand_lookup))
 
-    # 小額黑名單復核（每日 quota，按批次日輪轉）
+    if net_err:
+        # 網絡錯誤唔可以當完成：idx 唔推進，聽日重跑同一 slice
+        meta['last_batch_status'] = 'partial-net-errors'
+        meta['last_batch_idx'] = idx
+        meta['last_batch_net_errors'] = len(net_err)
+        save_meta(meta)
+        print(f'⚠️ 本批有 {len(net_err)} 個網絡錯誤：批次進度唔推進，聽日重試同一 slice'
+              f'（得價 {len(got)} · 乾淨無報價 {len(clean_miss)}；錯誤樣本 {net_err[:10]}）')
+        return {'status': 'partial-net-errors', 'idx': idx, 'got': len(got),
+                'cleanMiss': len(clean_miss), 'netErrors': len(net_err), 'advanced': False}
+
+    # 小額黑名單復核（只在完整成功批次做，避免錯誤期間加載）
     review_blacklist_batch(idx)
 
     done = advance_batch(meta)
+    meta['last_batch_status'] = 'completed'
+    meta['last_batch_idx'] = idx
+    meta['last_batch_net_errors'] = 0
     save_meta(meta)
     if done:
         print(f'🎉 BigGo 價錢快照全量更新完成（分 {PRICE_BATCH_DAYS} 日）')
     else:
         print(f'💰 本批完成（{meta["price_batch_idx"]}/{PRICE_BATCH_DAYS}），聽日繼續')
+    return {'status': 'completed', 'idx': idx, 'got': len(got),
+            'cleanMiss': len(clean_miss), 'netErrors': 0, 'advanced': bool(done)}
 
 
 # ===== BigGo smoke 候選（集中管理；只喺 API 連線測試用）=====
@@ -583,7 +619,9 @@ if __name__ == '__main__':
             lim = int(sys.argv[i + 1])
         run_force_batch(lim)
     elif '--price-batch' in sys.argv:
-        run_price_batch()
+        status = run_price_batch()
+        if isinstance(status, dict) and status.get('status') == 'aborted':
+            sys.exit(1)
     elif len(sys.argv) > 1:
         # 單型號測試：python fetch_biggo.py RA-10RF
         for m in sys.argv[1:]:

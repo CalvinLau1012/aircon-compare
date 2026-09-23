@@ -37,8 +37,45 @@ class BlockError(Exception):
     pass
 
 
+def _unique_pairs(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise BlockError(f'JSON duplicate key: {key}')
+        out[key] = value
+    return out
+
+
+def _reject_constant(name):
+    """json.loads 預設接受 NaN／Infinity；治理 JSON 必須拒絕。"""
+    raise BlockError(f'JSON 唔接受非標準常數：{name}')
+
+
 def extract_blocks(text):
     """返回 {blockId: parsed_json}；任何結構問題拋 BlockError"""
+    # 先全掃 marker：未知 ID、重複、嵌套／交錯、未配對一律阻斷
+    marker_re = re.compile(r'<!--\s*AIRCON:NORMATIVE:([A-Z0-9_]+):(BEGIN|END)\s*-->')
+    known = {bid[len('AIRCON_'):] if bid.startswith('AIRCON_') else bid for bid in EXPECTED_BLOCKS}
+    stack = []
+    for m in marker_re.finditer(text):
+        marker_id, kind = m.group(1), m.group(2)
+        if marker_id not in known:
+            raise BlockError(f'未知治理 marker：{marker_id}:{kind}')
+        if kind == 'BEGIN':
+            if stack:
+                raise BlockError(f'治理 marker 嵌套／交錯：{marker_id}:BEGIN 喺 {stack[-1]}:BEGIN 之內')
+            stack.append(marker_id)
+        else:
+            if not stack or stack[-1] != marker_id:
+                raise BlockError(f'治理 marker 未配對：{marker_id}:END')
+            stack.pop()
+    if stack:
+        raise BlockError(f'治理 marker 未閉合：{stack[-1]}:BEGIN')
+    # 非標準文字 marker（例如錯 prefix）唔容許静默略過
+    for bad in re.finditer(r'<!--\s*AIRCON:NORMATIVE:[^>]*?\s*-->', text):
+        if not marker_re.fullmatch(bad.group(0)):
+            raise BlockError(f'未知／格式錯嘅治理 marker：{bad.group(0)[:80]}')
+
     out = {}
     for bid in EXPECTED_BLOCKS:
         # 文檔 marker 用嘅係 blockId 去掉 AIRCON_ 前綴（如 AI_CONTEXT_V1）
@@ -65,9 +102,10 @@ def extract_blocks(text):
         if not m:
             raise BlockError(f'區塊 {bid} JSON 代碼塊格式不正確')
         raw = m.group(1)
-        # 拒絕重複鍵
+        # 拒絕重複鍵同 NaN／Infinity
         try:
-            obj = json.loads(raw)
+            obj = json.loads(raw, object_pairs_hook=_unique_pairs,
+                             parse_constant=_reject_constant)
         except json.JSONDecodeError as e:
             raise BlockError(f'區塊 {bid} JSON 解析失敗（拒絕註釋/尾隨逗號）：{e}')
         if not isinstance(obj, dict):
@@ -94,8 +132,16 @@ def check_unique_ids(obj, path=''):
 
 def main():
     # Windows 控制台編碼保護
-    if hasattr(sys.stdout, 'reconfigure'):
-        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, 'reconfigure'):
+            _stream.reconfigure(encoding='utf-8', errors='replace')
+    dump_id = None
+    if '--dump' in sys.argv:
+        idx = sys.argv.index('--dump')
+        if idx + 1 >= len(sys.argv):
+            print('❌ --dump 需要區塊 ID，例如 --dump AIRCON_FEATURE_REGISTRY_V1', file=sys.stderr)
+            return 2
+        dump_id = sys.argv[idx + 1]
     if not os.path.exists(GOV_FILE):
         print(f'❌ 搵唔到 {GOV_FILE}', file=sys.stderr)
         return 2
@@ -103,15 +149,33 @@ def main():
         text = f.read()
     try:
         blocks = extract_blocks(text)
+        from validate_metadata import validate
+        from jsonschema import Draft202012Validator
+        from jsonschema.exceptions import SchemaError
+        # 內嵌 Schema 自身必須係合法 Draft 2020-12 Schema
+        for schema_id in ('AIRCON_FEATURE_REGISTRY_SCHEMA_V1',
+                          'AIRCON_SUCCESS_CRITERIA_SCHEMA_V1',
+                          'AIRCON_METADATA_SCHEMA_V1'):
+            Draft202012Validator.check_schema(blocks[schema_id])
+        # Registry / Success Criteria 真實驗證（完整 Schema，含 const/enum/pattern/minimum）
+        for instance, schema in (
+            ('AIRCON_FEATURE_REGISTRY_V1', 'AIRCON_FEATURE_REGISTRY_SCHEMA_V1'),
+            ('AIRCON_SUCCESS_CRITERIA_V1', 'AIRCON_SUCCESS_CRITERIA_SCHEMA_V1'),
+        ):
+            errors = validate(blocks[instance], blocks[schema])
+            if errors:
+                raise BlockError('; '.join(errors))
         for bid in EXPECTED_BLOCKS:
             check_unique_ids(blocks[bid], bid)
-    except BlockError as e:
+    except (BlockError, SchemaError) as e:
         print(f'❌ 治理區塊驗證失敗：{e}', file=sys.stderr)
         return 1
-    print(f'✅ 治理區塊全部有效：{len(blocks)} 個區塊、ID 唯一、JSON 嚴格解析通過')
-    if '--dump' in sys.argv:
-        bid = sys.argv[sys.argv.index('--dump') + 1]
-        print(json.dumps(blocks[bid], ensure_ascii=False, indent=2))
+    print(f'✅ 治理區塊全部有效：{len(blocks)} 個區塊、ID 唯一、JSON 嚴格解析、Schema 完整驗證通過')
+    if dump_id is not None:
+        if dump_id not in blocks:
+            print(f'❌ 冇區塊 {dump_id}（可用：{", ".join(EXPECTED_BLOCKS)}）', file=sys.stderr)
+            return 2
+        print(json.dumps(blocks[dump_id], ensure_ascii=False, indent=2))
     return 0
 
 

@@ -1,0 +1,56 @@
+name: 72h 資料新鮮度監控
+
+# D8-A：每 6 小時檢查線上 metadata 新鮮度／部署一致性；首次失敗／狀態改變才開或更新
+# 單一 monitoring issue，同狀態重複時只 noop，恢復時關閉。
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: freshness-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 取出代碼
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          persist-credentials: false
+
+      - name: 設定 Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 安裝依賴
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: 線上 metadata／payload hash 一致性（非瀏覽器）
+        run: |
+          python scripts/postdeploy_check.py \
+            --expected-metadata metadata.json \
+            --manifest deploy_payload.json \
+            --retries 6 --no-browser \
+            --report "$RUNNER_TEMP/postdeploy.json"
+
+      - name: 72h freshness＋監控告警（無論上一步結果都要處理）
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/freshness_issue.py \
+            --metadata-url 'https://calvinlau1012.github.io/aircon-compare/metadata.json' \
+            --repo "$GITHUB_REPOSITORY" \
+            --postdeploy-report "$RUNNER_TEMP/postdeploy.json" \
+            --report "$RUNNER_TEMP/freshness-monitor.json"

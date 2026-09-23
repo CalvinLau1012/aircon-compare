@@ -5,27 +5,188 @@
 
 ## [Unreleased]
 
-### Added
+### 2026-09-23 平台治理
+
+- **D3-A release 人工批准關卡**：使用者確認單人維護模式；已建立 GitHub `release`
+  environment，以 `CalvinLau1012` 為唯一 required reviewer，`prevent_self_review=false`。
+  GitHub API 回讀證實設定；本項沒有 merge、deploy、tag 或建立 Release。
+- **D7-A daily raw sink 接線**：`daily-update.yml` 的 `抓取 EMSD + 新機偵測` step 接入
+  `AIRCON_EMSD_RAW_REMOTE_REPO`／`AIRCON_EMSD_RAW_REMOTE_TOKEN`／`AIRCON_EMSD_RAW_REMOTE_TAG`／
+  `AIRCON_EMSD_RAW_RETENTION_DAYS`（全部只由 `secrets.*` 提供；私人 repo 識別禁止入 repo／
+  Variables／公開 log）；require 模式缺配置或上傳失敗維持 fail-closed。live 啟用仍待用戶
+  選定 provider 並設定 Secrets；本項沒有建立 Release／上傳資產／merge／deploy。
+- **合併前發布路徑核對（本地 E2）**：merge push 會先被 `build_pages_artifact.py` 的
+  `metadata.version == models_data.VERSION`（1.2.8 vs 1.2.9）同 payload hash 檢查 fail-closed
+  攔住，唔會用舊 metadata 部署；首個 daily 成功 push 後才以 `repository_dispatch` 帶精確
+  commit／source run 進入 Pages production。完整順序與證據見 [docs/STATUS.md](docs/STATUS.md) §14。
+
+> 此區分開兩類：(1) v1.2.9 本機候選修復——已實作並通過本機測試，但未建立 Release、未部署、生產 `metadata.json` 仍為 1.2.8；(2) 1.2.8 之後已入 master 但未另立產品版本的維護記錄。精確基準與證據見 [docs/STATUS.md](docs/STATUS.md)。
+
+### 1.2.9 候選（未發布、未部署）— 2026-09-21
+
+> 產品版本只由 `models_data.py` 的 `VERSION` 定義。以下修復已在本機完成並有 E2 測試證據；治理 PR／Code Owner 評審、受信任 CI 與部署後 E3／E4 仍未發生。
+
+#### Added
+
+- **EMSD 收據證據時序**：`fetch_emsd.write_receipt` 加可選 `csv_path`，成功收據在 CSV 原子寫入之後對實際 bytes 計 `datasetHash`；`retrievedAt` 由抓取迴圈收尾時間傳入（唔係寫收據當刻時間）；403/429、0 頁、壞表頭、新機偵測失敗、CSV 寫入失敗都寫失敗收據，唔改舊 CSV。
+- **`gen-metadata.py` 收據事實**：新增 `receipt_facts` 驗證 success／aborted／頁數／來源（批准 EMSD https 路徑）／UTC Z／非未來時間／`datasetHash` 對 CSV bytes／CSV 15 欄與行數；`datasetDate` 由實際 `retrievedAt` 轉 UTC+8 香港日期；舊無 hash 收據明確失敗並要求重新成功抓取，唔可以補假時間。
+- **部署後核對（GATE-08）**：新增 `scripts/postdeploy_check.py`——以指定發佈 commit 的 metadata／manifest 作 expected，完整 Draft 2020-12 + format 驗證 expected 與線上 metadata、兩者整個 JSON object 等值（唔再只比 8 個欄位），Web／PDF／CSV 可取得、CSV hash 同完整 `releasePayloadHash`（同一 framing 重算）、核心瀏覽器行為同 runtime Version／Last Update／Last Deploy（HKT）；cache bust + 有界重試，錯版本最終失敗；URL 只准官方 Pages／localhost；新增 `postdeploy-verify.yml`（接受 Pages 內建 workflow 嘅 `dynamic` 及 `push` 事件，只接本 repo master 成功部署，contents:read）。
+- **長期歸檔（GATE-09）**：新增 `scripts/archive_release.py`（Web／PDF／CSV／metadata／manifest＋測試／部署後報告＋逐檔 CHECKSUMS＋PROVENANCE；`archiveCommit`（checkout）／`sourceCommit`（metadata.commit）／`deploymentCommit` 分開記錄；目錄＋zip 兩者必須一致先算 idempotent，缺一或唔同即拒絕 clobber；嚴格 SemVer tag）及手動 `release-archive.yml`（封裝前必先跑 GATE-08，含 `--payload-dir .`；預設只建歸檔；`publish=true` 且 protected environment 先建立 Release）。本輪未發布 Release。
+- **Workflow Actions 固定**：`.github/workflows` 內所有 `actions/*` 固定到 GitHub refs API 核實嘅完整 commit（checkout `11d5960…`、setup-python `a26af69…`、upload-artifact `ea165f8…`、download-artifact `d3f86a1…`），符合治理 §9.3。
+- **功能契約證據**：新增 `scripts/pytest_evidence_plugin.py`；`feature-check.py` 由檔案存在升級為 pytest 實際 collection node ids（假 node／拼錯參數阻斷）、靜態斷言檢查，`--run-tests` 收集 setup／call／teardown 同 skip／xfail／fail：required 綁定必須 passed、skip 即失敗；靜態檢查亦拒絕空斷言、只有常量斷言（`assert True`、`x = True; assert x`）及 try/except pass 吞例外嘅總是成功測試；報告寫 repo 外。
+- **本地恢復演練**：公開 fixture-only `tests/test_restore_drill.py`（16 斷言）——checksum、schema／MAJOR 兼容性、staging→原子換入、篡改／truncated 失敗時 live good package 完好。
+
+#### Changed
+
+- **EMSD 每日抓取改為 fail-closed**：`daily-update.yml` 移除 `continue-on-error`；部署 metadata 的 `datasetDate`／`datasetRetrievedAt`／`datasetSourceUrl`／`datasetSnapshotId` 一律由成功、hash-bound `emsd_receipt.json` 產生；抓取失敗即中止，唔會用舊收據出新 metadata。重建模式用舊完整 hash-bound 收據時保留舊日期（由收據 retrievedAt 得出），唔會用生成時間改寫。
+- **部署腳本（私人線，已移出公開 repo）**：EMSD 失敗中止部署；兩階段 metadata 用收據事實；core 驗證（`validate_metadata.py --core`）通過先出 PDF；官方批次改用 `run_official_batch.py`（有實際輸出證據先推進隊列）；BigGo smoke 失敗跳過保留快照（明確記錄未刷新），真批次失敗中止部署。
+- **官網批次推進閘門**：新增 `scripts/run_official_batch.py`；六個 stage 1/2 fetch 腳本改為「任一實際嘗試目標失敗即非零退出」（`batch_failed`），失敗／輸出無效一律唔 `advance_queue`；失敗時只喺記憶體累積、只有全過才以原子替換寫快照，唔會用部分結果覆寫上次完整快照；明確 skip 嘅目標唔算失敗，冇目標時保留既有快照。
+- **EMSD 資料交易式提交**：新機偵測改為 `plan_new_models`（純讀計畫）＋`commit_dataset`（CSV／new_models.json／update_queue.json 先寫 tmp 再一次過 replace，任何 replace 失敗即回滾已換入檔案）；三個檔任一寫入失敗都唔會留低半更新狀態，成功收據只在整組提交成功後寫。
+- **BigGo 批次可見性**：「真失敗唔可以無條件吞成成功」——workflow 捕捉 return code，smoke 失敗如實報「未刷新、保留快照」，真失敗非零退出；force-batch 腳本內部先 smoke。
+- **Metadata 完整驗證**：`validate_metadata.py` 改 Draft 2020-12 + FormatChecker（const／minimum／maxLength／allOf／rollback／真實日期／URI），`--core` 模式驗核心事實（fail-closed）；新增 `jsonschema[format]==4.26.0` 依賴。
+- 文件口徑：README／需求摘要／報告／docs 同步為「修復已實作、候選未部署」；治理文檔及決策記錄更新版本記錄與 D16；README 版本記錄加 v1.2.9 候選列。
+
+#### Fixed
+
+- **頁數剛好 50 倍數唔再報錯頁數**：最後一頁 50 行後嘅空確認頁唔計入 `pagesFetched`，收據只報有數據嘅頁。
+- **收據與 CSV 綁定**：成功收據永遠對已寫入 CSV 計 hash；新機偵測／CSV 寫入／收據寫入失敗都如實記錄，唔會有「舊收據配新 CSV」或「成功收據配失敗抓取」。
+- **core 無效唔會出 PDF**：core 階段先按正式 Schema 約束（placeholder hash）驗證，workflow 再驗一次先生成 PDF；正式 Schema 仍然拒絕無 `releasePayloadHash` 嘅 core。
+- **治理區塊提取錯誤可讀**：`--dump` 缺 ID／未知 ID 回退出碼 2 且無 traceback；內嵌 Schema 自身、Registry 與 Success Criteria 完整驗證。
+- **GATE-08 workflow 不會再被跳過**：先前只收 `workflow_run.event == 'push'`，但 Pages 內建 workflow 實際 event 係 `dynamic`；已接受 `dynamic` 並保留 `push` 兼容，同時保留成功／master／同 repo 安全條件。
+- **GATE-09 歸檔修正**：`_collect_files` 以前錯誤由 `artifacts_dir/reports/...` 揀報告檔（真實來源喺 `reports_dir`），令 `$RUNNER_TEMP/reports` 必定報缺檔；已修正。歸檔亦同時保護目錄＋zip，缺一或唔一致會明確失敗，唔會靜默重寫。
+- **EMSD sidecar 半更新**：舊 `detect_new_models` 喺 CSV 寫入前已改 `new_models.json`／`update_queue.json`；CSV 失敗時 sidecar 已前進。現改為交易式提交＋故障時回滾，故障注入測試確認三份檔案 bytes 不變。
+- **空斷言／總是成功測試**：舊 AST 只要見到 `assert` 就接受；現拒絕空斷言、常量斷言、`x = True; assert x`、吞例外後常量斷言等。
+
+#### 2026-09-22 第二輪返修（同一 1.2.9 候選）
+
+- **CI／信任**：Chromium 只裝一次且喺第一次 pytest 前；daily 改精確 allowlist
+  `scripts/stage_artifacts.py`（allowlist 以外改動 fail-closed）、privacy `--mode index`、
+  push fail-closed（失敗即要求新 run 重新建包，不再 `pull --rebase`）；build 加 run attempt；
+  手動 dispatch 只限 master；三個 workflow Actions 固定完整 commit。
+- **GATE-08**：`workflow_run` 接受 Pages 內建 `dynamic`（唔再被跳過）；postdeploy 完整
+  object＋Schema 一致才結束重試、報告寫入失敗非零、expected 無效即停 request、PDF 必須同
+  expected metadata 重建逐 bytes 一致；remote 核對仍屬候選（E4 UNKNOWN）。
+- **GATE-09**：歸檔重 hash 實際 bytes／CHECKSUMS／zip（重複 entry、多餘、缺漏、損壞都拒），
+  provenance 只忽略 `archivedAt`，tag 必須等於 metadata.version，release 等級要求
+  feature-check／postdeploy／junit 有效報告，打包前私隱掃描；目錄＋zip 缺一即失敗。
+- **官網批次**：六個腳本任一實際目標失敗即非零、失敗唔以部分結果覆寫快照；空白／登入／
+  錯誤頁（冇有效 evidence）當失敗；wrapper 只接受 dict/list 且每 entry 有實質 evidence。
+- **BigGo**：有 net_err 唔推進批次 idx（聽日重試同一 slice）；網絡錯誤永不當 clean miss；
+  只喺完整零錯誤 slice 才 advance＋黑名單復核。
+- **EMSD**：CSV＋`new_models.json`＋`update_queue.json` 改交易式提交（crash journal、
+  回滾失敗保留 journal 唔聲稱原狀）；sidecar／queue 壞 JSON 不再默默重置；`advance_queue`
+  fail-closed；生產 metadata 必須成功 hash-bound 收據、finalize 驗 CSV hash／rawCount。
+- **Feature Check**：subprocess 非零、collectionErrors、未完成 session、缺 setup/call/teardown、
+  skip／XPASS／deselect、空 selection、報告寫入失敗全部 fail-closed；APPROVED_SKIP 只逐節點
+  豁免 skip；靜態拒絕常量斷言／吞例外。
+- **資料契約**：`validate_data.py` 加逐行 15 欄、必填、數值、能源級別、sentinel、JSON entry
+  型別；`extract_governance.py` 拒 NaN／Infinity／未知 marker。
+- **PDF**：invalid／missing metadata 不可出 production PDF；同輸入重建 byte-for-byte；
+  表格截斷標明省略號；HTML 同輸入重建一致；`requirements.txt` 固定 `reportlab==5.0.0`
+  令重建一致性可跨 CI run 維持。
+- **公開／私人線分離**：`docker/`、`release/` 及私人文件段落移出公開工作樹，完整 bytes＋
+  `SHA256SUMS`＋還原指引存於私人包；公開新增 fixture-only `tests/test_restore_drill.py`
+  維持 SC-009。Git 歷史仍含私人線，待人類私隱評估。
+- **治理候選**：新增 `docs/GOVERNANCE_MATRIX.md`、`docs/adr/ADR-001-raw-emsd-snapshot.md`；
+  8 個 required 功能新增 testBindings（未降級 protection／Schema／門禁）。
+
+#### 2026-09-22 綜合返修（queue／price／staging／privacy／acceptance／official receipt）
+
+- **queue 單一契約**：新增 `queue_utils`（missing→預設；壞檔／bool／超範圍 stage／
+  非字串／空白／canonical 重複 model 全部 reject；stage 0 必須空 models、1/2 必須非空）；
+  `fetch_emsd`／`advance_queue`／`run_official_batch`／workflow 四個入口共用；
+  workflow 唔再 `2>/dev/null || echo 0`。
+- **price 進度**：`advance_queue` 2→0 改為先啟動 price meta（True／False 皆成功語義）
+  後清 queue；啟動失敗保留 stage 2；`batch_utils` meta load fail-closed、save 原子＋
+  fsync；`price_batch_state.py` 區分 active／inactive／corrupt（corrupt 阻斷）。
+- **staging**：`stage_artifacts.py` 拒絕任何 deletion／rename、manifest 用
+  `gen-metadata` 路徑契約、stage 前驗 index staged paths、失敗零部分 stage、dry-run 不改 index。
+- **privacy gate**：`tracked`=HEAD blobs、`index`=staged blobs、`worktree`=tracked+untracked、
+  `tree`=目錄 bytes；cat-file 嚴格解析、unmerged／重複 path／invalid UTF-8 fail-closed；
+  PDF 等 binary 只列證據上限。
+- **驗收機器證據**：新增 `scripts/run_acceptance.py`（gate ID／exact argv／UTC／真實 rc／
+  log sha256＋JUnit，唔經 pipe）；`archive_release` release 等級要求 acceptance gates
+  exactly once／rc=0／argv allowlist／log hash，feature／postdeploy 做結構驗證，拒任意文字。
+- **官網批次**：每腳本 machine receipt（attempted／succeeded／failed／alreadyVerified／
+  covers）＋output before/after hash＋queue hash；zero-attempt 需 alreadyVerified＋evidence；
+  queue model 未覆蓋即 fail-closed 保留（ADR-002 待人類決定 A／B／C）。
+- **測試**：新增 queue／price／staging／privacy／acceptance／wrapper 負向測試；移除
+  永遠通過斷言；本機全套 368 passed。
+
+#### 2026-09-22 第五輪返修（parser／path trust／receipt 綁定）
+
+- `stage_artifacts`：修正 `--name-status -z` NUL parser（M/A/D/T/R/C；truncated／未知／
+  重複／invalid UTF-8 拒）；index snapshot＋失敗原子恢復。
+- `archive_release`：`safe_report_path` 拒 traversal／absolute／backslash／symlink／NUL；
+  required report exactly-one；acceptance verifies schemaVersion／runner／ok／commit／
+  gates set／timestamps。
+- `run_official_batch`：strict marker schema（counts／lists／covers=union）；所有 listed
+  model 必須有 output evidence；ready receipt 先寫再 advance；final 更新失敗如實報。
+- `run_acceptance`：移除任意 `--spec`；gate ID 安全 unique；未知 `--only` 非零；machine
+  evidence 必須 repo 外。
+- `batch_utils`：日期／月份／deploy 時間用真實日曆驗證；`detect_mode` 唔再吞錯。
+- 本機全套 399 passed；詳細負向證據見 docs/STATUS §9。
+
+#### 2026-09-22 第六輪：D1-B／D2-A／D4-A／D7-A／D8-A（同一 1.2.9 候選）
+
+- **D1-B coverage pending**：`run_official_batch.py` 分開硬失敗與純 coverage 缺口；
+  後者可寫 `decision=queue-kept-pending-coverage`、原樣保留 queue stage／models 並返回
+  成功 class；`publish_official_status.py` 投影公開 status，`generate_html.py` build 時顯示
+  「官網規格待核」；硬失敗（壞 receipt、failed>0、hash/queue race、腳本非零、輸出無效）
+  維持非零阻斷。ADR-002 由提案改為 D1-B 已批准、已實作候選。
+- **D2-A Pages Actions 部署**：新增 `pages-deploy.yml`（PR 只 build／跑 7 gates、永不 deploy；
+  master push deploy job `needs` build、`environment: github-pages`、`pages:write`＋
+  `id-token:write`）；新增 `build_pages_artifact.py`，artifact 只可含 manifest 公開檔案，
+  拒 symlink／缺檔／額外私人檔／traversal；`postdeploy-verify.yml` 改綁新 workflow 嘅
+  `head_sha`，不再接受舊 Pages `dynamic`／latest master fallback；所有新 Actions 固定
+  refs API 核實完整 commit。新 Pages workflow 未存在於 default branch 前，`daily-update.yml`
+  另加唯讀 `pull-request-gates` job（只 same-repo PR、contents:read、exact head SHA、不 deploy），
+  確保呢個 PR 有 trusted CI checks；merge 後由 `pages-deploy.yml` 接手。
+- **D4-A 全歷史秘密審計**：新增 `check_public_history.py`（reachable refs blob 掃描，
+  credential 必須 0；self-host path 只列 residual risk，報告不寫 secret 原文）及負向測試；
+  Pages workflow 加 `fetch-depth: 0`＋history audit gate。實跑 208 commits／934 blobs：
+  credentialFindings=0、selfHostFindings 分類列出。
+- **D7-A 原始 EMSD bytes**：`fetch_emsd.py` 保存逐頁實際 HTTP bytes（page／length／sha256／
+  Last-Modified／ETag），整批成功＋資料提交後原子寫公開 `emsd_raw_receipt.json`（只含 hash；
+  與 CSV datasetHash 綁定，成功 `emsd_receipt.json` 回寫 `rawReceiptHash`）；私人 sink
+  介面寫 repo 外目錄、require 失敗即阻斷，90 日 retention 邊界已測；raw HTML／archive
+  永不出現在公開 worktree／artifact。真正 private sink Secret／live snapshot 屬 merge 後平台驗收。
+- **D8-A 72h 新鮮度**：新增 `check_freshness.py`（age > 72h 才 stale；71:59:59 同 72:00:00
+  pass）及 `freshness_issue.py`／`freshness-monitor.yml`；6 小時排程、同一狀態 noop、
+  狀態改變才 update、恢復 close；missing／invalid／future timestamp 硬失敗，線上 metadata／
+  payload hash 由 postdeploy_check 先驗。
+- **D5-A 私人 repo**：私人 repo 已建立並 API 回讀
+  `visibility=PRIVATE`；來源 Temp 包 `SHA256SUMS` 先驗，再 push 後 fresh clone 逐檔
+  重算核對通過（LF bytes 以 `.gitattributes * -text` 固定）；Temp 原件保留未刪。
+- **D3 當時 pending／D6 deferred**：2026-09-22 快照中 `release` environment reviewer
+  仍待選；D3 已於 2026-09-23 以 D3-A 解決（見上方平台治理記錄）。公開 PR merge
+  後才做私人 self-host 線同步，標記 `DEFERRED BY D6-A`。
+- **本輪驗證實數**：全套 pytest **433 passed／1 skipped**（Windows 平台 symlink skip）；note §4.6 focused **69 passed／1 skipped**；feature-check `--run-tests` **18 節點 passed**；machine acceptance 7 gates rc=0（`ok=true`）；history audit 208 commits／934 blobs、credentialFindings=0、selfHostFindings=32。
+- **文件**：ADR-001／ADR-002 更新為已批准及實作候選；DECISIONS 新增 D17；GOVERNANCE_MATRIX、
+  STATUS、README、需求摘要、報告及治理版本記錄同步；未虛構 E3／E4。
+
+### 1.2.8 之後已部署維護記錄（未另立產品版本）
+
+> 以下改動已入 master（部分已由 Pages 部署），當時沿用 v1.2.8、未另立產品版本；按實際日期／提交保留，唔補虛構發布日期。
+
+- 同步 README／網站來源與日期說明、需求摘要及報告；修正登記與型號計數口徑、排程延遲及離線 metadata 限制。
+- 新增 docs 導覽及狀態證據表，修正 D10／D12 過時狀態；黑名單遷移數據標為歷史記錄。
+- 治理文檔候選版本 3.1.2：只校正文檔說明；當時 Registry、Schema、成功標準及門禁未變（其後 2026-09-22 嘅 binding 候選更新見上）。治理評審仍待完成。
+
+#### Added
 
 - `pytest.ini`：`python -m pytest tests/` 預設收集 `tests/browser_smoke.py`（12 項瀏覽器 E2 證據）
 - 瀏覽器回歸測試：價位邊界、Escape／焦點、tooltip 溢出、明暗對比、metadata 小數秒與載入失敗
 - `tests/test_energy_distribution.py`（8 項）：1–5 次序、核心 29 靜態表防漂移、動態全量分佈來源／總和、PDF 展開動態區塊
 - `tests/test_biggo_smoke.py`（8 項）：smoke 候選本地證據、首個成功只用一次、no-price fallback、全失敗、例外唔洩漏 secret
-- **持久發佈工具（D15）**：`docker/`（Dockerfile 將程式碼放入 `/opt/aircon-src` + 容器內 `run-update.sh` 以 `rsync --checksum --delete` 同步程式碼落 volume、兩階段 metadata、PDF/CSV 原子部署）
+- 自建伺服器持久發佈工具（D15）及相關 sandbox／runbook 已於 2026-09-22 移離公開
+  repo；完整 bytes 與歷史記錄暫存於 repo 外可恢復副本（未係長期私人儲存；commit／push 前須轉移＋核驗），公開候選唔再包含部署細節。
 - **公開 repo 私隱 gate**：`scripts/check_public_privacy.py`（掃描 tracked HEAD 禁止個人／自建環境識別資料；只列規則 ID／檔名，不打印命中內容）＋ `tests/test_public_privacy.py`（合成樣本命中、通用示例值放行、repo HEAD 自掃 0 命中）
-- **自建部署配置泛化**：`release/release-299c3e9.sh` 部署路徑／host 等一律由環境變數提供（base dir 預設 `/srv/aircon-compare`，缺失即 fail closed）；`docker/nginx.conf` 改為通用模板；`release/README.md` 改寫為通用 self-host 文檔
-- **伺服器入口**：`release/release-299c3e9.sh`（preflight／build／verify／serve／apply／rollback；普通使用者啟動，確認後交由 sudo）
 - **Runtime 資料準備**：`scripts/prepare_runtime_data.py`（黑名單 canonical 遷移守衛，只跑一次）＋ `tests/test_prepare_runtime_data.py`（8 項）
-- **Sandbox 測試**：`release/sandbox/`（12 情境、91 斷言：dry-run、path guard、TOCTOU、備份失敗安全、stopped container、rollback 權限、sync --delete）
 
-### Changed
+#### Changed
 
-- **發佈管線次序**：容器管線喺 `generate_html` 之後才跑非瀏覽器 pytest
-- **程式碼同步**：`run-update.sh` 改為 `rsync -a --delete`（image 為程式碼真源；stale 程式碼清除；runtime 資料／web／快取永久排除；`deploy_payload.json` 照同步）
 - **報告當前狀態數字**：`generate_html.py` 建置時同步報告內文數字；`tests/test_dynamic_counts.py` 加守衛
-- **Rollback 入口**：`rollback latest` 由 root 階段解析備份（普通使用者毋須讀 root-only 備份目錄）；container 改用 `docker ps -aq`（支援 stopped）並拒絕歧義
-- **停機安全**：apply 分 stopped／backup_ready／applying 階段；備份驗證（可讀 + checksum + 檔案清單 + image pre 記錄）完成後才改 volume；停機後備份未完成前失敗只安全重啟原服務；停機前必須成功建立舊 image pre tag 並驗證 ID，失敗即阻斷
-- **回滾可靠性**：`rollback latest` 由 root 從新到舊挑第一個完整備份（跳過不完整並 warning）；回滾前先驗 archive + image tag 可還原，唔會用 volume-only 冒充完整成功
 
 - 治理改善方案 M1（PR-1／PR-2／PR-3，本地分支；決策 D11-D13）：
   - **Canonical 型號鍵**：`crawl_utils.canonical_brand()`（品牌跨平台矯正）+ `canonical_model_key()`（`BRAND|NORM`）；黑名單、model_status、protected set、filter_active、record_results、revive_model 全線統一（D11）
@@ -43,9 +204,9 @@
 - **文件透明化**：README／空調對比報告.md／需求摘要.md／AGENTS.md 加 AI 協作角色說明（Codex／DeepSeek `deepseek-flash` via Pi `ds-exec`／人類維護者）；AGENTS.md 修正唔存在嘅命令（`--full-scan`／`--blacklist` → `--force-batch`／`model_lifecycle.py`）
 - `.gitignore` 加 `.agents/`：ds-exec 工作記錄同整合 worktree 唔係產品內容，防止主工作區 `git add -A` 誤提交
 
-### Fixed
+#### Fixed
 
-- **公開 repo 私隱**：移除／泛化自建環境識別資料（文件、release 工具、nginx 模板）；新增 `scripts/check_public_privacy.py` CI gate 及回歸測試，防止再次寫入私人 host／IP／路徑／build id
+- **公開 repo 私隱**：移除／泛化自建環境識別資料（文件、私人部署工具與模板已移出公開 repo）；新增 `scripts/check_public_privacy.py` CI gate 及回歸測試，防止再次寫入私人 host／IP／路徑／build id
 - **GitHub Pages hash 鏈**：`fetch_emsd.py` 寫 CSV 改用 `lineterminator='\n'`（原生 LF），令 worktree bytes == git index bytes == 發佈 bytes；之前 CRLF 工作樹經 `.gitattributes eol=lf` 正規化後，線上 `datasetHash`／`releasePayloadHash` 同實際 bytes 唔一致
 - 新增 CI 防線 `scripts/check_payload_bytes_vs_index.py`（workflow 在 `git add -A` 之後、commit 之前阻斷任何 worktree/index bytes 不一致）
 - 新增回歸測試：`tests/test_emsd_csv_lf.py`（實走 `fetch_emsd.write_csv` 斷言 LF-only + loader 可讀 + 已入庫 CSV 與 metadata.datasetHash 自洽）、`tests/test_payload_bytes_vs_index.py`（LF 通過、CRLF／未 stage／缺檔阻斷）
@@ -69,7 +230,7 @@
 - 能源分析表舊次序 `1,3,4,2,5` → 固定 `1,2,3,4,5`，2／5 級 0 都顯示；「定頻最高只有 3 級」限定為核心 29 語境，唔再同全量 1–5 級資料混淆
 - BigGo smoke 單一硬編 `RA-10RF`：個別型號停售／一時無價會誤判整個 API 失敗 → 多候選 fallback，安全門禁（smoke 不過即跳過批次）不變
 
-### Data
+#### Data
 
 - `model_blacklist.json` 1,095 個 key 遷移為 canonical（matched 1,079、orphan 16；遷移報告 `docs/blacklist-migration-2026-09.md`）
 - `model_status.json` tracking key 一併遷移
@@ -79,9 +240,10 @@
 - README 狀態分佈圖同步實際頁面：有價 674 / 停售 1,075 / 官方價 65（合共 1,814；無價 0）
 - README 能源級別圖同步全量 canonical model（1,127／166／168／348／5，合共 1,814），並列 registration（1,172／166／172／348／5，合共 1,863）同核心 29 對照
 
-### Security
+#### Security
 
 - 無改動（BigGo 憑證仍只存 GitHub Secrets）
+
 ## [1.2.8] - 2026-08-26
 
 ### Added
@@ -202,3 +364,52 @@
 ### Added
 
 - 報告初版（29 型號統合對比）
+
+### PR #10 審查返修（2026-09-23；未發布、未部署）
+
+> PR #10（v1.2.9 治理候選）審查發現 9 項缺陷；以下修復全部本機完成、commit 前 E2 證據見
+> [docs/STATUS.md](docs/STATUS.md) §11。產品版本仍由 `models_data.py` 的 `VERSION` 決定；
+> production `metadata.json` 仍為 1.2.8，未部署、未發布 Release。
+
+#### Added
+
+- **Pages deployment envelope**：新增 `deploy_envelope.json`；`build_pages_artifact.py`
+  同時輸出 payload + 最終 `metadata.json`（+ 一致公開 sidecar），封包前驗完整 Schema、
+  `version == models_data.VERSION`、payload hash、CSV hash 同 counts，錯配 fail-closed。
+- **PR 隔離 fixture 封包**：新增 `scripts/make_fixture_release.py`；PR gate 喺 repo 外用
+  fixture metadata 真生成 PDF、重建 envelope，再以 `verify_candidate.py` 做 loopback HTTP、
+  payload hash、run identity、PDF 重建同 Chromium runtime 驗證，永不部署。
+- **daily→Pages 精確銜接**：新增 `scripts/dispatch_pages_deploy.py`（`repository_dispatch`
+  帶已 push commit＋sourceRunId）同 `scripts/verify_deploy_request.py`（成功 run／master／
+  祖先綁定；唔 fallback 最新 master）。R7 再收緊：有界 polling 等 source run completed/
+  success、精確比對 run attempt、workflow path 必須係 daily-update.yml、部署 commit 必須
+  單親直接 child、checkout `metadata.json` 要 binding `workflowRunId`／`commit`。
+- **可插拔私人 raw sink**：新增 `scripts/private_raw_sink.py`——`local-dir` 如實標示非
+  durable，`github-release-asset` 候選 adapter（PRIVATE 回讀、同名拒覆蓋、上傳後下載
+  sha256＋size 核驗、90 日 retention、失敗唔發成功 receipt）；`docs/PRIVATE_RAW_SINK_RUNBOOK.md`
+  列明 live 啟用前置；`docs/adr/ADR-004`。
+- **測試**：真 HTTP＋瀏覽器＋PDF 重建 E2E、fake GitHub API dispatch／verify、remote sink
+  fake HTTP、symlink／junction 無 skip 拒絕測試。
+
+#### Changed
+
+- **R7 base 同步**：候選 branch merge `origin/master` `be43b7c`（2026-09-22 自動更新）；
+  `metadata.json`／EMSD 收據／`new_models.json`／`update_queue.json` 以 master 流水線事實為準，
+  冇手改 production metadata；`index.html`／`空調對比報告.pdf` 用合併後程式同已提交資料重建。
+- **freshness monitor combined health**：freshness 同 postdeploy 結果合併判斷；
+  fingerprint 唔含 `ageSeconds`（同一 stale 6 小時後仍 noop）；分類改變才 update、
+  完全恢復才 close；report 缺失／非 object／network／API 錯誤非零且脫敏。
+- **concurrency 隔離**：daily 同 Pages 按 event／ref 分組，PR 再唔可以取消或阻塞生產 run。
+- **archive sidecar**：`archive_release.py` 收錄 `deploy_envelope.json` 同同本次一致的公開
+  receipt／status；舊／錯配 raw receipt 唔會歸檔當成本次證據。
+- **postdeploy-verify**：接受 Pages workflow 嘅 push／workflow_dispatch／
+  repository_dispatch 成功 run；checkout 後再驗 HEAD == 平台記錄而且係 master 祖先。
+
+#### Fixed
+
+- Pages artifact 唔再漏 `metadata.json`；輸出目錄唔再被任意 rmtree；PR 唔會用 production
+  metadata 驗候選；`workflow_dispatch` 只限 master 先入 production；Windows symlink 測試
+  唔再以 skip 當 pass。
+- **R7**：Pages production concurrency 加 `queue: max`（預設 single 會以新 pending 取代舊
+  pending，可能犧牲已驗證部署）；`verify_deploy_request.py` 補 run attempt／workflow path／
+  單親 direct parent／metadata binding／完成時序負向測試（時間可注入，不在測試真等）。

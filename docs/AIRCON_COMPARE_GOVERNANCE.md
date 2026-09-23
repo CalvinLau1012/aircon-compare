@@ -2,7 +2,8 @@
 
 > 文档版本：以 `AIRCON_AI_CONTEXT_V1.document.version` 为准（单文件、自包含版）  
 > 文档状态：Living Document  
-> 最后修订：2026-08-26  
+> 最后修订：2026-09-21（文档说明校正；规范要求、Registry 与 Schema 不变）
+> 当前实现与证据：见 [状态核查](STATUS.md)；本文的合并上下文和首次落地清单保留历史语义，不作为实时完成状态。
 > 适用对象：人类维护者、AI Agent、CI/CD、发布、部署、监控与回滚流程  
 > 合并范围：本轮 7 个附件，逐字节去重后为 5 份唯一内容  
 > 目标：把本文件单独交给 AI 时，AI 能准确区分“规范要求、历史声明、目标状态、当前事实与未知项”，并在取得证据后安全工作。
@@ -158,7 +159,7 @@ AI 不得编辑生成投影来规避修改本文件和相应评审。
   "normative": true,
   "document": {
     "name": "AIRCON_COMPARE_GOVERNANCE.md",
-    "version": "3.1.1",
+    "version": "3.1.2",
     "versionScope": "governance-document",
     "status": "living"
   },
@@ -691,7 +692,7 @@ flowchart TB
         "automated_test",
         "browser_smoke"
       ],
-      "testBindings": ["tests/browser_smoke.py::test_compare_modal"]
+      "testBindings": ["tests/browser_smoke.py::test_compare_modal", "tests/browser_smoke.py::test_compare_modal_escape_keyboard"]
     },
     {
       "id": "ui.responsive",
@@ -707,7 +708,7 @@ flowchart TB
       "evidenceRequired": [
         "browser_smoke"
       ],
-      "testBindings": ["tests/browser_smoke.py::test_responsive_no_overflow"]
+      "testBindings": ["tests/browser_smoke.py::test_responsive_no_overflow", "tests/browser_smoke.py::test_tooltip_no_horizontal_overflow"]
     },
     {
       "id": "data.emsd-verification",
@@ -723,7 +724,7 @@ flowchart TB
         "automated_test",
         "data_integrity_report"
       ],
-      "testBindings": ["tests/test_core.py::test_load_models_dedup"]
+      "testBindings": ["tests/test_core.py::test_load_models_dedup", "tests/test_emsd_receipt.py::test_exact_multiple_of_50_pages_counts_data_pages_only"]
     },
     {
       "id": "core.ranking",
@@ -768,7 +769,7 @@ flowchart TB
       "evidenceRequired": [
         "automated_test"
       ],
-      "testBindings": ["tests/test_governance.py::test_pdf_export"]
+      "testBindings": ["tests/test_governance.py::test_pdf_export", "tests/test_metadata_twostage.py::test_pdf_consumes_core_metadata_not_repo_metadata"]
     },
     {
       "id": "operations.version-display",
@@ -785,7 +786,7 @@ flowchart TB
         "browser_smoke",
         "deployed_observation"
       ],
-      "testBindings": ["tests/test_governance.py::test_version_single_source"]
+      "testBindings": ["tests/test_governance.py::test_version_single_source", "tests/browser_smoke.py::test_metadata_display_and_fractional_time", "tests/browser_smoke.py::test_metadata_failure_no_hardcoded_values"]
     },
     {
       "id": "operations.last-deploy",
@@ -803,7 +804,7 @@ flowchart TB
         "browser_smoke",
         "deployed_observation"
       ],
-      "testBindings": ["tests/test_governance.py::test_format_status_metadata_driven"]
+      "testBindings": ["tests/test_governance.py::test_format_status_metadata_driven", "tests/browser_smoke.py::test_metadata_display_and_fractional_time"]
     },
     {
       "id": "operations.dataset-update",
@@ -822,7 +823,7 @@ flowchart TB
         "browser_smoke",
         "data_integrity_report"
       ],
-      "testBindings": ["tests/test_governance.py::test_format_status_metadata_driven"]
+      "testBindings": ["tests/test_governance.py::test_format_status_metadata_driven", "tests/browser_smoke.py::test_metadata_display_and_fractional_time"]
     },
     {
       "id": "operations.build-metadata",
@@ -838,7 +839,7 @@ flowchart TB
         "automated_test",
         "deployed_observation"
       ],
-      "testBindings": ["tests/test_governance.py::test_metadata_generate_and_validate"]
+      "testBindings": ["tests/test_governance.py::test_metadata_generate_and_validate", "tests/test_receipt_metadata.py::test_core_receipt_cli_overrides_wrong_date_and_hash"]
     },
     {
       "id": "operations.github-pages-deploy",
@@ -863,7 +864,7 @@ flowchart TB
 
 ### 5.2 Registry 使用规则
 
-- `testBindings` 在合并时为空，表示没有仓库证据，不表示可以不测试；
+- `testBindings` 在原始治理合并时为空；当前内嵌条目已填写绑定。填写绑定只构成静态证据，不表示测试已执行或完整满足契约；实际结果见相应测试报告；
 - AI 检查实际仓库后，可在经评审的治理变更中填写稳定测试 ID；
 - 在测试绑定完成前，Feature Check 必须报告缺口，不能伪造测试名使门禁变绿；
 - 功能状态从 `required` 降级必须有人类批准、ADR、迁移计划、SemVer 判断和回滚方案；
@@ -1649,7 +1650,7 @@ aircon-compare/
 
 脚本扩展名、构建目录和 Workflow 文件名由实际技术栈决定。
 
-### 16.2 首次落地步骤
+### 16.2 首次落地步骤（原始检查清单，非当前进度）
 
 - [ ] 把本文放到仓库并由 Code Owner 批准为治理源；
 - [ ] 实现确定性区块提取与 JSON / Schema 校验；
@@ -1798,6 +1799,34 @@ aircon-compare/
 
 - 新增 4 个 Mermaid 图：整体治理架构图（§1.1.1）、AI Governance 流程图（§3.5）、AI Agent 权限模型（§4.4）、DevOps Governance 流水线图（§9.1.1）；
 - 3 个历史 ASCII 图保留不变（§3.4 任务授权路径、§6.1 EMSD 数据链路、§16.1 目标结构）。
+
+#### v3.1.2 — 2026-09-21（文档校正，待评审）
+
+- 校正最后修订日期、测试绑定说明及首次落地清单的历史语义；新增状态核查入口。
+- 六个规范区块仅更新本治理文档版本；当时功能要求、保护状态、Metadata Schema 与成功标准保持不变（2026-09-22 只新增 testBindings，未降级，见下）。
+- 本次为工作区候选修改，发布与治理变更评审仍按第 15 节执行。
+- 2026-09-21 后追加：v1.2.9 产品修复候选按既有 §7.2（metadata 事实来自部署作业）、§9.2（功能契约需实际行为证据）、§11.1（部署后验证）与 §8.3（长期发布资产）落地收据 hash 绑定、完整 Draft 2020-12 验证、pytest collection／执行证据及部署后核对／归档工具；**规范正文、Registry、Schema 与门禁均无放宽**。该等实现属本机候选（E2），受信任 CI、部署后验证与治理评审仍未完成。
+- 2026-09-21 返修补充（同一候选，非规范变更）：GATE-08 修正为接受 Pages 内建 `dynamic` 事件（仍在成功／master／同 repo 条件下）；GATE-09 修正 reports 来源、`archiveCommit`／`sourceCommit`／`deploymentCommit` 事实分离、目录＋zip 双重 no-clobber 与严格 SemVer tag；官網批次改为任一目标失败即阻断且不以部分结果覆写快照；EMSD CSV／sidecar 改为交易式提交；feature-check 拒绝常量断言／吞异常总是成功；全部 workflow 第三方 Actions 固定 §9.3 要求的完整 commit。
+- 2026-09-22 追加（同属待评审治理候选）：为 `ui.comparison-modal`、`ui.responsive`、`operations.version-display`／`last-deploy`／`dataset-update`／`build-metadata`、`data.emsd-verification`、`report.pdf-export` **新增 testBindings**，令每个 required 至少有一个数据／行为节点而不只结构或文字检查；`protection`、Schema、门禁与成功标准无变（只加绑定，未降级）。
+
+#### v3.1.3 candidate — 2026-09-22（非規範變更記錄，待評審）
+
+- D1-B：官網 enrichment queue 純 coverage 不足可保留 pending（queue stage／models 原樣），
+  EMSD 發布繼續；public status／UI 顯示「官網規格待核」；硬失敗門禁全部保留。ADR-002 已由
+  人類批准。
+- D2-A：GitHub Pages 改用受信任 Actions workflow（PR 不 deploy；master deploy `needs`
+  build；`environment: github-pages`；artifact 只含 `deploy_payload.json` 公開檔；第三方
+  Actions 固定完整 commit）；`postdeploy-verify` 綁 exact deployment SHA。
+- D4-A：新增全 reachable Git history credential audit（credential findings 必須 0；
+  self-host path 列 residual risk；報告不寫 secret 原文）。
+- D7-A：保存原始 EMSD response bytes 於私人 sink，公開只留 hash receipt；private save
+  失敗阻斷發布；raw bytes 不入公開 worktree／artifact；90 日 retention。ADR-001 已由人類批准。
+- D8-A：`age > 72h` 新鮮度 monitor、6 小時排程、issue 去重／恢復關閉。
+- D3 在 2026-09-22 快照中仍待使用者選定；其後於 2026-09-23 採用 D3-A，
+  GitHub API 回讀 `release` environment 唯一 reviewer 為 `CalvinLau1012`、
+  `prevent_self_review=false`（見 D19）；D6 self-host 同步 deferred；E3／E4 仍 UNKNOWN。
+- 本節只記錄非規範版本歷史；六個規範區塊、Registry、Metadata Schema、成功標準及 fail-closed
+  門禁未修改、未降級。治理評審與 merge 批准仍待完成。
 
 #### v3.1.1 — 2026-09-03
 

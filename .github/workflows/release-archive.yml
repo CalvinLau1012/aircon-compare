@@ -1,0 +1,196 @@
+name: Release 歸檔（GATE-09 · 手動）
+
+# 長期發布資產歸檔。只有人手 workflow_dispatch 先會執行；預設只建立歸檔 +
+# Actions artifact（中間產物），要 publish=true 先會建立 GitHub Release。
+# 同一 tag 重跑唔會 clobber：歸檔腳本要求目錄＋zip 兩者都存在且 bytes 一致；
+# publish job 亦會先驗 tag 唔存在或指向期望 commit，錯誤網絡／權限一律阻斷。
+#
+# 歸檔前必須先過 GATE-08 部署後核對（live Pages vs checkout 嘅 metadata／
+# payload bytes／PDF 重建），並要求完整機器報告（--release）。
+#
+# 前置（人類設定嘅 runbook；設定狀態係平台事實，本 repo 無法證明）：
+#   1. GitHub 上建立 protected environment 名為 `release`，加入 required reviewers；
+#      environment 名稱本身唔代表 required reviewers 已啟用——未經人手核實前，
+#      自動保護一律當 UNKNOWN。
+#   2. 確認 repo 允許建立 Release（contents:write 只用喺 publish job）。
+# 第三方 Actions 全部固定到已核實嘅完整 commit（治理 §9.3）。
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: '要歸檔嘅 commit/ref（只准本 repo master 或已存在 ref）'
+        required: false
+        default: 'master'
+      tag:
+        description: '發布 SemVer tag（例如 v1.2.9；必須等於 metadata.version）'
+        required: true
+      publish:
+        description: '建立 GitHub Release（true／false）'
+        required: false
+        default: 'false'
+      run_id:
+        description: '產生部署嘅 workflow run id（留空 = metadata.workflowRunId）'
+        required: false
+        default: ''
+      deploy_sha:
+        description: '平台 deployment SHA（可選）'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-archive
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # 只喺本 repo master 觸發（dispatch 唔准任意分支直接歸檔；要歸檔舊 tag
+    # 亦須由 master 觸發，並在 ref 欄指明已存在嘅 commit/ref）。
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      commit: ${{ steps.rev.outputs.sha }}
+    steps:
+      - name: 取出指定 ref
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          ref: ${{ github.event.inputs.ref || 'master' }}
+          persist-credentials: false
+
+      - name: 記錄 input commit（archiveCommit）
+        id: rev
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: 設定 Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 安裝依賴
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: 安裝瀏覽器（歸檔報告需要 required smoke 證據）
+        run: playwright install chromium --with-deps
+
+      - name: 驗收閘門（machine acceptance runner：真實 rc + logs + JUnit）
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/reports"
+          python scripts/run_acceptance.py \
+            --report "$RUNNER_TEMP/reports/acceptance.json" \
+            --log-dir "$RUNNER_TEMP/reports/logs"
+
+      - name: 部署後核對（GATE-08 前置；錯版本／錯 bytes／PDF 唔符阻斷歸檔）
+        run: |
+          set -euo pipefail
+          python scripts/postdeploy_check.py \
+            --expected-metadata metadata.json \
+            --manifest deploy_payload.json \
+            --payload-dir . \
+            --retries 6 \
+            --report "$RUNNER_TEMP/reports/postdeploy.json"
+
+      - name: 建立不可變歸檔（目錄 + zip + CHECKSUMS + PROVENANCE）
+        env:
+          TAG: ${{ github.event.inputs.tag }}
+          RUN_ID: ${{ github.event.inputs.run_id }}
+          DEPLOY_SHA: ${{ github.event.inputs.deploy_sha }}
+        run: |
+          set -euo pipefail
+          test -n "$TAG"
+          COMMIT="$(git rev-parse HEAD)"
+          python scripts/archive_release.py \
+            --release \
+            --tag "$TAG" \
+            --artifacts-dir . \
+            --manifest deploy_payload.json \
+            --reports-dir "$RUNNER_TEMP/reports" \
+            --archive-commit "$COMMIT" \
+            --run-id "$RUN_ID" \
+            --deploy-sha "$DEPLOY_SHA" \
+            --out-dir dist/archive
+
+      - name: 上載歸檔做 Actions artifact（中間產物；唔等於長期資產）
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: release-archive-${{ github.event.inputs.tag }}
+          path: |
+            dist/archive/${{ github.event.inputs.tag }}
+            dist/archive/archive-${{ github.event.inputs.tag }}.zip
+          retention-days: 90
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: github.event.inputs.publish == 'true'
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+    timeout-minutes: 15
+    steps:
+      - name: 下載已驗證歸檔
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        with:
+          name: release-archive-${{ github.event.inputs.tag }}
+          path: dist/archive
+
+      # Release 已存在／tag 已存在但唔同 commit → 一律阻斷，禁止 clobber。
+      # gh 嘅網絡／權限錯誤唔可以當「唔存在」。
+      - name: 檢查 tag／Release 唔存在而且唔會 clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.inputs.tag }}
+          EXPECTED_COMMIT: ${{ needs.build.outputs.commit }}
+        run: |
+          set -euo pipefail
+          if out=$(gh release view "$TAG" --repo "$GH_REPO" 2>&1); then
+            echo "::error::Release $TAG 已存在。禁止 clobber；請人手核對 CHECKSUMS 後再決定。"
+            exit 1
+          else
+            rc=$?
+            if ! printf '%s' "$out" | grep -qiE 'not found|HTTP 404'; then
+              echo "::error::查詢 Release $TAG 失敗（可能網絡／權限）：$out"
+              exit 1
+            fi
+          fi
+          if tag_ref=$(gh api "repos/$GH_REPO/git/ref/tags/$TAG" 2>&1); then
+            object_type=$(printf '%s' "$tag_ref" | python -c "import json,sys;print(json.load(sys.stdin)['object']['type'])")
+            object_sha=$(printf '%s' "$tag_ref" | python -c "import json,sys;print(json.load(sys.stdin)['object']['sha'])")
+            if [ "$object_type" = "tag" ]; then
+              object_sha=$(gh api "repos/$GH_REPO/git/tags/$object_sha" \
+                | python -c "import json,sys;print(json.load(sys.stdin)['object']['sha'])")
+            fi
+            if [ "$object_sha" != "$EXPECTED_COMMIT" ]; then
+              echo "::error::tag $TAG 已存在並指向 $object_sha，唔等於期望 commit $EXPECTED_COMMIT；禁止覆蓋。"
+              exit 1
+            fi
+            echo "ℹ️ tag $TAG 已存在並指向同一 commit；Release 建立會沿用此 tag。"
+          else
+            if ! printf '%s' "$tag_ref" | grep -qiE 'HTTP 404|Not Found'; then
+              echo "::error::查詢 tag $TAG 失敗（可能網絡／權限）：$tag_ref"
+              exit 1
+            fi
+          fi
+
+      - name: 建立 Release（資產 = zip + CHECKSUMS + PROVENANCE）
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.inputs.tag }}
+          COMMIT: ${{ needs.build.outputs.commit }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            --repo "$GH_REPO" \
+            --target "$COMMIT" \
+            --title "$TAG" \
+            --notes "aircon-compare 長期發布歸檔。資產含 Web／PDF／CSV／metadata／manifest、測試與部署後報告、CHECKSUMS.sha256 及 PROVENANCE.json。詳見 CHANGELOG.md。" \
+            "dist/archive/archive-${TAG}.zip" \
+            "dist/archive/${TAG}/CHECKSUMS.sha256" \
+            "dist/archive/${TAG}/PROVENANCE.json"

@@ -1,5 +1,8 @@
 # 黑名單 canonical key 遷移報告
 
+> HISTORICAL_CLAIM：本文件保留 2026-09-03 遷移紀錄，不是今日庫存或停售總數。
+> 2026-09-21 文件核對：實施提交 [a6aeab0](https://github.com/CalvinLau1012/aircon-compare/commit/a6aeab0)，決策見 [D11](DECISIONS.md)。目前狀態見 [STATUS.md](STATUS.md)。
+
 - **日期**：2026-09-03
 - **遷移前 key 數**：1095
 - **遷移後 key 數**：1095
@@ -28,4 +31,4 @@
 - `RB-09CB` → `UNKNOWN|RB09CB`
 - `RB-07CB` → `UNKNOWN|RB07CB`
 
-> orphan 型號唔喺現行 EMSD CSV / 官方 JSON / 核心 29 入面，頁面唔會顯示，因此唔會影響停售標示；保留喺黑名單以備復核。
+> 遷移當時 orphan 型號唔喺當時 EMSD CSV / 官方 JSON / 核心 29 入面，頁面唔會顯示，因此唔會影響停售標示；保留喺黑名單以備復核。

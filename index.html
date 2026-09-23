@@ -295,7 +295,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,834 筆登記 · 1,773 型號）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（1,834 筆登記 · 1,773 型號）· 8 品牌官網核實 220 型號（2026-08-15）· 價錢快照：BigGo 官方 JSON API + PricesAPI 核心 29 驗收 + Price.com.hk 舊快照（分批更新；缺價標「待查」；🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
     <div class="date" id="deployInfo">📅 資料日期暫不可用 · 部署資訊暫不可用</div>
   </div>
 </header>
@@ -368,7 +368,8 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       </div>
     </div>
     <div class="chint">提示：Gree/TOSOT 保養為零售商規格（交叉核實），其餘品牌為官網核實</div>
-    <div class="chint" style="border-left-color:#2EA06E">🆕 最近新上市：三菱重工 WRK18MIH1（1級） · 三菱重工 WRK09MIH1（1級） · 三菱重工 WRK07MIH1（1級） · MECAN MC22WVRQW（1級） · MECAN MC18WVRQW（1級） · 三菱重工 WRK18MIZC1（1級） · 三菱重工 WRK09MIZC1（1級） · 三菱重工 WRK07MIZC1（1級） 等 16 個（新機偵測自 EMSD 官方資料庫，每日 00:30 自動偵測）</div>
+<div class="chint" style="border-left-color:#2EA06E">🆕 最近新上市：三菱重工 WRK18MIH1（1級） · 三菱重工 WRK09MIH1（1級） · 三菱重工 WRK07MIH1（1級） · MECAN MC22WVRQW（1級） · MECAN MC18WVRQW（1級） · 三菱重工 WRK18MIZC1（1級） · 三菱重工 WRK09MIZC1（1級） · 三菱重工 WRK07MIZC1（1級） 等 16 個（新機偵測自 EMSD 官方資料庫，每日 00:30 自動偵測；GitHub 排程可能延遲）</div>
+
     <div class="model-list" id="modelList"></div>
     <div class="more-wrap"><button id="btnMore" onclick="showMore()">顯示更多型號</button></div>
   </div>
@@ -391,13 +392,13 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <div class="md-content">
 <h1>🏠 香港空調統合對比報告（窗口式精選 + 全量資料庫）</h1>
 <blockquote>
-<p><strong>報告生成日期</strong>：2026-08-11 ｜ <strong>最後更新</strong>：2026-08-26 ｜ <strong>版本</strong>：v1.2.8
-<strong>更新機制</strong>：GitHub Actions 每日 00:30 HKT 自動檢查（EMSD 新機偵測 + 治理門禁 + metadata.json 生成 + 自動重新部署）；有新機才官網核實分兩日；BigGo 官方 JSON API（免費官方認證）價錢批次每月最多一次（分 7 日）
-<strong>現況</strong>：v1.2.8 已同步線上——治理落地 + PDF 報告 + BigGo 官方認證（免登入通道已關閉，改 client credentials，見 <code>docs/DECISIONS.md</code> D10）+ 本地全量復核 742 型號有價
-<strong>數據來源</strong>：機電署 EMSD 官方資料庫（1,834 筆登記 · 1,773 型號 · 截至 2026-09-03 快照）· 8 大品牌官網/總代理（220 型號）· BigGo 官方 JSON API 實抓（742 型號，2026-08-26 全量復核；主力價錢源）· PricesAPI 核心 29 驗收（已配置，選用後備）· Price.com.hk 舊快照（1,847 型號，2026-08-15，🔍 點擊 Google 搜最新價）· 豐澤 · 百老匯 · 友和 · LIHKG 連登（3 帖摘錄）
+<p><strong>報告生成日期</strong>：2026-08-11 ｜ <strong>說明核對</strong>：2026-09-22 ｜ <strong>部署版本／資料日期</strong>：以頁面載入的 metadata 為準
+<strong>更新機制</strong>：GitHub Actions 每日預定 00:30 HKT 自動檢查（排程可能延遲）（EMSD 新機偵測 + 治理門禁 + metadata.json 生成 + 自動重新部署）；有新機才官網核實分兩日；BigGo 官方 JSON API（免費官方認證）價錢批次每月最多一次（分 7 日）
+<strong>現況</strong>：EMSD 每日偵測、官網核實按新機隊列、價格按批次快照；本次只校正文件，未重新核實所有歷史價格／官網規格。部署及已知限制見 <a href="https://github.com/CalvinLau1012/aircon-compare/blob/master/docs/STATUS.md">狀態核查</a>。
+<strong>數據來源</strong>：機電署 EMSD 官方資料庫（1,834 筆登記 · 1,773 型號 · datasetDate 2026-09-22 快照）· 8 大品牌官網/總代理（220 型號，2026-08-15 歷史核實）· BigGo 官方 JSON API 實抓（742 型號，2026-08-26 全量復核；主力價錢源）· PricesAPI 核心 29 驗收（已配置，選用後備）· Price.com.hk 舊快照（1,847 型號，2026-08-15，🔍 點擊 Google 搜最新價）· 豐澤 · 百老匯 · 友和 · LIHKG 連登（3 帖摘錄）
 <strong>⚠️ 注意</strong>：豐澤與電器幫同屬屈臣氏集團，價格不可互證；獨立驗證以 BigGo 不同商戶 / 官方網店為準
 <strong>額外搜尋</strong>：LIHKG 連登（電器台）、HKEPC、香港討論區
-<strong>核心篩選</strong>：窗口式 + 淨冷型 + ≥1 匹（定頻/變頻皆可）；<strong>遙控已非硬性條件</strong>（HITACHI RA-10RF / CANOPUS TA-12EOG 無遙控仍以口碑入選並標註）；<strong>全量資料庫 1,773 型號涵蓋分體式/流動式等全類型</strong>
+<strong>核心篩選</strong>：窗口式 + 淨冷型 + ≥1 匹（定頻/變頻皆可）；<strong>遙控已非硬性條件</strong>（HITACHI RA-10RF / CANOPUS TA-12EOG 無遙控仍以口碑入選並標註）；<strong>全量資料庫 1,773 型號涵蓋分體式/流動式等全類型（2026-09-22 快照）</strong>
 <strong>重點維度</strong>：⭐ 能源效益標籤 | ⭐ 用戶評價 | 📶 WiFi | 🏭 官網核實</p>
 </blockquote>
 <hr />
@@ -1056,7 +1057,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </table>
 <blockquote>
 <p>🎯 想慳電 → 首選變頻（1級）。<strong>「定頻最高只有 3 級」只適用於上述核心 29 型號</strong>；EMSD 全量資料另有 2 級及 5 級型號，選購時以個別型號能源標籤為準。
-✅ 核心 29 型號全部有 EMSD 官方登記，能源級別逐個核對；全量 1,834 筆登記／1,773 個 canonical model 嘅分佈見下表。</p>
+✅ 核心 29 型號全部有 EMSD 官方登記，能源級別逐個核對；全量 1,834 筆登記（1,773 個型號）（2026-09-22 快照）；全量 1,834 筆登記／1,773 個 canonical model 嘅分佈見下表。</p>
 <p>📊 <strong>全量 EMSD 能源級別分佈（建置時由實際快照動態生成）</strong>：核心 29 為本報告精選型號；canonical model 按 <code>BRAND|NORM</code> 去重（同 <code>load_models</code>）；registration 為 EMSD 逐筆登記（同 <code>load_registrations</code>）。兩者語意唔同，唔可以互換或相加。</p>
 </blockquote>
 <table>
@@ -1547,7 +1548,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <blockquote>
 <p><strong>方法</strong>：直接訪問各品牌<strong>官方網站/官方網店/總代理</strong>（不經 Google，避開廣告頁），逐型號對比尺寸、淨重、保養、冷暖/淨冷、遙控、Wi-Fi 及官方售價。</p>
 </blockquote>
-<h3>✅ 已核實品牌（220 型號）</h3>
+<h3>✅ 已核實品牌（220 型號，2026-08-15 歷史核實）</h3>
 <table>
 <thead>
 <tr>
@@ -1685,7 +1686,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <hr />
 <h2>✅ 官方驗證結果（2026-08-12 全量核實）</h2>
 <blockquote>
-<p><strong>方法</strong>：從<strong>機電署（EMSD）能源標籤官方資料庫</strong>全量下載 <strong>1,834 筆登記（1,773 個型號）</strong>，逐個比對本報告 29 個型號；另以 <strong>Price.com.hk</strong> 獨立格價抽查重點型號。</p>
+<p><strong>方法</strong>：從<strong>機電署（EMSD）能源標籤官方資料庫</strong>全量下載 <strong>1,834 筆登記（1,773 個型號）</strong>（2026-09-22 快照），逐個比對本報告 29 個型號；另以 <strong>Price.com.hk</strong> 獨立格價抽查重點型號。</p>
 </blockquote>
 <h3>🎯 EMSD 官方確認（能源級別 / 年耗電 / 雪種 / 變頻）</h3>
 <blockquote>
@@ -2239,7 +2240,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <td>1</td>
 <td><strong>機電工程署 EMSD 能源標籤網</strong></td>
 <td><strong>官方資料庫</strong></td>
-<td>✅✅ <strong>全量 1,834 筆登記逐個核實</strong></td>
+<td>✅✅ <strong>全量 1,834 筆登記逐個核實（2026-09-22 快照）</strong></td>
 </tr>
 <tr>
 <td>2</td>
@@ -2337,7 +2338,47 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <p>📌 <strong>權威性排序</strong>：EMSD 官方資料庫（能源/雪種/變頻）＞ 品牌官網/總代理（尺寸/重量/保養/官方價）＞ BigGo 香港格價 / PricesAPI（市場實價快照）＞ Price.com.hk 舊快照（後備）＞ 豐澤等連鎖（同集團僅參考）＞ 論壇（主觀評價）</p>
 </blockquote>
 <hr />
+<blockquote>
+<p><strong>日期口徑</strong>：目前線上資料日期使用 UTC 抓取日期後備；「最後部署」按 HKT 顯示封包時間，並非 Pages 完成發布時間。兩者跨日不代表漏更新一天。v1.2.9 候選起改由成功、hash-bound 收據的實際 UTC 抓取時間推導香港日期（未部署）。</p>
+</blockquote>
 <h2>📅 更新日誌</h2>
+<h3>2026-09-23 — PR #10 審查返修（未發布、未部署）</h3>
+<ul>
+<li>報告規格數字不變；本輪修正 Pages 部署封包（必含 metadata＋一致 sidecar）、daily→Pages 精確 dispatch、monitor combined health、可插拔私人 raw sink adapter。</li>
+<li>E2 證據：本機 475 passed／0 skipped、feature-check 18 節點、acceptance 7 gates rc=0；真 HTTP＋Chromium runtime＋PDF 重建全 PASS。詳見 docs/STATUS §11。</li>
+<li>R7：merge <code>origin/master</code> <code>be43b7c</code> 解除 PR conflict；EMSD 現況日期同步為 datasetDate 2026-09-22（型號／登記數不變）；source run binding 收緊＋Pages concurrency <code>queue: max</code>；規格數字不變。</li>
+</ul>
+<h3>2026-09-22 — 第五輪精確返修（未發布、未部署）</h3>
+<ul>
+<li>規格數字不變；本輪屬工程證據／路徑信任修正，詳見 docs/STATUS §9。</li>
+</ul>
+<h3>2026-09-22 — 第六輪：D1-B／D2-A／D4-A／D7-A／D8-A（未發布、未部署）</h3>
+<ul>
+<li>報告規格數字不變；本輪完成 coverage pending／Pages Actions 部署／全歷史 audit／原始 EMSD hash receipt／72h monitor。</li>
+<li>公開頁面在 coverage pending 時會顯示「官網規格待核」，唔會冒充已核實；D3／D6 及 E3／E4 仍待平台或人類步驟。</li>
+</ul>
+<h3>2026-09-22 — 第四輪綜合返修（未發布、未部署）</h3>
+<ul>
+<li>規格數字不變；本輪加強 queue／price 進度契約、staging、privacy 模式、
+  machine acceptance 證據同官網批次 receipt（未覆蓋新機 fail-closed 保留）。</li>
+<li>詳見 docs/STATUS §8。</li>
+</ul>
+<h3>2026-09-22 — v1.2.9 第二輪返修（未發布、未部署）</h3>
+<ul>
+<li>規格數字不變；本輪加強 CI 信任、歸檔完整性、批次一致性、資料契約、PDF 事實核查與 feature-check fail-closed。</li>
+<li>私人部署 runbook 已移出公開 repo；公開保留 fixture-only 恢復演練。詳見 docs/STATUS.md §7。</li>
+</ul>
+<h3>2026-09-21 — v1.2.9 修復候選（未發布、未部署）</h3>
+<ul>
+<li>修正資料日期來源：候選改由成功、hash-bound 的 EMSD 收據推導 <code>datasetDate</code>（UTC+8）同 <code>datasetRetrievedAt</code>；抓取失敗唔會出新 metadata。</li>
+<li>完整 Schema 驗證、功能契約實際執行證據、部署後核對與歸檔工具、本地應用＋數據恢復演練均已實作；報告內容與規格數字不變。</li>
+<li>線上部署仍為 v1.2.8；本輪未改生產 metadata、未部署。</li>
+</ul>
+<h3>2026-09-21 — 說明與狀態核對（未發布）</h3>
+<ul>
+<li>校正目前快照、排程及日期語義；歷史官網／價格核實保留原日期。</li>
+<li>同步 README、需求摘要、docs 狀態與決策說明；本次不改規格、價格或推薦規則。</li>
+</ul>
 <h3>2026-09-13 — 本地整合驗證：網頁 Bug 修復 + 治理 PR-1～PR-3 + 兩階段 metadata</h3>
 <table>
 <thead>
@@ -2742,7 +2783,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 
 <footer>
   <b>香港空調對比報告 · <span id="verInfo">v…</span></b><br>
-  能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號
+  能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號（2026-08-15）
 
   <div class="blk">
     <h3>🔓 開源項目說明</h3>
@@ -2755,17 +2796,17 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
     <h3>🙏 資料來源鳴謝</h3>
     <p>· 機電工程署 EMSD 能源標籤資料庫（官方能源/雪種/耗電數據）<br>
       · 品牌官網及總代理：信興集團、樂信網店、Panasonic、世紀開利、GENERAL 第一電業、HITACHI、COMFEE、美的<br>
-      · 價格快照：Price.com.hk 2026-08-15（點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
+      · 價格快照：BigGo 官方 JSON API（更新至 2026-09-14）+ PricesAPI 核心 29 驗收 + Price.com.hk 2026-08-15 舊快照（分批快照；點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
   </div>
 
   <div class="blk">
-    <h3>🤖 AI 製作提示</h3>
-    <p>本網頁由 <b style="color:#8FD3FF">DeepSeek AI</b> 輔助製作，配合多輪官方資料核實；所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證。</p>
+    <h3>🤖 AI 協作說明</h3>
+    <p>本網頁由 AI 協作製作：<b style="color:#8FD3FF">OpenAI Codex</b>（規劃／驗收）、<b style="color:#8FD3FF">DeepSeek deepseek-flash</b>（經 Pi coding-agent 實作／測試）、人類維護者決策；配合多輪官方資料核實。所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證。</p>
   </div>
 
-  <span class="ai">🤖 Powered by DeepSeek AI</span><br>
+  <span class="ai">🤖 AI 協作 · Codex + DeepSeek</span><br>
   <span class="line">──────</span><br>
-  <span id="footStatus">🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · 資料日期暫不可用 · 價錢為快照僅供參考</span><br>
+  <span id="footStatus">🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub 排程可能延遲）· 有新機先分批核實更新 · 資料日期暫不可用 · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考</span><br>
   本報告僅供選購參考，不構成購買建議 · 價格及供應隨時變動，請以商戶實時報價為準
 </footer>
 
@@ -3203,8 +3244,8 @@ window.addEventListener('scroll',()=>{
         line += ' · 🔄 每日偵測新機 · 有機先更新';
       }
       if (el) el.textContent = line;
-      if (foot) foot.textContent = '🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · '
-        + (ds ? ('資料日期 ' + ds) : '資料日期暫不可用') + ' · 價錢為快照僅供參考';
+      if (foot) foot.textContent = '🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub 排程可能延遲）· 有新機先分批核實更新 · '
+        + (ds ? ('資料日期 ' + ds) : '資料日期暫不可用') + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考';
     })
     .catch(() => {
       if (el) el.textContent = '📅 資料日期暫不可用 · 部署資訊暫不可用';

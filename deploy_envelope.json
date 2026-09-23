@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0.0",
+  "description": "GitHub Pages 部署封包（deployment envelope）：requiredFiles = hash payload manifest 全部檔案 + 最終 metadata.json（metadata 自己唔會計入自己個 releasePayloadHash）；optionalFiles 只有存在而且同本次 CSV/metadata 一致才會收錄嘅公開 sidecar。deploy_payload.json 仍然係 releasePayloadHash 唯一範圍（D14）。",
+  "requiredFiles": [
+    "index.html",
+    "空調對比報告.pdf",
+    "emsd_空調能源標籤.csv",
+    "metadata.json"
+  ],
+  "optionalFiles": [
+    "emsd_receipt.json",
+    "emsd_raw_receipt.json",
+    "official_batch_status.json"
+  ]
+}

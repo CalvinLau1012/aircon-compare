@@ -34,7 +34,19 @@ def _run(script, *args):
         capture_output=True, text=True, encoding='utf-8', errors='replace', cwd=BASE)
 
 
+def _csv_facts():
+    import csv
+    import hashlib
+    path = os.path.join(BASE, 'emsd_空調能源標籤.csv')
+    with open(path, 'rb') as f:
+        digest = 'sha256:' + hashlib.sha256(f.read()).hexdigest()
+    with open(path, encoding='utf-8-sig') as f:
+        rows = sum(1 for _ in csv.reader(f)) - 1
+    return digest, rows
+
+
 def _core_args(out):
+    digest, n_rows = _csv_facts()
     return [
         '--stage', 'core', '--out', str(out), '--force',
         '--version', '1.2.8',
@@ -43,13 +55,14 @@ def _core_args(out):
         '--workflow-run-id', '123456789',
         '--dataset-date', '2026-09-03',
         '--dataset-date-basis', 'retrieval-date-fallback',
+        '--dataset-retrieved-at', '2026-09-03T00:00:00Z',
         '--dataset-source-url',
         'https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php',
         '--dataset-snapshot-id', 'emsd-2026-09-03',
-        '--dataset-hash', 'sha256:' + 'b' * 64,
+        '--dataset-hash', digest,
         '--record-count', '1814',
-        '--raw-record-count', '1863',
-        '--registration-count', '1863',
+        '--raw-record-count', str(n_rows),
+        '--registration-count', str(n_rows),
         '--model-count', '1814',
     ]
 

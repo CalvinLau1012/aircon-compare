@@ -9,8 +9,12 @@
 import json
 import os
 import re
+import sys
 import time
+import urllib.parse
 import urllib.request
+
+from crawl_utils import save_json, emit_fetch_receipt
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0 Safari/537.36'
@@ -75,7 +79,10 @@ def fetch_fortress(model):
 
 
 def main():
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     results = {}
+    failed = []
     print('開始抓核心 29 型號規格...')
     for i, model in enumerate(CORE_MODELS):
         # Price og:description
@@ -101,13 +108,24 @@ def main():
             spec['fortress_error'] = str(e)[:60]
 
         results[model] = spec
+        # 只有 Fortress URL 唔算有效規格（URL 唔證明任何資料事實）
+        useful = bool(spec.get('size') or spec.get('weight') or spec.get('warranty')
+                      or spec.get('size_price') or spec.get('gas_price'))
+        if not useful:
+            failed.append(model)
         print(f'{i+1}/29 {model}: size={spec.get("size", "?")} weight={spec.get("weight", "?")} '
               f'warranty={spec.get("warranty", "?")} price_size={spec.get("size_price", "?")}')
         time.sleep(0.4)
 
+    succeeded_models = [m for m in CORE_MODELS if m not in failed]
+    emit_fetch_receipt('fetch_specs.py', len(CORE_MODELS), len(succeeded_models), len(failed),
+                       succeeded_models=succeeded_models, failed_models=list(failed))
+    if failed:
+        print(f'❌ 核心 29 規格有 {len(failed)} 個目標冇任何數據（{failed[:8]}），'
+              '唔覆寫 specs.json，留待下次重試', file=sys.stderr)
+        sys.exit(1)
     out = os.path.join(BASE, 'specs.json')
-    with open(out, 'w', encoding='utf-8') as f:
-        json.dump(results, f, ensure_ascii=False, indent=1)
+    save_json(out, results, indent=1)
     print('存於', out)
 
 

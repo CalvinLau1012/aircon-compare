@@ -1,0 +1,116 @@
+name: 部署後核對（GATE-08）
+
+# 唯讀核對 workflow：
+#   - D2-A：只接受新 `Pages 部署（Actions）` workflow_run（push／workflow_dispatch／
+#     每日成功 run 嘅 repository_dispatch），或人手 dispatch（只限 master）；
+#     PR 永不觸發；唔會 fallback 到任意最新 master，亦唔再讀舊 Pages 內建 dynamic run。
+#   - workflow_run 嘅 head_sha 只係用嚟取出「平台記錄嘅部署 commit」；checkout 後必須
+#     再次核實 HEAD == head_sha 而且係 origin/master 祖先，唔會誤將未合併產物當部署。
+#   - 只攞 contents:read、checkout persist-credentials:false，唔會執行 PR／fork 代碼；
+#   - workflow_run 用新 Pages workflow 記錄嘅 head_sha 做 exact commit，線上值同
+#     metadata.json 安全比較；錯版本最終失敗。
+#   - 第三方 Actions 全部固定到已核實嘅完整 commit（治理 §9.3）。
+on:
+  workflow_run:
+    workflows: ["Pages 部署（Actions）"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: '要核對嘅 commit/ref（留空 = 觸發 workflow 嘅 ref）'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: postdeploy-verify
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: >
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'master' &&
+       (github.event.workflow_run.event == 'push' ||
+        github.event.workflow_run.event == 'workflow_dispatch' ||
+        github.event.workflow_run.event == 'repository_dispatch') &&
+       github.event.workflow_run.repository.full_name == github.repository &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.name == 'Pages 部署（Actions）')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # workflow_run：只取出新 Pages Actions workflow 記錄嘅 exact commit
+      - name: 取出部署 commit（workflow_run head_sha）
+        if: github.event_name == 'workflow_run'
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+          fetch-depth: 0  # 核實部署 commit 係 origin/master 祖先
+
+      # workflow_dispatch：唔引用唔存在嘅 workflow_run 屬性；留空時用觸發 ref
+      - name: 取出指定 ref（workflow_dispatch）
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: 核實部署 commit（HEAD == platform 記錄；係 master 祖先）
+        env:
+          RUN_HEAD: ${{ github.event.workflow_run.head_sha }}
+          INPUT_REF: ${{ github.event.inputs.ref }}
+          EVENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ -n "$RUN_HEAD" ]; then
+            EXPECT="$RUN_HEAD"
+          elif [ -n "$INPUT_REF" ]; then
+            EXPECT="$(git rev-parse "$INPUT_REF"^{commit})"
+          else
+            EXPECT="$EVENT_SHA"
+          fi
+          HEAD_SHA="$(git rev-parse HEAD)"
+          if [ "$HEAD_SHA" != "$EXPECT" ]; then
+            echo "::error::checkout HEAD（$HEAD_SHA）唔等於部署 commit（$EXPECT）"
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor HEAD origin/master; then
+            echo "::error::部署 commit 唔係 origin/master 祖先，拒絕核對"
+            exit 1
+          fi
+
+      - name: 設定 Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 安裝依賴
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: 安裝瀏覽器（核心行為證據）
+        run: playwright install chromium --with-deps
+
+      - name: 部署後核對（線上 metadata／payload hash／PDF 內容／核心瀏覽器行為）
+        run: |
+          python scripts/postdeploy_check.py \
+            --expected-metadata metadata.json \
+            --manifest deploy_payload.json \
+            --retries 6 \
+            --report "$RUNNER_TEMP/postdeploy-report.json"
+
+      - name: 保存核對報告（中間產物；長期資產由 release 歸檔負責）
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: postdeploy-report-${{ github.run_id }}
+          path: ${{ runner.temp }}/postdeploy-report.json
+          retention-days: 30
+          if-no-files-found: warn

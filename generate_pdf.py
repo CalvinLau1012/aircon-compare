@@ -84,12 +84,33 @@ def _safe_text(text):
 
 
 def load_metadata(path=None):
-    """讀取 metadata；path 預設 repo 根目錄 metadata.json（CI 可傳同 run core 檔）"""
+    """讀取 metadata；path 預設 repo 根目錄 metadata.json。
+
+    讀取／解析失敗唔可以靜默回 {}（否則會出一個狀態空白的 production PDF）。
+    """
+    p = path or METADATA_PATH
     try:
-        with open(path or METADATA_PATH, encoding='utf-8') as f:
-            return json.load(f)
-    except Exception:
-        return {}
+        with open(p, encoding='utf-8') as f:
+            data = json.load(f)
+    except (OSError, ValueError) as e:
+        raise ValueError(f'無法讀取有效 metadata（{p}）：{e}')
+    if not isinstance(data, dict) or not data:
+        raise ValueError(f'metadata 必須係非空 object（{p}）')
+    return data
+
+
+def validate_metadata_for_pdf(meta):
+    """PDF 用 metadata 必須過治理 Schema（core 可用 placeholder hash 驗核事實）。"""
+    import os as _os
+    import sys as _sys
+    _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'scripts'))
+    from validate_metadata import validate, validate_core
+    from extract_governance import extract_blocks, GOV_FILE
+    with open(GOV_FILE, encoding='utf-8') as f:
+        schema = extract_blocks(f.read())['AIRCON_METADATA_SCHEMA_V1']
+    if 'releasePayloadHash' in meta:
+        return validate(meta, schema)
+    return validate_core(meta, schema)
 
 
 _FIXED_PDF_DATE = "D:20200101000000+00'00'"
@@ -144,6 +165,9 @@ def build_pdf(output_path=None, metadata_path=None):
                               textColor=colors.white)
 
     meta = load_metadata(metadata_path)
+    meta_errors = validate_metadata_for_pdf(meta)
+    if meta_errors:
+        raise ValueError('PDF metadata 唔過治理 Schema，拒絕生成：' + '；'.join(meta_errors[:5]))
     line1, line2 = format_status(meta, VERSION)
 
     doc = SimpleDocTemplate(out_path, pagesize=A4,
@@ -176,7 +200,8 @@ def build_pdf(output_path=None, metadata_path=None):
             ncols = max(len(r) for r in payload)
             data = []
             for i, row in enumerate(payload):
-                cells = [Paragraph(cell[:120], st_cellh if i == 0 else st_cell)
+                cells = [Paragraph((cell[:120] + ('…' if len(cell) > 120 else '')),
+                                   st_cellh if i == 0 else st_cell)
                          for cell in row[:ncols]]
                 while len(cells) < ncols:
                     cells.append(Paragraph('', st_cell))
@@ -220,4 +245,8 @@ if __name__ == '__main__':
     ap.add_argument('--metadata', default=None, help='metadata 來源（預設 repo metadata.json）')
     ap.add_argument('--out', default=None, help='輸出 PDF 路徑（預設 repo 根目錄）')
     args = ap.parse_args()
-    build_pdf(output_path=args.out, metadata_path=args.metadata)
+    try:
+        build_pdf(output_path=args.out, metadata_path=args.metadata)
+    except ValueError as e:
+        print(f'❌ PDF 生成失敗（唔會出 invalid production PDF）：{e}', file=sys.stderr)
+        sys.exit(1)

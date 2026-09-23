@@ -453,9 +453,9 @@ def format_status(meta_dict, version):
     date_text = f'📅 資料日期 {dataset_date}' if dataset_date else '📅 資料日期暫不可用'
     deploy_text = f'✅ 最後部署 {deploy_hkt} HKT' if deploy_hkt else '🔄 每日偵測新機 · 有機先更新'
     line1 = f'{date_text} · v{v} · {deploy_text}'
-    line2 = ('🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · '
+    line2 = ('🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub 排程可能延遲）· 有新機先分批核實更新 · '
              + (f'資料日期 {dataset_date}' if dataset_date else '資料日期暫不可用')
-             + ' · 價錢為快照僅供參考')
+             + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考')
     return line1, line2
 
 
@@ -493,8 +493,32 @@ def new_models_hint():
     more = f' 等 {len(recent)} 個' if len(recent) > len(items) else ''
     return ('<div class="chint" style="border-left-color:#2EA06E">'
             f'🆕 最近新上市：{" · ".join(parts)}{more}'
-            '（新機偵測自 EMSD 官方資料庫，每日 00:30 自動偵測）</div>')
+            '（新機偵測自 EMSD 官方資料庫，每日 00:30 自動偵測；GitHub 排程可能延遲）</div>')
 
+
+
+def official_pending_hint():
+    """D1-B：官網 enrichment queue 因 coverage 不足而 pending 時，顯示待核狀態。
+
+    只讀 repo 內無絕對路徑嘅公開投影 official_batch_status.json；缺失／壞檔當無 pending。
+    """
+    p = os.path.join(BASE, 'official_batch_status.json')
+    try:
+        with open(p, encoding='utf-8') as f:
+            st = json.load(f)
+    except (OSError, ValueError):
+        return ''
+    if not isinstance(st, dict) or st.get('pendingCoverage') is not True:
+        return ''
+    missing = st.get('missingModels')
+    if not isinstance(missing, list):
+        missing = []
+    count = len(missing) or len(st.get('missingCanonicalModels') or [])
+    sample = '、'.join(str(m) for m in missing[:5]) if missing else '見狀態檔'
+    more = f' 等 {count} 個' if count > 5 else ''
+    return ('<div class="chint" style="border-left-color:var(--warn);color:var(--warn)">'
+            '⚠️ 官網規格待核：EMSD 官方資料已照常更新，但以下型號未有品牌官網目錄覆蓋，'
+            f'核實隊列原樣保留（{sample}{more}）。狀態見 official_batch_status.json。</div>')
 
 def load_emsd_models():
     """讀取 EMSD 官方 CSV，轉為比較器數據（核心 29 型號去重）"""
@@ -581,9 +605,10 @@ def build_html():
     # 部署資訊由瀏覽器 runtime fetch metadata.json 顯示（治理文檔 §7.2.7）；
     # build 只寫初始骨架；載入失敗顯示「暫不可用」（JS 處理）
     date_status = '📅 資料日期暫不可用 · 部署資訊暫不可用'
-    foot_status = ('🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · '
-                   '資料日期暫不可用 · 價錢為快照僅供參考')
+    foot_status = ('🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub 排程可能延遲）· 有新機先分批核實更新 · '
+                   '資料日期暫不可用 · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考')
     new_hint = new_models_hint()
+    pending_hint = official_pending_hint()
 
     # 套用雙源確認規格 + 填核心型號 Price 產品 ID（做價格連結）
     apply_specs_override()
@@ -628,13 +653,19 @@ def build_html():
                         .replace('__DATE_STATUS__', date_status) \
                         .replace('__FOOT_STATUS__', foot_status) \
                         .replace('__NEW_HINT__', new_hint) \
+                        .replace('__PENDING_HINT__', pending_hint) \
                         .replace('__TOTAL_MODELS__', f'{total_models:,}') \
                         .replace('__EMSD_REGISTRATIONS__', f'{emsd_registrations:,}') \
                         .replace('__MASCOT_IMG__', mascot_img) \
                         .replace('__BLUE_FANTASY_ART__', blue_fantasy_art)
     out = os.path.join(BASE, '空調對比報告.html')
     write_html_output(out, html)
-    print('已生成：', out, f'（{os.path.getsize(out)/1024:.0f} KB）· 型號總數 {len(MODELS) + len(emsd_models)}')
+    try:
+        size_kb = os.path.getsize(out) / 1024
+    except OSError:
+        # 測試／自訂 writer 可能只捕獲 html 而唔寫檔；唔可以因此失敗。
+        size_kb = len(html.encode('utf-8')) / 1024
+    print('已生成：', out, f'（{size_kb:.0f} KB）· 型號總數 {len(MODELS) + len(emsd_models)}')
 
 
 def write_html_output(path, html):
@@ -940,7 +971,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（__EMSD_REGISTRATIONS__ 筆登記 · __TOTAL_MODELS__ 型號）· 8 品牌官網核實 220 型號 · 價錢快照：BigGo 香港格價 + Gemini AI 搜 + Price.com.hk（🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（__EMSD_REGISTRATIONS__ 筆登記 · __TOTAL_MODELS__ 型號）· 8 品牌官網核實 220 型號（2026-08-15）· 價錢快照：BigGo 官方 JSON API + PricesAPI 核心 29 驗收 + Price.com.hk 舊快照（分批更新；缺價標「待查」；🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
     <div class="date" id="deployInfo">__DATE_STATUS__</div>
   </div>
 </header>
@@ -1013,7 +1044,8 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       </div>
     </div>
     <div class="chint">提示：Gree/TOSOT 保養為零售商規格（交叉核實），其餘品牌為官網核實</div>
-    __NEW_HINT__
+__NEW_HINT__
+__PENDING_HINT__
     <div class="model-list" id="modelList"></div>
     <div class="more-wrap"><button id="btnMore" onclick="showMore()">顯示更多型號</button></div>
   </div>
@@ -1041,7 +1073,7 @@ __CONTENT__
 
 <footer>
   <b>香港空調對比報告 · <span id="verInfo">v…</span></b><br>
-  能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號
+  能源/雪種/耗電：機電署 EMSD 官方資料庫全量核實 · 8 品牌官網核實 220 型號（2026-08-15）
 
   <div class="blk">
     <h3>🔓 開源項目說明</h3>
@@ -1054,15 +1086,15 @@ __CONTENT__
     <h3>🙏 資料來源鳴謝</h3>
     <p>· 機電工程署 EMSD 能源標籤資料庫（官方能源/雪種/耗電數據）<br>
       · 品牌官網及總代理：信興集團、樂信網店、Panasonic、世紀開利、GENERAL 第一電業、HITACHI、COMFEE、美的<br>
-      · 價格快照：Price.com.hk 2026-08-15（點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
+      · 價格快照：BigGo 官方 JSON API（更新至 2026-09-14）+ PricesAPI 核心 29 驗收 + Price.com.hk 2026-08-15 舊快照（分批快照；點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
   </div>
 
   <div class="blk">
-    <h3>🤖 AI 製作提示</h3>
-    <p>本網頁由 <b style="color:#8FD3FF">DeepSeek AI</b> 輔助製作，配合多輪官方資料核實；所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證。</p>
+    <h3>🤖 AI 協作說明</h3>
+    <p>本網頁由 AI 協作製作：<b style="color:#8FD3FF">OpenAI Codex</b>（規劃／驗收）、<b style="color:#8FD3FF">DeepSeek deepseek-flash</b>（經 Pi coding-agent 實作／測試）、人類維護者決策；配合多輪官方資料核實。所有關鍵數據均經 EMSD 官方資料庫及品牌官網交叉驗證。</p>
   </div>
 
-  <span class="ai">🤖 Powered by DeepSeek AI</span><br>
+  <span class="ai">🤖 AI 協作 · Codex + DeepSeek</span><br>
   <span class="line">──────</span><br>
   <span id="footStatus">__FOOT_STATUS__</span><br>
   本報告僅供選購參考，不構成購買建議 · 價格及供應隨時變動，請以商戶實時報價為準
@@ -1502,8 +1534,8 @@ window.addEventListener('scroll',()=>{
         line += ' · 🔄 每日偵測新機 · 有機先更新';
       }
       if (el) el.textContent = line;
-      if (foot) foot.textContent = '🔄 每日 00:30 偵測新機（EMSD 官方資料庫）· 有新機先分批核實更新 · '
-        + (ds ? ('資料日期 ' + ds) : '資料日期暫不可用') + ' · 價錢為快照僅供參考';
+      if (foot) foot.textContent = '🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub 排程可能延遲）· 有新機先分批核實更新 · '
+        + (ds ? ('資料日期 ' + ds) : '資料日期暫不可用') + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考';
     })
     .catch(() => {
       if (el) el.textContent = '📅 資料日期暫不可用 · 部署資訊暫不可用';
