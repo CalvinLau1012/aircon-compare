@@ -1,19 +1,21 @@
-# 狀態核查 — 2026-09-21（v1.2.9 修復候選）
+# 狀態核查 — 2026-09-23（v1.2.9 修復候選；PR #10 R7）
 
 > 本文件是指定快照的證據記錄，不取代 [治理要求](AIRCON_COMPARE_GOVERNANCE.md) 或生產 `metadata.json`。
-> **本機候選狀態**：v1.2.9 修復已實作並通過 E2（本機測試）；**未 commit／push／deploy、未發布 Release、未改生產 metadata**。治理 PR／Code Owner 評審、受信任 CI（E3）與部署後核對（E4）仍未發生。
+> **目前狀態**：v1.2.9 修復已實作並通過 E2（本機測試），PR #10 以 draft 形式 push；候選 branch 已
+> merge 最新 `origin/master`（be43b7c，2026-09-22 自動更新）同步生產資料；**未 merge PR、未 deploy、
+> 未發布 Release、未操作 Secrets、未改生產 metadata**。受信任 CI（E3）與部署後核對（E4）仍未發生。
 
 ## 1. 基準與版本
 
 | 項目 | 核查值／證據 | 分類 |
 | --- | --- | --- |
-| 已同步本機基準 | [`3e2958d5852c035b4a09c5831fa66187f615d6ce`](https://github.com/CalvinLau1012/aircon-compare/commit/3e2958d5852c035b4a09c5831fa66187f615d6ce)，由 d55f56c fast-forward，無 merge commit | OBSERVED / E1 |
-| 生產版本（線上） | 1.2.8；生產 `metadata.json` 與該基準一致；本輪**未手改**生產 metadata | OBSERVED / E1–E3 |
+| 已同步本機基準 | 候選 branch `codex/v1.2.9-governance-release` 已 merge `origin/master` `be43b7c0d0940b67614c64e070b2f10a9e591843`（2026-09-22 自動更新）；PR #10 為 draft | OBSERVED / E1 |
+| 生產版本（線上） | 1.2.8；合併後 production `metadata.json` 為 master 流水線提交（`B20260922.83`，未手改） | OBSERVED / E1–E3 |
 | 本機候選版本 | `models_data.py` `VERSION=1.2.9`（候選，未發布）；本地生成物為候選，hash 與舊生產負載唔同屬正常 | OBSERVED / E1–E2 |
-| 部署構建 | B20260920.74；輸入 commit 76e3ebbd653f0cd35269e82ac81f2983197a42d0 | OBSERVED / E1–E3 |
-| 更新流程 | [35530668350](https://github.com/CalvinLau1012/aircon-compare/actions/runs/35530668350)，schedule，success | OBSERVED / E3（歷史） |
+| 部署構建 | `B20260922.83`；輸入 commit `f6887941c022c6c67fb4612ca688184830d1ff86`（合併後 metadata.json 流水線事實） | OBSERVED / E1–E3 |
+| 更新流程 | [35776119746](https://github.com/CalvinLau1012/aircon-compare/actions/runs/35776119746)，schedule，success（2026-09-22；合併前 master 流水線） | OBSERVED / E3（歷史） |
 | Pages 流程 | [35530841644](https://github.com/CalvinLau1012/aircon-compare/actions/runs/35530841644)，success | OBSERVED / E3（歷史）；不等於全部 E4 行為已驗證 |
-| 本輪外部動作 | 未 commit／push／deploy、未建立 Release、未操作 Secrets、未執行正式 apply／rollback | OBSERVED / E1 |
+| 本輪外部動作 | R6/R7 已 push draft PR branch、更新 PR body、merge `origin/master` 同步 base；未 merge PR／deploy／建立 Release／操作 Secrets | OBSERVED / E1 |
 
 同步前原有 UI／測試修復已核對；同步前工作另有外部備份及保留的 stash。備份中的私有工作記錄不屬部署負載。`CHANGELOG` 的 Unreleased 已分開「1.2.9 候選」與「1.2.8 之後已部署維護記錄」，唔可以整區視作已發布或未上線。
 

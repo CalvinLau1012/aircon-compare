@@ -395,10 +395,10 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <p><strong>報告生成日期</strong>：2026-08-11 ｜ <strong>說明核對</strong>：2026-09-22 ｜ <strong>部署版本／資料日期</strong>：以頁面載入的 metadata 為準
 <strong>更新機制</strong>：GitHub Actions 每日預定 00:30 HKT 自動檢查（排程可能延遲）（EMSD 新機偵測 + 治理門禁 + metadata.json 生成 + 自動重新部署）；有新機才官網核實分兩日；BigGo 官方 JSON API（免費官方認證）價錢批次每月最多一次（分 7 日）
 <strong>現況</strong>：EMSD 每日偵測、官網核實按新機隊列、價格按批次快照；本次只校正文件，未重新核實所有歷史價格／官網規格。部署及已知限制見 <a href="https://github.com/CalvinLau1012/aircon-compare/blob/master/docs/STATUS.md">狀態核查</a>。
-<strong>數據來源</strong>：機電署 EMSD 官方資料庫（1,834 筆登記 · 1,773 型號 · datasetDate 2026-09-21 快照）· 8 大品牌官網/總代理（220 型號，2026-08-15 歷史核實）· BigGo 官方 JSON API 實抓（742 型號，2026-08-26 全量復核；主力價錢源）· PricesAPI 核心 29 驗收（已配置，選用後備）· Price.com.hk 舊快照（1,847 型號，2026-08-15，🔍 點擊 Google 搜最新價）· 豐澤 · 百老匯 · 友和 · LIHKG 連登（3 帖摘錄）
+<strong>數據來源</strong>：機電署 EMSD 官方資料庫（1,834 筆登記 · 1,773 型號 · datasetDate 2026-09-22 快照）· 8 大品牌官網/總代理（220 型號，2026-08-15 歷史核實）· BigGo 官方 JSON API 實抓（742 型號，2026-08-26 全量復核；主力價錢源）· PricesAPI 核心 29 驗收（已配置，選用後備）· Price.com.hk 舊快照（1,847 型號，2026-08-15，🔍 點擊 Google 搜最新價）· 豐澤 · 百老匯 · 友和 · LIHKG 連登（3 帖摘錄）
 <strong>⚠️ 注意</strong>：豐澤與電器幫同屬屈臣氏集團，價格不可互證；獨立驗證以 BigGo 不同商戶 / 官方網店為準
 <strong>額外搜尋</strong>：LIHKG 連登（電器台）、HKEPC、香港討論區
-<strong>核心篩選</strong>：窗口式 + 淨冷型 + ≥1 匹（定頻/變頻皆可）；<strong>遙控已非硬性條件</strong>（HITACHI RA-10RF / CANOPUS TA-12EOG 無遙控仍以口碑入選並標註）；<strong>全量資料庫 1,773 型號涵蓋分體式/流動式等全類型（2026-09-21 快照）</strong>
+<strong>核心篩選</strong>：窗口式 + 淨冷型 + ≥1 匹（定頻/變頻皆可）；<strong>遙控已非硬性條件</strong>（HITACHI RA-10RF / CANOPUS TA-12EOG 無遙控仍以口碑入選並標註）；<strong>全量資料庫 1,773 型號涵蓋分體式/流動式等全類型（2026-09-22 快照）</strong>
 <strong>重點維度</strong>：⭐ 能源效益標籤 | ⭐ 用戶評價 | 📶 WiFi | 🏭 官網核實</p>
 </blockquote>
 <hr />
@@ -1057,7 +1057,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 </table>
 <blockquote>
 <p>🎯 想慳電 → 首選變頻（1級）。<strong>「定頻最高只有 3 級」只適用於上述核心 29 型號</strong>；EMSD 全量資料另有 2 級及 5 級型號，選購時以個別型號能源標籤為準。
-✅ 核心 29 型號全部有 EMSD 官方登記，能源級別逐個核對；全量 1,834 筆登記（1,773 個型號）（2026-09-21 快照）；全量 1,834 筆登記／1,773 個 canonical model 嘅分佈見下表。</p>
+✅ 核心 29 型號全部有 EMSD 官方登記，能源級別逐個核對；全量 1,834 筆登記（1,773 個型號）（2026-09-22 快照）；全量 1,834 筆登記／1,773 個 canonical model 嘅分佈見下表。</p>
 <p>📊 <strong>全量 EMSD 能源級別分佈（建置時由實際快照動態生成）</strong>：核心 29 為本報告精選型號；canonical model 按 <code>BRAND|NORM</code> 去重（同 <code>load_models</code>）；registration 為 EMSD 逐筆登記（同 <code>load_registrations</code>）。兩者語意唔同，唔可以互換或相加。</p>
 </blockquote>
 <table>
@@ -1686,7 +1686,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <hr />
 <h2>✅ 官方驗證結果（2026-08-12 全量核實）</h2>
 <blockquote>
-<p><strong>方法</strong>：從<strong>機電署（EMSD）能源標籤官方資料庫</strong>全量下載 <strong>1,834 筆登記（1,773 個型號）</strong>（2026-09-21 快照），逐個比對本報告 29 個型號；另以 <strong>Price.com.hk</strong> 獨立格價抽查重點型號。</p>
+<p><strong>方法</strong>：從<strong>機電署（EMSD）能源標籤官方資料庫</strong>全量下載 <strong>1,834 筆登記（1,773 個型號）</strong>（2026-09-22 快照），逐個比對本報告 29 個型號；另以 <strong>Price.com.hk</strong> 獨立格價抽查重點型號。</p>
 </blockquote>
 <h3>🎯 EMSD 官方確認（能源級別 / 年耗電 / 雪種 / 變頻）</h3>
 <blockquote>
@@ -2240,7 +2240,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <td>1</td>
 <td><strong>機電工程署 EMSD 能源標籤網</strong></td>
 <td><strong>官方資料庫</strong></td>
-<td>✅✅ <strong>全量 1,834 筆登記逐個核實（2026-09-21 快照）</strong></td>
+<td>✅✅ <strong>全量 1,834 筆登記逐個核實（2026-09-22 快照）</strong></td>
 </tr>
 <tr>
 <td>2</td>
@@ -2342,6 +2342,12 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <p><strong>日期口徑</strong>：目前線上資料日期使用 UTC 抓取日期後備；「最後部署」按 HKT 顯示封包時間，並非 Pages 完成發布時間。兩者跨日不代表漏更新一天。v1.2.9 候選起改由成功、hash-bound 收據的實際 UTC 抓取時間推導香港日期（未部署）。</p>
 </blockquote>
 <h2>📅 更新日誌</h2>
+<h3>2026-09-23 — PR #10 審查返修（未發布、未部署）</h3>
+<ul>
+<li>報告規格數字不變；本輪修正 Pages 部署封包（必含 metadata＋一致 sidecar）、daily→Pages 精確 dispatch、monitor combined health、可插拔私人 raw sink adapter。</li>
+<li>E2 證據：本機 475 passed／0 skipped、feature-check 18 節點、acceptance 7 gates rc=0；真 HTTP＋Chromium runtime＋PDF 重建全 PASS。詳見 docs/STATUS §11。</li>
+<li>R7：merge <code>origin/master</code> <code>be43b7c</code> 解除 PR conflict；EMSD 現況日期同步為 datasetDate 2026-09-22（型號／登記數不變）；source run binding 收緊＋Pages concurrency <code>queue: max</code>；規格數字不變。</li>
+</ul>
 <h3>2026-09-22 — 第五輪精確返修（未發布、未部署）</h3>
 <ul>
 <li>規格數字不變；本輪屬工程證據／路徑信任修正，詳見 docs/STATUS §9。</li>

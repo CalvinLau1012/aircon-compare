@@ -1,10 +1,10 @@
 # ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fcalvinlau1012.github.io%2Faircon-compare%2Fmetadata.json&query=%24.version&label=version&prefix=v&color=2ea44f)
 
 > 香港市場空調（窗口式 / 分體式 / 流動式；淨冷/冷暖、定頻/變頻）全面對比
-> **能源級別、雪種、年耗電以機電署 EMSD 官方資料庫全量核實**（最新同步快照 2026-09-21：1,834 筆登記／1,773 型號；2026-09-20 及之前詳細統計段落屬歷史快照，以線上 [`metadata.json`](https://calvinlau1012.github.io/aircon-compare/metadata.json) 為準）
+> **能源級別、雪種、年耗電以機電署 EMSD 官方資料庫全量核實**（最新同步快照 2026-09-22：1,834 筆登記／1,773 型號；2026-09-21 及之前詳細統計段落屬歷史快照，以線上 [`metadata.json`](https://calvinlau1012.github.io/aircon-compare/metadata.json) 為準）
 > **220 個型號已直接經品牌官網/官方網店/總代理逐型號核實（2026-08-15 歷史核實數）**
 > 🎨 **Blue Fantasy 藍色幻想 skin**（dsh-web-ui 皮膚；只套皮膚，其他插件不加）
-> 📌 **現況**：線上部署版本 **v1.2.8**（badge 動態讀取線上 metadata.json）；本機另已建立 **v1.2.9 修復候選**（未發布、未部署）——時間／資料真實性、完整 Schema 驗證、部署後核對與歸檔、恢復演練；2026-09-22 再加 D1-B coverage pending、D2-A Pages Actions、D4-A 全歷史審計、D7-A 原始 EMSD hash receipt、D8-A 72h monitor；2026-09-21 核查的部署 build `B20260920.74`（run 35530668350），EMSD 每日偵測、價錢按批次快照（缺價標「待查」）
+> 📌 **現況**：線上部署版本 **v1.2.8**（badge 動態讀取線上 metadata.json）；本機另已建立 **v1.2.9 修復候選**（未發布、未部署）——時間／資料真實性、完整 Schema 驗證、部署後核對與歸檔、恢復演練；2026-09-22 再加 D1-B coverage pending、D2-A Pages Actions、D4-A 全歷史審計、D7-A 原始 EMSD hash receipt、D8-A 72h monitor；2026-09-22 核查的部署 build `B20260922.83`（run 35776119746），EMSD 每日偵測、價錢按批次快照（缺價標「待查」）
 
 ## 🚀 立即使用
 
@@ -17,7 +17,7 @@
 
 - ⚖️ **互動比較器**：勾選 2 個或以上型號，即時彈出 18 項屬性對比表（自動高亮最平/最慳電/最高 CSPF）
 - 🔍 搜尋（品牌/型號）+ 自由篩選標籤（品牌、機型、匹數、能源、價位、停售狀態）+ 排序（價格 / 能源 / 年耗電 / CSPF）
-- 🛒 1,752 個型號附價格快照（2026-09-21 同步快照重算；BigGo 官方 API 快照 751 有價 + Price 舊快照 1,847 後備；缺價標「待查」），點擊 🔍 直接在你的瀏覽器用 Google 搜最新價
+- 🛒 1,752 個型號附價格快照（2026-09-22 同步快照重算；BigGo 官方 API 快照 751 有價 + Price 舊快照 1,847 後備；缺價標「待查」），點擊 🔍 直接在你的瀏覽器用 Google 搜最新價
 - 📱 手機 / 平板 / 桌面全響應式（表格可橫向捲動）
 - 🌙 深色模式自動跟隨系統，並已修正目錄連結／表格 hover／code／引用／卡片／按鈕等對比度
 - 📊 完整報告：定頻 vs 變頻、統合總表、官方驗證、能源分析、深度分析、排名、推薦、價格驗證、論壇討論精華
@@ -26,10 +26,10 @@
 
 | 項目 | 數量 |
 | ------ | ------ |
-| 比較器總型號 | **1,773**（核心 29 + 其餘 EMSD 型號 1,744；全量去重後包含核心 29；＝ metadata.json `modelCount` · 2026-09-21 快照） |
-| EMSD 官方登記 | **1,834 筆**（`registrationCount`／`rawRecordCount` · 2026-09-21 EMSD 收據；登記筆數與型號數口徑不同，不可互換） |
-| 有價格型號 | 1,752（網站 hero 依同步快照重算，2026-09-21） |
-| 有尺寸型號 | 1,582（同上，按 2026-09-21 快照重算） |
+| 比較器總型號 | **1,773**（核心 29 + 其餘 EMSD 型號 1,744；全量去重後包含核心 29；＝ metadata.json `modelCount` · 2026-09-22 快照） |
+| EMSD 官方登記 | **1,834 筆**（`registrationCount`／`rawRecordCount` · 2026-09-22 EMSD 收據；登記筆數與型號數口徑不同，不可互換） |
+| 有價格型號 | 1,752（網站 hero 依同步快照重算，2026-09-22） |
+| 有尺寸型號 | 1,582（同上，按 2026-09-22 快照重算） |
 | BigGo 香港格價快照 | 751 有價（官方 JSON API；分批批次快照，更新至 2026-09-14） |
 | Price.com.hk 舊快照 | 1,847（2026-08-15 後備價，缺價標「待查」） |
 | PricesAPI 核心驗收型號 | 29（選用驗收/後備，每月免費額度內） |
@@ -37,7 +37,7 @@
 | 品牌官網核實型號 | 220（8 品牌，2026-08-15 歷史核實數） |
 | 對比屬性 | 18 項 |
 
-### 📈 數據統計（2026-09-21 同步快照 · 同一資料源即時計算）
+### 📈 數據統計（2026-09-22 同步快照 · 同一資料源即時計算）
 
 #### 狀態分佈（比較器標籤 · canonical 型號鍵）
 
@@ -49,7 +49,7 @@ pie showData title 型號狀態分佈（1,773）
     "無價" : 16
 ```
 
-> 2026-09-21 快照：canonical `BRAND|NORM`（D11）匹配後，有價 674、停售 1,023、官方價 60、無價 16，合共 1,773。2026-09-20 舊數字為歷史快照。
+> 2026-09-22 快照：canonical `BRAND|NORM`（D11）匹配後，有價 674、停售 1,023、官方價 60、無價 16，合共 1,773。2026-09-21 舊數字為歷史快照。
 
 #### 機型分佈
 
@@ -63,7 +63,7 @@ pie showData title 機型分佈
     "多聯式/天花式" : 7
 ```
 
-#### 能源級別（EMSD 全量 canonical model · 2026-09-21）
+#### 能源級別（EMSD 全量 canonical model · 2026-09-22）
 
 ```mermaid
 xychart-beta
@@ -73,7 +73,7 @@ xychart-beta
     bar [1142, 161, 164, 301, 5]
 ```
 
-> canonical model 按 `BRAND|NORM` 去重（1,773 個，2026-09-21 快照）：1 級 1,142／2 級 161／3 級 164／4 級 301／5 級 5；EMSD registration（1,834 筆登記）為 1,199／161／168／301／5。核心 29 精選為 1 級 13、3 級 9、4 級 7、2／5 級 0——三種口徑不同，不可混用。
+> canonical model 按 `BRAND|NORM` 去重（1,773 個，2026-09-22 快照）：1 級 1,142／2 級 161／3 級 164／4 級 301／5 級 5；EMSD registration（1,834 筆登記）為 1,199／161／168／301／5。核心 29 精選為 1 級 13、3 級 9、4 級 7、2／5 級 0——三種口徑不同，不可混用。
 
 #### 類型與匹數
 
@@ -306,7 +306,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | `pytest.ini` | pytest 設定（預設收集瀏覽器 smoke，避免核心路徑被靜靜略過） |
 | `validate_data.py` | 數據驗證閘門（自動更新防壞數據） |
 | `tests/` · `requirements-dev.txt` | 單元測試 + 開發依賴（pytest） |
-| `emsd_空調能源標籤.csv` | EMSD 官方資料庫快照（2026-09-21 快照：1,834 筆登記 / 1,773 型號；以 `metadata.json` 為準） |
+| `emsd_空調能源標籤.csv` | EMSD 官方資料庫快照（2026-09-22 快照：1,834 筆登記 / 1,773 型號；以 `metadata.json` 為準） |
 | `prices.json` / `specs_emsd.json` | Price 舊快照 / 規格資料庫（後備） |
 | `biggo_prices.json` | BigGo 官方 JSON API 價錢快照（751 有價，更新至 2026-09-14；主力價錢源） |
 | `pricesapi_prices.json` | PricesAPI 核心 29 驗收快照（選用後備；有跑 `fetch_pricesapi.py --core` 時才生成，需 API key） |
@@ -392,6 +392,8 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | 🔐 raw sink | 可插拔 adapter：local 如實標示非 durable；GitHub Release asset 候選（PRIVATE 回讀、拒覆蓋、下載 hash 核驗、90 日 retention）；未經批准唔建 Release |
 | 🛡 輸出安全 | `build_pages_artifact` 拒危險 `--out`、staging 安全替換、失敗唔刪既有內容；symlink／junction 測試無 skip |
 | ✅ 驗證 | 本機 475 passed／0 skipped、feature-check 18 節點 `--run-tests` 全 pass、acceptance 7 gates rc=0；詳見 docs/STATUS §11 |
+| 🔀 R7 同步 | merge `origin/master` `be43b7c`（2026-09-22 自動更新）解除 PR conflict；EMSD 現況日期同步為 datasetDate 2026-09-22（型號／登記數不變）；受影響 docs／PDF／index 按合併後程式與已提交資料重建 |
+| 🔒 R7 收緊 | source run binding 加 completed polling／run attempt／daily workflow path／單親 direct parent／metadata workflowRunId＋commit；Pages production concurrency 加 `queue: max` |
 
 ### 2026-09-22 — 第五輪精確返修（本機候選，未部署）
 
