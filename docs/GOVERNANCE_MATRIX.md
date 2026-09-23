@@ -155,3 +155,5 @@
 | D7-A raw sink | local adapter 如實標示非 durable；GitHub Release asset adapter PRIVATE 回讀／拒覆蓋／下載 hash 核驗／90 日 retention；require 缺配置阻斷 | `tests/test_private_raw_sink.py`（fake HTTP）；`docs/PRIVATE_RAW_SINK_RUNBOOK.md` |
 | 私隱 | raw bytes／token／私人路徑唔入公開 log／worktree／artifact；公開 raw receipt 只有 datasetHash＋CSV 收據 rawReceiptHash 一致才收錄 | `check_public_privacy.py` gate rc=0；sink 測試檔內容掃描 |
 | History audit | 全 reachable refs credentialFindings 必須 0 | commit 前 216 commits／1042 blobs、0 findings（commit 後再跑最終） |
+| R7 source run 綁定 | completed polling／run attempt／daily workflow path／單親 direct parent／metadata `workflowRunId`＋`commit`；timeout／mismatch 全部 fail-closed | `tests/test_verify_deploy_request.py` 21 cases（fake API，不真等） |
+| R7 base 同步 | merge `origin/master` `be43b7c`；資料檔以 master 流水線事實為準；生成物用合併後程式重建 | `git merge-base --is-ancestor origin/master HEAD`；docs／PDF／index diff |

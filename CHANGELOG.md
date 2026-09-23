@@ -377,6 +377,9 @@
 
 #### Changed
 
+- **R7 base 同步**：候選 branch merge `origin/master` `be43b7c`（2026-09-22 自動更新）；
+  `metadata.json`／EMSD 收據／`new_models.json`／`update_queue.json` 以 master 流水線事實為準，
+  冇手改 production metadata；`index.html`／`空調對比報告.pdf` 用合併後程式同已提交資料重建。
 - **freshness monitor combined health**：freshness 同 postdeploy 結果合併判斷；
   fingerprint 唔含 `ageSeconds`（同一 stale 6 小時後仍 noop）；分類改變才 update、
   完全恢復才 close；report 缺失／非 object／network／API 錯誤非零且脫敏。

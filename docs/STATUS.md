@@ -309,3 +309,30 @@
   但未經 daily 可信流程重新生成 metadata 會 fail-closed，唔可以手改 production metadata。
 - 未執行：merge、首個 daily `repository_dispatch`、Pages Actions E4、remote raw sink
   provider 選擇／Secret／首個 live snapshot、D3 required reviewer、D6 self-host 同步。
+
+## 12. 2026-09-23 R7：base 同步與 source run 收緊（PR #10）
+
+> merge commit `698e612`；`origin/master` `be43b7c` 已成為 HEAD 祖先；未 merge PR、
+> 未 deploy、未切 Pages Source。R7 只係把已批准嘅 D2-A／D7-A／D8-A 實作補到 fail-closed。
+
+| 項目 | Root cause | 修正 | 證據 |
+| --- | --- | --- | --- |
+| source run 綁定不足 | 只驗 run id／祖先／假設 completed；`sourceRunAttempt` 冇比對；冇驗 workflow path；daily push 同 Pages 查 API 有完成時序競爭 | `verify_deploy_request.py`：有界 polling（queued／in_progress 可短暫存在，timeout 即失敗）、精確 `run_attempt`、workflow path 必須 `.github/workflows/daily-update.yml`（`@ref` 安全解析）、部署 commit 必須單親 direct parent == source `head_sha`、checkout `metadata.json` 綁定 `workflowRunId`／`commit`；sleep／timeout 可注入 | `tests/test_verify_deploy_request.py`：valid chain、in_progress→completed、timeout、attempt／run id／path mismatch、遠祖先／merge、metadata mismatch／缺失、failure／cancelled／API error、無 token／body 洩漏 |
+| Pages concurrency 語義 | 文件聲稱 FIFO 但 GitHub 預設 `queue: single` 只保留一個 pending，新 pending 會取代舊 pending | `pages-deploy.yml` production／PR 分組保留、`cancel-in-progress: false`、加 `queue: max` | 契約測試 assert `queue: max` 及 `cancel-in-progress: false` |
+| PR conflict | master 2026-09-22 自動更新重新生成 binary PDF，同候選 PDF 衝突 | merge `origin/master`（非 merge PR）；資料檔以 master 流水線事實為準；`generate_html.py` + `generate_pdf.py`（用合併後 committed metadata）重建 index／PDF；唔手改 metadata | `git merge-base --is-ancestor origin/master HEAD`；生成物由合併後程式產生 |
+| 文件現況 | README／需求摘要／報告 current snapshot 仍寫 2026-09-21 | EMSD 現況日期同步為 `datasetDate 2026-09-22`（型號 1,773／登記 1,834 不變；合併後 CSV hash 不變）；需求摘要過時「1,808 有價」改為 1,752（重算：非核心 1,723＋核心 29）；歷史數字保留 | 文件 diff；`generate_html`／`generate_pdf` 重建後測試 |
+
+### 12.1 R7 實數（merge 後、final HEAD 前）
+
+- full pytest：**496 passed／0 skipped／0 failed**（Windows symlink 已無 skip）。
+- focused：`tests/test_verify_deploy_request.py` 21 cases、`tests/test_pages_deploy.py`、
+  freshness、private raw sink、postdeploy、archive、EMSD receipt／raw receipt、
+  workflow security 全部 pass。
+- 最終 acceptance／history 會喺 R7 final HEAD 再跑一次，machine manifest 寫 repo 外。
+
+### 12.2 仍未執行（UNKNOWN）
+
+- merge PR、deploy、Pages Source 切換、E3／E4。
+- remote raw sink provider 選擇／Secret／首個 live snapshot（D7 保持 UNKNOWN）。
+- D3 required reviewer；D6 self-host 同步。
+- PR 首個 `repository_dispatch` 真實 run 綁定（要 merge 後 daily 先遇到）。
