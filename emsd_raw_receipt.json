@@ -1,0 +1,318 @@
+{
+  "schemaVersion": 1,
+  "retrievedAt": "2026-09-23T15:34:27Z",
+  "sourceUrl": "https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50",
+  "success": true,
+  "pageCount": 37,
+  "totalRows": 1834,
+  "perPageRows": [
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    50,
+    34
+  ],
+  "datasetHash": "sha256:f362a542f8b46daa07f5af08cd49ed50ec231f6f9c1d82bb51ab39892e41dc86",
+  "archiveHash": "sha256:9b7ad12b2d315b79e8072d63a36e3446aafaf0051ba20223e0ec7a93d19dd9fe",
+  "pages": [
+    {
+      "page": 1,
+      "byteLength": 65930,
+      "sha256": "sha256:57a71dd0a00a29ab85a94d7deea585b041268527f094f4262eb4a39e4f594462",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 2,
+      "byteLength": 66099,
+      "sha256": "sha256:2f42e294e82b0d07885e5617285bfdb659832c5d2d69ed9a79f9238a079af627",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 3,
+      "byteLength": 65807,
+      "sha256": "sha256:9ed639d17be17751ad3b03d43296b8a25890f1cac58facc52973e027704909bb",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 4,
+      "byteLength": 65462,
+      "sha256": "sha256:8ea5e787941727dce048ebad107b10aed78d609b4d683606c3b0b4669ddccfd3",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 5,
+      "byteLength": 65596,
+      "sha256": "sha256:8ff28c07ca12a7d8427fb9aed984d87271a7037c2bbd38054f1533bcb88863bb",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 6,
+      "byteLength": 65661,
+      "sha256": "sha256:92543582fd7b0514146dc0586932c13d5b3434a892868866dfd33ea79f6970fd",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 7,
+      "byteLength": 65959,
+      "sha256": "sha256:321fe223700fc53ce8a3054c55e2911656bdc56cea9ee8b0039f59d7b6578661",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 8,
+      "byteLength": 66103,
+      "sha256": "sha256:5077186b2f4888cbcb3e560e68e442fc5fbf4d58ef273cfd515d4948ff409884",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 9,
+      "byteLength": 65896,
+      "sha256": "sha256:cca303d6eee741e6e7decd0adec66ff6e84f6abca5314357b86955314c9c0317",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 10,
+      "byteLength": 65924,
+      "sha256": "sha256:685c78d9194eae9ac6644f688a003febeed92a3440e0ab68ca63cd21d414d3d0",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 11,
+      "byteLength": 65935,
+      "sha256": "sha256:d27789e3d2f467d3567a6b3334326a7305bf4b4236b3efdd124d77de3f60a228",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 12,
+      "byteLength": 64506,
+      "sha256": "sha256:6bdfff736718de1b235976f3d3a470da7fb9e02c440e33862e64c38662204b09",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 13,
+      "byteLength": 63099,
+      "sha256": "sha256:9658e71f5f37bce60c05504fa4e1679a39ee1c7243505ad7c09c16fd58e49730",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 14,
+      "byteLength": 60034,
+      "sha256": "sha256:678167fd9dee3cf91a5d490ceef0abdcdf5a7799dc94905712767a5f0355164b",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 15,
+      "byteLength": 57222,
+      "sha256": "sha256:2c8dfa59dc2abf7ef15ee12e9dd384ce6341c45330e1f26ca1cb9aba5c0d5bf5",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 16,
+      "byteLength": 60674,
+      "sha256": "sha256:2eb467c86040fe2e3533a0fc3efe198779b9b574dead30a1e66ec75180da702d",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 17,
+      "byteLength": 58954,
+      "sha256": "sha256:2560c55e2b835a79e96bfaacf06cda5f484abd2dce631983084d6120bc4c2ae3",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 18,
+      "byteLength": 57427,
+      "sha256": "sha256:1b416bab4722b001f5dbf3cd2670ece28cdf2b6b3052302850fe419bf9d2de27",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 19,
+      "byteLength": 57436,
+      "sha256": "sha256:f715d845023dfd9381225da670c45c509b8a62ae97913be4679cef0cb5c0c8e6",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 20,
+      "byteLength": 65844,
+      "sha256": "sha256:de3dec396824c4d8905e5446b847b2298cddcc8df477d0431fa9758f03cc306f",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 21,
+      "byteLength": 66316,
+      "sha256": "sha256:50627aebdf3670ae24964627b54056c62323e50f5270da42f60498edc40300e9",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 22,
+      "byteLength": 66121,
+      "sha256": "sha256:10a0324fff7ed6067402b7590ec2ef6b32f85aacf931614e1ce870ed1545301a",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 23,
+      "byteLength": 66367,
+      "sha256": "sha256:914a2f3175b3215d5d36e32336b58f76acc16d9d2ac45697acab870a74cb3de3",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 24,
+      "byteLength": 66675,
+      "sha256": "sha256:80e86f1b8bdac6bafbf463e828b9a90c1aa2f70654c92fb8b8720b6a0bb1d624",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 25,
+      "byteLength": 65970,
+      "sha256": "sha256:888ae062a4c42cccbe817a9e5df4abf3897a8bff94ffad67a8b2c6ca9d33fa06",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 26,
+      "byteLength": 66415,
+      "sha256": "sha256:05ae5380043443b502ca4b791305c1ef1a40a578c68659a5945a6767beba99ed",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 27,
+      "byteLength": 66036,
+      "sha256": "sha256:2083d2cc2d5c6f27e8c02025cb542d8f00f65a3f215e11312caa4ab43c4fe871",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 28,
+      "byteLength": 60762,
+      "sha256": "sha256:f01b00b31d880f53b4951cc1e83fe09380ed7aa55fcff15f1302e3efba207851",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 29,
+      "byteLength": 62697,
+      "sha256": "sha256:4571cc1976919dbbfd27d77927b28628cb4b0a6ae1b5491b42b77c595534fd4e",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 30,
+      "byteLength": 63539,
+      "sha256": "sha256:167a284de8fa2798878457db5a7dda220742b7e18f33980b15a8fa03276d8a35",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 31,
+      "byteLength": 61779,
+      "sha256": "sha256:ba19e0647b985b91588bdc9e24cfbb63ef197f759ea222d81dc1e641db878a30",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 32,
+      "byteLength": 61692,
+      "sha256": "sha256:d72ee81a3ad9591e80b6fc2a40915753e0d1322f14e60b79a52f87bba634feca",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 33,
+      "byteLength": 59394,
+      "sha256": "sha256:d73391148a3d9393ef4fc79b7e25b2072a2e3818251a41e78671805ea5a0b026",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 34,
+      "byteLength": 58211,
+      "sha256": "sha256:6bdd405d8f63a40895725090cb6482589bda75ac7a80387f5a375e3ffc4821aa",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 35,
+      "byteLength": 57787,
+      "sha256": "sha256:1e8bddc7881b3f34efc67d78a0ebf0bf1d87fe2a0c4ad33fb80964df9efdaa4a",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 36,
+      "byteLength": 57557,
+      "sha256": "sha256:29d188defe0802e9d90a34d25cfab95adf56262d0d3cd232af464f480234c57c",
+      "lastModified": null,
+      "etag": null
+    },
+    {
+      "page": 37,
+      "byteLength": 47022,
+      "sha256": "sha256:20ac783e36e7dbb6f7ac26206eb9c58fc6e2ac61e399cb93063f16ede9820c76",
+      "lastModified": null,
+      "etag": null
+    }
+  ],
+  "privateArchive": {
+    "persisted": true,
+    "adapter": "github-release-asset",
+    "archiveHash": "sha256:9b7ad12b2d315b79e8072d63a36e3446aafaf0051ba20223e0ec7a93d19dd9fe",
+    "verified": true,
+    "durableRemote": true,
+    "retentionDays": 90
+  }
+}
