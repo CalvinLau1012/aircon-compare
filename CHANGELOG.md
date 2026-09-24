@@ -60,6 +60,24 @@
 - **BigGo 按需使用**：daily 非 force 路徑先讀本地 price batch state；inactive／已完成
   時零 BigGo API 請求，只有 active 批次或維護者明確 force 才執行 bounded smoke／批次。
 
+### 2026-09-24 發布路徑 hotfix（PR #11–#13）與更新日誌同步
+
+- **PR #11 `fix/stage-metadata-json`**（merge `aee7d53`）：`stage_artifacts.py` allowlist
+  收返流水線生成嘅 `metadata.json`，令 daily 可以精確 stage 最終 metadata 而唔會 fail-closed。
+- **PR #12 `fix/raw-receipt-no-private-objectid`**（merge `b57b413`）：公開
+  `emsd_raw_receipt.json` 唔再寫私人 sink 嘅 `objectId`／asset 名（可能含 compact
+  timestamp），公開收據只保留 hash／計數／adapter 非敏感事實；新增負向測試鎖定。
+- **PR #13 `fix/release-archive-feature-report`**（merge `f546e2f`＝tag `v1.2.9` 指向）：
+  GATE-09 歸檔前先執行 `feature-check.py --run-tests` 產生機器可讀報告，令
+  Release run 35886358387 可以全綠。
+- **文件同步（本輪）**：`空調對比報告.md`（＋重新生成 `index.html`）、`README.md`、
+  `需求摘要.md` 更新日誌補回 2026-09-24 發布／production 驗收／GATE-08 自動閉環事實；
+  本節只係記錄整理，唔改產品版本、唔改 `metadata.json`、唔重跑任何 production run。
+- **當前上線 build 校正**：同日後續自動更新 run 35946820790（deployTime 2026-09-24T02:24:19Z）
+  以 `0c19ac2` 產生 build `B20260924.110.1`；datasetDate 2026-09-24、1,834 登記／1,773 型號、
+  `datasetHash` 均不變。各更新日誌「當前 live build」由 `B20260924.106.1` 校正為
+  `B20260924.110.1`；`B20260924.106.1` 仍然係獲授權 workflow_dispatch daily 嘅歷史事實。
+
 ## [1.2.9] - 2026-09-24
 
 > 發布事實（2026-09-24 回讀）：tag `v1.2.9` → commit

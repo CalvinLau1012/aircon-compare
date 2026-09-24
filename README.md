@@ -4,7 +4,7 @@
 > **能源級別、雪種、年耗電以機電署 EMSD 官方資料庫全量核實**（最新同步快照 2026-09-24：1,834 筆登記／1,773 型號；2026-09-21 及之前詳細統計段落屬歷史快照，以線上 [`metadata.json`](https://calvinlau1012.github.io/aircon-compare/metadata.json) 為準）
 > **220 個型號已直接經品牌官網/官方網店/總代理逐型號核實（2026-08-15 歷史核實數）**
 > 🎨 **Blue Fantasy 藍色幻想 skin**（dsh-web-ui 皮膚；只套皮膚，其他插件不加）
-> 📌 **現況**：線上已發布 **v1.2.9**（當前 live build `B20260924.106.1`、datasetDate 2026-09-24）；Node.js 24 Actions／`ubuntu-24.04` runner／bounded BigGo smoke hotfix 已由 PR #14 合併並完成 production 驗收；PR #15 已將 GATE-08 接入 Pages 同一 workflow 並以 production run 35944781623 證實自動閉環；BigGo 僅在 active 價格批次或明確 force 時使用
+> 📌 **現況**：線上已發布 **v1.2.9**（當前 live build `B20260924.110.1`、datasetDate 2026-09-24）；Node.js 24 Actions／`ubuntu-24.04` runner／bounded BigGo smoke hotfix 已由 PR #14 合併並完成 production 驗收；PR #15 已將 GATE-08 接入 Pages 同一 workflow 並以 production run 35944781623 證實自動閉環；BigGo 僅在 active 價格批次或明確 force 時使用
 
 ## 🚀 立即使用
 
@@ -384,7 +384,22 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 ## 📅 更新日誌
 
-### 2026-09-23 — PR #10 審查返修（本機候選，未部署）
+### 2026-09-24 — v1.2.9 已發布 · production 驗收 · GATE-08 自動閉環
+
+| 類別 | 內容 |
+| ------ | ------ |
+| 🚀 發布 | tag `v1.2.9` → `f546e2f`；GitHub Release 非 draft／prerelease（published 2026-09-24T00:31:15Z），GATE-09 歸檔 run 35886358387 success；資產 `archive-v1.2.9.zip`／`CHECKSUMS.sha256`／`PROVENANCE.json`，24 個 CHECKSUMS 獨立 `sha256sum -c` 全部 OK；歸檔 provenance 為初次部署快照 build `B20260923.101.1`（source run 35881890400、`archiveCommit=f546e2f`、`sourceCommit=b57b413`） |
+| 🔁 daily 驗收 | 唯一一次獲授權完整 daily run 35942488710 success（4m04s）；EMSD 37/37 頁、1,834 筆登記；BigGo 批次 inactive＝`skip-not-active`（bounded smoke 首候選約 2 秒有價）；自動提交 `b80a1d5`、build `B20260924.106.1`、datasetDate 2026-09-24 |
+| 🔄 後續自動更新 | 自動更新 run 35946820790（deployTime 2026-09-24T02:24:19Z）→ build `B20260924.110.1`（commit `0c19ac2`）；datasetDate 2026-09-24、1,834 登記／1,773 型號不變，`datasetHash` 與前次相同（重新抓取同一份 EMSD 資料） |
+| 🌐 Pages／E4 | `repository_dispatch` run 35942793376（exact head `b80a1d5`）build／deploy success；同 workflow GATE-08 與手動 exact-ref fallback run 35943298448 全 PASS（metadata 全 object、payload hash、CSV hash、PDF 重建、瀏覽器 runtime） |
+| 🔧 PR #11–#13 | staging allowlist 收返流水線生成物 `metadata.json`；公開 `emsd_raw_receipt.json` 移除私人 sink `objectId`（同 compact timestamp）；release archive 前先產生 feature-check report |
+| ⚙️ PR #14 | Node.js 24 官方 Actions（7 個 action 全部完整 40-hex SHA pin）、5 個 workflow 共 8 個 job 固定 `ubuntu-24.04`、BigGo smoke 有界化（單 attempt＋每網絡階段 8 秒 timeout）；merge `5783f0d`；production 日誌中 Node.js 20 forced-runtime／Ubuntu 26 migration 警告均為 0 |
+| 🔗 PR #15／#16 | `postdeploy-verify.yml` 改 reusable＋manual，由 `pages-deploy.yml` 喺 deploy success 後以 exact build commit 同 workflow 直接呼叫（移除跨 workflow `workflow_run` 鏈）；PR 路徑不 deploy／不 postdeploy；production run 35944781623 依序 build→deploy→GATE-08 全 PASS，自動閉環證實 |
+| 🛒 BigGo 按需 | daily 非 force 路徑先讀本地 price batch state；inactive／已完成時零 BigGo API 請求，只有 active 批次或維護者明確 force 才跑 bounded smoke |
+| 📝 文件 | PR #17 更新報告更新日誌（`空調對比報告.md`＋重新生成 `index.html`）；本次補回 README 同 `需求摘要.md` 更新日誌 |
+| ⚠️ 已知限制 | `actions/deploy-pages@v5.0.1` 上游 `punycode` DEP0040 警告 1 次（upstream issue #434／#413；不隱藏、不降級 pin）；daily 維持 cron `30 16 * * *`（HKT 00:30），最近五次 scheduled 均 success，但 GitHub 排程可能延遲、非精準 SLA |
+
+### 2026-09-23 — PR #10 審查返修（歷史記錄：當時未發布、未部署）
 
 | 類別 | 內容 |
 | ------ | ------ |
