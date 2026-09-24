@@ -448,3 +448,32 @@
 - D23 的靜態契約、完整 acceptance 與 trusted PR CI 已通過；inactive 零 API 路徑將由
   下一次自然 scheduled daily（且 price batch inactive 時）提供 runtime 日誌證據。
   本輪不為製造證據重跑 daily，遵守用戶「不要不停調用 BigGo」要求。
+
+## D24 · 更新日誌／純文檔改動唔手動重生 `index.html`（md-only commit，人類決策）
+
+- **日期**：2026-09-24
+- **狀態**：已實行（約定）
+- **背景**：`deploy_payload.json` 的 payload 包含 `index.html`、`空調對比報告.pdf`、
+  `emsd_空調能源標籤.csv`；`metadata.json` 的 `releasePayloadHash` 由 daily 流水線對呢啲
+  bytes 計算。2026-09-24 兩次文檔 push（PR #17 merge run 35946623750、更新日誌整理 run
+  35950593781）都因為手動重生 `index.html` 而令 production Pages build 以
+  「releasePayloadHash 唔一致」fail-closed；兩次都由下一次 daily run 重新生成
+  `index.html`＋`metadata.json` 後自動恢復（例：run 35946820790 → `repository_dispatch`
+  run 35947112610 success）。
+- **選項**：
+  - A：每次改更新日誌都重生 `index.html`，接受一次 production 紅 run；
+  - B：純文檔／更新日誌改動只 commit 文檔，`index.html` 交由下一次 daily 一併重生（md-only commit）；
+  - C：為文檔同步手改 `metadata.json`（**否決**：等於手填部署事實，違反 D6 同 AGENTS 規則 2）。
+- **決策**：採用 B。用戶 2026-09-24 明確選擇 md-only commit 約定，並且唔授權為此額外觸發一次
+  production daily run。
+- **原因**：純更新日誌改動唔影響比較器功能，冇必要令 production build 無謂 fail-closed；同時
+  唔可以為求同步而手動改部署事實。
+- **後果**：
+  - 約定期間 `index.html` 可能暫時滯後於 `空調對比報告.md`；下一次 daily 會用
+    `generate_html.py` 重生並連同新 `metadata.json` 一齊提交同部署。
+  - 真正改 UI／CSS／報告內容仍按 AGENTS 規則 8 重生；該次 push 的 Pages run 預期會
+    fail-closed 到下一次 daily（現行 pipeline 語義，未改變）。
+  - 2026-09-24 本輪已把 `index.html` 回復到 pipeline 一致版本
+    （`payloadHash=sha256:b2de4e3f…` 同 `metadata.json` 相符；本地
+    `build_pages_artifact.py --check-only` rc=0），令 master 唔會因為純文檔 push 再出紅 run。
+  - 回滾：如日後改回每次重生，刪除本約定並更新 AGENTS 規則 9 即可。
