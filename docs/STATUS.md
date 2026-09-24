@@ -5,6 +5,9 @@
 > merge 最新 `origin/master`（be43b7c，2026-09-22 自動更新）同步生產資料；2026-09-23 已套用 D3-A
 > `release` environment 單人 required reviewer 關卡；**未 merge PR、未 deploy、未發布 Release、
 > 未操作 Secrets、未改生產 metadata**。受信任 CI（E3）與部署後核對（E4）仍未發生。
+>
+> **2026-09-24 更新**：v1.2.9 已發布並上線；發布後事實與 Node24／`ubuntu-24.04`／bounded smoke
+> hotfix 候選見 §15（本章 §1–§14 保留當時快照語義，不回溯改寫）。
 
 ## 1. 基準與版本
 
@@ -432,3 +435,122 @@
   - `Pages 部署（Actions）` → `build` run `35874993620`：**success**（2m38s）；`deploy` job
     正確 `skipping`（PR 永不 deploy）。
 - 以上只係 PR build／gate 嘅 E3；production `repository_dispatch` 部署路徑同 live E4 仍未發生。
+
+
+## 15. 2026-09-24 v1.2.9 發布後事實與 Node24／runner hotfix 候選
+
+> 本節只記錄 2026-09-24 回讀／核實嘅平台事實同本輪 hotfix 候選；§1–§14 保留 2026-09-23
+> 當時快照語義，不回溯改寫。平台事實以 GitHub API、Release assets 同公開 Pages 回讀為準。
+
+### 15.1 Release 歸檔（tag 指向、run、資產與獨立驗證）
+
+| 項目 | 回讀值（2026-09-24） |
+| --- | --- |
+| Release | tag `v1.2.9`；非 draft／prerelease；published 2026-09-24T00:31:15Z；target commit `f546e2fd52d961f489972a0732d114f22d4f7e68`（= tag 指向） |
+| Release run | 35886358387（`Release 歸檔（GATE-09 · 手動）`，workflow_dispatch）build／publish 全部 success |
+| Assets | `archive-v1.2.9.zip`（707,579 B）、`CHECKSUMS.sha256`（2,196 B）、`PROVENANCE.json`（1,076 B） |
+| Archive 獨立驗證 | 本輪下載 zip：內含 24 個 CHECKSUMS 全部 `OK`（獨立 `sha256sum -c`）；standalone `CHECKSUMS.sha256`／`PROVENANCE.json` 與 zip 內逐 bytes 相同 |
+| Archive provenance | build `B20260923.101.1`、`archiveCommit=f546e2f`、`sourceCommit=b57b413`、`workflowRunId=35881890400`、`datasetDate=2026-09-23`、`releasePayloadHash=sha256:1b7f93c9…`、`archivedAt=2026-09-23T16:08:15Z` |
+
+Release archive 係「初次 v1.2.9 部署快照」（source run 35881890400／`B20260923.101.1`），
+同 §15.2 當前 live daily 快照（`B20260923.103.1`）係兩個唔同 snapshot，唔可以混為一談。
+
+### 15.2 當前線上（release 後 production daily；metadata 一致性）
+
+| 項目 | 回讀值 |
+| --- | --- |
+| Daily run | 35911295151（`每日偵測 · 新機分批更新`，schedule）success；head `c6b0de6` |
+| Live metadata | version 1.2.9、build `B20260923.103.1`、commit `f546e2f`、workflowRunId `35911295151`、deployTime 2026-09-23T20:02:04Z、datasetDate 2026-09-24、datasetDateBasis `retrieval-date-fallback`、datasetRetrievedAt 2026-09-23T19:47:53Z、datasetSnapshotId `emsd-2026-09-24-39892e41dc86`、datasetHash `sha256:f362a542…`、releasePayloadHash `sha256:3d21967a…`、registrationCount／rawRecordCount 1,834、modelCount／recordCount 1,773 |
+| Live Pages metadata | `https://calvinlau1012.github.io/aircon-compare/metadata.json` 與 `origin/master:metadata.json` 整個 JSON object 相等（E4 metadata 層面） |
+| Pages 部署 | 35913258756（repository_dispatch）build／deploy success |
+| 部署後核對 | 35919211259（72h 新鮮度監控，內含 `postdeploy_check --no-browser`）success；另有以 checkout metadata 對 live 嘅完整核對記錄 |
+| Master commit | `c6b0de6`（自動更新：新機偵測及規格同步 2026-09-23） |
+
+### 15.3 D7 live 原始 EMSD bytes（已啟用）
+
+- `origin/master` 公開 `emsd_raw_receipt.json`：success、37 頁、1,834 行、
+  `datasetHash=sha256:f362a542…`、`archiveHash=sha256:9b7ad12b…`；`privateArchive`
+  顯示 `adapter=github-release-asset`、`persisted=true`、`verified=true`、
+  `durableRemote=true`、`retentionDays=90`。
+- `emsd_receipt.json` 有 `rawReceiptHash=sha256:7a6a2913…`（同當前 raw receipt 綁定）。
+- 呢啲只係公開 hash receipt；私人原始 bytes 唔在公開 worktree／artifact，本節亦唔複製。
+- 兩次抓取（2026-09-23T15:34:27Z 同 19:47:53Z）CSV `datasetHash` 相同，但
+  `retrievedAt` 唔同，令 datasetDate 分別為 2026-09-23（release archive）同 2026-09-24
+  （live）；日期由實際抓取時間推導，冇手填。
+
+### 15.4 Release 後 BigGo 狀態（skip，保留快照）
+
+- Run 35911295151 嘅 BigGo step 成功但 mode=`skip-smoke-failed`：3 個 smoke 候選全部
+  `unreachable`，日誌明確記錄「未刷新、保留現有價錢快照」；真批次無執行，亦無
+  `--force-batch`。
+- 該次失敗 smoke 由 19:51:59 到 20:02:03（約 14 分鐘），係本輪 smoke 有界化嘅直接動機。
+- 現有 `biggo_prices.json` 快照未改；本輪冇任何真實 BigGo API 呼叫。
+
+### 15.5 本輪 hotfix 候選（2026-09-24；E2，未 merge／未發布）
+
+- **Node.js 24 官方 Actions**（完整 40-hex SHA pin；GitHub refs API 回讀，`action.yml`
+  `runs.using=node24` 全部核實）：
+  - checkout `v7.0.1` = `3d3c42e5aac5ba805825da76410c181273ba90b1`
+  - setup-python `v7.0.0` = `5fda3b95a4ea91299a34e894583c3862153e4b97`
+  - upload-artifact `v7.0.1` = `043fb46d1a93c77aae656e7c1c64a875d1fc6a0a`
+  - download-artifact `v8.0.1` = `3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c`
+  - configure-pages `v6.0.0` = `45bfe0192ca1faeb007ade9deae92b16b8254a0d`
+  - upload-pages-artifact `v5.0.0` = `fc324d3547104276b827a68afc52ff2a11cc49c9`
+    （composite 內固定 upload-artifact `bbbca2ddaa5d8feaa63e36b76fdaad77386f024f`＝v7.0.0，node24）
+  - deploy-pages `v5.0.1` = `368f82528645a54fb793d4d04e342629a3f51346`
+- **相容性核對（官方 README／action.yml）**：checkout v7 新增 fork PR 保護只針對
+  `pull_request_target`／`workflow_run` 事件；本 repo `postdeploy-verify` 只接
+  push／workflow_dispatch／repository_dispatch 觸發嘅 Pages run，`pull-request-gates`
+  係 `pull_request` 且限 same-repo，唔受影響；setup-python v7 移除 `pip-install` input
+  （未使用），`python-version`／`cache` 仍存在；artifact v7／v8 仍支援現用 `name`／
+  `path`／`retention-days`／`if-no-files-found`；deploy-pages v5 仍輸出 `page_url`。
+- **Runner**：5 個公開 workflow、8 個 job 全部由浮動 `ubuntu-latest` 固定為
+  `ubuntu-24.04`（GitHub runner-images 已列支援；`ubuntu-latest` 將於 2026-10-19 起轉
+  Ubuntu 26）；job 權限、environment、`if`／`needs`、concurrency、fail-closed 條件不變。
+- **BigGo smoke 有界**：smoke 單次 attempt＋每網絡階段 8 秒 timeout＋無 60／90 秒冷卻＋
+  錯誤後無 sleep；首個 `unreachable`／例外即 False；只有 `no-price` 才 fallback；
+  首個有價即 True。`--price-batch`／`--force-batch`／正常查詢保持 5 次 retry＋
+  Retry-After／403 冷卻＋MIN_PACE 限速語義。
+- **邊界**：冇改 product VERSION、`metadata.json`、資料／生成物；冇 tag／Release、冇
+  production dispatch、冇真實 BigGo／EMSD 抓取、冇 Secrets／environment 改動。
+
+### 15.6 本輪實數（OBSERVED / E2）
+
+- 完整 pytest（`.venv`，Windows）：**529 passed、0 failed、1 warning**（預期內
+  duplicate-zip 警告），132.02s。
+- 針對性 pytest：`test_workflow_security`＋`test_biggo_smoke`＋`test_biggo_batch_semantics`＋
+  `test_pages_deploy` **68 passed**。
+- Machine acceptance：`.venv\Scripts\python.exe scripts/run_acceptance.py`（report／log 喺
+  repo 外）；**獨立捕捉真實 exit code = 0**（無 pipe 失真）；`acceptance2.json` 回讀
+  `ok=true`、`schemaVersion=1`、`runner=scripts/run_acceptance.py`、`commit=c6b0de6`
+  （本輪 base；工作樹改動），7 個 gate（GOVERNANCE_EXTRACT／VALIDATE_DATA／
+  VALIDATE_METADATA／PRIVACY_WORKTREE／PYTEST／FEATURE_CHECK／DIFF_CHECK）**全部
+  returncode=0**，每個 log 嘅 SHA-256 獨立重算一致；log 內容再核（6 治理區塊、
+  version=1.2.9、privacy 0 命中、529 passed、18 feature nodes、diff 空）。
+- `feature-check.py --run-tests`：15 項 required、18 個綁定節點全部 passed。
+- 治理 extractor：6 區塊、ID 唯一、完整 Schema 驗證通過。`validate_data.py`：
+  1,834 行／1,773 型號全部符合。
+- PR trusted CI（E3）警告掃描喺 push 後進行；本節於 PR 前撰寫，E3 結果以 PR checks／
+  交付報告為準。
+
+> BigGo orphan／private raw assets：現行 retention 為 90 日；本輪唔刪除任何 private
+> raw assets，到期由 retention 處理。
+
+### 15.7 Draft PR #14 exact-head CI（OBSERVED / E3）
+
+- 首個 exact-head E3 實作 commit：`2d17a9c99537652627abc53f6275e63d462b75dd`；
+  當時 PR #14 為 Draft／open／mergeable，base
+  `c6b0de6e2f27d1af3aefdce24c0c482cb35277ed`。
+- `每日偵測 · 新機分批更新` run 35941034804：`pull-request-gates` **success**；
+  production `update` job **skipped**。
+- `Pages 部署（Actions）` run 35941034788：`build` **success**；production `deploy`
+  job **skipped**。其後 GitHub 自動產生的 postdeploy run 35941213024 因 head branch
+  並非 master，`verify` job 為 skipped、0 steps。
+- 兩個實際執行 job 的完整日誌掃描：`Node.js 20 is deprecated`、
+  `forced to run on Node.js 24`、`ubuntu-latest`、`Ubuntu 26`、`punycode`、
+  `DeprecationWarning` 全部 **0 命中**；`Set up job` 均回報
+  `Image: ubuntu-24.04`。
+- PR 路徑已實際載入 checkout v7、setup-python v7、configure-pages v6 及
+  upload-pages-artifact v5；production-only upload-artifact v7、download-artifact v8、
+  deploy-pages v5 steps 按設計 skipped。後三者已由官方 release ref／`action.yml`
+  與靜態回歸鎖定，首次 production 實際執行仍須在 merge 後觀察。

@@ -19,16 +19,17 @@ concurrency:
 jobs:
   monitor:
     if: github.event_name == 'schedule' || github.ref == 'refs/heads/master'
-    runs-on: ubuntu-latest
+    # runner 固定 ubuntu-24.04：避免浮動 latest label 於 2026-10-19 起自動轉 Ubuntu 26
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: 取出代碼
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
 
       - name: 設定 Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: '3.12'
           cache: 'pip'

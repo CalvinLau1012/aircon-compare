@@ -341,3 +341,48 @@
     亦沒有建立 PAT／共用憑證。無憑證前唔可以宣稱 D7 完成。
 - **回滾**：本決策只記錄授權與次序，無平台狀態改動；如需撤回，以新決策記錄取代，並維持
   現有 fail-closed 門禁。
+
+
+## D21 · Release 後 runtime hotfix：Node.js 24 Actions＋`ubuntu-24.04` runner＋bounded BigGo smoke
+
+- **日期**：2026-09-24
+- **狀態**：已實作候選（本機 E2）；未 merge、未發布；交獨立驗收後決定
+- **背景**：v1.2.9 已發布並上線。daily／Pages／postdeploy／release 實際 run logs 出現
+  GitHub 警告「`Node.js 20 is deprecated ... forced to run on Node.js 24`」，來源係當時
+  固定嘅舊官方 Actions（node20 runtime）；另 GitHub 提示 `ubuntu-latest` label 將於
+  2026-10-19 起遷移到 Ubuntu 26。使用者明確要求本輪 hotfix 修正，但不得為消除警告降低
+  任何門禁。
+- **選項**：
+  - A：只升 action major tag（例如 `checkout@v7`）——可快速消警告，但破壞完整 SHA pin，
+    亦違反治理 §9.3；
+  - B：升級到官方 node24 release 嘅完整 commit（refs API 回讀）＋保留全部最小權限、
+    environment、concurrency、fail-closed 條件；runner 由浮動 `ubuntu-latest` 固定為
+    `ubuntu-24.04`（不提前用 Ubuntu 26）；BigGo smoke 改有界（單次 attempt、每網絡階段
+    約 8 秒 timeout、無 60／90 秒冷卻），批次／正常查詢保持原完整語義；
+  - C：暫時忽略警告／等 GitHub 強制升級——唔符合使用者要求，亦令 CI 持續出現
+    deprecation 噪音。
+- **決策**：採 B。產品版本不變（`models_data.VERSION` 維持 1.2.9，未改 production
+  metadata／資料／生成物）；本輪只係 release 後技術 hotfix 候選。
+- **原因**：官方 node24 release＋完整 SHA pin 同時滿足治理 §9.3 同 deprecation 修復；
+  runner 固定可預期，避免 2026-10-19 突然跳 Ubuntu 26；smoke 有界令失敗唔會拖長
+  daily workflow（2026-09-23 run 35911295151 嘅失敗 smoke 曾耗時約 14 分鐘），
+  而批次可靠性（retry／冷卻／限速）完全不變。
+- **後果（分類）**：
+  - `REQUIREMENT`：15 項 required 功能、protection、Metadata Schema、成功標準、
+    fail-closed 門禁、最小權限、完整 SHA pin 全部不變；冇任何門禁被放寬。
+  - `OBSERVED / E2`：本機 pytest 同 workflow 靜態測試（實數見 [STATUS.md](STATUS.md) §15）；
+    官方 release `action.yml` runtime=node24 同現有 inputs 相容性已逐一核對；舊 Node 20
+    SHA 加入測試負向清單。
+  - `UNKNOWN`：PR trusted CI 警告掃描、merge、production 再部署／live E4 未執行。
+  - `BOUNDARY`：冇 tag／Release、冇 production dispatch、冇真實 BigGo／EMSD 抓取、
+    冇 Secrets／environment／版本／metadata 改動。
+- **回滾**：`git revert` 本輪 commit 即恢復舊 pin／runner／smoke 語義；產品 metadata
+  與線上狀態不受影響。
+- **2026-09-24 驗收更新（追加）**：Draft PR #14 head
+  `2d17a9c99537652627abc53f6275e63d462b75dd` 已取得 trusted PR E3：
+  `pull-request-gates` run 35941034804 與 Pages `build` run 35941034788 均 success；
+  實際執行 job 日誌中 Node.js 20 forced-runtime、`ubuntu-latest`／Ubuntu 26 migration、
+  `punycode`／`DeprecationWarning` 均為 0，runner 為 `ubuntu-24.04`。因此上述
+  `UNKNOWN` 中「PR trusted CI 警告掃描」已轉為 `OBSERVED / E3`；merge、production
+  再部署及 live E4 仍未執行。production-only upload／download artifact 與 deploy
+  steps 在 PR 路徑按設計 skipped，首次實際執行仍須觀察。

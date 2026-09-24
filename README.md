@@ -1,10 +1,10 @@
 # ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fcalvinlau1012.github.io%2Faircon-compare%2Fmetadata.json&query=%24.version&label=version&prefix=v&color=2ea44f)
 
 > 香港市場空調（窗口式 / 分體式 / 流動式；淨冷/冷暖、定頻/變頻）全面對比
-> **能源級別、雪種、年耗電以機電署 EMSD 官方資料庫全量核實**（最新同步快照 2026-09-22：1,834 筆登記／1,773 型號；2026-09-21 及之前詳細統計段落屬歷史快照，以線上 [`metadata.json`](https://calvinlau1012.github.io/aircon-compare/metadata.json) 為準）
+> **能源級別、雪種、年耗電以機電署 EMSD 官方資料庫全量核實**（最新同步快照 2026-09-24：1,834 筆登記／1,773 型號；2026-09-21 及之前詳細統計段落屬歷史快照，以線上 [`metadata.json`](https://calvinlau1012.github.io/aircon-compare/metadata.json) 為準）
 > **220 個型號已直接經品牌官網/官方網店/總代理逐型號核實（2026-08-15 歷史核實數）**
 > 🎨 **Blue Fantasy 藍色幻想 skin**（dsh-web-ui 皮膚；只套皮膚，其他插件不加）
-> 📌 **現況**：線上部署版本 **v1.2.8**（badge 動態讀取線上 metadata.json）；本機另已建立 **v1.2.9 修復候選**（未發布、未部署）——時間／資料真實性、完整 Schema 驗證、部署後核對與歸檔、恢復演練；2026-09-22 再加 D1-B coverage pending、D2-A Pages Actions、D4-A 全歷史審計、D7-A 原始 EMSD hash receipt、D8-A 72h monitor；2026-09-23 已套用 D3-A，`release` environment 以維護者為唯一 required reviewer 並允許自行批准；2026-09-22 核查的部署 build `B20260922.83`（run 35776119746），EMSD 每日偵測、價錢按批次快照（缺價標「待查」）
+> 📌 **現況**：線上已發布 **v1.2.9**（Release tag `v1.2.9`；當前 live build `B20260923.103.1`、datasetDate 2026-09-24，badge 動態讀取線上 metadata.json）；時間／資料真實性、完整 Schema 驗證、部署後核對與歸檔、恢復演練已隨 v1.2.9 上線；release 後 **Node.js 24 Actions／`ubuntu-24.04` runner／bounded BigGo smoke hotfix 已在 Draft PR #14 通過本機 E2 與 exact-head PR E3（Unreleased，未 merge、未發布）**；EMSD 每日偵測、價錢按批次快照（缺價標「待查」）
 
 ## 🚀 立即使用
 
@@ -136,7 +136,7 @@ xychart-beta
 - **新機偵測**：比較 EMSD 官方資料庫新舊型號，新上市型號自動入庫並在網頁「🆕 最近新上市」顯示；官網核實分兩日分批進行，沒有新機就不更新內容
 - **價錢快照（分批）**：**BigGo 官方 JSON API**（`api.biggo.com`，官方免費認證，憑證只放 GitHub Secrets）＋ PricesAPI 核心 29 驗收／後備 ＋ Price.com.hk 舊快照；每月最多一輪、分 7 日分批（2026-09 已完成 7/7）；**價錢為快照，未收錄／無報價標「待查」**，點 🔍 在瀏覽器用 Google 搜最新價
 - **更新頻率口徑**：每日只偵測 EMSD 新機；官網核實（2026-08-15 的 220 個型號）與 BigGo 快照（更新至 2026-09-14）屬分批檢查結果，**不是每日全量刷新**
-- **安全**：BigGo 官方憑證只放 GitHub Actions Secrets（`BIGGO_CLIENT_ID`／`BIGGO_CLIENT_SECRET`）；PricesAPI key 只放 Secrets（`PRICESAPI_API_KEY`），核心 29 驗收用 repo Variables `PRICESAPI_CORE_CHECK=1` 選用；權限只限 `contents: write`；官方 Actions 版本 `checkout@v4`／`setup-python@v5`；設 concurrency 防重疊
+- **安全**：BigGo 官方憑證只放 GitHub Actions Secrets（`BIGGO_CLIENT_ID`／`BIGGO_CLIENT_SECRET`）；PricesAPI key 只放 Secrets（`PRICESAPI_API_KEY`），核心 29 驗收用 repo Variables `PRICESAPI_CORE_CHECK=1` 選用；權限只限 `contents: write`；官方 Actions 全部固定完整 commit（`checkout@v7.0.1`／`setup-python@v7.0.0`／`upload-artifact@v7.0.1`／`download-artifact@v8.0.1`／Pages 系 `v5.0.0`／`v6.0.0`／`v5.0.1`），runtime 全部 Node.js 24；runner 固定 `ubuntu-24.04`；設 concurrency 防重疊
 - **部署顯示**：頁面 runtime 讀取 `metadata.json`：`version`、`deployTime`（UTC 產生、HKT 顯示）、`datasetDate`；載入失敗顯示「暫不可用」，不顯示硬編舊值。`deployTime` 依治理定義為**部署包封裝時間**，非 CDN／Pages 完成時間
 - **資料日期口徑**：`datasetDate` 現以 runner UTC 日期產生（`retrieval-date-fallback`），UI 部署時間以 HKT 顯示，兩者可能跨日；此為現行已知限制（尚未修正）
 - **淘汰機制**：`model_lifecycle.py` 只把「乾淨無市售報價」（連續多次；網絡錯誤不計，D8）的型號入黑名單；每批小額復核，有價會自動復活；核心 29 及官方網店價型號受保護，不自動淘汰
@@ -195,7 +195,7 @@ flowchart LR
 | Architecture Governance | §1 單一事實源 · §16 落地結構 | ✅ 已落地 |
 | Feature Governance | §5 功能註冊表（15 項 required） | ✅ 已落地 |
 | DevOps Governance | §11 部署後驗證 · §17 核對表 | ✅ 已落地 |
-| CI/CD Governance | §9 門禁 GATE-01~09 | ✅ GATE-01/03/04/05/06 已上 CI；GATE-08/09 程式與 workflow 候選已實作（未部署／未發布） |
+| CI/CD Governance | §9 門禁 GATE-01~09 | ✅ GATE-01/03/04/05/06 已上 CI；GATE-08 部署後核對與 GATE-09 Release 歸檔已隨 v1.2.9 實作並實際執行（Release run 35886358387、部署後 freshness／postdeploy run 35919211259 success） |
 | Version Governance | §8.1 SemVer + `models_data.VERSION` 單一來源 | ✅ 已落地 |
 | Release Governance | §8.3 發布資產 · §17 | ✅ 已落地 |
 | Rollback Governance | §7.3 回滾元數據 · §11.3 四級回滾 · §11.4 七步流程 | ✅ 已落地 |
@@ -363,7 +363,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 | 版本 | 日期 | 重點 |
 | --- | --- | --- |
-| **v1.2.9**（候選·未發布·未部署） | 未發布 | 時間／資料真實性：EMSD 收據事實（實際 UTC 抓取時間＋CSV hash 綁定、失敗收據、50 倍數頁數）；完整 Draft 2020-12 Schema＋`--core` fail-closed；feature-check 實際 collection／執行證據；GATE-08 部署後核對＋GATE-09 歸檔候選；本地恢復演練 16 斷言。產品 VERSION 已係 `1.2.9`，但線上 `metadata.json` 仍係 1.2.8 |
+| **v1.2.9** | 2026-09-24 | **已發布**（tag `v1.2.9` → `f546e2f`；Release run 35886358387；首個 production daily 35911295151＝build `B20260923.103.1`、datasetDate 2026-09-24）。內容：時間／資料真實性（EMSD 收據事實＋CSV hash 綁定、失敗收據、50 倍數頁數）；完整 Draft 2020-12 Schema＋`--core` fail-closed；feature-check 實際 collection／執行證據；GATE-08 部署後核對＋GATE-09 歸檔；本地恢復演練 16 斷言。Release 後 hotfix 候選（Unreleased）：Node.js 24 Actions 完整 SHA pin、`ubuntu-24.04` runner、bounded BigGo smoke |
 | **v1.2.8** | 2026-08-26 | 治理落地（門禁 + metadata.json + 功能註冊表 15 項綁定）+ PDF 報告導出 + BigGo 改官方 JSON API（解決 GitHub IP 限流）+ 文檔全面書面語化 |
 | **v1.2.7** | 2026-08-25 | 皮膚/深色模式全面恢復（Blue Fantasy 壁紙 + whale-girl 吉祥物 + 元件級對比度）+ 響應式適配修正（手機下拉溢出/吉祥物重疊）+ 工具複用整理 |
 | **v1.2.6** | 2026-08-25 | 代碼重構（`models_data.py` / `batch_utils.py` + `fetch_*` 統一重試）· 深色模式對比度修正 · 生成效能優化（版本號維持） |
@@ -606,7 +606,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | ------ | ------ |
 | 📝 內容 | 報告初版（29 型號對比） |
 
-**更新日期**：2026-09-21 · **版本**：v1.2.8（頁面／badge 以線上 `metadata.json` 為準）
+**更新日期**：2026-09-24 · **版本**：v1.2.9（已發布；頁面／badge 以線上 `metadata.json` 為準；release 後 hotfix 候選見 CHANGELOG `[Unreleased]`）
 
 ### 2026-09-21 文件更新（本機候選，未發布）
 

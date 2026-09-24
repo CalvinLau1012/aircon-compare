@@ -49,8 +49,11 @@ UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
 _TOKEN = {'value': None, 'expires': 0.0}
 
 
-def _get_access_token():
-    """用 BIGGO_CLIENT_ID/SECRET 攞 access_token（免費官方認證；冇配置就 None = 免登入 fallback）"""
+def _get_access_token(timeout=20):
+    """用 BIGGO_CLIENT_ID/SECRET 攞 access_token（免費官方認證；冇配置就 None = 免登入 fallback）
+
+    `timeout` 預設 20 秒，同原本批次行為一致；smoke 會傳較短 timeout 令連線測試有界。
+    """
     cid = os.environ.get('BIGGO_CLIENT_ID', '').strip()
     csec = os.environ.get('BIGGO_CLIENT_SECRET', '').strip()
     if not cid or not csec:
@@ -65,7 +68,7 @@ def _get_access_token():
         'Content-Type': 'application/x-www-form-urlencoded',
         'User-Agent': UA,
     })
-    tok = json.loads(urllib.request.urlopen(req, timeout=20).read().decode('utf-8')).get('access_token')
+    tok = json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode('utf-8')).get('access_token')
     if tok:
         _TOKEN['value'] = tok
         _TOKEN['expires'] = now + 55 * 60
@@ -108,34 +111,46 @@ def _wait_pace():
         time.sleep(wait)
 
 
-def _api_search(model, jitter=(0.2, 0.6)):
+def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=5, timeout=20,
+                use_cooldown=True, use_pace=True, sleep_on_error=True):
     """官方 API 搜尋：回 (data, reachable)
     reachable=True  → API 有正常回覆（data 可能係空結果 = 乾淨無匹配）
     reachable=False → 網絡/限流錯誤（唔計入淘汰統計）
+
+    額外 keyword 參數全部有預設值，維持原本批次／正常查詢嘅完整 retry（5 次）、
+    冷卻（429/403）同限速（MIN_PACE）語義；smoke 專用路徑會傳
+    `max_attempts=1`、`timeout=8`、`use_cooldown=False`、`use_pace=False`、
+    `sleep_on_error=False`，唔會等 60／90 秒冷卻或者硬碰重試。
     """
-    for attempt in range(5):
+    for attempt in range(max_attempts):
         try:
-            _wait_cooldown()
-            _wait_pace()
+            if use_cooldown:
+                _wait_cooldown()
+            if use_pace:
+                _wait_pace()
             headers = {'User-Agent': UA, **API_HEADERS, 'Accept': 'application/json'}
-            token = _get_access_token()
+            token = _get_access_token(timeout=timeout)
             if token:
                 headers['Authorization'] = f'Bearer {token}'
             req = urllib.request.Request(API_URL.format(q=urllib.parse.quote(model, safe='')), headers=headers)
-            data = json.loads(urllib.request.urlopen(req, timeout=20).read().decode('utf-8', 'ignore'))
+            data = json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode('utf-8', 'ignore'))
             return data, True
         except urllib.error.HTTPError as e:
             if e.code == 429:
                 # require_login（免登入通道關閉）唔係冷卻問題；有 token 就照舊冷卻重試
-                wait = int(e.headers.get('Retry-After') or 0) or 60
-                print(f'  ⏳ 429 限流：全局冷卻 {wait}s 後重試（{model}，第 {attempt + 1} 次）', flush=True)
-                _global_cooldown(wait)
+                if use_cooldown:
+                    wait = int(e.headers.get('Retry-After') or 0) or 60
+                    print(f'  ⏳ 429 限流：全局冷卻 {wait}s 後重試（{model}，第 {attempt + 1} 次）', flush=True)
+                    _global_cooldown(wait)
             elif e.code in (403,):
-                _global_cooldown(60)
+                if use_cooldown:
+                    _global_cooldown(60)
             else:
-                time.sleep(5 * (attempt + 1))
+                if sleep_on_error:
+                    time.sleep(5 * (attempt + 1))
         except Exception:
-            time.sleep(3 * (attempt + 1))
+            if sleep_on_error:
+                time.sleep(3 * (attempt + 1))
     return None, False
 
 
@@ -554,17 +569,33 @@ SMOKE_CANDIDATES = (
 )
 
 
+# smoke 有界連線測試：單次 attempt，每個網絡階段（token／search）約 8 秒 socket timeout；
+# 唔會等 60／90 秒冷卻，亦唔會 retry／硬碰。目標係失敗時明顯受限，唔拖住每日 workflow。
+SMOKE_TIMEOUT = 8
+
+
 def _smoke_probe(model):
     """Smoke 探測：回 (status, result)
       'priced'      → API 正常且有匹配報價
       'no-price'    → API 正常回覆但呢個型號暫時無匹配報價（唔等於限流）
       'unreachable' → 網絡／限流／認證等錯誤嘅粗分類
 
+    有界語義：單次 attempt、timeout=SMOKE_TIMEOUT（約 8 秒）、唔等全局冷卻、
+    唔限速等待、唔喺錯誤後 sleep；`_get_access_token`／`_api_search` 原本批次
+    預設（5 次 retry、冷卻、限速）完全不變，只有 smoke 傳呢組參數。
+
     限制（唔虛構）：`_api_search` 目前將 429／403、網絡例外同認證失敗一律回
     reachable=False，所以呢度唔會細分原因，只如實報 'unreachable'；
     若日後需要細分，要先改 `_api_search` 嘅錯誤分類契約。
     """
-    data, reachable = _api_search(model)
+    data, reachable = _api_search(
+        model,
+        max_attempts=1,
+        timeout=SMOKE_TIMEOUT,
+        use_cooldown=False,
+        use_pace=False,
+        sleep_on_error=False,
+    )
     if not reachable:
         return 'unreachable', None
     result = _extract_price(data, model)
@@ -572,38 +603,35 @@ def _smoke_probe(model):
 
 
 def run_smoke(candidates=None):
-    """連線煙霧測試：依序探測候選型號，首個有價即通過（正常情況只用 1 次 API 請求）。
+    """連線煙霧測試：首個有價即通過；單次 attempt、約 8 秒 timeout、唔等冷卻／唔重試。
 
-    候選失敗（no-price 或 unreachable）才 fallback 下一個；全部失敗回 False，
-    工作流會跳過本批（安全門禁不變）。
+    - 只有明確 'no-price'（API 正常回覆但暫時無匹配報價）才試下一個候選；
+    - 第一個 'unreachable'（網絡／限流／認證）或者例外就立即回 False，
+      唔會再試其餘候選，亦唔會硬碰；
+    - 全部候選都 'no-price' 亦回 False。工作流收到 False 會跳過本批（安全門禁不變）。
     """
     cands = SMOKE_CANDIDATES if candidates is None else candidates
-    failures = []
     for cand in cands:
         model = cand['model'] if isinstance(cand, dict) else str(cand)
         try:
             status, result = _smoke_probe(model)
         except Exception as e:
             # 只記錄例外類型，唔輸出 exception 內容（避免任何 credential 落入 log）
-            failures.append((model, 'exception', type(e).__name__))
-            print(f'  ⚠️ smoke 候選 {model} 例外：{type(e).__name__}（網絡／憑證等，未細分）', flush=True)
-            continue
+            print(f'  ⚠️ smoke 候選 {model} 例外：{type(e).__name__}'
+                  f'（網絡／憑證等，未細分）；立即結束 smoke，唔試其餘候選', flush=True)
+            return False
         if status == 'priced':
             print(f'✅ BigGo smoke test 通過：{model} → {result["price"]}'
                   f'（{result.get("merchants", 0)} 商戶）', flush=True)
             return True
         if status == 'no-price':
             print(f'  ⚠️ smoke 候選 {model}：API 正常但暫時無匹配報價，試下一個候選', flush=True)
-        else:
-            print(f'  ⚠️ smoke 候選 {model}：unreachable（網絡／限流／認證等，現行錯誤分類未細分）',
-                  flush=True)
-        failures.append((model, status, None))
-    print(f'⚠️ BigGo smoke test 全部候選失敗（{len(failures)} 個）：{failures}', flush=True)
-    statuses = {s for _, s, _ in failures}
-    if 'unreachable' in statuses or 'exception' in statuses:
-        print('   含 unreachable／例外：多數係當前 IP 被限流或憑證問題，建議跳過本批，唔硬碰', flush=True)
-    else:
-        print('   API 連線正常但全部候選暫時無匹配報價：屬個別型號情況，唔係限流', flush=True)
+            continue
+        print(f'  ⚠️ smoke 候選 {model}：unreachable'
+              f'（網絡／限流／認證等，現行錯誤分類未細分）；'
+              f'立即結束 smoke，唔試其餘候選、唔硬碰', flush=True)
+        return False
+    print('   API 連線正常但全部候選暫時無匹配報價：屬個別型號情況，唔係限流', flush=True)
     return False
 
 

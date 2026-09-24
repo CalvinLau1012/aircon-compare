@@ -351,9 +351,19 @@ def test_pages_deploy_actions_pinned_to_full_commit():
     assert uses, 'workflow 應該有 actions'
     for use in uses:
         assert re.match(r'^[^@\s]+@[0-9a-f]{40}$', use), use
-    assert any('actions/configure-pages@' in u for u in uses)
-    assert any('actions/upload-pages-artifact@' in u for u in uses)
-    assert any('actions/deploy-pages@' in u for u in uses)
+    # GitHub refs API／官方 release 核實；全部 runtime=node24（唔可以回歸 Node.js 20 pin）
+    expected = {
+        'actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d',      # v6.0.0
+        'actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9',  # v5.0.0
+        'actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346',          # v5.0.1
+    }
+    assert expected <= set(uses), f'Pages workflow 缺已核實 pin：{expected - set(uses)}'
+    for old in (
+        'actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b',
+        'actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa',
+        'actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e',
+    ):
+        assert old not in uses, f'Pages deploy 路徑唔可以回歸舊 Node20 pin：{old}'
 
 
 def test_daily_workflow_dispatches_pushed_commit_after_push():
