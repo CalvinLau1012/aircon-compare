@@ -4,7 +4,7 @@
 > **能源級別、雪種、年耗電以機電署 EMSD 官方資料庫全量核實**（最新同步快照 2026-09-24：1,834 筆登記／1,773 型號；2026-09-21 及之前詳細統計段落屬歷史快照，以線上 [`metadata.json`](https://calvinlau1012.github.io/aircon-compare/metadata.json) 為準）
 > **220 個型號已直接經品牌官網/官方網店/總代理逐型號核實（2026-08-15 歷史核實數）**
 > 🎨 **Blue Fantasy 藍色幻想 skin**（dsh-web-ui 皮膚；只套皮膚，其他插件不加）
-> 📌 **現況**：線上已發布 **v1.2.9**（Release tag `v1.2.9`；當前 live build `B20260923.103.1`、datasetDate 2026-09-24，badge 動態讀取線上 metadata.json）；時間／資料真實性、完整 Schema 驗證、部署後核對與歸檔、恢復演練已隨 v1.2.9 上線；release 後 **Node.js 24 Actions／`ubuntu-24.04` runner／bounded BigGo smoke hotfix 已完成本機候選（Unreleased，未 merge、未發布）**；EMSD 每日偵測、價錢按批次快照（缺價標「待查」）
+> 📌 **現況**：線上已發布 **v1.2.9**（Release tag `v1.2.9`；當前 live build `B20260923.103.1`、datasetDate 2026-09-24，badge 動態讀取線上 metadata.json）；時間／資料真實性、完整 Schema 驗證、部署後核對與歸檔、恢復演練已隨 v1.2.9 上線；release 後 **Node.js 24 Actions／`ubuntu-24.04` runner／bounded BigGo smoke hotfix 已在 Draft PR #14 通過本機 E2 與 exact-head PR E3（Unreleased，未 merge、未發布）**；EMSD 每日偵測、價錢按批次快照（缺價標「待查」）
 
 ## 🚀 立即使用
 

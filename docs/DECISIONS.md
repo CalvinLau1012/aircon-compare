@@ -378,3 +378,11 @@
     冇 Secrets／environment／版本／metadata 改動。
 - **回滾**：`git revert` 本輪 commit 即恢復舊 pin／runner／smoke 語義；產品 metadata
   與線上狀態不受影響。
+- **2026-09-24 驗收更新（追加）**：Draft PR #14 head
+  `2d17a9c99537652627abc53f6275e63d462b75dd` 已取得 trusted PR E3：
+  `pull-request-gates` run 35941034804 與 Pages `build` run 35941034788 均 success；
+  實際執行 job 日誌中 Node.js 20 forced-runtime、`ubuntu-latest`／Ubuntu 26 migration、
+  `punycode`／`DeprecationWarning` 均為 0，runner 為 `ubuntu-24.04`。因此上述
+  `UNKNOWN` 中「PR trusted CI 警告掃描」已轉為 `OBSERVED / E3`；merge、production
+  再部署及 live E4 仍未執行。production-only upload／download artifact 與 deploy
+  steps 在 PR 路徑按設計 skipped，首次實際執行仍須觀察。

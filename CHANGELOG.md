@@ -8,7 +8,8 @@
 ### Node.js 24 官方 Actions／bounded smoke／ubuntu-24.04 runner hotfix（未發布）
 
 > 2026-09-24 使用者要求：修復 GitHub Actions deprecation 警告，但唔可以為消除警告
-> 降低任何門禁。本節為 release 後 hotfix 候選（本機 E2）；未 merge、未發布，交獨立驗收。
+> 降低任何門禁。本節為 release 後 hotfix 候選；本機 E2 與 Draft PR #14 exact-head E3
+> 已通過，尚未 merge、未發布。
 
 - **官方 Actions 升級 Node.js 24**：`.github/workflows` 全部 `actions/*` 由 node20
   runtime 升到官方 node24 release，維持完整 40-hex SHA pin（唔用 mutable major tag）：
@@ -32,6 +33,12 @@
   secret；預設批次 retry 與 429 Retry-After 冷卻不變）；workflow 靜態測試加
   Node.js 20 SHA 負向清單、版本註釋對照、`ubuntu-24.04` YAML（parser）檢查。
   全部測試唔打真實 BigGo／EMSD／production。
+- **Draft PR #14 E3**：head `2d17a9c99537652627abc53f6275e63d462b75dd` 的
+  `pull-request-gates` run 35941034804 與 Pages `build` run 35941034788 均 success；
+  實際執行 job 日誌中 Node.js 20 forced-runtime、`ubuntu-latest`／Ubuntu 26 migration、
+  `punycode`／`DeprecationWarning` 均為 0，runner 回報 `Image: ubuntu-24.04`。
+  PR 路徑的 `update`／`deploy` 及 production-only artifact／deploy steps 正確 skipped，
+  所以正式 production 路徑仍須在 merge 後首次執行時觀察。
 
 ## [1.2.9] - 2026-09-24
 

@@ -535,3 +535,22 @@ Release archive 係「初次 v1.2.9 部署快照」（source run 35881890400／`
 
 > BigGo orphan／private raw assets：現行 retention 為 90 日；本輪唔刪除任何 private
 > raw assets，到期由 retention 處理。
+
+### 15.7 Draft PR #14 exact-head CI（OBSERVED / E3）
+
+- 首個 exact-head E3 實作 commit：`2d17a9c99537652627abc53f6275e63d462b75dd`；
+  當時 PR #14 為 Draft／open／mergeable，base
+  `c6b0de6e2f27d1af3aefdce24c0c482cb35277ed`。
+- `每日偵測 · 新機分批更新` run 35941034804：`pull-request-gates` **success**；
+  production `update` job **skipped**。
+- `Pages 部署（Actions）` run 35941034788：`build` **success**；production `deploy`
+  job **skipped**。其後 GitHub 自動產生的 postdeploy run 35941213024 因 head branch
+  並非 master，`verify` job 為 skipped、0 steps。
+- 兩個實際執行 job 的完整日誌掃描：`Node.js 20 is deprecated`、
+  `forced to run on Node.js 24`、`ubuntu-latest`、`Ubuntu 26`、`punycode`、
+  `DeprecationWarning` 全部 **0 命中**；`Set up job` 均回報
+  `Image: ubuntu-24.04`。
+- PR 路徑已實際載入 checkout v7、setup-python v7、configure-pages v6 及
+  upload-pages-artifact v5；production-only upload-artifact v7、download-artifact v8、
+  deploy-pages v5 steps 按設計 skipped。後三者已由官方 release ref／`action.yml`
+  與靜態回歸鎖定，首次 production 實際執行仍須在 merge 後觀察。
