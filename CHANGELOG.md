@@ -51,10 +51,12 @@
 - **上游殘餘警告**：production `actions/deploy-pages@v5.0.1` 成功但輸出一次
   `[DEP0040] punycode`；已確認為 actions/deploy-pages#434／#413 的上游已知問題，
   不隱藏警告、不降級 action pin。
-- **GATE-08 自動閉環候選**：把 `postdeploy-verify.yml` 改為 reusable＋manual，
+- **GATE-08 自動閉環**：把 `postdeploy-verify.yml` 改為 reusable＋manual，
   `pages-deploy.yml` 在 production deploy success 後以 exact build commit 直接呼叫；
   移除不可靠的跨 workflow `workflow_run` 鏈。PR 不 deploy／不 postdeploy，
   called workflow 維持 `contents: read`、master 祖先與 HEAD 精確核對。
+  PR #15 merge 後 production Pages run 35944781623 已依序完成 build／deploy／GATE-08；
+  完整 E4 全 PASS，證實自動鏈閉合。
 - **BigGo 按需使用**：daily 非 force 路徑先讀本地 price batch state；inactive／已完成
   時零 BigGo API 請求，只有 active 批次或維護者明確 force 才執行 bounded smoke／批次。
 

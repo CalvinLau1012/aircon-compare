@@ -599,3 +599,24 @@ Release archive 係「初次 v1.2.9 部署快照」（source run 35881890400／`
   BigGo 本地 batch-state 檢查移到 smoke 之前，inactive 時零 API 請求。
 - 聚焦測試 91 passed；machine acceptance 7/7 gates、完整 pytest 529 passed、18 個 required nodes 全 passed。trusted PR CI、merge 後
   production Pages＋同 workflow GATE-08 仍待後續實證，未完成前不宣稱自動鏈閉合。
+
+
+### 16.5 PR #15 merge 後自動閉環（OBSERVED / E3 + E4）
+
+| 項目 | 結果 |
+| --- | --- |
+| PR #15 exact head | `92a5e134493ab7c99263288c366f9fa163bf15b3`；Pages build 35944528389 success；daily PR gate 35944528135 success |
+| Merge | `3f7799960f74a3f4e8d49987fb3a87a8df67d278`；2026-09-24T01:52:00Z |
+| Production Pages | run 35944781623（push；exact merge SHA）；build 2m23s success |
+| Deploy | 11s success |
+| 同 workflow GATE-08 | 44s success；exact checkout／master 祖先、metadata full object、payload hash、CSV hash、PDF 重建、瀏覽器 runtime 全 PASS |
+| BigGo | 本次合併與驗收沒有 daily job、沒有 BigGo API 請求 |
+| Action warnings | Node.js 20 forced-runtime = 0；Ubuntu 26 migration = 0；官方 deploy-pages v5.0.1 upstream `punycode` DEP0040 = 1 |
+
+因此 D22 自動鏈已用真實 production Pages run 閉合：任何 production deploy 成功後，
+GATE-08 都係同一 workflow 的必要後續 job，其失敗會令整個 Pages run 非 success。
+daily workflow 維持 active，cron `30 16 * * *`（香港時間每日 00:30）；最近五次
+scheduled runs 均 success。GitHub 排程可能延遲，所以 00:30 是排程設定而非精準開始 SLA。
+
+D23 的 inactive 零 BigGo API 路徑已由測試、machine acceptance 與 trusted CI 鎖定。
+為遵守用戶限制，本輪不再觸發第二次 daily；等待下一次自然排程提供 runtime 證據。

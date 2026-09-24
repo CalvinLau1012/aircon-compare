@@ -432,3 +432,19 @@
   批次重試／冷卻與失敗保留快照語義。
 - **後果**：EMSD daily、Pages、GATE-08 都不需要 BigGo；未啟動價格批次的日常 run 不再
   接觸 BigGo。價格批次 active 或人類明確 force 時才會使用。
+
+
+### D22／D23 · 2026-09-24 production 驗收更新（追加）
+
+- PR #15 exact head `92a5e134493ab7c99263288c366f9fa163bf15b3` 的 trusted CI：
+  Pages build run 35944528389 success，daily pull-request-gates run 35944528135 success；
+  PR 的 update／deploy／GATE-08 全部按設計 skipped。
+- PR #15 已以 merge commit `3f7799960f74a3f4e8d49987fb3a87a8df67d278` 合併。
+  合併只觸發 Pages production run 35944781623，沒有觸發 daily 或 BigGo。
+- 同一 Pages run 依序完成 build（2m23s）→ deploy（11s）→
+  `部署後核對（GATE-08） / verify`（44s），三個 job 均 success；GATE-08 核實 exact
+  commit 與 master 祖先後，metadata full-object、payload／CSV hash、PDF 重建及瀏覽器
+  runtime 全部 PASS。D22 的 production `UNKNOWN` 已轉為 `OBSERVED / E4`。
+- D23 的靜態契約、完整 acceptance 與 trusted PR CI 已通過；inactive 零 API 路徑將由
+  下一次自然 scheduled daily（且 price batch inactive 時）提供 runtime 日誌證據。
+  本輪不為製造證據重跑 daily，遵守用戶「不要不停調用 BigGo」要求。
