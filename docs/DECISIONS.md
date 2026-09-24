@@ -475,5 +475,17 @@
     fail-closed 到下一次 daily（現行 pipeline 語義，未改變）。
   - 2026-09-24 本輪已把 `index.html` 回復到 pipeline 一致版本
     （`payloadHash=sha256:b2de4e3f…` 同 `metadata.json` 相符；本地
-    `build_pages_artifact.py --check-only` rc=0），令 master 唔會因為純文檔 push 再出紅 run。
+    `build_pages_artifact.py --check-only` rc=0），令 build gate 唔會因為純文檔 push 而紅。
+  - **2026-09-24 實測補充（GATE-08 PDF 核對）**：payload 內有**兩個**由 `空調對比報告.md`
+    生成嘅檔案——`index.html` 同 `空調對比報告.pdf`。改 md 更新日誌後，即使唔手動重生
+    payload 檔案，GATE-08 嘅 `payload.pdf_matches_metadata` 仍會紅，因為 committed PDF
+    內容仍係舊 md：run 35951000298 就係 build／deploy success、GATE-08 failure
+    （online `8f13a3c3…` vs rebuilt `d548e1d4…`）。本地 A/B 重建證實因果：
+    用 md @`8c213c8`（未加日誌）重建 = `8f13a3c3…`（同 committed／線上 PDF 逐位元相同）；
+    用加咗日誌嘅 md 重建 = `d548e1d4…`。
+  - 因此本約定嘅準確預期係：
+    - 只改 `README.md`／`需求摘要.md`／`CHANGELOG.md`／`docs/*`（唔郁 md）→ payload 不變 → 全綠；
+    - 改 `空調對比報告.md`（網站更新日誌）→ 預期一次紅 run（唔重生就 GATE-08 PDF 核對紅，
+      手動重生就 build gate 嘅 `releasePayloadHash` 紅），下一次 daily 全量重生
+      `index.html`＋PDF＋metadata 後恢復綠；唔好為咗即時變綠而手動重生 payload 或改 metadata。
   - 回滾：如日後改回每次重生，刪除本約定並更新 AGENTS 規則 9 即可。
