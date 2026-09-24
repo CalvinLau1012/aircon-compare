@@ -91,6 +91,7 @@ python model_lifecycle.py         # 顯示停售黑名單
 7. 不要編造規格或價格；找不到就保留「待查」。
 8. 改 UI／CSS（尤其深色模式）要改 `generate_html.py` 的 `HTML_TEMPLATE`，之後必須執行 `python generate_html.py` + `cp 空調對比報告.html index.html`，並同步 `空調對比報告.md` / `README.md` / `需求摘要.md` 的更新日誌。
 9. 純更新日誌／文檔改動（`空調對比報告.md` 更新日誌、`README.md`、`需求摘要.md`、`docs/*`、`CHANGELOG.md`）只 commit 文檔本身，**唔好**順手重生 `index.html`：`index.html` 屬 `deploy_payload.json` payload，手動重生會令 `metadata.json` 的 `releasePayloadHash` 對唔上，master push 的 Pages build 會 fail-closed；留返 `index.html` 由下一次 daily 流水線連同 metadata 一併重生（見 D24）。注意 `空調對比報告.md` 同時生成 `index.html` 同 `空調對比報告.pdf`：改 md 更新日誌預期會有一次紅 run（唔重生檔案 → GATE-08 `payload.pdf_matches_metadata` 紅；手動重生 → build gate `releasePayloadHash` 紅），下一次 daily 全量重生後恢復；只改 README／需求摘要／CHANGELOG／docs 就零紅 run。真正改 UI／CSS／報告內容仍按規則 8 重生。
+10. 文檔只可追加、不可刪除或改寫既有記述（含更新日誌、STATUS、MATRIX、ADR、runbook）：歷史快照一律保留，更新以新增節／新條目記錄，並標明日期同證據；用戶日後嘅改變亦只可追加。需求以 `需求摘要.md`（元文件）為準。格式／錯字修正唔算狀態改寫，但必須喺 commit message 標明。見 D25。
 
 ## UI / 深色模式
 

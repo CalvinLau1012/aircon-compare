@@ -56,3 +56,14 @@
 - 將 `AIRCON_EMSD_REQUIRE_RAW_SINK` 移除或設回非 `1`，daily 會停止要求 raw sink。
 - 已上傳私人資產按 provider 政策保留或手動刪除；公開 repo 唔會因此改動。
 - 唔需要亦唔准改 production `metadata.json`（版本／hash 由可信流程生成）。
+
+## 5. 2026-09-24 狀態更新（追加；上文原文保留）
+
+- remote adapter **已 live 啟用**：公開 `emsd_raw_receipt.json` 顯示
+  `adapter=github-release-asset`、`persisted=true`、`verified=true`、
+  `durableRemote=true`、`retentionDays=90`；私人 raw bytes 同 provider 識別唔入公開範圍。
+- 第 1 節「啟用前置」同第 2 節「首次 live 驗收」已按實際情況完成（平台層由人類執行）；
+  第 3 節 fail-closed 契約同第 4 節回滾步驟仍然有效。
+- 第 3 節最後一點提到「今日仍係非 require 模式」屬當時記述：`AIRCON_EMSD_REQUIRE_RAW_SINK`
+  嘅實際平台值唔會出現在公開收據（只由 `secrets.*` 讀取），公開文件唔宣稱 require 模式
+  已開；要核實請喺 GitHub repo Secrets 頁面直接查看。

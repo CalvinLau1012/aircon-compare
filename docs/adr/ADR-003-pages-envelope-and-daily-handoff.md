@@ -59,3 +59,12 @@
   - 真正首次 daily dispatch／Pages Actions 部署仍屬平台驗收（E3／E4 UNKNOWN）。
 - **回滾**：revert 相應 commit 即可回到舊 `deploy_payload.json`-only 封包；舊 Pages
   artifact 與 postdeploy 流程不受影響。
+
+## 狀態更新（2026-09-24 追加；上文「本機候選／未 E3、E4」原文保留）
+
+- **已上線並取得 E3／E4**：production Pages run 35944781623（push，exact merge SHA）
+  依序 build（2m23s）→ deploy（11s）→ 同 workflow GATE-08（44s）全部 success；
+  手動 exact-ref fallback run 35943298448 對 commit `b80a1d5` 全 PASS。
+- 上文第 59 行「真正首次 daily dispatch／Pages Actions 部署仍屬平台驗收（E3／E4 UNKNOWN）」
+  已由上述 run 完成，狀態由 UNKNOWN 轉 OBSERVED。
+- 相關 md／payload fail-closed 事件同 D24 約定見 `docs/STATUS.md` §17。

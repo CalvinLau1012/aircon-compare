@@ -78,6 +78,32 @@
   `datasetHash` 均不變。各更新日誌「當前 live build」由 `B20260924.106.1` 校正為
   `B20260924.110.1`；`B20260924.106.1` 仍然係獲授權 workflow_dispatch daily 嘅歷史事實。
 
+### 2026-09-24 發布後文檔同步、fail-closed 事件與「只追加」政策
+
+- **PR #16 `codex/postdeploy-auto-evidence`**（merge `dd6065d`；內容 `8f92ea4`）：記錄
+  自動部署後驗收實證。
+- **PR #17 `codex/docs-current-status-clarification`**（merge `0c19ac2`；內容 `ae48e1c`）：
+  更新 `空調對比報告.md` 更新日誌並重新生成 `index.html`。
+- **fail-closed 事件（同 md／payload 未同步有關，唔係資料損壞）**：
+  - `35946623750`（PR #17 merge push）、`35950593781`（`f64ec7e`）：build gate
+    `releasePayloadHash` 唔一致——手動重生 `index.html`，但 `metadata.json` 仍係上一次
+    流水線事實。
+  - `35951000298`（`f4795ef`）、`35951377781`（`b2dd592`）：GATE-08
+    `payload.pdf_matches_metadata` 唔一致——`index.html` 已回復一致，但 committed PDF
+    內容仍係舊 `空調對比報告.md`。本地 A/B 重建：舊 md → `8f13a3c3…`（＝committed／線上），
+    新 md → `d548e1d4…`。
+  - 復原：下一次 scheduled daily 全量重生 `index.html`＋PDF＋metadata 後以
+    `repository_dispatch` 部署（已觀察：`35946820790` → `35947112610` success）。
+- **D24 約定**：純更新日誌／文檔改動唔手動重生 `index.html`／PDF，留返由下一次 daily
+  重生；本輪同時把 `index.html` 回復到同 `metadata.json` 一致嘅版本
+  （`payloadHash=sha256:b2de4e3f…`）。詳見 `docs/DECISIONS.md` D24、`AGENTS.md` 規則 9。
+- **D25 文檔只追加政策（用戶指示）**：文檔只可追加、不可刪除或改寫既有記述；歷史快照保留，
+  更新以新增節／新條目記錄並標明日期同證據；需求以 `需求摘要.md`（元文件）為準。
+- **文件同步（全部以追加方式）**：`docs/README.md`（2026-09-24 狀態更新節）、
+  `docs/GOVERNANCE_MATRIX.md`（§10）、`docs/STATUS.md`（§17）、`docs/adr/ADR-003`／
+  `ADR-004`（狀態更新節）、`docs/PRIVATE_RAW_SINK_RUNBOOK.md`（§5）、`README.md`
+  （資料日期口徑追加條目）、`需求摘要.md`（現況快照追加註＋更新日誌）。
+
 ## [1.2.9] - 2026-09-24
 
 > 發布事實（2026-09-24 回讀）：tag `v1.2.9` → commit

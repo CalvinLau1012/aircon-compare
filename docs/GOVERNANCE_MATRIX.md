@@ -158,3 +158,29 @@
 | History audit | 全 reachable refs credentialFindings 必須 0 | commit 前 216 commits／1042 blobs、0 findings（commit 後再跑最終） |
 | R7 source run 綁定 | completed polling／run attempt／daily workflow path／單親 direct parent／metadata `workflowRunId`＋`commit`；timeout／mismatch 全部 fail-closed | `tests/test_verify_deploy_request.py` 21 cases（fake API，不真等） |
 | R7 base 同步 | merge `origin/master` `be43b7c`；資料檔以 master 流水線事實為準；生成物用合併後程式重建 | `git merge-base --is-ancestor origin/master HEAD`；docs／PDF／index diff |
+
+## 10. 2026-09-24 發布後更新（追加；E3／E4 已取得）
+
+> 本節為追加記錄；§1–§9（含 §1 嘅 GATE-07／08／09 行同 §8 「E3／E4 仍 UNKNOWN」字句）
+> 保留 2026-09-23 當時語義，唔回溯改寫。現況以本節為準。
+
+- **GATE-07 Deploy（E3＋E4；取代 §1 GATE-07 行嘅「無 E4」）**：GitHub Pages 已改行
+  Actions 路徑（`pages-deploy.yml`）：PR build／gates 不 deploy；master push 同已驗證
+  `repository_dispatch` 才 deploy，`github-pages` environment＋最小權限。
+  production run 35944781623（push，exact merge SHA）依序 build（2m23s）→ deploy（11s）→
+  同 workflow GATE-08（44s）全部 success。
+- **GATE-08 Post-deploy（E4；取代 §1「未對 live Pages 執行過」）**：
+  `postdeploy-verify.yml` 已改 reusable＋manual，由 `pages-deploy.yml` 喺 deploy success
+  後以 exact build commit 同一 workflow 直接呼叫（移除跨 workflow `workflow_run` 鏈）；
+  另保留手動 exact-ref fallback，run 35943298448 對 commit `b80a1d5` 全 PASS。
+- **GATE-09 Release Archive（E4；取代 §1「未發布 Release」）**：tag `v1.2.9` → `f546e2f`；
+  Release 非 draft／prerelease；run 35886358387 success；assets `archive-v1.2.9.zip`／
+  `CHECKSUMS.sha256`／`PROVENANCE.json`，24 個 CHECKSUMS 經獨立 `sha256sum -c` 全部 OK。
+- **D7-A raw sink（live；取代 §8「未設定，UNKNOWN」）**：公開 `emsd_raw_receipt.json` 顯示
+  `adapter=github-release-asset`、`persisted=true`、`verified=true`、
+  `durableRemote=true`、`retentionDays=90`；私人 raw bytes 唔入公開 worktree／artifact。
+- **已知紅 run（md／payload 未同步，非資料損壞）**：2026-09-24 有 master push Pages run
+  fail-closed：35946623750／35950593781（build gate `releasePayloadHash`）、
+  35951000298／35951377781（GATE-08 `payload.pdf_matches_metadata`）；復原＝下一次
+  scheduled daily 全量重生 `index.html`＋PDF＋metadata（例：35946820790 → 35947112610
+  success）。約定見 D24。

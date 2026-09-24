@@ -39,3 +39,12 @@
   講成 remote 完成（STATUS 記 UNKNOWN）。
 - **回滾**：revert 相應 commit；local sink 舊介面（`AIRCON_EMSD_RAW_SINK_DIR`）仍
   可用，公開 CSV／metadata 流程不受影響。
+
+## 狀態更新（2026-09-24 追加；上文「live 啟用未批准／UNKNOWN」原文保留）
+
+- **remote adapter 已 live 啟用**：公開 `emsd_raw_receipt.json` 顯示
+  `adapter=github-release-asset`、`persisted=true`、`verified=true`、
+  `durableRemote=true`、`retentionDays=90`。
+- 標題同狀態欄嘅「live 啟用未批准（UNKNOWN）」屬 2026-09-23 當時記述；平台層 provider
+  選擇同 Secret 由人類完成，私人識別唔入公開範圍。
+- `AIRCON_EMSD_REQUIRE_RAW_SINK` 嘅實際平台值唔會在公開收據反映，公開文件不宣稱。

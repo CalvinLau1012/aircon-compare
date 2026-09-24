@@ -43,3 +43,22 @@ python -m pytest tests/test_restore_drill.py -q  # 公開 fixture-only 應用＋
 ```
 
 上述命令各有範圍：`feature-check.py` 需要 Playwright 先可以跑瀏覽器綁定；正式 Metadata 驗證需要 `jsonschema[format]`；部署後核對與歸檔要受信任環境同實際部署先有 E4 證據。限制與待辦見 STATUS。
+
+## 2026-09-24 狀態更新（追加；上文 2026-09-23 記述原文保留）
+
+- **v1.2.9 已發布並上線**：tag `v1.2.9` → `f546e2f`；GATE-09 Release run 35886358387
+  success（`archive-v1.2.9.zip`／`CHECKSUMS.sha256`／`PROVENANCE.json`，24 個 CHECKSUMS
+  獨立重算全 OK）；production daily 35942488710 → build `B20260924.106.1`，其後自動更新
+  35946820790 → build `B20260924.110.1`（deployTime 2026-09-24T02:24:19Z）。
+- **E3／E4 已取得**：Pages production run 35944781623 依序 build → deploy → 同 workflow
+  GATE-08 全部 success；手動 exact-ref fallback run 35943298448 全 PASS。
+- **決策範圍**：`DECISIONS.md` 已追加至 **D24**（D19 `release` reviewer、D20 發布授權、
+  D21 Node24／bounded smoke、D22 GATE-08 同 workflow、D23 BigGo 按需、D24 md-only commit）。
+  上文表格「D1–D18」同 ADR／runbook「候選、UNKNOWN」字句係 2026-09-23 當時記述，現況以本節
+  同 `STATUS.md` §15–§17、`GOVERNANCE_MATRIX.md` §10 為準。
+- **ADR／RUNBOOK 現況**：ADR-001／D7-A raw sink 已 live（公開收據 `durableRemote=true`）；
+  ADR-002／D1-B 已上線；ADR-003／D2-A 已取得 E3／E4；ADR-004 remote live 已啟用；
+  `PRIVATE_RAW_SINK_RUNBOOK.md` 啟用前置已完成，回滾章節仍有效。
+- **文檔政策（2026-09-24 用戶指示）**：文檔只可追加、不可刪除或改寫既有記述；歷史快照保留，
+  更新以追加節記錄；需求以 `需求摘要.md`（元文件）為準。見 `docs/DECISIONS.md` D25 同
+  `AGENTS.md` 規則 10。

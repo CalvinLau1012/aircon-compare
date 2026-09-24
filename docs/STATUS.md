@@ -620,3 +620,39 @@ scheduled runs 均 success。GitHub 排程可能延遲，所以 00:30 是排程�
 
 D23 的 inactive 零 BigGo API 路徑已由測試、machine acceptance 與 trusted CI 鎖定。
 為遵守用戶限制，本輪不再觸發第二次 daily；等待下一次自然排程提供 runtime 證據。
+
+## 17. 2026-09-24 PR #16／#17、fail-closed 事件與 D24（追加節）
+
+> 本節只追加 2026-09-24 較後時段嘅回讀事實；§1–§16 保留當時語義，不回溯改寫。
+> 標題同 header 嘅「候選／未 deploy」字句屬 2026-09-23 快照；現況以本節為準。
+
+### 17.1 PR #16／#17 同後續文檔 commit（OBSERVED / E3）
+
+- PR #16 `codex/postdeploy-auto-evidence` 已合併（`dd6065d`；內容 commit `8f92ea4`）：
+  記錄自動部署後驗收實證。
+- PR #17 `codex/docs-current-status-clarification` 已合併（`0c19ac2`；內容 commit
+  `ae48e1c`）：更新 `空調對比報告.md` 更新日誌並重新生成 `index.html`。
+- 其後文檔整理 commit：`f64ec7e`（更新日誌整理）、`f4795ef`（D24＋`index.html`
+  回復 payload 一致版本）、`b2dd592`（D24 補充 GATE-08 PDF 實測證據）。
+
+### 17.2 fail-closed 事件（OBSERVED / E3）
+
+| Run | 觸發 | 失敗 gate | 原因 |
+| --- | --- | --- | --- |
+| 35946623750 | push（PR #17 merge） | build `releasePayloadHash` | 手動重生 `index.html`，但 `metadata.json` 仍係上一次流水線事實 |
+| 35950593781 | push（`f64ec7e`） | build `releasePayloadHash` | 同上（metadata `b2de4e3f…`、computed `a7eae2c9…`） |
+| 35951000298 | push（`f4795ef`） | GATE-08 `payload.pdf_matches_metadata` | `index.html` 已回復一致，但 committed PDF 內容仍係舊 md |
+| 35951377781 | push（`b2dd592`） | GATE-08 `payload.pdf_matches_metadata` | 同上（online `8f13a3c3…`、rebuilt `d548e1d4…`） |
+
+- 本地 A/B 重建證實因果：用 md @`8c213c8`（未加日誌）重建 PDF = `8f13a3c3…`
+  （同 committed／線上 PDF 逐位元相同）；用加咗日誌嘅 md 重建 = `d548e1d4…`。
+- 復原路徑：下一次 scheduled daily 全量重生 `index.html`＋PDF＋metadata 後
+  `repository_dispatch` 部署（已觀察例子：35946820790 → 35947112610 success）。
+- Live 站未受影響：deploy job 未執行時 Pages 保留上一次成功部署。
+
+### 17.3 文檔政策：只追加、不刪除（人類指示，2026-09-24）
+
+- 文檔改動只可以追加新節／新條目；唔可以刪除或改寫既有記述，歷史快照一律保留。
+- 需求以 `需求摘要.md`（元文件）為準；其他文件同元文件有出入時，以元文件為準。
+- 用戶日後嘅改變亦要記錄（追加），唔可以覆蓋。
+- 相關：`docs/DECISIONS.md` D24（md-only commit）同 D25（只追加）、`AGENTS.md` 規則 9／10。

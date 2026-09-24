@@ -139,6 +139,7 @@ xychart-beta
 - **安全**：BigGo 官方憑證只放 GitHub Actions Secrets（`BIGGO_CLIENT_ID`／`BIGGO_CLIENT_SECRET`）；PricesAPI key 只放 Secrets（`PRICESAPI_API_KEY`），核心 29 驗收用 repo Variables `PRICESAPI_CORE_CHECK=1` 選用；權限只限 `contents: write`；官方 Actions 全部固定完整 commit（`checkout@v7.0.1`／`setup-python@v7.0.0`／`upload-artifact@v7.0.1`／`download-artifact@v8.0.1`／Pages 系 `v5.0.0`／`v6.0.0`／`v5.0.1`），runtime 全部 Node.js 24；runner 固定 `ubuntu-24.04`；設 concurrency 防重疊
 - **部署顯示**：頁面 runtime 讀取 `metadata.json`：`version`、`deployTime`（UTC 產生、HKT 顯示）、`datasetDate`；載入失敗顯示「暫不可用」，不顯示硬編舊值。`deployTime` 依治理定義為**部署包封裝時間**，非 CDN／Pages 完成時間
 - **資料日期口徑**：`datasetDate` 現以 runner UTC 日期產生（`retrieval-date-fallback`），UI 部署時間以 HKT 顯示，兩者可能跨日；此為現行已知限制（尚未修正）
+- **2026-09-24 更新（追加；上一條口徑原文保留）**：`datasetDate` 實際上已由成功、hash-bound 嘅 `emsd_receipt.json` 實際 `retrievedAt`（UTC）轉 UTC+8 香港日期得出（`datasetDateBasis=retrieval-date-fallback` 只係 basis 名，唔再係 runner 當日日期）；舊無 hash 收據會明確失敗，唔會補假日期。「最後部署」仍以 HKT 顯示封包時間
 - **淘汰機制**：`model_lifecycle.py` 只把「乾淨無市售報價」（連續多次；網絡錯誤不計，D8）的型號入黑名單；每批小額復核，有價會自動復活；核心 29 及官方網店價型號受保護，不自動淘汰
 - **穩定**：抓取後經「數據驗證閘門」(`validate_data.py`) 檢查數量在安全範圍——不合格就不提交，保住現有數據；每次成功提交 = 可回溯快照
 - **BigGo 按需**：daily 先讀本地價格批次狀態；未啟動／已完成時零 BigGo API 請求，只有 active 批次或維護者明確 force 才先跑 bounded smoke
