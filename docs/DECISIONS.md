@@ -386,3 +386,49 @@
   `UNKNOWN` 中「PR trusted CI 警告掃描」已轉為 `OBSERVED / E3`；merge、production
   再部署及 live E4 仍未執行。production-only upload／download artifact 與 deploy
   steps 在 PR 路徑按設計 skipped，首次實際執行仍須觀察。
+
+
+## D22 · Pages 部署後 GATE-08 改為同一 workflow 的必要 reusable job
+
+- **日期**：2026-09-24
+- **狀態**：已實作候選（E2）；待 trusted CI、merge 後 production 實證
+- **背景**：PR #14 merge 後的 push Pages run 35942461038 可由舊
+  `workflow_run` 啟動 postdeploy；但獲授權完整 daily 透過
+  `GITHUB_TOKEN` 發出 `repository_dispatch` 後，Pages run 35942793376 雖然
+  build／deploy success，卻沒有建立對應的 `workflow_run` postdeploy run。較早 daily
+  Pages run 35913258756 亦有同樣現象。當次已用手動 exact-ref run 35943298448 補做完整
+  GATE-08 並成功，但自動鏈仍有缺口。
+- **選項**：A：保留跨 workflow 的 `workflow_run`，接受 token 事件連鎖不可靠；
+  B：production Pages deploy success 後，在 `pages-deploy.yml` 內以本 repo reusable
+  workflow 直接呼叫 GATE-08，同時保留手動 exact-ref fallback；C：只依賴 freshness
+  monitor 的 no-browser 核對。
+- **決策**：採 B。Pages `postdeploy` job 必須 `needs: [build, deploy]`，只在
+  production 且 deploy success 時呼叫 `postdeploy-verify.yml`，傳入 build 已核實的
+  exact commit；called workflow 只取 `contents: read`，核實 checkout HEAD 等於指定
+  ref 且為 `origin/master` 祖先。PR 不 deploy，亦不執行 postdeploy。移除舊
+  `workflow_run` 入口，避免重複或漏跑；保留 `workflow_dispatch` 人工 fallback。
+- **原因**：把 GATE-08 放進同一 Pages run 的依賴圖，部署成功後由 GitHub 直接排程必要
+  job，亦令 GATE-08 失敗反映在 Pages workflow 結論，毋須依賴另一個 token 觸發事件。
+- **後果**：
+  - `REQUIREMENT`：GATE-08、exact commit、master 祖先、最小權限與 fail-closed 不變；
+  - `OBSERVED / E2`：聚焦測試 91 passed；machine acceptance 7/7 gates、完整 pytest 529 passed、18 個 required nodes 全 passed；
+  - `OBSERVED / E4 fallback`：run 35943298448 對 commit `b80a1d5` 完整通過；
+  - `UNKNOWN`：同 workflow automatic postdeploy 要在 merge 後 production Pages run
+    實際成功，才可宣稱自動鏈閉合。
+- **回滾**：可 revert 本決策實作；不得在沒有等價可靠自動 GATE-08 的情況下只刪除
+  reusable call。
+
+## D23 · BigGo API 只在價格批次需要推進時呼叫
+
+- **日期**：2026-09-24
+- **狀態**：已實作候選（E2）；待 trusted CI
+- **背景**：獲授權 daily run 35942488710 在價格批次未啟動時仍先執行一次 smoke。
+  用戶其後明確要求「不要不停調用 BigGo API，有需要才使用」。
+- **決策**：非 force 路徑先用本地 `scripts/price_batch_state.py` 判斷狀態。只有
+  active 批次才執行 bounded smoke 與 `--price-batch`；inactive／已完成直接
+  `skip-not-active`，零 BigGo API 請求。meta 損毀仍 exit 2 阻斷；明確
+  `force_price_batch=true` 仍由 `--force-batch` 內建 smoke 保護。
+- **原因**：避免每日排程為無待辦價格批次消耗 API 請求，同時保留有需要時的連線保護、
+  批次重試／冷卻與失敗保留快照語義。
+- **後果**：EMSD daily、Pages、GATE-08 都不需要 BigGo；未啟動價格批次的日常 run 不再
+  接觸 BigGo。價格批次 active 或人類明確 force 時才會使用。

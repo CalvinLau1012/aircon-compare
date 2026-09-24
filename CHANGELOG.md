@@ -8,8 +8,8 @@
 ### Node.js 24 官方 Actions／bounded smoke／ubuntu-24.04 runner hotfix（未發布）
 
 > 2026-09-24 使用者要求：修復 GitHub Actions deprecation 警告，但唔可以為消除警告
-> 降低任何門禁。本節為 release 後 hotfix 候選；本機 E2 與 Draft PR #14 exact-head E3
-> 已通過，尚未 merge、未發布。
+> 降低任何門禁。PR #14 已合併並完成 production daily／Pages 驗收；不改產品版本，
+> 本節仍列於 Unreleased 維護記錄。
 
 - **官方 Actions 升級 Node.js 24**：`.github/workflows` 全部 `actions/*` 由 node20
   runtime 升到官方 node24 release，維持完整 40-hex SHA pin（唔用 mutable major tag）：
@@ -39,6 +39,24 @@
   `punycode`／`DeprecationWarning` 均為 0，runner 回報 `Image: ubuntu-24.04`。
   PR 路徑的 `update`／`deploy` 及 production-only artifact／deploy steps 正確 skipped，
   所以正式 production 路徑仍須在 merge 後首次執行時觀察。
+
+
+### 2026-09-24 production 驗收與自動鏈修復
+
+- **PR #14 已合併並完成 production 驗收**：merge commit
+  `5783f0d599469aa5ce3b912aa5d44f8454aebf5a`；唯一一次獲授權 full daily
+  run 35942488710 success，產生 `b80a1d5`／`B20260924.106.1`；
+  Pages run 35942793376 build／deploy success；手動 exact-ref GATE-08 run
+  35943298448 全部 PASS。Node.js 20 與 Ubuntu 26 migration 警告為 0。
+- **上游殘餘警告**：production `actions/deploy-pages@v5.0.1` 成功但輸出一次
+  `[DEP0040] punycode`；已確認為 actions/deploy-pages#434／#413 的上游已知問題，
+  不隱藏警告、不降級 action pin。
+- **GATE-08 自動閉環候選**：把 `postdeploy-verify.yml` 改為 reusable＋manual，
+  `pages-deploy.yml` 在 production deploy success 後以 exact build commit 直接呼叫；
+  移除不可靠的跨 workflow `workflow_run` 鏈。PR 不 deploy／不 postdeploy，
+  called workflow 維持 `contents: read`、master 祖先與 HEAD 精確核對。
+- **BigGo 按需使用**：daily 非 force 路徑先讀本地 price batch state；inactive／已完成
+  時零 BigGo API 請求，只有 active 批次或維護者明確 force 才執行 bounded smoke／批次。
 
 ## [1.2.9] - 2026-09-24
 

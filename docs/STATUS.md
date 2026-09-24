@@ -554,3 +554,48 @@ Release archive 係「初次 v1.2.9 部署快照」（source run 35881890400／`
   upload-pages-artifact v5；production-only upload-artifact v7、download-artifact v8、
   deploy-pages v5 steps 按設計 skipped。後三者已由官方 release ref／`action.yml`
   與靜態回歸鎖定，首次 production 實際執行仍須在 merge 後觀察。
+
+
+## 16. 2026-09-24 PR #14 merge、獲授權完整 daily 與自動 postdeploy 缺口修復
+
+### 16.1 PR #14 production hotfix（OBSERVED / E3）
+
+- PR #14 已以 merge commit
+  `5783f0d599469aa5ce3b912aa5d44f8454aebf5a` 合併；第二 parent（PR head）為
+  `b96f35ae1cb27c327852f42c8287b98916488452`。
+- production 已實際使用 Node.js 24 pins 與 `ubuntu-24.04`。daily run 35942488710
+  日誌中 Node.js 20 forced-runtime、Ubuntu 26 migration 警告均為 0。
+- Pages production deploy 的官方 `actions/deploy-pages@v5.0.1` 成功，但其內部輸出
+  一次 Node `[DEP0040] punycode` deprecation。這是 upstream 已知 issue
+  actions/deploy-pages#434／#413；現用 v5.0.1 是 2026-09-01 發布的最新已核實 release。
+  本項不隱藏警告，也不改用未核實 action。
+
+### 16.2 唯一一次獲授權完整 daily（OBSERVED / E3）
+
+| 項目 | 結果 |
+| --- | --- |
+| Daily | run 35942488710；workflow_dispatch；success；4m04s |
+| EMSD | 37/37 頁、1,834 registrations；datasetHash `sha256:f362a542…` |
+| BigGo | bounded smoke 第一候選約 2 秒有價；價格批次 inactive，`skip-not-active`；沒有推進價格批次 |
+| 自動提交 | `b80a1d5cc57c3253be463e67995b8bd958206aa2` |
+| Metadata | v1.2.9；build `B20260924.106.1`；datasetDate 2026-09-24；1,834 登記／1,773 型號 |
+| Pages | repository_dispatch run 35942793376；exact head `b80a1d5`；build／deploy success |
+| E4 fallback | workflow_dispatch run 35943298448；exact ref `b80a1d5`；完整 metadata／payload hash／CSV／PDF／瀏覽器行為全部 PASS |
+
+本次完成後不再重跑 daily。其後修復與驗收只走 Pages 路徑，不再呼叫 BigGo。
+
+### 16.3 自動排程回讀（OBSERVED / 平台）
+
+- `daily-update.yml` workflow state = active；default branch = `master`。
+- cron 維持 `30 16 * * *`，即香港時間每日 00:30；schedule event 符合 update job 條件。
+- 回讀最近五次 scheduled daily 均 success。GitHub-hosted schedule 可能排隊延遲，
+  因此 00:30 是設定時間，不是精準開始 SLA。
+
+### 16.4 發現缺口與本輪候選（E2）
+
+- daily 發出的 repository_dispatch Pages run 35942793376 後，舊
+  `workflow_run` postdeploy 沒有自動建立；較早 run 35913258756 亦相同。
+- D22 候選把 GATE-08 改成 Pages deploy 後的同 workflow reusable job；D23 候選把
+  BigGo 本地 batch-state 檢查移到 smoke 之前，inactive 時零 API 請求。
+- 聚焦測試 91 passed；machine acceptance 7/7 gates、完整 pytest 529 passed、18 個 required nodes 全 passed。trusted PR CI、merge 後
+  production Pages＋同 workflow GATE-08 仍待後續實證，未完成前不宣稱自動鏈閉合。

@@ -4,7 +4,7 @@
 > **能源級別、雪種、年耗電以機電署 EMSD 官方資料庫全量核實**（最新同步快照 2026-09-24：1,834 筆登記／1,773 型號；2026-09-21 及之前詳細統計段落屬歷史快照，以線上 [`metadata.json`](https://calvinlau1012.github.io/aircon-compare/metadata.json) 為準）
 > **220 個型號已直接經品牌官網/官方網店/總代理逐型號核實（2026-08-15 歷史核實數）**
 > 🎨 **Blue Fantasy 藍色幻想 skin**（dsh-web-ui 皮膚；只套皮膚，其他插件不加）
-> 📌 **現況**：線上已發布 **v1.2.9**（Release tag `v1.2.9`；當前 live build `B20260923.103.1`、datasetDate 2026-09-24，badge 動態讀取線上 metadata.json）；時間／資料真實性、完整 Schema 驗證、部署後核對與歸檔、恢復演練已隨 v1.2.9 上線；release 後 **Node.js 24 Actions／`ubuntu-24.04` runner／bounded BigGo smoke hotfix 已在 Draft PR #14 通過本機 E2 與 exact-head PR E3（Unreleased，未 merge、未發布）**；EMSD 每日偵測、價錢按批次快照（缺價標「待查」）
+> 📌 **現況**：線上已發布 **v1.2.9**（當前 live build `B20260924.106.1`、datasetDate 2026-09-24）；Node.js 24 Actions／`ubuntu-24.04` runner／bounded BigGo smoke hotfix 已由 PR #14 合併並通過 production daily／Pages 驗收；GATE-08 同 workflow 自動閉環與 BigGo inactive 零 API 請求修復列於 Unreleased，待 trusted CI／merge 後實證
 
 ## 🚀 立即使用
 
@@ -141,6 +141,8 @@ xychart-beta
 - **資料日期口徑**：`datasetDate` 現以 runner UTC 日期產生（`retrieval-date-fallback`），UI 部署時間以 HKT 顯示，兩者可能跨日；此為現行已知限制（尚未修正）
 - **淘汰機制**：`model_lifecycle.py` 只把「乾淨無市售報價」（連續多次；網絡錯誤不計，D8）的型號入黑名單；每批小額復核，有價會自動復活；核心 29 及官方網店價型號受保護，不自動淘汰
 - **穩定**：抓取後經「數據驗證閘門」(`validate_data.py`) 檢查數量在安全範圍——不合格就不提交，保住現有數據；每次成功提交 = 可回溯快照
+- **BigGo 按需**：daily 先讀本地價格批次狀態；未啟動／已完成時零 BigGo API 請求，只有 active 批次或維護者明確 force 才先跑 bounded smoke
+- **部署鏈**：production Pages build／deploy 成功後，GATE-08 以 exact commit 在同一 workflow 內執行；另保留手動 exact-ref fallback
 - 亦可在 GitHub Actions 頁面手動觸發（workflow_dispatch）
 
 ## 🏛️ 治理標準
@@ -363,7 +365,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 | 版本 | 日期 | 重點 |
 | --- | --- | --- |
-| **v1.2.9** | 2026-09-24 | **已發布**（tag `v1.2.9` → `f546e2f`；Release run 35886358387；首個 production daily 35911295151＝build `B20260923.103.1`、datasetDate 2026-09-24）。內容：時間／資料真實性（EMSD 收據事實＋CSV hash 綁定、失敗收據、50 倍數頁數）；完整 Draft 2020-12 Schema＋`--core` fail-closed；feature-check 實際 collection／執行證據；GATE-08 部署後核對＋GATE-09 歸檔；本地恢復演練 16 斷言。Release 後 hotfix 候選（Unreleased）：Node.js 24 Actions 完整 SHA pin、`ubuntu-24.04` runner、bounded BigGo smoke |
+| **v1.2.9** | 2026-09-24 | **已發布**（tag `v1.2.9` → `f546e2f`；Release run 35886358387；首個 production daily 35911295151＝build `B20260923.103.1`、datasetDate 2026-09-24）。內容：時間／資料真實性（EMSD 收據事實＋CSV hash 綁定、失敗收據、50 倍數頁數）；完整 Draft 2020-12 Schema＋`--core` fail-closed；feature-check 實際 collection／執行證據；GATE-08 部署後核對＋GATE-09 歸檔；本地恢復演練 16 斷言。Release 後 hotfix（已合併並完成 production 驗收；Unreleased 維護記錄）：Node.js 24 Actions 完整 SHA pin、`ubuntu-24.04` runner、bounded BigGo smoke |
 | **v1.2.8** | 2026-08-26 | 治理落地（門禁 + metadata.json + 功能註冊表 15 項綁定）+ PDF 報告導出 + BigGo 改官方 JSON API（解決 GitHub IP 限流）+ 文檔全面書面語化 |
 | **v1.2.7** | 2026-08-25 | 皮膚/深色模式全面恢復（Blue Fantasy 壁紙 + whale-girl 吉祥物 + 元件級對比度）+ 響應式適配修正（手機下拉溢出/吉祥物重疊）+ 工具複用整理 |
 | **v1.2.6** | 2026-08-25 | 代碼重構（`models_data.py` / `batch_utils.py` + `fetch_*` 統一重試）· 深色模式對比度修正 · 生成效能優化（版本號維持） |

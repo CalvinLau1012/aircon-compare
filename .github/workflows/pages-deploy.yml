@@ -189,3 +189,13 @@ jobs:
       - name: 部署到 GitHub Pages
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346  # v5.0.1
+
+  postdeploy:
+    name: 部署後核對（GATE-08）
+    needs: [build, deploy]
+    if: needs.build.outputs.mode == 'production' && needs.deploy.result == 'success'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/postdeploy-verify.yml
+    with:
+      ref: ${{ needs.build.outputs.commit }}

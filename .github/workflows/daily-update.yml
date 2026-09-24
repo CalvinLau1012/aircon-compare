@@ -203,7 +203,7 @@ jobs:
 
       # ============ 第 3 步：價錢快照批次（BigGo 官方 JSON API；進度由 batch_utils 共用管理） ============
       # 2026-08-26：改用官方 API api.biggo.com（同被限流嘅網頁版 biggo.hk 唔同 host）
-      - name: 價錢快照分批更新（BigGo API 每月一次·分七日；先 smoke 測試）
+      - name: 價錢快照分批更新（BigGo API 每月一次·分七日；active 才 smoke）
         env:
           BIGGO_CLIENT_ID: ${{ secrets.BIGGO_CLIENT_ID }}
           BIGGO_CLIENT_SECRET: ${{ secrets.BIGGO_CLIENT_SECRET }}
@@ -215,21 +215,24 @@ jobs:
             echo "🚀 強行全量批次（一次性測試）：腳本內部會先 smoke，再全部型號一次過 + 淘汰確認"
             python fetch_biggo.py --force-batch
             rc=$?; mode="force-batch"
-          elif python fetch_biggo.py --smoke; then
+          else
+            # 先讀本地批次狀態；未啟動／已完成時零 BigGo API 請求。
             python scripts/price_batch_state.py >/dev/null 2>&1
             pb_rc=$?
             if [ "$pb_rc" -eq 0 ]; then
-              python fetch_biggo.py --price-batch
-              rc=$?; mode="price-batch"
+              if python fetch_biggo.py --smoke; then
+                python fetch_biggo.py --price-batch
+                rc=$?; mode="price-batch"
+              else
+                echo "⚠️ BigGo API smoke 失敗，跳過本批（未刷新，保留現有價錢快照），唔硬碰"
+                mode="skip-smoke-failed"
+              fi
             elif [ "$pb_rc" -eq 1 ]; then
-              echo "價錢批次未啟動，跳過（未刷新，保留現有價錢快照）"
+              echo "價錢批次未啟動，跳過（未呼叫 BigGo API；保留現有價錢快照）"
             else
               echo "::error::prices_meta.json 損毀，阻斷（唔可以當未啟動跳過）"
               exit 2
             fi
-          else
-            echo "⚠️ BigGo API smoke 失敗，跳過本批（未刷新，保留現有價錢快照），唔硬碰"
-            mode="skip-smoke-failed"
           fi
           set -e
           {
