@@ -103,6 +103,10 @@
   `docs/GOVERNANCE_MATRIX.md`（§10）、`docs/STATUS.md`（§17）、`docs/adr/ADR-003`／
   `ADR-004`（狀態更新節）、`docs/PRIVATE_RAW_SINK_RUNBOOK.md`（§5）、`README.md`
   （資料日期口徑追加條目）、`需求摘要.md`（現況快照追加註＋更新日誌）。
+- **觀察補充（append）**：pending 期間任何 push 都 GATE-08 紅——run `35952357474`（純文檔追加
+  `5cb4a03`）同 `35952373427`（`04604b6`）都係 build／deploy success、GATE-08
+  `payload.pdf_matches_metadata` failure，hash 同 `35951000298` 相同（online `8f13a3c3…`／
+  rebuilt `d548e1d4…`）。故「docs-only ⇒ 零紅 run」只喺 pending 清零後成立。
 
 ## [1.2.9] - 2026-09-24
 

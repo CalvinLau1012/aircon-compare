@@ -656,3 +656,14 @@ D23 的 inactive 零 BigGo API 路徑已由測試、machine acceptance 與 trust
 - 需求以 `需求摘要.md`（元文件）為準；其他文件同元文件有出入時，以元文件為準。
 - 用戶日後嘅改變亦要記錄（追加），唔可以覆蓋。
 - 相關：`docs/DECISIONS.md` D24（md-only commit）同 D25（只追加）、`AGENTS.md` 規則 9／10。
+
+### 17.4 pending 狀態下任何 push 都會紅（OBSERVED / E3；追加）
+
+- 喺 md 有新改動、daily 未跑嘅期間，payload 內嘅 md 生成物（`index.html`／PDF）必然滯後，
+  所以之後**任何** master push 都會 GATE-08 `payload.pdf_matches_metadata` 紅：
+  - run 35952357474（純文檔追加 `5cb4a03`）：build success、deploy success、GATE-08 failure；
+  - run 35952373427（報告 md 追加 `04604b6`）：build success、deploy success、GATE-08 failure。
+  - 兩者 hash 都同 35951000298 相同（online `8f13a3c3…`／rebuilt `d548e1d4…`），證明同新增
+    改動內容無關。
+- 因此「docs-only ⇒ 零紅 run」只喺 pending 狀態清零（上一次 daily 之後、md 未再改）先成立。
+- 復原仍然係下一次 scheduled daily 全量重生 `index.html`＋PDF＋metadata。

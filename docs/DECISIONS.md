@@ -509,4 +509,10 @@
     - 改 `空調對比報告.md`（網站更新日誌）→ 預期一次紅 run（唔重生就 GATE-08 PDF 核對紅，
       手動重生就 build gate 嘅 `releasePayloadHash` 紅），下一次 daily 全量重生
       `index.html`＋PDF＋metadata 後恢復綠；唔好為咗即時變綠而手動重生 payload 或改 metadata。
+  - **2026-09-24 觀察補充（append）**：上面「唔郁 md → 全綠」有前提——payload 內嘅 md 生成物
+    必須已經同 md 同步（即上一次 daily 已跑完、md 之後未再改）。一旦 md 有新改動而 daily 未跑，
+    之後**任何** push（包括純 docs）都會 GATE-08 `payload.pdf_matches_metadata` 紅：
+    run 35952357474（純文檔追加 `5cb4a03`）同 35952373427（`04604b6`）都係 build／deploy
+    success、GATE-08 failure，hash 對同 35951000298 一樣（online `8f13a3c3…`／rebuilt
+    `d548e1d4…`）。呢個係 pending 狀態嘅性質，唔係新增改動造成。
   - 回滾：如日後改回每次重生，刪除本約定並更新 AGENTS 規則 9 即可。

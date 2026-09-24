@@ -184,3 +184,6 @@
   35951000298／35951377781（GATE-08 `payload.pdf_matches_metadata`）；復原＝下一次
   scheduled daily 全量重生 `index.html`＋PDF＋metadata（例：35946820790 → 35947112610
   success）。約定見 D24。
+- **補充（2026-09-24，append）**：pending 期間（md 已改、daily 未跑）任何 master push 都會
+  GATE-08 `payload.pdf_matches_metadata` 紅，同改動內容無關：run 35952357474（純文檔追加）、
+  35952373427 都係 build／deploy success、GATE-08 failure，hash 同 35951000298 一致。
