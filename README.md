@@ -4,7 +4,7 @@
 > **能源級別、雪種、年耗電以機電署 EMSD 官方資料庫全量核實**（最新同步快照 2026-09-24：1,834 筆登記／1,773 型號；2026-09-21 及之前詳細統計段落屬歷史快照，以線上 [`metadata.json`](https://calvinlau1012.github.io/aircon-compare/metadata.json) 為準）
 > **220 個型號已直接經品牌官網/官方網店/總代理逐型號核實（2026-08-15 歷史核實數）**
 > 🎨 **Blue Fantasy 藍色幻想 skin**（dsh-web-ui 皮膚；只套皮膚，其他插件不加）
-> 📌 **現況**：線上已發布 **v1.2.9**（當前 live build `B20260924.106.1`、datasetDate 2026-09-24）；Node.js 24 Actions／`ubuntu-24.04` runner／bounded BigGo smoke hotfix 已由 PR #14 合併並通過 production daily／Pages 驗收；GATE-08 同 workflow 自動閉環與 BigGo inactive 零 API 請求修復列於 Unreleased，待 trusted CI／merge 後實證
+> 📌 **現況**：線上已發布 **v1.2.9**（當前 live build `B20260924.106.1`、datasetDate 2026-09-24）；Node.js 24 Actions／`ubuntu-24.04` runner／bounded BigGo smoke hotfix 已由 PR #14 合併並完成 production 驗收；PR #15 已將 GATE-08 接入 Pages 同一 workflow 並以 production run 35944781623 證實自動閉環；BigGo 僅在 active 價格批次或明確 force 時使用
 
 ## 🚀 立即使用
 
@@ -197,7 +197,7 @@ flowchart LR
 | Architecture Governance | §1 單一事實源 · §16 落地結構 | ✅ 已落地 |
 | Feature Governance | §5 功能註冊表（15 項 required） | ✅ 已落地 |
 | DevOps Governance | §11 部署後驗證 · §17 核對表 | ✅ 已落地 |
-| CI/CD Governance | §9 門禁 GATE-01~09 | ✅ GATE-01/03/04/05/06 已上 CI；GATE-08 部署後核對與 GATE-09 Release 歸檔已隨 v1.2.9 實作並實際執行（Release run 35886358387、部署後 freshness／postdeploy run 35919211259 success） |
+| CI/CD Governance | §9 門禁 GATE-01~09 | ✅ GATE-01/03/04/05/06 已上 CI；GATE-08 已在 Pages 同一 workflow 自動執行並由 production run 35944781623 完整通過；GATE-09 Release 歸檔 run 35886358387 success |
 | Version Governance | §8.1 SemVer + `models_data.VERSION` 單一來源 | ✅ 已落地 |
 | Release Governance | §8.3 發布資產 · §17 | ✅ 已落地 |
 | Rollback Governance | §7.3 回滾元數據 · §11.3 四級回滾 · §11.4 七步流程 | ✅ 已落地 |
