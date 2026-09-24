@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """Workflow 靜態安全/接線回歸（第二輪）
 
-- 第三方 Actions 固定完整 commit（治理 §9.3）
+- 第三方 Actions 固定完整 commit（治理 §9.3）；全部已核實 runtime=node24，
+  舊 Node.js 20 pin 不可回歸（無 "Node.js 20 is deprecated" 警告）
+- runner 固定 `ubuntu-24.04`，避免 `ubuntu-latest` 於 2026-10-19 自動轉 Ubuntu 26
 - 受信任來源限制（master）、唯讀 checkout persist-credentials:false、最小權限
 - daily-update：Chromium 提前且只裝一次、精確 allowlist、privacy index 模式、
   push fail-closed、build run attempt、dispatch 只限 master
@@ -17,7 +19,21 @@ import yaml
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORKFLOWS = os.path.join(BASE, '.github', 'workflows')
 
+# 已核實嘅官方 release：action.yml `runs.using=node24`＋GitHub refs API 完整 commit
+# （GitHub 已警告 Node.js 20 deprecated／forced to run on Node.js 24）
 PINNED = {
+    'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',           # v7.0.1
+    'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97',       # v7.0.0
+    'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a',    # v7.0.1
+    'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c',  # v8.0.1
+    'actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d',    # v6.0.0
+    'actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9',  # v5.0.0
+    'actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346',       # v5.0.1
+}
+
+# 舊 Node.js 20 runtime pin（runtime=node20，GitHub 已發出 deprecation 警告）：
+# 只用作負向清單；唔可以再出現喺任何 workflow。
+OLD_NODE20_PINS = {
     'actions/checkout@11d5960a326750d5838078e36cf38b85af677262',
     'actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065',
     'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02',
@@ -26,6 +42,20 @@ PINNED = {
     'actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa',
     'actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e',
 }
+
+# pin → 相鄰版本註釋（防止 SHA 同註釋唔一致；未經 refs API 核實唔可以新增）
+PIN_COMMENTS = {
+    'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1': '# v7.0.1',
+    'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97': '# v7.0.0',
+    'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a': '# v7.0.1',
+    'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c': '# v8.0.1',
+    'actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d': '# v6.0.0',
+    'actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9': '# v5.0.0',
+    'actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346': '# v5.0.1',
+}
+
+# 所有 Linux jobs 固定嘅 runner（避免 ubuntu-latest 2026-10-19 自動轉 Ubuntu 26）
+RUNNER_PIN = 'ubuntu-24.04'
 
 
 def _all_uses(obj):
@@ -82,8 +112,47 @@ def test_all_actions_pinned_to_full_commit():
             assert re.match(r'^[^@\s]+@[0-9a-f]{40}$', use), (
                 f'{os.path.basename(path)} 有未固定嘅 action：{use}')
             assert use in PINNED, f'未知／未核實嘅 action pin：{use}'
+            assert use not in OLD_NODE20_PINS, (
+                f'{os.path.basename(path)} 回歸到 Node.js 20 舊 pin：{use}')
     assert {'actions/checkout', 'actions/setup-python',
             'actions/upload-artifact', 'actions/download-artifact'} <= {u.split('@')[0] for u in seen}
+
+
+def test_action_version_comments_match_verified_releases():
+    """每個 pinned action 嘅相鄰 `# vX.Y.Z` 註釋必須對應已核實 release。"""
+    checked = 0
+    for path in _workflow_files():
+        for lineno, line in enumerate(open(path, encoding='utf-8'), 1):
+            m = re.search(r'uses:\s*(\S+)\s*(#.*)?$', line.rstrip('\n'))
+            if not m:
+                continue
+            use, comment = m.group(1), (m.group(2) or '').strip()
+            assert use in PIN_COMMENTS, (
+                f'{os.path.basename(path)}:{lineno} 未核實 action：{use}')
+            assert comment == PIN_COMMENTS[use], (
+                f'{os.path.basename(path)}:{lineno} 版本註釋 {comment!r} 唔對應 '
+                f'{PIN_COMMENTS[use]!r}')
+            checked += 1
+    assert checked >= 7, '應該檢查到所有 pinned action 嘅版本註釋'
+
+
+def test_all_jobs_pin_ubuntu_24_04_not_moving_labels():
+    """公開 workflows 所有 Linux job 必須固定 runner；浮動 latest label 2026-10-19
+    起會自動轉 Ubuntu 26，唔可以使用。以 YAML parser 讀實際 jobs，唔靠文字 grep。"""
+    seen_jobs = 0
+    for path in _workflow_files():
+        name = os.path.basename(path)
+        wf = _load(name)
+        for job_name, job in wf.get('jobs', {}).items():
+            seen_jobs += 1
+            assert job.get('runs-on') == RUNNER_PIN, (
+                f'{name} job {job_name} runs-on={job.get("runs-on")!r}；'
+                f'必須固定 {RUNNER_PIN}')
+        dumped = yaml.safe_dump(wf, allow_unicode=True)
+        assert 'ubuntu-latest' not in dumped, (
+            f'{name} YAML 值仍有浮動 ubuntu-latest；必須固定 {RUNNER_PIN}')
+        assert 'ubuntu-26' not in dumped, f'{name} 唔應該提前改用 Ubuntu 26'
+    assert seen_jobs >= len(_workflow_files()), '每個 workflow 至少要檢查到一個 job'
 
 
 def test_no_action_uses_major_tag_anywhere():

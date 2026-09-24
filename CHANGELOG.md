@@ -5,6 +5,46 @@
 
 ## [Unreleased]
 
+### Node.js 24 官方 Actions／bounded smoke／ubuntu-24.04 runner hotfix（未發布）
+
+> 2026-09-24 使用者要求：修復 GitHub Actions deprecation 警告，但唔可以為消除警告
+> 降低任何門禁。本節為 release 後 hotfix 候選（本機 E2）；未 merge、未發布，交獨立驗收。
+
+- **官方 Actions 升級 Node.js 24**：`.github/workflows` 全部 `actions/*` 由 node20
+  runtime 升到官方 node24 release，維持完整 40-hex SHA pin（唔用 mutable major tag）：
+  checkout `v7.0.1`、setup-python `v7.0.0`、upload-artifact `v7.0.1`、
+  download-artifact `v8.0.1`、configure-pages `v6.0.0`、upload-pages-artifact
+  `v5.0.0`（composite 內 upload-artifact 已固定 node24）、deploy-pages `v5.0.1`。
+  SHA 由 GitHub refs API 回讀；已核對各 `action.yml` runtime=node24 及現有 inputs
+  （checkout ref／fetch-depth／persist-credentials、setup-python python-version／cache、
+  artifact 路徑與 `if-no-files-found` 等）相容。舊 Node.js 20 SHA 加入測試負向清單。
+- **Runner 固定 `ubuntu-24.04`**：5 個 workflow 全部 8 個 Linux job 由浮動
+  `ubuntu-latest` 改為 `ubuntu-24.04`，避免 2026-10-19 起自動轉 Ubuntu 26；
+  job 權限、environment、`if`／`needs`、concurrency 及部署語義不變。
+- **BigGo smoke 有界化（只影響 smoke 路徑）**：smoke 改為單次 attempt、token／search
+  每個網絡階段約 8 秒 timeout、唔採用 60／90 秒 retry／cooldown；首個 `unreachable`
+  或例外立即 False（唔試其餘候選），只有明確 `no-price` 才試下一候選，首個有價即
+  True。`--price-batch`／`--force-batch`／正常查詢維持原完整 retry（5 次）＋冷卻＋
+  限速；`_get_access_token`／`_api_search` 新增參數向後兼容、預設行為不變。
+  2026-09-23 daily run 35911295151 嘅失敗 smoke 曾耗時約 14 分鐘；有界化後 fail
+  路徑設計上限約 16 秒（單候選兩階段各 8 秒）。
+- **測試**：新增離線 mock 回歸（smoke 參數／呼叫次數／無 sleep 硬碰／例外唔洩漏
+  secret；預設批次 retry 與 429 Retry-After 冷卻不變）；workflow 靜態測試加
+  Node.js 20 SHA 負向清單、版本註釋對照、`ubuntu-24.04` YAML（parser）檢查。
+  全部測試唔打真實 BigGo／EMSD／production。
+
+## [1.2.9] - 2026-09-24
+
+> 發布事實（2026-09-24 回讀）：tag `v1.2.9` → commit
+> `f546e2fd52d961f489972a0732d114f22d4f7e68`；Release run 35886358387 success，非
+> draft／prerelease；assets = `archive-v1.2.9.zip`／`CHECKSUMS.sha256`／
+> `PROVENANCE.json`，24 個 CHECKSUMS 已獨立重算全通過。Release archive provenance
+> 為初次 v1.2.9 build `B20260923.101.1`（archive commit `f546e2f`、source commit
+> `b57b413`、workflow run 35881890400）；發布後首個 production daily run 35911295151
+> 以 build `B20260923.103.1`、datasetDate 2026-09-24 上線。以下條目按撰寫日期保留
+> 當時（2026-09-21 至 09-23）嘅證據狀態；「候選／未部署／E3、E4 未發生」等字句係
+> 撰寫時事實，發布後由本段同 docs/STATUS.md §15 取代，不溯及改寫。
+
 ### 2026-09-23 平台治理
 
 - **D3-A release 人工批准關卡**：使用者確認單人維護模式；已建立 GitHub `release`
@@ -244,6 +284,55 @@
 
 - 無改動（BigGo 憑證仍只存 GitHub Secrets）
 
+### PR #10 審查返修（2026-09-23；撰寫時未發布、未部署）
+
+> PR #10（v1.2.9 治理候選）審查發現 9 項缺陷；以下修復全部本機完成、commit 前 E2 證據見
+> [docs/STATUS.md](docs/STATUS.md) §11。產品版本仍由 `models_data.py` 的 `VERSION` 決定；
+> production `metadata.json` 仍為 1.2.8，未部署、未發布 Release。
+
+#### Added
+
+- **Pages deployment envelope**：新增 `deploy_envelope.json`；`build_pages_artifact.py`
+  同時輸出 payload + 最終 `metadata.json`（+ 一致公開 sidecar），封包前驗完整 Schema、
+  `version == models_data.VERSION`、payload hash、CSV hash 同 counts，錯配 fail-closed。
+- **PR 隔離 fixture 封包**：新增 `scripts/make_fixture_release.py`；PR gate 喺 repo 外用
+  fixture metadata 真生成 PDF、重建 envelope，再以 `verify_candidate.py` 做 loopback HTTP、
+  payload hash、run identity、PDF 重建同 Chromium runtime 驗證，永不部署。
+- **daily→Pages 精確銜接**：新增 `scripts/dispatch_pages_deploy.py`（`repository_dispatch`
+  帶已 push commit＋sourceRunId）同 `scripts/verify_deploy_request.py`（成功 run／master／
+  祖先綁定；唔 fallback 最新 master）。R7 再收緊：有界 polling 等 source run completed/
+  success、精確比對 run attempt、workflow path 必須係 daily-update.yml、部署 commit 必須
+  單親直接 child、checkout `metadata.json` 要 binding `workflowRunId`／`commit`。
+- **可插拔私人 raw sink**：新增 `scripts/private_raw_sink.py`——`local-dir` 如實標示非
+  durable，`github-release-asset` 候選 adapter（PRIVATE 回讀、同名拒覆蓋、上傳後下載
+  sha256＋size 核驗、90 日 retention、失敗唔發成功 receipt）；`docs/PRIVATE_RAW_SINK_RUNBOOK.md`
+  列明 live 啟用前置；`docs/adr/ADR-004`。
+- **測試**：真 HTTP＋瀏覽器＋PDF 重建 E2E、fake GitHub API dispatch／verify、remote sink
+  fake HTTP、symlink／junction 無 skip 拒絕測試。
+
+#### Changed
+
+- **R7 base 同步**：候選 branch merge `origin/master` `be43b7c`（2026-09-22 自動更新）；
+  `metadata.json`／EMSD 收據／`new_models.json`／`update_queue.json` 以 master 流水線事實為準，
+  冇手改 production metadata；`index.html`／`空調對比報告.pdf` 用合併後程式同已提交資料重建。
+- **freshness monitor combined health**：freshness 同 postdeploy 結果合併判斷；
+  fingerprint 唔含 `ageSeconds`（同一 stale 6 小時後仍 noop）；分類改變才 update、
+  完全恢復才 close；report 缺失／非 object／network／API 錯誤非零且脫敏。
+- **concurrency 隔離**：daily 同 Pages 按 event／ref 分組，PR 再唔可以取消或阻塞生產 run。
+- **archive sidecar**：`archive_release.py` 收錄 `deploy_envelope.json` 同同本次一致的公開
+  receipt／status；舊／錯配 raw receipt 唔會歸檔當成本次證據。
+- **postdeploy-verify**：接受 Pages workflow 嘅 push／workflow_dispatch／
+  repository_dispatch 成功 run；checkout 後再驗 HEAD == 平台記錄而且係 master 祖先。
+
+#### Fixed
+
+- Pages artifact 唔再漏 `metadata.json`；輸出目錄唔再被任意 rmtree；PR 唔會用 production
+  metadata 驗候選；`workflow_dispatch` 只限 master 先入 production；Windows symlink 測試
+  唔再以 skip 當 pass。
+- **R7**：Pages production concurrency 加 `queue: max`（預設 single 會以新 pending 取代舊
+  pending，可能犧牲已驗證部署）；`verify_deploy_request.py` 補 run attempt／workflow path／
+  單親 direct parent／metadata binding／完成時序負向測試（時間可注入，不在測試真等）。
+
 ## [1.2.8] - 2026-08-26
 
 ### Added
@@ -364,52 +453,3 @@
 ### Added
 
 - 報告初版（29 型號統合對比）
-
-### PR #10 審查返修（2026-09-23；未發布、未部署）
-
-> PR #10（v1.2.9 治理候選）審查發現 9 項缺陷；以下修復全部本機完成、commit 前 E2 證據見
-> [docs/STATUS.md](docs/STATUS.md) §11。產品版本仍由 `models_data.py` 的 `VERSION` 決定；
-> production `metadata.json` 仍為 1.2.8，未部署、未發布 Release。
-
-#### Added
-
-- **Pages deployment envelope**：新增 `deploy_envelope.json`；`build_pages_artifact.py`
-  同時輸出 payload + 最終 `metadata.json`（+ 一致公開 sidecar），封包前驗完整 Schema、
-  `version == models_data.VERSION`、payload hash、CSV hash 同 counts，錯配 fail-closed。
-- **PR 隔離 fixture 封包**：新增 `scripts/make_fixture_release.py`；PR gate 喺 repo 外用
-  fixture metadata 真生成 PDF、重建 envelope，再以 `verify_candidate.py` 做 loopback HTTP、
-  payload hash、run identity、PDF 重建同 Chromium runtime 驗證，永不部署。
-- **daily→Pages 精確銜接**：新增 `scripts/dispatch_pages_deploy.py`（`repository_dispatch`
-  帶已 push commit＋sourceRunId）同 `scripts/verify_deploy_request.py`（成功 run／master／
-  祖先綁定；唔 fallback 最新 master）。R7 再收緊：有界 polling 等 source run completed/
-  success、精確比對 run attempt、workflow path 必須係 daily-update.yml、部署 commit 必須
-  單親直接 child、checkout `metadata.json` 要 binding `workflowRunId`／`commit`。
-- **可插拔私人 raw sink**：新增 `scripts/private_raw_sink.py`——`local-dir` 如實標示非
-  durable，`github-release-asset` 候選 adapter（PRIVATE 回讀、同名拒覆蓋、上傳後下載
-  sha256＋size 核驗、90 日 retention、失敗唔發成功 receipt）；`docs/PRIVATE_RAW_SINK_RUNBOOK.md`
-  列明 live 啟用前置；`docs/adr/ADR-004`。
-- **測試**：真 HTTP＋瀏覽器＋PDF 重建 E2E、fake GitHub API dispatch／verify、remote sink
-  fake HTTP、symlink／junction 無 skip 拒絕測試。
-
-#### Changed
-
-- **R7 base 同步**：候選 branch merge `origin/master` `be43b7c`（2026-09-22 自動更新）；
-  `metadata.json`／EMSD 收據／`new_models.json`／`update_queue.json` 以 master 流水線事實為準，
-  冇手改 production metadata；`index.html`／`空調對比報告.pdf` 用合併後程式同已提交資料重建。
-- **freshness monitor combined health**：freshness 同 postdeploy 結果合併判斷；
-  fingerprint 唔含 `ageSeconds`（同一 stale 6 小時後仍 noop）；分類改變才 update、
-  完全恢復才 close；report 缺失／非 object／network／API 錯誤非零且脫敏。
-- **concurrency 隔離**：daily 同 Pages 按 event／ref 分組，PR 再唔可以取消或阻塞生產 run。
-- **archive sidecar**：`archive_release.py` 收錄 `deploy_envelope.json` 同同本次一致的公開
-  receipt／status；舊／錯配 raw receipt 唔會歸檔當成本次證據。
-- **postdeploy-verify**：接受 Pages workflow 嘅 push／workflow_dispatch／
-  repository_dispatch 成功 run；checkout 後再驗 HEAD == 平台記錄而且係 master 祖先。
-
-#### Fixed
-
-- Pages artifact 唔再漏 `metadata.json`；輸出目錄唔再被任意 rmtree；PR 唔會用 production
-  metadata 驗候選；`workflow_dispatch` 只限 master 先入 production；Windows symlink 測試
-  唔再以 skip 當 pass。
-- **R7**：Pages production concurrency 加 `queue: max`（預設 single 會以新 pending 取代舊
-  pending，可能犧牲已驗證部署）；`verify_deploy_request.py` 補 run attempt／workflow path／
-  單親 direct parent／metadata binding／完成時序負向測試（時間可注入，不在測試真等）。
