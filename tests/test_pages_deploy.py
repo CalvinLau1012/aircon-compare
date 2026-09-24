@@ -319,11 +319,18 @@ def test_pages_deploy_workflow_contract():
     assert wf['concurrency']['queue'] == 'max'
     build = wf['jobs']['build']
     deploy = wf['jobs']['deploy']
+    postdeploy = wf['jobs']['postdeploy']
     assert deploy['needs'] == 'build'
     assert "needs.build.outputs.mode == 'production'" in deploy['if']
     assert "github.event_name != 'pull_request'" in deploy['if']
     assert deploy['environment']['name'] == 'github-pages'
     assert deploy['permissions'] == {'pages': 'write', 'id-token': 'write'}
+    assert set(postdeploy['needs']) == {'build', 'deploy'}
+    assert "needs.build.outputs.mode == 'production'" in postdeploy['if']
+    assert "needs.deploy.result == 'success'" in postdeploy['if']
+    assert postdeploy['permissions'] == {'contents': 'read'}
+    assert postdeploy['uses'] == './.github/workflows/postdeploy-verify.yml'
+    assert postdeploy['with']['ref'] == '${{ needs.build.outputs.commit }}'
     names = [s.get('name', '') for s in build['steps']]
     i_verify = next(i for i, n in enumerate(names) if '驗證部署請求' in n)
     i_gates = next(i for i, n in enumerate(names) if '完整本機 gates' in n)
@@ -349,7 +356,11 @@ def test_pages_deploy_actions_pinned_to_full_commit():
     text = _text('pages-deploy.yml')
     uses = re.findall(r'uses:\s*(\S+)', text)
     assert uses, 'workflow 應該有 actions'
+    local_reusable = './.github/workflows/postdeploy-verify.yml'
+    assert local_reusable in uses
     for use in uses:
+        if use == local_reusable:
+            continue
         assert re.match(r'^[^@\s]+@[0-9a-f]{40}$', use), use
     # GitHub refs API／官方 release 核實；全部 runtime=node24（唔可以回歸 Node.js 20 pin）
     expected = {
@@ -385,13 +396,27 @@ def test_daily_workflow_dispatches_pushed_commit_after_push():
     assert 'weekly-update' not in _text('daily-update.yml')
 
 
-def test_postdeploy_accepts_repository_dispatch_and_ancestor_check():
-    text = _text('postdeploy-verify.yml')
-    assert "github.event.workflow_run.event == 'repository_dispatch'" in text
-    assert "github.event_name == 'workflow_run'" in text
-    assert 'merge-base --is-ancestor HEAD origin/master' in text
-    assert 'fetch-depth: 0' in text
-    assert 'pages build and deployment' not in text
+def test_postdeploy_is_reusable_after_deploy_with_manual_fallback():
+    wf = _load('postdeploy-verify.yml')
+    on = wf[True] if True in wf else wf['on']
+    assert on['workflow_call']['inputs']['ref'] == {
+        'description': 'Pages 已部署嘅 exact commit',
+        'required': True,
+        'type': 'string',
+    }
+    assert 'workflow_dispatch' in on
+    assert 'workflow_run' not in on
+    verify = wf['jobs']['verify']
+    assert verify['if'] == "github.ref == 'refs/heads/master'"
+    checkout = next(s for s in verify['steps'] if s.get('name') == '取出指定部署 commit')
+    assert checkout['with']['ref'] == '${{ inputs.ref || github.ref }}'
+    assert checkout['with']['persist-credentials'] is False
+    assert checkout['with']['fetch-depth'] == 0
+    runs = '\n'.join(s.get('run', '') for s in verify['steps'])
+    assert 'merge-base --is-ancestor HEAD origin/master' in runs
+    assert 'git rev-parse "$INPUT_REF"^{commit}' in runs
+    assert 'postdeploy_check.py' in runs
+    assert 'workflow_run' not in _text('postdeploy-verify.yml')
 
 
 def test_dispatch_script_rejects_bad_inputs_and_posts_exact_payload():

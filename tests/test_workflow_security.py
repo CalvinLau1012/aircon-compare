@@ -57,6 +57,10 @@ PIN_COMMENTS = {
 # 所有 Linux jobs 固定嘅 runner（避免 ubuntu-latest 2026-10-19 自動轉 Ubuntu 26）
 RUNNER_PIN = 'ubuntu-24.04'
 
+# 同 repo reusable workflow 係 job-level call，唔係第三方 Action，毋須 @SHA；
+# 路徑須精確 allowlist，caller commit 自然固定被呼叫內容。
+LOCAL_REUSABLE = {'./.github/workflows/postdeploy-verify.yml'}
+
 
 def _all_uses(obj):
     out = []
@@ -109,6 +113,8 @@ def test_all_actions_pinned_to_full_commit():
         wf = yaml.safe_load(open(path, encoding='utf-8'))
         for use in _all_uses(wf):
             seen.add(use)
+            if use in LOCAL_REUSABLE:
+                continue
             assert re.match(r'^[^@\s]+@[0-9a-f]{40}$', use), (
                 f'{os.path.basename(path)} 有未固定嘅 action：{use}')
             assert use in PINNED, f'未知／未核實嘅 action pin：{use}'
@@ -127,6 +133,10 @@ def test_action_version_comments_match_verified_releases():
             if not m:
                 continue
             use, comment = m.group(1), (m.group(2) or '').strip()
+            if use in LOCAL_REUSABLE:
+                assert comment == '', (
+                    f'{os.path.basename(path)}:{lineno} local reusable 唔應冒充 release pin')
+                continue
             assert use in PIN_COMMENTS, (
                 f'{os.path.basename(path)}:{lineno} 未核實 action：{use}')
             assert comment == PIN_COMMENTS[use], (
@@ -145,6 +155,11 @@ def test_all_jobs_pin_ubuntu_24_04_not_moving_labels():
         wf = _load(name)
         for job_name, job in wf.get('jobs', {}).items():
             seen_jobs += 1
+            if 'uses' in job:
+                assert job['uses'] in LOCAL_REUSABLE, (
+                    f'{name} job {job_name} 有未核實 reusable workflow：{job["uses"]}')
+                assert 'runs-on' not in job, 'reusable workflow call job 唔可以自設 runner'
+                continue
             assert job.get('runs-on') == RUNNER_PIN, (
                 f'{name} job {job_name} runs-on={job.get("runs-on")!r}；'
                 f'必須固定 {RUNNER_PIN}')
@@ -222,6 +237,13 @@ def test_daily_biggo_uses_price_batch_state_exit_codes():
     biggo = text[text.index('價錢快照分批更新'):text.index('數據驗證（防壞數據上線）')]
     assert 'pb_rc' in biggo and 'exit 2' in biggo, 'meta 損毀要阻斷，唔可以當未啟動'
     assert 'from batch_utils import price_batch_active' not in biggo
+    # 非 force 路徑必須先讀本地狀態；未啟動時唔可以為 smoke 呼叫 BigGo。
+    assert biggo.index('python scripts/price_batch_state.py') < biggo.index(
+        'python fetch_biggo.py --smoke')
+    inactive = biggo[biggo.index('elif [ "$pb_rc" -eq 1 ]'):
+                     biggo.index('else', biggo.index('elif [ "$pb_rc" -eq 1 ]'))]
+    assert 'fetch_biggo.py' not in inactive
+    assert '未呼叫 BigGo API' in inactive
 
 
 def test_daily_official_receipt_artifact():
@@ -239,21 +261,33 @@ def test_daily_candidate_verification_before_commit():
 
 # ---------------------------------------------------------------- postdeploy
 
-def test_postdeploy_accepts_actions_pages_exact_sha_securely():
-    text = _text('postdeploy-verify.yml')
-    assert 'Pages 部署（Actions）' in text
-    assert "github.event.workflow_run.event == 'dynamic'" not in text
-    assert 'pages build and deployment' not in text
-    assert "github.event.workflow_run.event == 'push'" in text
-    assert 'head_branch' in text and "'master'" in text
-    assert 'repository.full_name == github.repository' in text
-    assert 'head_repository.full_name == github.repository' in text
-    assert 'contents: read' in text
-    assert 'persist-credentials: false' in text
-    assert "github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'" in text
-    assert 'workflow_run.head_sha' in text
-    dispatch_idx = text.index('workflow_dispatch：')
-    assert 'workflow_run.head_sha' not in text[dispatch_idx:dispatch_idx + 400]
+def test_postdeploy_reusable_is_chained_to_successful_pages_deploy_securely():
+    pages = _load('pages-deploy.yml')
+    call = pages['jobs']['postdeploy']
+    assert set(call['needs']) == {'build', 'deploy'}
+    assert "needs.build.outputs.mode == 'production'" in call['if']
+    assert "needs.deploy.result == 'success'" in call['if']
+    assert call['uses'] in LOCAL_REUSABLE
+    assert call['with']['ref'] == '${{ needs.build.outputs.commit }}'
+    assert call['permissions'] == {'contents': 'read'}
+
+    wf = _load('postdeploy-verify.yml')
+    on = wf[True] if True in wf else wf['on']
+    assert 'workflow_call' in on and 'workflow_dispatch' in on
+    assert 'workflow_run' not in on
+    assert wf['permissions'] == {'contents': 'read'}
+    verify = wf['jobs']['verify']
+    assert verify['if'] == "github.ref == 'refs/heads/master'"
+    checkout = next(s for s in verify['steps'] if s.get('name') == '取出指定部署 commit')
+    assert checkout['with'] == {
+        'ref': '${{ inputs.ref || github.ref }}',
+        'persist-credentials': False,
+        'fetch-depth': 0,
+    }
+    runs = '\n'.join(s.get('run', '') for s in verify['steps'])
+    assert 'git rev-parse "$INPUT_REF"^{commit}' in runs
+    assert 'merge-base --is-ancestor HEAD origin/master' in runs
+    assert 'postdeploy_check.py' in runs
 
 
 # ---------------------------------------------------------------- release-archive
