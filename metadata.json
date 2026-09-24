@@ -1,14 +1,14 @@
 {
   "schemaVersion": "1.0.0",
   "version": "1.2.9",
-  "build": "B20260923.103.1",
-  "commit": "f546e2fd52d961f489972a0732d114f22d4f7e68",
-  "deployTime": "2026-09-23T20:02:04Z",
-  "workflowRunId": "35911295151",
+  "build": "B20260924.106.1",
+  "commit": "5783f0d599469aa5ce3b912aa5d44f8454aebf5a",
+  "deployTime": "2026-09-24T01:24:33Z",
+  "workflowRunId": "35942488710",
   "deploymentType": "release",
   "datasetDate": "2026-09-24",
   "datasetDateBasis": "retrieval-date-fallback",
-  "datasetRetrievedAt": "2026-09-23T19:47:53Z",
+  "datasetRetrievedAt": "2026-09-24T01:24:28Z",
   "datasetSourceUrl": "https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50",
   "datasetSnapshotId": "emsd-2026-09-24-39892e41dc86",
   "datasetHash": "sha256:f362a542f8b46daa07f5af08cd49ed50ec231f6f9c1d82bb51ab39892e41dc86",
@@ -16,5 +16,5 @@
   "rawRecordCount": 1834,
   "registrationCount": 1834,
   "modelCount": 1773,
-  "releasePayloadHash": "sha256:3d21967a2bfe808c654d3c4168e109c8f15d44443aaaa950d11c298fa6f08f5d"
+  "releasePayloadHash": "sha256:8e2201a455313eec0e77bad50fdb041a2053a7f394e54128562ad23b26ecaa17"
 }
