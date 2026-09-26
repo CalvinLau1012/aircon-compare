@@ -108,6 +108,22 @@
   `payload.pdf_matches_metadata` failure，hash 同 `35951000298` 相同（online `8f13a3c3…`／
   rebuilt `d548e1d4…`）。故「docs-only ⇒ 零紅 run」只喺 pending 清零後成立。
 
+### 2026-09-26 修復：freshness 測試時間炸彈阻塞每日更新
+
+- **症狀**：daily workflow run `36183549274`（2026-09-25T20:04Z）嘅 `update` job 以
+  2 個 pytest 失敗告終（其餘 5xx passed）；若唔修，之後每次 scheduled daily 都會同樣
+  失敗，資料停止更新，最終觸發 72h 新鮮度警報。
+- **根因**：`tests/test_freshness_monitor.py` 嘅 `_now()` 硬編
+  `2026-09-22T12:00:00Z`，但 `freshness.main()`／`freshness_issue.main()` 內部用
+  **真實時鐘** 判斷新鮮度；固定 fixture 過咗 72h 之後就被判定 stale，令
+  `test_cli_writes_report_and_exit_codes` 同
+  `test_issue_main_dedup_and_recovery_close_once` 無故失敗（時間炸彈）。
+- **修法**：純函數測試保留固定 `_now()`（72h boundary 計算保持精確）；新增
+  `_wall_now()`（真實 UTC）並用於會行 CLI／issue 路徑嘅 fixtures。
+- **驗證**：本機重現原失敗（2 failed／12 passed）→ 修正後 14 passed；全套
+  `pytest tests/` 529 passed；governance extractor／validate_data／feature-check／
+  validate_metadata 全部 rc=0。未改產品版本、未改 `metadata.json`、未改資料。
+
 ## [1.2.9] - 2026-09-24
 
 > 發布事實（2026-09-24 回讀）：tag `v1.2.9` → commit

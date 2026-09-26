@@ -24,7 +24,19 @@ TOKEN_FORBIDDEN = 'TOKEN-MUST-NEVER-APPEAR-9f3a'
 
 
 def _now():
+    """固定測試時鐘（純函數測試用；令 72h boundary 計算精確、可重現）。"""
     return dt.datetime(2026, 9, 22, 12, 0, 0, tzinfo=dt.timezone.utc)
+
+
+def _wall_now():
+    """真實當前 UTC（只供會用真實時鐘嘅 CLI／issue 路徑測試用）。
+
+    教訓（2026-09-25 daily failure）：freshness.main()／freshness_issue.main() 內部用
+    真實時鐘判斷新鮮度，所以凡係餵入 CLI／issue 路徑嘅 fixture 必須相對於真實時間，
+    唔可以硬編日期 —— 否則 fixture 過咗 72h 就會被判 stale，測試無故失敗並阻塞每日更新。
+    純函數測試繼續用 _now() 保持精確。
+    """
+    return dt.datetime.now(dt.timezone.utc)
 
 
 def _meta(now, seconds):
@@ -99,14 +111,14 @@ def test_fresh_no_issue_is_noop():
 
 def test_cli_writes_report_and_exit_codes(tmp_path):
     meta = tmp_path / 'metadata.json'
-    meta.write_text(json.dumps(_meta(_now(), 73 * 3600)), encoding='utf-8')
+    meta.write_text(json.dumps(_meta(_wall_now(), 73 * 3600)), encoding='utf-8')
     report = tmp_path / 'report.json'
     rc = freshness.main(['--metadata-file', str(meta), '--report', str(report)])
     assert rc == 1, 'stale 必須非零'
     saved = json.load(open(report, encoding='utf-8'))
     assert saved['stale'] is True and saved['thresholdSeconds'] == 72 * 3600
     assert saved['category'] == 'stale_over_72h'
-    meta.write_text(json.dumps(_meta(_now(), 1)), encoding='utf-8')
+    meta.write_text(json.dumps(_meta(_wall_now(), 1)), encoding='utf-8')
     assert freshness.main(['--metadata-file', str(meta), '--report', str(report)]) == 0
 
 
@@ -126,7 +138,7 @@ def _run_issue_main(tmp_path, monkeypatch, metadata=None, postdeploy=None, fail_
     def fake_fetch(url, timeout=30):
         if fail_fetch:
             raise OSError('network down')
-        return metadata if metadata is not None else _meta(_now(), 60)
+        return metadata if metadata is not None else _meta(_wall_now(), 60)
 
     monkeypatch.setattr(freshness, 'fetch_metadata', fake_fetch)
     args = ['--metadata-url', 'https://example.invalid/metadata.json',
@@ -191,18 +203,18 @@ def test_issue_main_dedup_and_recovery_close_once(tmp_path, monkeypatch):
         return {'ok': True}
 
     # 第一次：stale → create
-    rc, _c, rep = _run_issue_main(tmp_path, monkeypatch, metadata=_meta(_now(), 73 * 3600), api=api)
+    rc, _c, rep = _run_issue_main(tmp_path, monkeypatch, metadata=_meta(_wall_now(), 73 * 3600), api=api)
     assert rc == 1 and rep['action'] == 'create'
     body = state['existing']['body']
     # 第二次：同一 stale（age 大咗）→ noop
-    rc, _c, rep = _run_issue_main(tmp_path, monkeypatch, metadata=_meta(_now(), 80 * 3600), api=api)
+    rc, _c, rep = _run_issue_main(tmp_path, monkeypatch, metadata=_meta(_wall_now(), 80 * 3600), api=api)
     assert rc == 1 and rep['action'] == 'noop'
     assert state['existing']['body'] == body
     # 第三次：fresh → close 一次
-    rc, _c, rep = _run_issue_main(tmp_path, monkeypatch, metadata=_meta(_now(), 60), api=api)
+    rc, _c, rep = _run_issue_main(tmp_path, monkeypatch, metadata=_meta(_wall_now(), 60), api=api)
     assert rc == 0 and rep['action'] == 'close'
     # 第四次：已經無 open issue → noop fresh
-    rc, _c, rep = _run_issue_main(tmp_path, monkeypatch, metadata=_meta(_now(), 60), api=api)
+    rc, _c, rep = _run_issue_main(tmp_path, monkeypatch, metadata=_meta(_wall_now(), 60), api=api)
     assert rc == 0 and rep['action'] == 'noop'
 
 
