@@ -5,6 +5,47 @@
 
 ## [Unreleased]
 
+### R3 雙 writer／EMSD 雙來源／BigGo atomic lease候選（未發布、未部署）
+
+> 2026-09-28 用戶明確批准嘅 R3 資料來源＋部署＋權限架構改變。只係本機候選（E2）：
+> 未 push、未開 PR、未改 Secrets／environment、未 deploy。
+
+- **兩個隔離 deployment writer**：GitHub Actions 繼續寫 GitHub Pages（workflow 架構、
+  權限、environment 不變）；私人 self-host 線改為 one-shot updater＋獨立 read-only
+  nginx web container，只寫自己 versioned release tree（`releases/<build>`＋atomic
+  `current` symlink），三個 isolated named volumes（production-data／test-data／
+  raw-evidence）。
+- **EMSD 雙來源 fail-closed**：官方 open-data CSV（`meels_rac.csv`）經確定性正規化後
+  做主來源，現有逐頁 energy-label 結果做獨立 cross-check；registration key 集合、
+  品牌／canonical 型號、受治理欄位、計數同 raw hash 必須一致，否則唔覆寫生產 CSV，
+  寫脫敏 diff report（repo 外）並保留上一資料集。兩個來源 raw bytes 以獨立
+  `sourceKind` namespace 入私人 raw archive；公開收據新增 `dualSource` 區塊
+  （metadata Schema 不變）。
+- **BigGo 共享憑證自動 atomic lease**：新 generic coordinator client（只靠環境／Secrets，
+  無私人 repo 識別）；GitHub Contents API blob SHA CAS；lease 45 分鐘、每 5 分鐘 renew；
+  completed cycle+stage idempotent；任何呼叫但 snapshot 未確定 → `needs_review` 且禁止
+  自動重跑；本地 cap 1 smoke＋2×queued；smoke 最多一個 search request（8 秒 timeout）；
+  正常 search 最多 2 attempts，403／429 唔即刻 retry（honour Retry-After，否則項目自身
+  48h fallback，唔係 provider quota window）；provider 官方 quota／window 保持 UNKNOWN。
+- **私人 server 唯一 scheduler**：host systemd timer 明確 `Asia/Hong_Kong`、每日 00:45、
+  `Persistent=true`、`RandomizedDelaySec=0`；container cron／entrypoint 移除；test profile
+  獨立 port／network／volume 並預設阻擋 `api.biggo.com`。
+- **本機證據（E2）**：公開 570 non-browser passed＋12 browser smoke、feature-check
+  15 項／18 節點、governance／validate_data／validate_metadata／diff-check 全 rc=0；
+  私人 focused 14 passed／1 skipped、sandbox/restore PASS=117 FAIL=0、SHA256SUMS
+  35 檔 deterministic 驗證。詳見 `docs/STATUS.md` §18、`docs/DECISIONS.md` D26、
+  `需求摘要.md` 2026-09-28 節。
+- **後續返修（2026-09-28，仍是未發布候選）**：force intent 移除任何 coordinator bypass
+  （workflow 唔再直接 `--force-batch`，改經 runner；`fetch_biggo.py` 全部 CLI 網絡入口
+  exit 2 fail closed）；runner 加真正 `LeaseHeartbeat`（smoke／batch／publication 全程、
+  45 分鐘 lease、5 分鐘 renew、lease lost → should_abort + needs_review、`finally`
+  保證停止）；Retry-After 同時支援 delta-seconds 同 HTTP-date（無法解析只用項目 48h
+  fallback，唔猜 provider quota）。舊文檔「批次保持 5 次 retry」記述由本條目及
+  `需求摘要.md` 2026-09-28 返修節取代（歷史原文保留）。
+- **邊界**：零真實 BigGo 請求；EMSD controlled live 雙來源比對因本機環境 TLS 被阻而
+  未執行；未 push／PR／deploy／tag／Release，未改任何生產生成物；本返修亦冇再執行
+  sudo／apt／system package／server／production／SSH 動作。
+
 ### Node.js 24 官方 Actions／bounded smoke／ubuntu-24.04 runner hotfix（未發布）
 
 > 2026-09-24 使用者要求：修復 GitHub Actions deprecation 警告，但唔可以為消除警告

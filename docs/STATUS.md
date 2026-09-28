@@ -667,3 +667,98 @@ D23 的 inactive 零 BigGo API 路徑已由測試、machine acceptance 與 trust
     改動內容無關。
 - 因此「docs-only ⇒ 零紅 run」只喺 pending 狀態清零（上一次 daily 之後、md 未再改）先成立。
 - 復原仍然係下一次 scheduled daily 全量重生 `index.html`＋PDF＋metadata。
+
+## 18. 2026-09-28 R3 雙 writer 候選（E2；未 push、未 PR、未 deploy）
+
+> 本節只追加；§1–§17 保留當時快照語義。以下全部係本機候選（E2）證據，唔代表
+> trusted CI（E3）或任何部署（E4）。
+
+### 18.1 分支與 commit
+
+| Repo | 分支 | commit | 內容 |
+| --- | --- | --- | --- |
+| 公開 app repo | `codex/dual-writer-coordination` | `b2de77b` | EMSD 雙來源（B） |
+| 公開 app repo | `codex/dual-writer-coordination` | `08cc79c` | BigGo coordinator／stage runner（C） |
+| 私人 self-host repo | `codex/dual-writer-server` | `4925773` | one-shot updater＋read-only web＋systemd（D） |
+| 公開 app repo | `codex/dual-writer-coordination` | 本 §18／D26／CHANGELOG／需求摘要 docs commit（後續） | 文檔（E） |
+
+### 18.2 本機驗證實數（OBSERVED / E2）
+
+| 命令 | 結果 |
+| --- | --- |
+| 公開 `pytest tests/ -q --ignore=tests/browser_smoke.py`（.venv，Windows） | 570 passed、0 failed、1 expected warning |
+| 公開 `pytest tests/browser_smoke.py -q` | 12 passed |
+| 公開 `scripts/feature-check.py --run-tests` | 15 required／18 nodes 全 passed、報告 rc=0 |
+| 公開 `scripts/extract_governance.py` | 6 規範區塊通過、rc=0 |
+| 公開 `validate_data.py` / `scripts/validate_metadata.py` | 各 rc=0 |
+| 公開 `git diff --check` | rc=0 |
+| 公開 focused BigGo／EMSD 測試 | `test_emsd_dual_source`＋`test_biggo_coordinator`＋`test_biggo_stage_runner`＋`test_biggo_smoke`＋`test_biggo_batch_semantics` 全 pass（總計 119 節點；實數見各 commit 前執行） |
+| 私人 focused `pytest tests-private/ -q` | 14 passed、1 skipped（本機冇 docker，compose config 檢查按設計 skip） |
+| 私人 `bash release/sandbox/run_sandbox_tests.sh`（配 `AIRCON_APP_SOURCE_DIR`） | PASS=117 FAIL=0；s12 因本機冇 rsync skip（伺服器上會用真 rsync 跑） |
+| 私人 `release/sandbox/test_restore_drill.sh` | 16 項斷言全通過、rc=0 |
+| 私人 `release/sandbox/test_sync_code.sh` | exit 77（本機冇 rsync；設計上 skip） |
+| 私人 `bash tools/verify_package.sh` | 35 檔案 SHA256SUMS 全部通過（generator 排除 cache，deterministic） |
+| `bash -n`（私人新 shell scripts） | 全部通過；本機冇 shellcheck，未執行 |
+| `docker compose config` | 本機冇 docker，未執行（有 docker 環境會自動跑，否則 skip） |
+
+### 18.3 測試契約新增（無降級）
+
+- `tests/test_emsd_dual_source.py`：正規化／一致性／missing source／missing page／
+  governed field mismatch／schema 唔明／HTTP retry／403 429 唔 retry／conditional 304／
+  integration fail-closed／namespace 分離。
+- `tests/test_biggo_coordinator.py`：CAS 409 takeover、單 winner、renew 5 分鐘、
+  expiry takeover、completed idempotent、needs_review 禁止重跑、local cap、
+  quota 80%、Retry-After／項目 48h fallback、safe header allowlist、snapshot
+  publish／import hash＋cycle＋stage＋schema 驗證、state schema。
+- `tests/test_biggo_stage_runner.py`：inactive 零 token／search／coordinator mutation、
+  缺配置保留快照零呼叫、winner／loser／idempotent／needs_review／cooldown／budget、
+  smoke 後 calls→needs_review、publish-uncertain、meta 損毀 rc=2。
+- 更新 `test_biggo_smoke.py`／`test_biggo_batch_semantics.py`／`test_workflow_security.py`／
+  `test_receipt_metadata.py` 至 approved C 語義（2 attempts／403 429 無即時 retry／
+  一個 search request smoke／runner 入口），冇刪除或軟化任何斷言。
+
+### 18.4 邊界與 UNKNOWN
+
+- 未 push、未開 PR、未 merge；未觸發 daily／Pages；未改 GitHub Secrets／environment；
+  未 tag／Release；未部署、未 SSH 私人 server。
+- **零真實 BigGo 請求**：所有 BigGo 測試用 fake／mock；`AIRCON_BIGGO_TEST_MODE=1`
+  network guard 已測試；workflow 的 coordinator secret 未配置（值 absent）。
+- **一件 controlled live EMSD 雙來源比對**按批准流程喺離線測試後嘗試一次；本機環境
+  對 `www.emsd.gov.hk` 嘅 TLS 連線即時失敗（Windows Python `SSL:
+  UNEXPECTED_EOF_WHILE_READING`、WSL curl `TLS connect error ... unexpected eof`），
+  兩個來源都未取得任何 bytes，故冇 live 計數／hash 可報告；輸出目錄
+  `%TEMP%\aircon-emsd-live-dual-20260928` 只含未執行到底嘅腳本。所有 offline fixture
+  測試已通過。
+- Provider 官方 BigGo quota／window 維持 UNKNOWN；`providerQuotaLimit`／
+  `providerWindowEnd` 未有真實證據前唔會配置。
+- 未執行／受阻嘅 production-only 步驟：私人 server Docker canary、systemd 安裝同
+  timer enable、首次自然 active-stage lease 競爭證明、trusted CI（E3）同任何 E4。
+
+### 18.5 2026-09-28 後續返修（追加；E2）
+
+- **Repair #1（force 無 bypass）**：workflow 唔再呼叫 `fetch_biggo.py --force-batch`；
+  force intent 經 `AIRCON_BIGGO_FORCE_STAGE` 交 `scripts/biggo_stage_runner.py`，一樣
+  acquire lease／budget／idempotency／needs_review／publish。`fetch_biggo.py` 所有 CLI
+  網絡入口（`--smoke`、`--price-batch`、`--force-batch`、單型號）exit 2 fail closed；
+  `tests/test_biggo_cli_gate.py` 用 subprocess 驗證四個入口都唔會發任何呼叫。
+- **Repair #2（真正 heartbeat）**：`LeaseHeartbeat` 喺 smoke、batch、publication 全程
+  背景 renew（45 分鐘 lease；`maybe_renew()` 5 分鐘節流）；lease 失效 → `should_abort`
+  令 batch 停止、唔 publish、標 needs_review；`finally` 保證 stop＋join。
+  `tests/test_biggo_stage_runner.py` 以注入時鐘／fake client 驗證重複 renew、batch 中途
+  lease loss、smoke 中途 lease loss、異常路徑、返回後冇 orphan heartbeat。
+- **Repair #3（2 attempts 語義）**：`fetch_biggo.py` 內文註釋改為 approved C（最多 2
+  attempts、403／429 無即時 retry）；舊「5 次 retry」文檔記述由 `需求摘要.md`
+  2026-09-28 返修節、D26、本節 §18.5 同 CHANGELOG 新條目明確取代（歷史原文保留）。
+- **Repair #4（Retry-After 兩種格式）**：`parse_retry_after` 支援 delta-seconds 同
+  HTTP-date；無法解析只用項目 48h fallback（basis `project-48h`），唔推斷 provider
+  quota reset；`tests/test_biggo_coordinator.py` 已加測試。
+- **本輪實數（OBSERVED / E2）**：公開完整 `pytest tests/ -q` = **592 passed**（含
+  12 browser smoke）；聚焦 BigGo／workflow 組合 **107 passed**；`extract_governance`
+  rc=0；`feature-check --run-tests` 15 項／18 節點 passed rc=0；`validate_data` rc=0；
+  `validate_metadata` rc=0；`check_public_privacy --mode worktree` 0 命中；`git diff
+  --check` rc=0；machine acceptance 7/7 gates rc=0（報告在 repo 外）。
+- **零真實 BigGo 請求**：所有測試用 fake／mock／subprocess fail-closed；
+  `AIRCON_BIGGO_TEST_MODE=1` guard 仍然有效。
+- **未變**：EMSD controlled live 雙來源比對仍因本機環境 TLS（`UNEXPECTED_EOF_WHILE_READING`）
+  未能執行；未 push／PR／deploy／tag／Release；未改 Secrets／environment；未 SSH 或操作
+  任何 production server。

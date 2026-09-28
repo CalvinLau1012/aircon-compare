@@ -516,3 +516,84 @@
     success、GATE-08 failure，hash 對同 35951000298 一樣（online `8f13a3c3…`／rebuilt
     `d548e1d4…`）。呢個係 pending 狀態嘅性質，唔係新增改動造成。
   - 回滾：如日後改回每次重生，刪除本約定並更新 AGENTS 規則 9 即可。
+
+## D26 · R3 雙 writer／EMSD 雙來源／BigGo 自動 atomic lease／私人 00:45 timer
+
+- **日期**：2026-09-28
+- **狀態**：已實作候選（本機 E2）；未 push、未開 PR、未 deploy；交獨立驗收後決定
+- **背景**：用戶明確批准 R3 架構改變（資料來源＋部署＋權限）：(1) GitHub Pages 同私人
+  自架 server 兩個 writer 共用同一套 BigGo 憑證；(2) EMSD 官方開放資料多了一個穩定
+  open-data CSV 來源，需要主來源＋獨立核對；(3) 私人 server 排程仍需唯一、可審計。
+  先前 v1.2.9 只由 GitHub Actions 寫 Pages；私人 server 舊設計係單一 cron+nginx 容器。
+- **選項**：
+  - A：維持單 writer、單一 EMSD 分頁來源、人手控制 BigGo 呼叫——否決：兩個 writer 之下
+    冇 lease 會重複耗用同一憑證，亦冇 API 級事實去支撐自動化；
+  - B：兩個 writer 各自獨立呼叫 BigGo；EMSD 只用一個來源；私人 server 保留容器 cron——
+    否決：重複呼叫同一 provider、冇 cross-check、兩個 scheduler 不可審計；
+  - C（採用）：兩個 writer 隔離寫自己 namespace；EMSD open-data CSV primary＋逐頁
+    cross-check；BigGo 用 GitHub Contents API blob SHA CAS 自動 lease；私人 server 由
+    host systemd 00:45 HKT timer 唯一排程，one-shot updater＋read-only nginx。
+- **決策**：採 C。實作：
+  1. **兩個 writer**：GitHub Actions 維持現有 Pages 路徑；私人 repo 新增 one-shot
+     updater（`docker/run-update.sh`＋`docker/lib/release_tree.sh`）、獨立
+     `aircon-web`（read-only）、三個 isolated named volumes（production-data、
+     test-data、raw-evidence）、versioned release＋atomic `current` symlink。
+  2. **EMSD 雙來源**：`emsd_dual_source.py` 做確定性 header 映射／欄位正規化／
+     registration-key＋governed-field 比較；`fetch_emsd.py` 只在兩個來源完整且一致時
+     才提交 CSV／收據；mismatch 寫脫敏 diff report（repo 外）並保留上一生產資料集；
+     兩個來源 raw bytes 以 `sourceKind` namespace 入私人 raw archive；公開收據加
+     `dualSource` 區塊（metadata Schema 不變，`receipt_facts` 只接受 verified 雙來源
+     receipt）。
+  3. **BigGo 自動 atomic lease**：`scripts/biggo_coordinator.py`（generic、只靠環境／
+     Secrets；GitHub Contents API blob SHA CAS；lease 45 分鐘、每 5 分鐘 renew；
+     completed cycle+stage idempotent；needs_review 禁止自動重跑；本地 cap
+     1+2×queued；factual quota 80% cap；安全 rate-limit 證據 allowlist）；
+     `scripts/biggo_stage_runner.py`（本地 stage 先決；inactive 零 token／search／
+     coordinator mutation；缺 coordinator 配置安全跳過保留快照；winner smoke→batch→
+     publish；任何呼叫但 snapshot 未確定→needs_review）；`fetch_biggo.py` 改為每 model
+     最多 2 attempts，403／429 唔即刻 retry（honour Retry-After，否則項目自身 48h
+     fallback），smoke 最多一個 search request。
+  4. **私人排程**：`systemd/aircon-update.timer` 明確 `Asia/Hong_Kong`、00:45、
+     `Persistent=true`、`RandomizedDelaySec=0`；容器 cron／entrypoint 已刪除；
+     test compose 有獨立 port／network／volume 並預設阻擋 `api.biggo.com`。
+- **原因**：CAS lease 係 GitHub Contents API 已有嘅原子原語，唔需要另建服務；本地
+  stage 先決確保兩個 writer 日常零重複呼叫；雙來源 fail-closed 保留「EMSD 為唯一權威」
+  同「唔可以帶住唔一致資料上線」嘅既有契約；00:45 HKT host timer 令私人線只有一個
+  可審計 scheduler。
+- **後果（分類）**：
+  - `REQUIREMENT`：15 項 required 功能、Metadata Schema、成功標準、所有 fail-closed
+    門禁、公開 attribution、最小權限全部不變；48h 冷卻一律描述為項目自身政策，
+    **唔係** provider quota window；官方 provider quota／window 保持 UNKNOWN。
+  - `OBSERVED / E2`：公開 repo 本機 pytest 570 passed（非瀏覽器）＋12 browser smoke；
+    feature-check 15 項／18 節點 passed；governance extract／validate_data／
+    validate_metadata／git diff --check 全部 rc=0。私人 repo focused tests 14 passed／
+    1 skipped（本機冇 docker）；sandbox/restore PASS=117 FAIL=0（s12 因本機冇 rsync
+    skip）。實數詳見 `docs/STATUS.md` §18。
+  - `UNKNOWN`：trusted CI（E3）、任何 deployment／E4、首次自然 active-stage lease
+    競爭、首次雙來源 live 一致性（本機環境 TLS 被阻，未能執行 controlled live fetch）。
+  - `BOUNDARY`：冇 push／PR／deploy／tag／Release；冇改 GitHub Secrets／environment；
+    冇 SSH 生產 server；冇真實 BigGo API 呼叫；冇改 `metadata.json`／`index.html`／
+    committed PDF／EMSD CSV 等生產生成物；冇降低任何門禁。
+- **回滾**：兩個分支可 `git revert`／直接丟棄（`codex/dual-writer-coordination`、
+  private `codex/dual-writer-server`）。公開 workflow 可回復舊 BigGo step；私人 repo
+  可回復舊 `run-update.sh`＋cron 設計。已發布 Pages metadata 與線上狀態不受影響。
+
+### D26 · 2026-09-28 後續返修（追加；不刪改上文）
+
+- **force 亦要 coordinator lease**：移除 `.github/workflows/daily-update.yml` 直接呼叫
+  `fetch_biggo.py --force-batch` 嘅 bypass；force intent 改為 `AIRCON_BIGGO_FORCE_STAGE`
+  經 `scripts/biggo_stage_runner.py` 執行，同樣要 CAS acquire lease、cooldown、budget、
+  idempotency、needs_review、publication 檢查。`fetch_biggo.py` 全部 CLI 網絡入口
+  （`--smoke`／`--price-batch`／`--force-batch`／單型號）一律 exit 2 fail closed，冇
+  繞過 lease 嘅路徑。
+- **實際 heartbeat**：`LeaseHeartbeat` 喺 smoke、batch（`run_price_batch`／
+  `run_force_batch` 嘅 `should_abort` callback）、publication 全程運行；45 分鐘 lease、
+  `maybe_renew()` 每 5 分鐘節流；lease 失效即停止提交新工作、唔發布，`finally` 保證
+  stop＋join（停唔切當 lease lost），冇 orphan thread。
+- **Retry-After 兩種標準格式**：`parse_retry_after` 同時支援 delta-seconds 同 HTTP-date；
+  無法解析只用項目自身 48h fallback（basis `project-48h`），唔會推斷 provider quota reset。
+- **語義取代**：舊文檔「批次保持完整 5 次 retry」記述由 D26 取代；approved C 為每 model
+  最多 2 attempts、403／429 無即時 retry。
+- **證據（E2）**：見 `docs/STATUS.md` §18.5；私人文檔 runbook 同步追加返修節。
+- **邊界**：本返修冇執行 sudo／apt／system package／server／production／SSH／deploy／push／
+  真實 BigGo；公開同私人 server 兩條線保持分離。
