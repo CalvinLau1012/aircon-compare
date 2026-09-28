@@ -88,6 +88,33 @@ def _record_response_evidence(status, retry_after=None):
         LAST_RATE_LIMIT_EVIDENCE['retryAfter'] = str(retry_after)[:128]
 
 
+def _retry_after_seconds(value, now=None):
+    """Retry-After → 秒數 int／None。支持 delta-seconds 同 HTTP-date 兩種標準寫法。
+
+    唔會推斷 provider 嘅 quota reset；只係 honour 來源實際提供嘅值。
+    """
+    if value is None:
+        return None
+    text = str(value).strip()
+    if text.isdigit():
+        return int(text)
+    try:
+        from email.utils import parsedate_to_datetime
+        target = parsedate_to_datetime(text)
+    except (TypeError, ValueError):
+        return None
+    if target is None:
+        return None
+    if target.tzinfo is None:
+        import datetime as _dt
+        target = target.replace(tzinfo=_dt.timezone.utc)
+    base = now if now is not None else time.time()
+    try:
+        return max(0, int(target.timestamp() - float(base)))
+    except (OverflowError, OSError, ValueError):
+        return None
+
+
 def _get_access_token(timeout=20):
     """用 BIGGO_CLIENT_ID/SECRET 攞 access_token（免費官方認證；冇配置就 None = 免登入 fallback）
 
@@ -201,7 +228,7 @@ def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=DEFAULT_MAX_ATTEMPTS, 
             if e.code in (403, 429):
                 _record_response_evidence(e.code, retry_after)
                 if use_cooldown and retry_after:
-                    wait = int(retry_after) if str(retry_after).strip().isdigit() else 0
+                    wait = _retry_after_seconds(retry_after, now=time.time()) or 0
                     if wait > 0:
                         print(f'  ⏳ {e.code} 限流：honour Retry-After {wait}s（{model}）；'
                               f'本 model 唔會即刻 retry', flush=True)
@@ -301,15 +328,23 @@ def _brand_of(brand_lookup):
     return lambda m: brand_lookup.get(norm_model(m)) or 'UNKNOWN'
 
 
-def run_force_batch(limit=None):
-    """一次性強行全量批次（測試用）：唔分 7 日，一次過查晒全部非黑名單型號
+def run_force_batch(limit=None, *, smoke=True, should_abort=None, exit_on_fail=True):
+    """一次性強行全量批次（受 coordinator 約束嘅 force intent）：唔分 7 日，一次過查晒全部非黑名單型號
     - 淘汰確認：乾淨無報價計 misses（閾值 2 先自動黑名單）；網絡錯誤唔計
     - 核心 29 + 官方網店價型號受保護，唔會淘汰
     - 唔推進每月批次進度；只記 meta['last_force_batch'] 審計痕跡
+    - `smoke=True`（預設）先做 bounded smoke；coordinated runner 已做過 smoke 會傳
+      `smoke=False`，確保 per-stage 最多一個 smoke request。
+    - `should_abort`（optional callable）係 coordinator lease heartbeat 接口：回 True
+      即停止提交新工作並以 aborted 收尾（唔會聲稱完成）。
+    - `exit_on_fail=True`（預設，CLI 舊行為）失敗即 sys.exit；runner 傳 False 取回
+      status 由 coordinator 記 needs_review／安全收手。
     """
-    if not run_smoke():
+    if smoke and not run_smoke():
         print('❌ 強行批次中止：smoke 唔過（BigGo API 對當前 IP 唔友好）')
-        sys.exit(1)
+        if exit_on_fail:
+            sys.exit(1)
+        return {'status': 'smoke-failed'}
 
     brand_lookup = load_brand_lookup()
     all_models = load_models()
@@ -338,6 +373,10 @@ def run_force_batch(limit=None):
         futures = {ex.submit(_search_tri_state, m): m for m in todo}
         done_count = 0
         for fut in as_completed(futures):
+            if should_abort is not None and should_abort():
+                print('⚠️ coordinator lease 已失效：中止 force batch（唔會聲稱完成）', flush=True)
+                aborted = True
+                break
             model, result, ok = fut.result()
             if result:
                 results[model] = result
@@ -373,7 +412,10 @@ def run_force_batch(limit=None):
 
     if aborted:
         print(f'  （中止前已得價 {len(got)} · 無報價 {len(clean_miss)} · 錯誤 {len(net_err)}）', flush=True)
-        sys.exit(1)
+        if exit_on_fail:
+            sys.exit(1)
+        return {'status': 'aborted', 'got': len(got), 'cleanMiss': len(clean_miss),
+                'netErrors': len(net_err)}
 
     # 淘汰確認（閾值 2；網絡錯誤唔計；受保護唔淘汰；batch_id 防同一批重跑重複計 miss）
     rec = [(m, True) for m in got] + [(m, False) for m in clean_miss]
@@ -500,7 +542,7 @@ def review_blacklist_batch(idx):
         print(f'  ♻️ 復活清單（前 30）：{revived[:30]}')
 
 
-def run_price_batch():
+def run_price_batch(should_abort=None):
     """執行當日 BigGo 價錢批次（每月一次、分 7 日；切片/推進由 batch_utils 共用）
 
     - 黑名單型號完全排除（復核由 review_blacklist_batch 小額輪轉處理）
@@ -510,6 +552,8 @@ def run_price_batch():
     - 增量寫入 biggo_prices.json：每個寫入 entry 都係真實抓到嘅證據；部分成功會保留，
       唔會聲稱整批「全保留原樣」。批次進度／淘汰統計要整批乾淨才推進。
     - 淘汰確認用 batch_id 去重（同一批重跑唔重複計 miss）；並發 2（D3）
+    - `should_abort`（optional callable）係 coordinator lease heartbeat 接口：回 True
+      即停止提交新工作、cancel 未開始 futures，以 aborted 收尾。
 
     回傳 status dict（status: not-active／cooldown-skip／aborted／partial-net-errors／completed）。
     """
@@ -539,11 +583,18 @@ def run_price_batch():
     got, clean_miss, net_err = [], [], []
     consec_fail = 0
     aborted = False
+    lease_lost = False
     t0 = time.time()
-    with ThreadPoolExecutor(max_workers=2) as ex:
+    ex = ThreadPoolExecutor(max_workers=2)
+    try:
         futures = {ex.submit(_search_tri_state, m): m for m in todo}
         done_count = 0
         for fut in as_completed(futures):
+            if should_abort is not None and should_abort():
+                print('⚠️ coordinator lease 已失效：中止本批（唔會推進進度）', flush=True)
+                aborted = True
+                lease_lost = True
+                break
             m = futures[fut]
             try:
                 model, result, ok = fut.result()
@@ -569,6 +620,8 @@ def run_price_batch():
                 print('⚠️ 連續 40 個失敗，疑似被限流，中止本批', flush=True)
                 aborted = True
                 break
+    finally:
+        ex.shutdown(wait=False, cancel_futures=True)
 
     # 最終寫入：partial 成功嘅真實報價保留（唔係「全保留原樣」；進度唔會前進）
     with open(OUT_PATH, 'w', encoding='utf-8') as f:
@@ -584,7 +637,8 @@ def run_price_batch():
         save_meta(meta)
         print(f'❌ 本批中止（網絡／限流）：idx 未推進，聽日重試；已得價 {len(got)} 會保留')
         return {'status': 'aborted', 'idx': idx, 'got': len(got),
-                'cleanMiss': len(clean_miss), 'netErrors': len(net_err), 'advanced': False}
+                'cleanMiss': len(clean_miss), 'netErrors': len(net_err),
+                'advanced': False, 'leaseLost': lease_lost}
 
     # 淘汰確認（三態；同一 batch_id 重跑唔重複計 miss）——partial 都記錄真實證據
     rec = [(m, True) for m in got] + [(m, False) for m in clean_miss]
@@ -647,7 +701,8 @@ def _smoke_probe(model):
 
     有界語義：單次 attempt、timeout=SMOKE_TIMEOUT（約 8 秒）、唔等全局冷卻、
     唔限速等待、唔喺錯誤後 sleep；`_get_access_token`／`_api_search` 原本批次
-    預設（5 次 retry、冷卻、限速）完全不變，只有 smoke 傳呢組參數。
+    預設（2 attempts、403／429 唔即刻 retry、冷卻、限速）維持 approved C 語義；
+    只有 smoke 傳呢組有界參數。公眾文檔舊「5 次 retry」記述已由 2026-09-28 新條目取代。
 
     限制（唔虛構）：`_api_search` 目前將 429／403、網絡例外同認證失敗一律回
     reachable=False，所以呢度唔會細分原因，只如實報 'unreachable'；
@@ -705,21 +760,17 @@ def run_smoke(candidates=None):
 if __name__ == '__main__':
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-    if '--smoke' in sys.argv:
-        sys.exit(0 if run_smoke() else 1)
-    if '--force-batch' in sys.argv:
-        i = sys.argv.index('--force-batch')
-        lim = None
-        if len(sys.argv) > i + 1 and sys.argv[i + 1].isdigit():
-            lim = int(sys.argv[i + 1])
-        run_force_batch(lim)
-    elif '--price-batch' in sys.argv:
-        status = run_price_batch()
-        if isinstance(status, dict) and status.get('status') == 'aborted':
-            sys.exit(1)
-    elif len(sys.argv) > 1:
-        # 單型號測試：python fetch_biggo.py RA-10RF
-        for m in sys.argv[1:]:
-            print(m, '→', fetch_biggo_price(m))
-    else:
-        print('用法：python fetch_biggo.py --smoke  /  --price-batch  /  --force-batch [N]  /  <型號>')
+    # Repair #1：所有會共用 BigGo 憑證嘅 CLI 網絡入口都必須經 coordinator runner
+    # （scripts/biggo_stage_runner.py）取 lease；呢度一律 fail closed，冇繞過路徑。
+    if any(arg in ('--smoke', '--price-batch', '--force-batch') for arg in sys.argv[1:]):
+        print('❌ BigGo 網絡動作必須經 coordinator lease：'
+              'python scripts/biggo_stage_runner.py\n'
+              '   force intent 用環境變數 AIRCON_BIGGO_FORCE_STAGE=1；'
+              '本 CLI 唔提供繞過 lease 嘅路徑（fail closed）。', file=sys.stderr)
+        sys.exit(2)
+    if len(sys.argv) > 1:
+        print('❌ 單型號查詢同樣共用 BigGo 憑證，必須經 coordinator runner；'
+              '本 CLI 唔提供繞過 lease 嘅路徑（fail closed）。', file=sys.stderr)
+        sys.exit(2)
+    print('用法：python scripts/biggo_stage_runner.py（coordinator-gated）；'
+          '本模組函式由 runner import 使用，唔可以直接做網絡動作。')

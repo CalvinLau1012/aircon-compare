@@ -203,16 +203,19 @@ jobs:
 
       # ============ 第 3 步：價錢快照批次（BigGo 官方 JSON API；approved C coordinator-gated） ============
       # 2026-08-26：改用官方 API api.biggo.com（同被限流嘅網頁版 biggo.hk 唔同 host）
-      # D23＋C：先由 runner 讀本地批次階段；inactive 零 BigGo／coordinator 動作。
-      # active 但 coordinator secret 未配置 → 安全跳過、保留快照、零重複呼叫。
-      - name: 價錢快照分批更新（BigGo API · coordinator lease；active 才用）
+      # Repair #1：呢一步**冇任何**繞過 coordinator lease 嘅路徑。force intent 只可以
+      # 改變處理嘅型號集合（runner 內 coordinated force），一樣要 acquire lease、過
+      # cooldown／budget／idempotency／needs_review／publication 檢查。
+      - name: 價錢快照分批更新（BigGo API · coordinator lease；force 亦要 lease）
         env:
           BIGGO_CLIENT_ID: ${{ secrets.BIGGO_CLIENT_ID }}
           BIGGO_CLIENT_SECRET: ${{ secrets.BIGGO_CLIENT_SECRET }}
-          FORCE_PRICE_BATCH: ${{ github.event.inputs.force_price_batch }}
-          # approved design C：共享憑證自動 atomic lease。呢组 secret 未配置時，active 階段
-          # 只會安全跳過（保留現有快照、零 BigGo 呼叫）；private coordinator 識別只可以
-          # 放 Secrets，唔准寫入 repo／Variables／log。
+          # force intent（人手明確一次性）：唔可以直接呼叫 fetch_biggo.py --force-batch；
+          # 只可以交由 runner 喺 coordinator lease 之下執行。
+          AIRCON_BIGGO_FORCE_STAGE: ${{ github.event.inputs.force_price_batch }}
+          # approved design C：共享憑證自動 atomic lease。呢组 secret 未配置時，active
+          # 階段只會安全跳過（保留現有快照、零 BigGo 呼叫）；private coordinator 識別
+          # 只可以放 Secrets，唔准寫入 repo／Variables／log。
           AIRCON_BIGGO_COORDINATOR_REPO: ${{ secrets.AIRCON_BIGGO_COORDINATOR_REPO }}
           AIRCON_BIGGO_COORDINATOR_TOKEN: ${{ secrets.AIRCON_BIGGO_COORDINATOR_TOKEN }}
           AIRCON_BIGGO_COORDINATOR_BRANCH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_BRANCH }}
@@ -223,21 +226,17 @@ jobs:
           AIRCON_BIGGO_PROVIDER_WINDOW_END: ${{ secrets.AIRCON_BIGGO_PROVIDER_WINDOW_END }}
         run: |
           set +e
-          mode="skip-not-active"; rc=0
-          if [ "$FORCE_PRICE_BATCH" = "true" ]; then
-            echo "🚀 強行全量批次（維護者明確一次性 override）：腳本內部會先 smoke，再全部型號一次過 + 淘汰確認"
-            python fetch_biggo.py --force-batch
-            rc=$?; mode="force-batch"
-          else
-            # coordinator 階段 runner：inactive → 零 BigGo；active 缺配置 → 安全跳過。
-            python scripts/biggo_stage_runner.py
-            rc=$?; mode="coordinator-gated"
-          fi
+          mode="coordinator-gated"; rc=0
+          # 唯一入口：inactive → 零 BigGo；active／force → CAS lease → budget →
+          # bounded smoke → batch → schema-validated publish。
+          python scripts/biggo_stage_runner.py
+          rc=$?
           set -e
           {
             echo "### BigGo 價錢快照"
             echo "- mode: $mode"
             echo "- exit: $rc"
+            echo "- force intent: ${AIRCON_BIGGO_FORCE_STAGE:-false}（同樣經 coordinator lease，冇繞過路徑）"
             if [ "$rc" -eq 0 ]; then
               echo "- 結果：安全完成或安全跳過（skip 唔等於抓取成功；快照以 coordinator／本地狀態為準）"
             fi

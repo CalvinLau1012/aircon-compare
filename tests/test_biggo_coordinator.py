@@ -320,3 +320,20 @@ def test_config_from_env_requires_no_hardcoded_private_identifiers():
     for line in source.splitlines():
         if 'github.com/' in line:
             assert 'api.github.com' in line, f'只准 GitHub API host：{line.strip()}'
+
+
+def test_retry_after_parses_delta_seconds_and_http_date():
+    import email.utils
+    now = 1_700_000_000
+    assert coord.parse_retry_after('120', now=now) == 120
+    http_date = email.utils.formatdate(now + 300, usegmt=True)
+    assert coord.parse_retry_after(http_date, now=now) == 300
+    assert coord.parse_retry_after('not-a-date', now=now) is None
+    assert coord.parse_retry_after(None, now=now) is None
+    until, _evidence, basis = coord.cooldown_until_for(
+        429, {'Retry-After': http_date}, now)
+    assert until == now + 300 and basis == 'retry-after'
+    until2, _e2, basis2 = coord.cooldown_until_for(
+        429, {'Retry-After': 'not-a-date'}, now)
+    assert until2 == now + coord.PROJECT_COOLDOWN_SECONDS
+    assert basis2 == 'project-48h', '無法解析 reset 時只可用項目 fallback，唔猜 provider window'

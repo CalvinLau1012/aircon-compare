@@ -218,8 +218,9 @@ def test_daily_build_unique_and_trusted_sources():
     assert "github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'" in text, (
         '手動 dispatch 只准 master')
     assert 'persist-credentials: true' in text, 'daily 需要 push，要明確標示憑證用途'
-    assert "FORCE_PRICE_BATCH: ${{ github.event.inputs.force_price_batch }}" in text, (
-        'shell input 要經 env 傳入')
+    assert "AIRCON_BIGGO_FORCE_STAGE: ${{ github.event.inputs.force_price_batch }}" in text, (
+        'shell input 要經 env 傳入（force 亦只可以經 coordinated runner）')
+    assert 'FORCE_PRICE_BATCH:' not in text, '舊 force env 唔應該再存在（會被當 bypass）'
 
 
 def test_daily_stage_reader_uses_queue_contract_without_fallback():
@@ -241,10 +242,15 @@ def test_daily_biggo_stage_runner_gates_and_coordinator_env():
     assert 'AIRCON_BIGGO_COORDINATOR_REPO: ${{ secrets.AIRCON_BIGGO_COORDINATOR_REPO }}' in biggo
     assert 'AIRCON_BIGGO_COORDINATOR_TOKEN: ${{ secrets.AIRCON_BIGGO_COORDINATOR_TOKEN }}' in biggo
     assert 'github.com/' not in biggo, 'workflow 唔可以有私人 repo URL'
-    # workflow 層唔准直接 smoke：smoke 只可以喺 runner 通過階段＋lease＋budget 之後
-    assert 'fetch_biggo.py --smoke' not in biggo
-    # 維護者明確 force override 保留
-    assert 'FORCE_PRICE_BATCH' in biggo and 'fetch_biggo.py --force-batch' in biggo
+    # workflow 層唔准直接 smoke／batch／force：所有網絡入口只可以經 coordinated runner
+    # （只檢查實際命令列，註釋提及唔算 bypass）
+    biggo_cmds = '\n'.join(line for line in biggo.splitlines()
+                           if not line.strip().startswith('#'))
+    assert 'fetch_biggo.py --smoke' not in biggo_cmds
+    assert 'fetch_biggo.py --price-batch' not in biggo_cmds
+    assert 'fetch_biggo.py --force-batch' not in biggo_cmds, 'force 唔可以繞過 coordinator'
+    # force intent 只可以經 runner（env 轉發）
+    assert 'AIRCON_BIGGO_FORCE_STAGE' in biggo
     # 硬失敗要阻斷，唔可以靜靜當成功
     assert '::error::BigGo 階段硬失敗' in biggo and 'exit "$rc"' in biggo
 
@@ -261,12 +267,21 @@ def test_biggo_stage_runner_local_stage_first_and_no_auto_rerun():
     assert "result == 'needs-review'" in src and 'rerun' in src
     # 只有成功先 publish；任何已呼叫但未確定 → needs_review
     assert 'publish-uncertain' in src
+    # repair #2：真正 heartbeat（唔止 maybe_renew 函式存在）；finally 保證停止
+    assert 'LeaseHeartbeat' in src and 'maybe_renew()' in src
+    assert 'heartbeat.start()' in src and 'heartbeat.stop()' in src
+    assert 'finally:' in src and 'should_abort=lambda: heartbeat.lost' in src
+    # repair #1：force 亦要 acquire lease，冇 direct bypass
+    assert 'run_force_batch' in src and 'AIRCON_BIGGO_FORCE_STAGE' in src
+    assert src.index('client.acquire(cycle_id') < src.index('run_force_batch(')
     planner = open(os.path.join(BASE, 'scripts', 'biggo_coordinator.py'),
                    encoding='utf-8').read()
     assert 'LEASE_SECONDS = 45 * 60' in planner
     assert 'RENEW_INTERVAL_SECONDS = 5 * 60' in planner
     assert 'PROJECT_COOLDOWN_SECONDS = 48 * 3600' in planner
     assert "'project-48h'" in planner, '48h 要標示為項目 fallback，唔係 provider quota'
+    assert 'delta-seconds' in planner and 'HTTP-date' in planner, \
+        'Retry-After 兩種標準形式都要支援'
 
 
 def test_daily_official_receipt_artifact():

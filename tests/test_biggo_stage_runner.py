@@ -9,6 +9,7 @@
 import json
 import os
 import sys
+import time
 
 import pytest
 
@@ -18,7 +19,7 @@ sys.path.insert(0, os.path.join(BASE, 'scripts'))
 
 import batch_utils  # noqa: E402
 import biggo_stage_runner as runner  # noqa: E402
-from biggo_coordinator import SnapshotImportError  # noqa: E402
+from biggo_coordinator import LeaseLostError, SnapshotImportError  # noqa: E402
 
 ACTIVE_META = {'price_batch_start': '2026-10-01', 'price_batch_idx': 0}
 CONFIGURED_ENV = {
@@ -51,6 +52,8 @@ class FakeFetch:
         self.smoke_result = True
         self.smoke_calls = 0
         self.batch_calls = 0
+        self.force_calls = 0
+        self.force_kwargs = []
         self.batch_result = {'status': 'completed'}
         self.models = ['M1', 'M2']
 
@@ -63,15 +66,32 @@ class FakeFetch:
         self.REQUEST_STATS['search'] += 1
         return self.smoke_result
 
-    def run_price_batch(self):
+    def run_price_batch(self, should_abort=None):
         self.batch_calls += 1
+        if should_abort is not None:
+            for _ in range(200):
+                if should_abort():
+                    return {'status': 'aborted', 'leaseLost': True}
+                time.sleep(0.001)
         self.REQUEST_STATS['search'] += 2
         return self.batch_result
+
+    def run_force_batch(self, limit=None, *, smoke=True, should_abort=None, exit_on_fail=True):
+        self.force_calls += 1
+        self.force_kwargs.append({'limit': limit, 'smoke': smoke, 'exit_on_fail': exit_on_fail})
+        if should_abort is not None:
+            for _ in range(200):
+                if should_abort():
+                    return {'status': 'aborted', 'leaseLost': True}
+                time.sleep(0.001)
+        self.REQUEST_STATS['search'] += 2
+        return True
 
 
 class FakeClient:
     def __init__(self, *, acquire='winner', budget=None, import_result=None,
-                 import_error=None, cooldown_until=0, search_used=0):
+                 import_error=None, cooldown_until=0, search_used=0,
+                 renew_error_after=None):
         self.acquire_result = acquire
         self.state = {'cooldownUntil': cooldown_until, 'leaseOwner': 'me',
                       'requestAttempts': {'token': 0, 'search': search_used}}
@@ -82,9 +102,19 @@ class FakeClient:
         self.calls = []
         self.commits = []
         self.published = None
+        self.renew_calls = 0
+        self.renew_error_after = renew_error_after
+
+    def maybe_renew(self):
+        self.renew_calls += 1
+        self.calls.append(('renew', self.renew_calls))
+        if self.renew_error_after is not None and self.renew_calls > self.renew_error_after:
+            raise LeaseLostError('simulated lease loss')
+        return None
 
     def acquire(self, cycle_id, stage):
         self.calls.append(('acquire', cycle_id, stage))
+        self.acquired_cycle = cycle_id
         if self.acquire_result == 'lost' and self.import_error is not None:
             return {'result': 'lost', 'state': self.state}
         return {'result': self.acquire_result, 'state': self.state}
@@ -122,24 +152,27 @@ class FakeClient:
 
 
 def _run(monkeypatch, tmp_path, *, meta=ACTIVE_META, env=None, client=None, fetch=None,
-         snapshot_reader=None, snapshot_writer=None, now=1_000_000):
+         snapshot_reader=None, snapshot_writer=None, now=1_000_000, force=None,
+         heartbeat_interval=None):
     fetch = fetch or FakeFetch(tmp_path)
     client = client or FakeClient()
     factory_calls = []
-    if client is not None:
-        def factory(config, owner, now_fn):
-            factory_calls.append((config, owner))
-            return client
-    else:
-        factory = None
+
+    def factory(config, owner, now_fn):
+        factory_calls.append((config, owner))
+        return client
+
     out = []
     writer = snapshot_writer or (lambda s: out.append(s))
+    kwargs = {}
+    if heartbeat_interval is not None:
+        kwargs['heartbeat_interval'] = heartbeat_interval
     code = runner.run_stage(env=env if env is not None else CONFIGURED_ENV,
                             batch_mod=FakeBatch(meta), fetch_mod=fetch,
                             client_factory=factory, now=lambda: now,
                             print_fn=out.append,
                             snapshot_reader=snapshot_reader or (lambda: SNAPSHOT),
-                            snapshot_writer=writer)
+                            snapshot_writer=writer, force=force, **kwargs)
     return code, client, fetch, out, factory_calls
 
 
@@ -295,7 +328,7 @@ def test_batch_no_calls_aborts_safely(tmp_path):
     client = FakeClient(acquire='winner')
     fetch = FakeFetch(tmp_path)
     fetch.run_smoke = lambda: True  # 成功但零計數（防禦性路徑：無實際呼叫）
-    fetch.run_price_batch = lambda: {'status': 'cooldown-skip'}
+    fetch.run_price_batch = lambda should_abort=None: {'status': 'cooldown-skip'}
     code, client, fetch, out, _ = _run(None, tmp_path, client=client, fetch=fetch)
     assert code == 0 and _status(out) == 'skip-batch-no-calls'
     assert ('abort',) in client.calls
@@ -334,7 +367,7 @@ def test_safe_evidence_recorded_into_coordinator_state(tmp_path):
     fetch = FakeFetch(tmp_path)
     fetch.batch_result = {'status': 'partial-net-errors'}
 
-    def evidence_batch():
+    def evidence_batch(should_abort=None):
         fetch.REQUEST_STATS['search'] += 1
         fetch.LAST_RATE_LIMIT_EVIDENCE.update({'status': 429, 'retryAfter': '60'})
         return {'status': 'partial-net-errors'}
@@ -345,3 +378,134 @@ def test_safe_evidence_recorded_into_coordinator_state(tmp_path):
     assert ('response', 429) in client.calls
     assert ('cooldown', 429) in client.calls
     assert fetch.REQUEST_STATS['search'] > 0
+
+
+# ---------------------------------------------------------------- heartbeat（repair #2）
+
+
+def test_heartbeat_renews_repeatedly_and_stops_without_orphan(tmp_path):
+    """長網絡工作期間必須重複 renew（5 分鐘節流由 client 負責；heartbeat 持續 tick），
+    run_stage 返回後唔可以有 orphan heartbeat。"""
+    client = FakeClient(acquire='winner')
+    fetch = FakeFetch(tmp_path)
+    code, client, fetch, out, _ = _run(None, tmp_path, client=client, fetch=fetch,
+                                       heartbeat_interval=0.005)
+    assert code == 0 and _status(out) == 'completed'
+    assert client.renew_calls >= 2, 'batch 期間 heartbeat 必須真正重複呼叫 maybe_renew'
+    assert fetch.batch_calls == 1 and client.published is not None
+    frozen = client.renew_calls
+    time.sleep(0.05)
+    assert client.renew_calls == frozen, 'run_stage 返回後 heartbeat 必須已停止，冇 orphan'
+
+
+def test_lease_loss_during_batch_fails_closed_and_no_publish(tmp_path):
+    """batch 中途 lease 轉手：should_abort 令 batch 中止、唔發布、標 needs_review。"""
+    client = FakeClient(acquire='winner', renew_error_after=1)
+    fetch = FakeFetch(tmp_path)
+    code, client, fetch, out, _ = _run(None, tmp_path, client=client, fetch=fetch,
+                                       heartbeat_interval=0.005)
+    assert code == 0
+    assert _status(out) == 'needs-review'
+    assert fetch.batch_calls == 1
+    assert client.published is None, 'lease 失效後唔可以發布 snapshot'
+    assert any(c[0] == 'commit' and c[1].get('status') == 'needs_review'
+               for c in client.calls)
+    frozen = client.renew_calls
+    time.sleep(0.05)
+    assert client.renew_calls == frozen, 'lease lost 後 heartbeat 必須停止'
+
+
+def test_lease_loss_during_smoke_stops_before_batch(tmp_path):
+    client = FakeClient(acquire='winner', renew_error_after=0)
+    fetch = FakeFetch(tmp_path)
+
+    def slow_smoke():
+        fetch.REQUEST_STATS['search'] += 1
+        time.sleep(0.05)
+        return True
+
+    fetch.run_smoke = slow_smoke
+    code, client, fetch, out, _ = _run(None, tmp_path, client=client, fetch=fetch,
+                                       heartbeat_interval=0.005)
+    assert code == 0 and _status(out) == 'needs-review'
+    assert fetch.batch_calls == 0, 'smoke 時失去 lease 之後唔可以再跑 batch'
+    assert client.published is None
+
+
+def test_heartbeat_stop_is_guaranteed_even_on_snapshot_reader_exception(tmp_path):
+    client = FakeClient(acquire='winner')
+    fetch = FakeFetch(tmp_path)
+
+    def boom():
+        raise RuntimeError('snapshot read failed')
+
+    code, client, fetch, out, _ = _run(None, tmp_path, client=client, fetch=fetch,
+                                       snapshot_reader=boom, heartbeat_interval=0.005)
+    assert code == 0 and _status(out) == 'needs-review'
+    frozen = client.renew_calls
+    time.sleep(0.05)
+    assert client.renew_calls == frozen, '異常路徑亦要 finally 停 heartbeat'
+
+
+# ---------------------------------------------------------------- coordinated force（repair #1）
+
+
+def test_force_mode_acquires_lease_before_force_batch_and_publishes(tmp_path):
+    client = FakeClient(acquire='winner')
+    fetch = FakeFetch(tmp_path)
+    out = []
+    code = runner.run_stage(
+        env={**CONFIGURED_ENV, 'AIRCON_BIGGO_FORCE_STAGE': 'true'},
+        batch_mod=FakeBatch({}), fetch_mod=fetch,
+        client_factory=lambda config, owner, now_fn: client,
+        now=lambda: 1_000_000, print_fn=out.append,
+        snapshot_reader=lambda: SNAPSHOT, snapshot_writer=lambda s: None)
+    assert code == 0 and _status(out) == 'completed'
+    acquire_idx = next(i for i, c in enumerate(client.calls) if c[0] == 'acquire')
+    publish_idx = next(i for i, c in enumerate(client.calls) if c[0] == 'publish')
+    assert acquire_idx < publish_idx
+    assert fetch.force_calls == 1 and fetch.batch_calls == 0
+    assert fetch.force_kwargs[0]['smoke'] is False, 'runner 已經做 smoke，唔可以重複'
+    assert fetch.force_kwargs[0]['exit_on_fail'] is False
+    assert client.published['manifest']['mode'] == 'force'
+    assert client.acquired_cycle.startswith('force-'), 'force 用獨立 cycleId 但仍受 lease 約束'
+
+
+def test_force_mode_without_coordinator_config_makes_zero_calls(tmp_path):
+    fetch = FakeFetch(tmp_path)
+    out = []
+    code = runner.run_stage(
+        env={'AIRCON_BIGGO_FORCE_STAGE': '1'}, batch_mod=FakeBatch({}),
+        fetch_mod=fetch, client_factory=None, now=lambda: 1_000_000,
+        print_fn=out.append, snapshot_reader=lambda: SNAPSHOT,
+        snapshot_writer=lambda s: None)
+    assert code == 0 and _status(out) == 'skip-coordinator-not-configured'
+    assert fetch.smoke_calls == 0 and fetch.force_calls == 0
+    assert fetch.REQUEST_STATS == {'token': 0, 'search': 0}
+
+
+def test_force_mode_losing_lease_never_runs_force_batch(tmp_path):
+    client = FakeClient(acquire='lost', import_error=SnapshotImportError('no snapshot'))
+    fetch = FakeFetch(tmp_path)
+    out = []
+    code = runner.run_stage(
+        env={**CONFIGURED_ENV, 'AIRCON_BIGGO_FORCE_STAGE': 'true'},
+        batch_mod=FakeBatch({}), fetch_mod=fetch,
+        client_factory=lambda config, owner, now_fn: client,
+        now=lambda: 1_000_000, print_fn=out.append,
+        snapshot_reader=lambda: SNAPSHOT, snapshot_writer=lambda s: None)
+    assert code == 0 and _status(out) == 'skip-lost-no-snapshot'
+    assert fetch.smoke_calls == 0 and fetch.force_calls == 0
+
+
+def test_runner_source_has_no_coordinator_bypass_and_heartbeat_in_finally():
+    src = open(os.path.join(BASE, 'scripts', 'biggo_stage_runner.py'),
+               encoding='utf-8').read()
+    assert 'LeaseHeartbeat' in src and 'maybe_renew()' in src
+    assert 'heartbeat.stop()' in src
+    assert 'finally:' in src
+    assert 'run_force_batch(' in src and 'smoke=False' in src
+    assert 'should_abort=lambda: heartbeat.lost' in src or \
+           'should_abort=lambda: heartbeat.lost' in src.replace(' ', '')
+    assert src.index('client.acquire(cycle_id') < src.index('run_force_batch('), \
+        'force path 一樣要先去 acquire'

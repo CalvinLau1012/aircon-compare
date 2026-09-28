@@ -124,26 +124,46 @@ def safe_rate_limit_evidence(headers):
     return out
 
 
-def parse_retry_after(value):
-    """Retry-After → 秒數 int 或 None（只接受非負整數秒；HTTP-date 唔猜）。"""
+def parse_retry_after(value, now=None):
+    """Retry-After → 秒數 int 或 None。
+
+    支持 RFC 9110 兩種形式：delta-seconds（純數字）同 HTTP-date。
+    HTTP-date 會用 `now`（Unix 秒）計剩餘秒數；唔會推斷或聲稱 provider 嘅
+    quota reset window——只 honour 來源實際提供嘅 reset 資訊。
+    無法解析一律回 None（交由項目 fallback 冷卻，唔猜）。
+    """
     if value is None:
         return None
     text = str(value).strip()
-    if not re.match(r'^[0-9]+$', text):
+    if re.match(r'^[0-9]+$', text):
+        return int(text)
+    from email.utils import parsedate_to_datetime
+    try:
+        target = parsedate_to_datetime(text)
+    except (TypeError, ValueError, IndexError):
         return None
-    return int(text)
+    if target is None:
+        return None
+    if target.tzinfo is None:
+        target = target.replace(tzinfo=timezone.utc)
+    base = now if now is not None else time.time()
+    try:
+        return max(0, int(target.timestamp() - float(base)))
+    except (OverflowError, OSError, ValueError):
+        return None
 
 
 def cooldown_until_for(status, headers, now, base_project_cooldown=PROJECT_COOLDOWN_SECONDS):
     """403／429 → (cooldownUntil, evidence, basis)。
 
-    有 Retry-After 就 honour；冇就 fallback 項目自身 48 小時冷卻。
-    回傳 basis 講清楚係 'retry-after' 定 'project-48h'（唔會叫佢做 provider quota）。
+    有可信 Retry-After（delta-seconds 或 HTTP-date）就 honour；冇就 fallback 項目
+    自身 48 小時冷卻。basis 只會係 'retry-after' 或 'project-48h'；48h 係 aircon-compare
+    嘅保守政策，唔係 provider 公布嘅 quota window（provider quota／window 仍 UNKNOWN）。
     """
     if status not in (403, 429):
         return 0, {}, None
     evidence = safe_rate_limit_evidence(headers)
-    retry_after = parse_retry_after(evidence.get('retry-after'))
+    retry_after = parse_retry_after(evidence.get('retry-after'), now=now)
     if retry_after is not None:
         return int(now) + retry_after, evidence, 'retry-after'
     return int(now) + base_project_cooldown, evidence, 'project-48h'

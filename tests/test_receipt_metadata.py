@@ -249,12 +249,14 @@ def test_workflow_uses_receipt_and_fails_closed():
         if 'fetch_biggo.py' in line:
             assert '|| true' not in line, f'BigGo 命令唔可以吞失敗：{line.strip()}'
     assert 'GITHUB_STEP_SUMMARY' in biggo, 'skip／失敗要有可審計結果'
-    assert '--force-batch' in biggo, '維護者 force override 保留（內部自帶 smoke）'
     assert 'scripts/biggo_stage_runner.py' in biggo, '非 force 路徑要經 coordinator stage runner'
     assert 'fetch_biggo.py --smoke' not in biggo, 'smoke 唔可以繞過階段／lease／budget 喺 workflow 直接呼叫'
+    assert 'fetch_biggo.py --force-batch' not in biggo, 'force 唔可以繞過 coordinator'
+    assert 'AIRCON_BIGGO_FORCE_STAGE' in biggo, 'force intent 只可以經 runner 轉發'
     runner_src = open(os.path.join(BASE, 'scripts', 'biggo_stage_runner.py'),
                       encoding='utf-8').read()
     assert 'fetch_mod.run_smoke()' in runner_src, 'runner 要真正行 bounded smoke'
+    assert 'run_force_batch' in runner_src and 'LeaseHeartbeat' in runner_src
     assert 'exit "$rc"' in biggo or 'exit $rc' in biggo, '真失敗要非零退出，唔可以當成功'
 
 
