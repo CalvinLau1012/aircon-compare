@@ -174,12 +174,36 @@ def receipt_facts(path, csv_path, now=None):
             or receipt.get('totalRows') != sum(counts)):
         raise ValueError('EMSD receipt page counts are incomplete')
     source = urlparse(receipt.get('sourceUrl', ''))
-    if source.scheme != 'https' or source.hostname != 'www.emsd.gov.hk' or source.path != '/energylabel/tc/households/rac/select_ac_result.php':
+    approved_paths = {
+        '/energylabel/tc/households/rac/select_ac_result.php',  # legacy paginated
+        '/energylabel/files/meels_rac.csv',                       # dual-source primary (B)
+    }
+    if (source.scheme != 'https' or source.hostname != 'www.emsd.gov.hk'
+            or source.path not in approved_paths):
         raise ValueError('Unapproved EMSD receipt source')
     if source.username or source.password:
         raise ValueError('EMSD receipt source 唔可以有 userinfo')
     if source.port is not None:
         raise ValueError('EMSD receipt source 唔可以有非標準 port')
+    # 雙來源收據（B）驗證：兩個 sourceKind／sourceUrl 必須齊全、相等，且 primary 係 CSV 路徑。
+    if receipt.get('dualSource') is not None:
+        ds = receipt.get('dualSource')
+        if not isinstance(ds, dict) or ds.get('equal') is not True:
+            raise ValueError('EMSD dualSource receipt 唔係 verified equal')
+        sources = ds.get('sources')
+        if not isinstance(sources, dict) or 'emsd-open-data-csv' not in sources \
+                or 'emsd-energy-label-paginated' not in sources:
+            raise ValueError('EMSD dualSource receipt 缺少兩個 sourceKind')
+        if receipt.get('sourceKind') != 'emsd-open-data-csv' \
+                or source.path != '/energylabel/files/meels_rac.csv':
+            raise ValueError('EMSD dualSource primary 必須係 open-data CSV')
+        csv_sha = (sources.get('emsd-open-data-csv') or {}).get('sha256')
+        if not isinstance(csv_sha, str) or not re.match(r'^sha256:[0-9a-f]{64}$', csv_sha):
+            raise ValueError('EMSD dualSource CSV sha256 無效')
+        pag_url = urlparse((sources.get('emsd-energy-label-paginated') or {})
+                           .get('sourceUrl', ''))
+        if pag_url.path != '/energylabel/tc/households/rac/select_ac_result.php':
+            raise ValueError('EMSD dualSource cross-check URL 唔正確')
     timestamp = receipt.get('retrievedAt', '')
     if not isinstance(timestamp, str) or not timestamp.endswith('Z'):
         raise ValueError('Receipt retrievedAt must be UTC Z')

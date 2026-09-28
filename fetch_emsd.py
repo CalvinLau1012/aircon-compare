@@ -19,6 +19,7 @@ import tempfile
 from html.parser import HTMLParser
 
 from crawl_utils import BOT_UA, norm_model
+import emsd_dual_source as dual
 
 _SCRIPT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scripts')
 if _SCRIPT_DIR not in sys.path:
@@ -33,7 +34,13 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 QUEUE_PATH = os.path.join(BASE_DIR, 'update_queue.json')
 RECEIPT_PATH = os.path.join(BASE_DIR, 'emsd_receipt.json')
 RAW_RECEIPT_PATH = os.path.join(BASE_DIR, 'emsd_raw_receipt.json')
+PAGINATED_SOURCE_URL = BASE.rstrip('&p=')
 _LAST_HTTP = {}
+
+
+def fetch_csv_source(*, transport=None, now=None, conditional=None):
+    """官方 open-data CSV 抓取（獨立函數，方便測試 monkeypatch 注入 fake transport）。"""
+    return dual.fetch_csv_raw(transport=transport, now=now, conditional=conditional)
 
 
 class TableParser(HTMLParser):
@@ -176,10 +183,12 @@ def cleanup_expired_raw_sink(sink_dir, now=None, max_age_days=90):
     return private_raw_sink.cleanup_expired(sink_dir, now=now, max_age_days=max_age_days)
 
 
-def persist_raw_archive(records, sink_dir=None, require=False, now=None, remote_api=None):
+def persist_raw_archive(records, sink_dir=None, require=False, now=None, remote_api=None,
+                        source_kind=None):
     """D7-A：保留舊名 API；按環境選 local／remote adapter（remote 未經批准唔會配置）。
 
-    回傳唔含敏感路徑／token；只有下載核驗成功才回 persisted=True。
+    回傳唔含敏感路徑／token；只有下載核驗成功才回 persisted=True。`source_kind`
+    決定私人 archive 嘅獨立 namespace（B：CSV／paginated 分開）。
     """
     explicit = sink_dir or os.environ.get('AIRCON_EMSD_RAW_SINK_DIR')
     if explicit:
@@ -192,22 +201,26 @@ def persist_raw_archive(records, sink_dir=None, require=False, now=None, remote_
         if inside:
             raise ValueError('private raw sink 唔可以喺公開 repo 工作樹內')
     return private_raw_sink.persist_raw_archive(
-        records, sink_dir=sink_dir, require=require, now=now, remote_api=remote_api)
+        records, sink_dir=sink_dir, require=require, now=now, remote_api=remote_api,
+        source_kind=source_kind)
 
 
-def write_receipt(outcome, per_page, csv_path=None, retrieved_at=None, raw_receipt_hash=None):
+def write_receipt(outcome, per_page, csv_path=None, retrieved_at=None, raw_receipt_hash=None,
+                  source_url=None, extra=None):
     """寫 emsd_receipt.json（成功／失敗都寫，保留本次抓取證據）
 
     - retrieved_at：實際抓取完成（或中途失敗）嘅 UTC 時間。成功路徑必須由
       fetch 迴圈收尾後即時傳入，唔可以用寫收據當刻時間冒充抓取完成時間。
     - csv_path：只可以在 CSV 已成功原子寫入之後傳入；會即場對已寫入檔案計
       datasetHash，令收據同 CSV bytes 綁定。
+    - source_url：預設保留舊 paginated 來源；雙來源成功路徑傳入 primary CSV URL。
+    - extra：附加已驗證事實（例如 dualSource block）；內容由呼叫方負責，唔可以含秘密。
     """
     if retrieved_at is None:
         retrieved_at = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
     receipt = {
         'retrievedAt': retrieved_at,
-        'sourceUrl': BASE.rstrip('&p='),
+        'sourceUrl': source_url or BASE.rstrip('&p='),
         'success': outcome['success'],
         'pagesExpected': outcome['pagesExpected'],
         'pagesFetched': outcome['pagesFetched'],
@@ -216,6 +229,8 @@ def write_receipt(outcome, per_page, csv_path=None, retrieved_at=None, raw_recei
         'error': outcome['error'],
         'perPageRows': per_page,
     }
+    if extra:
+        receipt.update(extra)
     if csv_path is not None:
         with open(csv_path, 'rb') as source:
             receipt['datasetHash'] = 'sha256:' + hashlib.sha256(source.read()).hexdigest()
@@ -569,6 +584,63 @@ def main():
         print('⚠️ 攞唔到有效表頭（15 欄），唔覆寫現有 CSV', file=sys.stderr)
         sys.exit(1)
 
+    # ===== 雙來源（B）：官方 open-data CSV 做主，逐頁結果做獨立核對 =====
+    # 兩個來源都完整 + 受治理欄位一致，先可以攞 CSV rows 做 primary；
+    # 任何缺失／Schema 唔明／mismatch → fail-closed，保留上一生產 CSV。
+    csv_resp = None
+    try:
+        csv_resp = fetch_csv_source(now=time.time())
+        verified = dual.verify_dual_source(
+            paginated_rows=all_rows, paginated_raw_records=raw_records,
+            retrieved_at=retrieved_at, min_rows=MIN_EMSD_ROWS,
+            raw_response=csv_resp)
+    except dual.DualSourceError as e:
+        outcome.update(success=False, aborted=True, error=f'dual-source fail-closed: {e.kind}')
+        diff = e.diff or {}
+        report = dual.build_diff_report(
+            kind=e.kind, generated_at=retrieved_at,
+            csv_summary=diff.get('csv') or {
+                'sourceKind': dual.SOURCE_KIND_CSV, 'sourceUrl': dual.CSV_URL},
+            paginated_summary=diff.get('paginated') or {
+                'sourceKind': dual.SOURCE_KIND_PAGINATED, 'sourceUrl': dual.PAGINATED_URL,
+                'pageCount': len(per_page), 'totalRows': len(all_rows)},
+            comparison=diff.get('comparison') or {'equal': False},
+            error=str(e))
+        report_path = os.environ.get('AIRCON_EMSD_DIFF_REPORT') or dual.default_diff_report_path()
+        try:
+            dual.write_diff_report(report_path, report)
+            print(f'📄 雙來源脱敏 diff report（公開資料計數；repo 外）：{report_path}',
+                  file=sys.stderr)
+        except Exception as we:  # noqa: BLE001 - report 寫唔到唔可以蓋過主阻斷
+            print(f'⚠️ diff report 寫唔到（{type(we).__name__}）', file=sys.stderr)
+        write_receipt(outcome, per_page, retrieved_at=retrieved_at, extra={
+            'sourceKind': dual.SOURCE_KIND_CSV,
+            'dualSource': {'schemaVersion': 1, 'equal': False, 'errorKind': e.kind,
+                           'primary': dual.SOURCE_KIND_CSV,
+                           'crossCheck': dual.SOURCE_KIND_PAGINATED}})
+        print(f'❌ EMSD 雙來源 fail-closed（{e.kind}）：唔覆寫現有 CSV', file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:  # noqa: BLE001 - 未預期錯誤一樣 fail-closed
+        outcome.update(success=False, aborted=True, error=f'dual-source unexpected: {type(e).__name__}')
+        write_receipt(outcome, per_page, retrieved_at=retrieved_at, extra={
+            'sourceKind': dual.SOURCE_KIND_CSV,
+            'dualSource': {'schemaVersion': 1, 'equal': False, 'errorKind': 'unexpected',
+                           'primary': dual.SOURCE_KIND_CSV,
+                           'crossCheck': dual.SOURCE_KIND_PAGINATED}})
+        print(f'❌ EMSD 雙來源未預期錯誤（{type(e).__name__}）：唔覆寫現有 CSV', file=sys.stderr)
+        sys.exit(1)
+
+    # CSV 正規化 rows 做 primary；header 用 canonical 15 欄（唔用 scraped header）
+    csv_body = csv_resp.body
+    all_rows = verified['rows']
+    header = list(dual.CANONICAL_HEADER)
+    dual_receipt = dual.build_receipt_dual_source(
+        comparison=verified['comparison'], csv_summary_=verified['csv'],
+        paginated_summary_=verified['paginated'], retrieved_at=retrieved_at)
+    print(f"🔀 雙來源一致：CSV {verified['parsed']['rowCount']} 行（{verified['parsed']['encoding']}）"
+          f" == paginated {len(all_rows)} 行；"
+          f"modelCount={verified['comparison']['counts']['csv']['modelCount']}")
+
     out = os.path.join(BASE_DIR, 'emsd_空調能源標籤.csv')
     # 先純讀計畫（讀舊 CSV／現有 sidecar），失敗即寫失敗收據，唔改任何資料檔。
     try:
@@ -606,24 +678,41 @@ def main():
               '，共', len(plan['queue']['models']), '個新機待核實）')
     else:
         print('🆕 新機偵測：本次新增 0 個')
-    # D7-A：先寫 private raw archive（repo 外）。persist 失敗／require 而缺配置即阻斷，
-    # 確保唔會出現「public receipt 聲稱已保存但 private object 唔存在」。
+    # D7-A＋B：先寫兩個 sourceKind namespace 嘅 private raw archive（repo 外）。
+    # persist 失敗／require 而缺配置即阻斷，確保唔會出現「public receipt 聲稱已保存
+    # 但 private object 唔存在」。
     require_raw = os.environ.get('AIRCON_EMSD_REQUIRE_RAW_SINK') == '1'
+    csv_records = [{
+        'page': 1,
+        'sourceKind': dual.SOURCE_KIND_CSV,
+        'byteLength': len(csv_body),
+        'sha256': 'sha256:' + hashlib.sha256(csv_body).hexdigest(),
+        'lastModified': csv_resp.headers.get('Last-Modified'),
+        'etag': csv_resp.headers.get('ETag'),
+        '_raw': csv_body,
+    }]
+    sink_results = {}
     try:
-        sink_result = persist_raw_archive(raw_records, require=require_raw)
+        sink_results[dual.SOURCE_KIND_PAGINATED] = persist_raw_archive(
+            raw_records, require=require_raw, source_kind=dual.SOURCE_KIND_PAGINATED)
+        sink_results[dual.SOURCE_KIND_CSV] = persist_raw_archive(
+            csv_records, require=require_raw, source_kind=dual.SOURCE_KIND_CSV)
     except Exception as e:
         print(f'❌ private raw archive 保存失敗，阻斷發布（{e}）', file=sys.stderr)
         sys.exit(1)
+    sink_result = sink_results[dual.SOURCE_KIND_PAGINATED]
+    csv_sink_result = sink_results[dual.SOURCE_KIND_CSV]
     raw_receipt_hash = None
-    if sink_result.get('persisted'):
+    if sink_result.get('persisted') or csv_sink_result.get('persisted'):
         try:
             dataset_hash = 'sha256:' + hashlib.sha256(open(out, 'rb').read()).hexdigest()
             raw_receipt = build_raw_receipt(
                 raw_records, dataset_hash=dataset_hash, retrieved_at=retrieved_at,
-                source_url=BASE.rstrip('&p='), total_rows=len(all_rows),
+                source_url=PAGINATED_SOURCE_URL, total_rows=len(all_rows),
                 per_page_rows=per_page)
             # D7-A：公開 receipt 只保留非敏感事實；唔寫 private sink 嘅 objectId／
             # asset 名（可能含 compact timestamp），避免 private 儲存識別流入公開 repo。
+            raw_receipt['sourceKind'] = dual.SOURCE_KIND_PAGINATED
             raw_receipt['privateArchive'] = {
                 'persisted': True,
                 'adapter': sink_result.get('adapter'),
@@ -632,6 +721,37 @@ def main():
                 'durableRemote': sink_result.get('durableRemote') is True,
                 'retentionDays': sink_result.get('retentionDays'),
             }
+            sources = []
+            for kind, result in ((dual.SOURCE_KIND_PAGINATED, sink_result),
+                                 (dual.SOURCE_KIND_CSV, csv_sink_result)):
+                entry = {
+                    'sourceKind': kind,
+                    'persisted': result.get('persisted') is True,
+                    'adapter': result.get('adapter'),
+                    'archiveHash': result.get('archiveHash'),
+                    'verified': result.get('verified') is True,
+                    'durableRemote': result.get('durableRemote') is True,
+                    'retentionDays': result.get('retentionDays'),
+                }
+                if kind == dual.SOURCE_KIND_CSV:
+                    entry.update({'sourceUrl': dual.CSV_URL, 'byteLength': len(csv_body),
+                                  'sha256': 'sha256:' + hashlib.sha256(csv_body).hexdigest()})
+                else:
+                    entry.update({'sourceUrl': PAGINATED_SOURCE_URL,
+                                  'pageCount': len(raw_records),
+                                  'totalRows': len(all_rows)})
+                sources.append(entry)
+            raw_receipt['sources'] = sources
+            for kind, result in ((dual.SOURCE_KIND_PAGINATED, sink_result),
+                                 (dual.SOURCE_KIND_CSV, csv_sink_result)):
+                dual_receipt['sources'][kind]['archive'] = {
+                    'persisted': result.get('persisted') is True,
+                    'adapter': result.get('adapter'),
+                    'archiveHash': result.get('archiveHash'),
+                    'verified': result.get('verified') is True,
+                    'durableRemote': result.get('durableRemote') is True,
+                    'retentionDays': result.get('retentionDays'),
+                }
             write_raw_receipt_atomic(raw_receipt)
             raw_receipt_hash = 'sha256:' + hashlib.sha256(
                 open(RAW_RECEIPT_PATH, 'rb').read()).hexdigest()
@@ -646,12 +766,16 @@ def main():
     # （唔可以用舊收據配新 CSV 誤導下游 metadata 生成）。
     try:
         write_receipt(outcome, per_page, out, retrieved_at=retrieved_at,
-                      raw_receipt_hash=raw_receipt_hash)
+                      raw_receipt_hash=raw_receipt_hash,
+                      source_url=dual.CSV_URL,
+                      extra={'sourceKind': dual.SOURCE_KIND_CSV,
+                             'dualSource': dual_receipt})
     except Exception as e:
         print(f'❌ 收據寫入失敗（{e}）；CSV 已更新但無有效收據，下游必須阻斷', file=sys.stderr)
         sys.exit(1)
-    print('完成！共', len(all_rows), '個型號，存於', out)
-    print(f'📦 抓取證據：{RECEIPT_PATH}（頁 {outcome["pagesFetched"]}/{outcome["pagesExpected"]}，retrievedAt={retrieved_at}）')
+    print('完成！共', len(all_rows), '個型號（primary=EMSD open-data CSV），存於', out)
+    print(f'📦 抓取證據：{RECEIPT_PATH}（雙來源核對 pages '
+          f'{outcome["pagesFetched"]}/{outcome["pagesExpected"]}，retrievedAt={retrieved_at}）')
 
 
 if __name__ == '__main__':

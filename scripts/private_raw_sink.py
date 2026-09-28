@@ -33,6 +33,22 @@ from urllib import request as urlrequest
 
 DEFAULT_RETENTION_DAYS = 90
 ASSET_PREFIX = 'raw-'
+DEFAULT_SOURCE_KIND = 'emsd-energy-label-paginated'
+_SOURCE_KIND_RE = re.compile(r'^[a-z0-9][a-z0-9-]{0,63}$')
+
+
+def _resolve_source_kind(source_kind, records=None):
+    """確定性 sourceKind：explicit > 首個 record 嘅 sourceKind > 預設（B：獨立 namespace）。"""
+    kind = source_kind or ''
+    if not kind and records:
+        kinds = {r.get('sourceKind') for r in records if isinstance(r, dict)}
+        kinds.discard(None)
+        if len(kinds) == 1:
+            kind = next(iter(kinds))
+    kind = kind or DEFAULT_SOURCE_KIND
+    if not isinstance(kind, str) or not _SOURCE_KIND_RE.match(kind):
+        raise SinkError(f'sourceKind 唔合法（只准 [a-z0-9-]）：{kind!r}')
+    return kind
 
 
 class SinkError(RuntimeError):
@@ -47,8 +63,8 @@ def _run_stamp(now):
     return (now or datetime.now(timezone.utc)).strftime('%Y%m%dT%H%M%SZ')
 
 
-def _manifest(records, archive_hash, created_at):
-    return {
+def _manifest(records, archive_hash, created_at, source_kind=None):
+    manifest = {
         'schemaVersion': 1,
         'createdAt': created_at,
         'pageCount': len(records),
@@ -56,6 +72,9 @@ def _manifest(records, archive_hash, created_at):
         'pages': [{k: v for k, v in rec.items() if k != '_raw'}
                   for rec in sorted(records, key=lambda r: r['page'])],
     }
+    if source_kind:
+        manifest['sourceKind'] = source_kind
+    return manifest
 
 
 def _write_pages(dst_dir, records):
@@ -118,20 +137,23 @@ def cleanup_expired(sink_dir, now=None, max_age_days=DEFAULT_RETENTION_DAYS):
     return removed
 
 
-def persist_local(records, sink_dir, now=None, retention_days=DEFAULT_RETENTION_DAYS):
+def persist_local(records, sink_dir, now=None, retention_days=DEFAULT_RETENTION_DAYS,
+                  source_kind=None):
+    source_kind = _resolve_source_kind(source_kind, records)
     sink = os.path.abspath(sink_dir)
     if _is_link_like(sink):
         raise SinkError('private sink 係 symlink／junction，拒絕寫入')
     os.makedirs(sink, exist_ok=True)
     if _is_link_like(sink):
         raise SinkError('private sink 建立後變成 symlink／junction，拒絕寫入')
-    final_dir = os.path.join(sink, 'run-' + _run_stamp(now))
+    final_dir = os.path.join(sink, f'run-{_run_stamp(now)}-{source_kind}')
     if os.path.lexists(final_dir):
         final_dir = final_dir + '-' + str(os.getpid())
     tmp = tempfile.mkdtemp(prefix='.tmp-run-', dir=sink)
     try:
         _write_pages(tmp, records)
-        manifest = _manifest(records, records_archive_hash(records), _utc_stamp(now))
+        manifest = _manifest(records, records_archive_hash(records), _utc_stamp(now),
+                             source_kind=source_kind)
         with open(os.path.join(tmp, 'manifest.json'), 'w', encoding='utf-8', newline='\n') as f:
             json.dump(manifest, f, ensure_ascii=False, indent=2)
             f.flush()
@@ -149,6 +171,7 @@ def persist_local(records, sink_dir, now=None, retention_days=DEFAULT_RETENTION_
         'persisted': True,
         'verified': True,
         'durableRemote': False,
+        'sourceKind': source_kind,
         'objectId': os.path.basename(final_dir),
         'archiveHash': manifest['archiveHash'],
         'retentionDays': retention_days,
@@ -169,10 +192,10 @@ def records_archive_hash(records):
     return 'sha256:' + h.hexdigest()
 
 
-def build_zip(records, archive_hash, created_at):
+def build_zip(records, archive_hash, created_at, source_kind=None):
     """確定性 zip bytes（固定 timestamp，內容 = raw pages + manifest.json）。"""
     buf = io.BytesIO()
-    manifest = _manifest(records, archive_hash, created_at)
+    manifest = _manifest(records, archive_hash, created_at, source_kind=source_kind)
     with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
         for rec in sorted(records, key=lambda r: r['page']):
             info = zipfile.ZipInfo(f'p{rec["page"]:02d}.html', date_time=(1980, 1, 1, 0, 0, 0))
@@ -257,11 +280,12 @@ class GitHubReleaseAssetSink:
             raise SinkError(f'asset 列舉失敗（HTTP {status}）')
         return assets
 
-    def persist(self, records, archive_hash, now=None, created_at=None):
+    def persist(self, records, archive_hash, now=None, created_at=None, source_kind=None):
+        source_kind = _resolve_source_kind(source_kind, records)
         created_at = created_at or _utc_stamp(now)
-        blob = build_zip(records, archive_hash, created_at)
+        blob = build_zip(records, archive_hash, created_at, source_kind=source_kind)
         object_hash = 'sha256:' + hashlib.sha256(blob).hexdigest()
-        asset_name = f'{ASSET_PREFIX}{_run_stamp(now)}-{object_hash[7:19]}.zip'
+        asset_name = f'{ASSET_PREFIX}{source_kind}-{_run_stamp(now)}-{object_hash[7:19]}.zip'
         self.provider_private()
         release = self._release()
         assets = self._assets(release['id'])
@@ -290,6 +314,7 @@ class GitHubReleaseAssetSink:
             'persisted': True,
             'verified': True,
             'durableRemote': True,
+            'sourceKind': source_kind,
             'objectId': asset_name,
             'archiveHash': archive_hash,
             'objectHash': object_hash,
@@ -345,8 +370,14 @@ def adapter_from_env(env=None, api=None):
     return None, {}
 
 
-def persist_raw_archive(records, sink_dir=None, require=False, now=None, env=None, remote_api=None):
-    """單一入口：按環境選 adapter；remote 失敗／require 未配置即 raise。"""
+def persist_raw_archive(records, sink_dir=None, require=False, now=None, env=None,
+                        remote_api=None, source_kind=None):
+    """單一入口：按環境選 adapter；remote 失敗／require 未配置即 raise。
+
+    `source_kind` 決定私人 archive 嘅獨立 namespace（run 目錄／asset 名）；
+    預設由 records 嘅 sourceKind 推導，最後 fallback 到 paginated。
+    """
+    source_kind = _resolve_source_kind(source_kind, records)
     archive_hash = records_archive_hash(records)
     kind, cfg = adapter_from_env(env)
     if sink_dir and kind != 'remote':
@@ -357,17 +388,19 @@ def persist_raw_archive(records, sink_dir=None, require=False, now=None, env=Non
         if require:
             raise SinkError('private raw sink 未配置（require 模式唔可以靜默通過）')
         return {'adapter': None, 'persisted': False, 'verified': False,
-                'durableRemote': False, 'objectId': None, 'archiveHash': archive_hash,
-                'retentionDays': None, 'reason': 'not_configured'}
+                'durableRemote': False, 'sourceKind': source_kind, 'objectId': None,
+                'archiveHash': archive_hash, 'retentionDays': None,
+                'reason': 'not_configured'}
     if kind == 'local':
-        result = persist_local(records, cfg['sink_dir'], now=now)
+        result = persist_local(records, cfg['sink_dir'], now=now, source_kind=source_kind)
     else:
         sink = GitHubReleaseAssetSink(cfg['repo'], cfg['token'],
                                       release_tag=cfg['release_tag'],
                                       retention_days=cfg['retention_days'],
                                       api=cfg['api'] or remote_api)
-        result = sink.persist(records, archive_hash, now=now)
+        result = sink.persist(records, archive_hash, now=now, source_kind=source_kind)
     result['archiveHash'] = archive_hash
+    result.setdefault('sourceKind', source_kind)
     if result.get('persisted') and not result.get('verified'):
         raise SinkError('adapter 未有下載核驗證據，拒絕發成功 receipt')
     return result
