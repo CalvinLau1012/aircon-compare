@@ -201,50 +201,49 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
-      # ============ 第 3 步：價錢快照批次（BigGo 官方 JSON API；進度由 batch_utils 共用管理） ============
+      # ============ 第 3 步：價錢快照批次（BigGo 官方 JSON API；approved C coordinator-gated） ============
       # 2026-08-26：改用官方 API api.biggo.com（同被限流嘅網頁版 biggo.hk 唔同 host）
-      - name: 價錢快照分批更新（BigGo API 每月一次·分七日；active 才 smoke）
+      # D23＋C：先由 runner 讀本地批次階段；inactive 零 BigGo／coordinator 動作。
+      # active 但 coordinator secret 未配置 → 安全跳過、保留快照、零重複呼叫。
+      - name: 價錢快照分批更新（BigGo API · coordinator lease；active 才用）
         env:
           BIGGO_CLIENT_ID: ${{ secrets.BIGGO_CLIENT_ID }}
           BIGGO_CLIENT_SECRET: ${{ secrets.BIGGO_CLIENT_SECRET }}
           FORCE_PRICE_BATCH: ${{ github.event.inputs.force_price_batch }}
+          # approved design C：共享憑證自動 atomic lease。呢组 secret 未配置時，active 階段
+          # 只會安全跳過（保留現有快照、零 BigGo 呼叫）；private coordinator 識別只可以
+          # 放 Secrets，唔准寫入 repo／Variables／log。
+          AIRCON_BIGGO_COORDINATOR_REPO: ${{ secrets.AIRCON_BIGGO_COORDINATOR_REPO }}
+          AIRCON_BIGGO_COORDINATOR_TOKEN: ${{ secrets.AIRCON_BIGGO_COORDINATOR_TOKEN }}
+          AIRCON_BIGGO_COORDINATOR_BRANCH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_BRANCH }}
+          AIRCON_BIGGO_COORDINATOR_STATE_PATH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_STATE_PATH }}
+          AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR: ${{ secrets.AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR }}
+          # Provider quota／window 仍屬 UNKNOWN；只有事實 dashboard／header 證據才可配置。
+          AIRCON_BIGGO_PROVIDER_QUOTA_LIMIT: ${{ secrets.AIRCON_BIGGO_PROVIDER_QUOTA_LIMIT }}
+          AIRCON_BIGGO_PROVIDER_WINDOW_END: ${{ secrets.AIRCON_BIGGO_PROVIDER_WINDOW_END }}
         run: |
           set +e
           mode="skip-not-active"; rc=0
           if [ "$FORCE_PRICE_BATCH" = "true" ]; then
-            echo "🚀 強行全量批次（一次性測試）：腳本內部會先 smoke，再全部型號一次過 + 淘汰確認"
+            echo "🚀 強行全量批次（維護者明確一次性 override）：腳本內部會先 smoke，再全部型號一次過 + 淘汰確認"
             python fetch_biggo.py --force-batch
             rc=$?; mode="force-batch"
           else
-            # 先讀本地批次狀態；未啟動／已完成時零 BigGo API 請求。
-            python scripts/price_batch_state.py >/dev/null 2>&1
-            pb_rc=$?
-            if [ "$pb_rc" -eq 0 ]; then
-              if python fetch_biggo.py --smoke; then
-                python fetch_biggo.py --price-batch
-                rc=$?; mode="price-batch"
-              else
-                echo "⚠️ BigGo API smoke 失敗，跳過本批（未刷新，保留現有價錢快照），唔硬碰"
-                mode="skip-smoke-failed"
-              fi
-            elif [ "$pb_rc" -eq 1 ]; then
-              echo "價錢批次未啟動，跳過（未呼叫 BigGo API；保留現有價錢快照）"
-            else
-              echo "::error::prices_meta.json 損毀，阻斷（唔可以當未啟動跳過）"
-              exit 2
-            fi
+            # coordinator 階段 runner：inactive → 零 BigGo；active 缺配置 → 安全跳過。
+            python scripts/biggo_stage_runner.py
+            rc=$?; mode="coordinator-gated"
           fi
           set -e
           {
             echo "### BigGo 價錢快照"
             echo "- mode: $mode"
             echo "- exit: $rc"
-            if [ "$mode" = "skip-smoke-failed" ] || [ "$mode" = "skip-not-active" ]; then
-              echo "- 明確結果：本批未刷新，保留現有價錢快照（skip 唔等於抓取成功）"
+            if [ "$rc" -eq 0 ]; then
+              echo "- 結果：安全完成或安全跳過（skip 唔等於抓取成功；快照以 coordinator／本地狀態為準）"
             fi
           } >> "$GITHUB_STEP_SUMMARY" || true
           if [ "$rc" -ne 0 ]; then
-            echo "::error::BigGo 批次真失敗（exit $rc，代碼 $mode）：未推進批次進度，保留現有快照"
+            echo "::error::BigGo 階段硬失敗（exit $rc，代碼 $mode）：未推進批次進度，保留現有快照"
             exit "$rc"
           fi
 

@@ -48,16 +48,57 @@ UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
 # access_token 快取（client credentials；55 分鐘 TTL，token 一般 60 分鐘有效）
 _TOKEN = {'value': None, 'expires': 0.0}
 
+# ===== approved design C：兩次 attempt、403／429 即停、離線 guard、可審計計數 =====
+# 每個 model 最多 2 次 attempt；403／429 唔會即刻 retry（honour Retry-After，否則項目
+# 自身 48 小時冷卻；48h 唔係 provider 嘅 quota window）。
+DEFAULT_MAX_ATTEMPTS = 2
+# 項目自身 fallback 冷卻（秒）；呢個係 aircon-compare 政策，唔代表 provider quota。
+PROJECT_COOLDOWN_SECONDS = 48 * 3600
+# 只計實際發出嘅 HTTP request，token 同 search 分開。
+REQUEST_STATS = {'token': 0, 'search': 0}
+# 最近一次 403／429 嘅安全 rate-limit 證據（只 status／Retry-After，無 auth／body）。
+LAST_RATE_LIMIT_EVIDENCE = {}
+BIGGO_TEST_MODE_ENV = 'AIRCON_BIGGO_TEST_MODE'
+
+
+class BigGoTestModeError(RuntimeError):
+    """測試模式禁止真實 BigGo 網絡呼叫（E2 實作階段硬保險）。"""
+
+
+def reset_request_stats():
+    REQUEST_STATS['token'] = 0
+    REQUEST_STATS['search'] = 0
+    LAST_RATE_LIMIT_EVIDENCE.clear()
+
+
+def snapshot_request_stats():
+    return dict(REQUEST_STATS)
+
+
+def _network_guard():
+    """測試模式：任何真實網絡入口即 raise（唔會靜默繼續）。"""
+    if os.environ.get(BIGGO_TEST_MODE_ENV) == '1':
+        raise BigGoTestModeError('BigGo 測試模式：禁止真實網絡呼叫')
+
+
+def _record_response_evidence(status, retry_after=None):
+    LAST_RATE_LIMIT_EVIDENCE.clear()
+    LAST_RATE_LIMIT_EVIDENCE.update({'status': int(status)})
+    if retry_after is not None:
+        LAST_RATE_LIMIT_EVIDENCE['retryAfter'] = str(retry_after)[:128]
+
 
 def _get_access_token(timeout=20):
     """用 BIGGO_CLIENT_ID/SECRET 攞 access_token（免費官方認證；冇配置就 None = 免登入 fallback）
 
     `timeout` 預設 20 秒，同原本批次行為一致；smoke 會傳較短 timeout 令連線測試有界。
+    測試模式（AIRCON_BIGGO_TEST_MODE=1）下任何真實呼叫即 BigGoTestModeError。
     """
     cid = os.environ.get('BIGGO_CLIENT_ID', '').strip()
     csec = os.environ.get('BIGGO_CLIENT_SECRET', '').strip()
     if not cid or not csec:
         return None
+    _network_guard()
     now = time.time()
     if _TOKEN['value'] and now < _TOKEN['expires']:
         return _TOKEN['value']
@@ -68,7 +109,14 @@ def _get_access_token(timeout=20):
         'Content-Type': 'application/x-www-form-urlencoded',
         'User-Agent': UA,
     })
-    tok = json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode('utf-8')).get('access_token')
+    REQUEST_STATS['token'] += 1
+    try:
+        tok = json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode('utf-8')).get('access_token')
+    except urllib.error.HTTPError as e:
+        if e.code in (403, 429):
+            _record_response_evidence(e.code, (e.headers or {}).get('Retry-After')
+                                      if hasattr(e.headers, 'get') else None)
+        raise
     if tok:
         _TOKEN['value'] = tok
         _TOKEN['expires'] = now + 55 * 60
@@ -111,18 +159,26 @@ def _wait_pace():
         time.sleep(wait)
 
 
-def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=5, timeout=20,
+def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=DEFAULT_MAX_ATTEMPTS, timeout=20,
                 use_cooldown=True, use_pace=True, sleep_on_error=True):
     """官方 API 搜尋：回 (data, reachable)
     reachable=True  → API 有正常回覆（data 可能係空結果 = 乾淨無匹配）
-    reachable=False → 網絡/限流錯誤（唔計入淘汰統計）
+    reachable=False → 網絡／限流錯誤（唔計入淘汰統計）
 
-    額外 keyword 參數全部有預設值，維持原本批次／正常查詢嘅完整 retry（5 次）、
-    冷卻（429/403）同限速（MIN_PACE）語義；smoke 專用路徑會傳
-    `max_attempts=1`、`timeout=8`、`use_cooldown=False`、`use_pace=False`、
-    `sleep_on_error=False`，唔會等 60／90 秒冷卻或者硬碰重試。
+    Approved design C 語義：
+    - 每個 model 最多 `max_attempts` 次（預設 2）；
+    - 403／429 **唔會即刻 retry**：記錄安全證據（status／Retry-After）後直接回
+      reachable=False；Retry-After 有就交 coordinator honour，冇就由項目自身 48 小時
+      冷卻接手（唔係 provider quota window）；
+    - 其他錯誤才按 attempt backoff retry；
+    - smoke 會傳 max_attempts=1、timeout=8、use_cooldown=False、use_pace=False、
+      sleep_on_error=False，維持有界。
     """
-    for attempt in range(max_attempts):
+    LAST_RATE_LIMIT_EVIDENCE.clear()
+    if os.environ.get(BIGGO_TEST_MODE_ENV) == '1':
+        LAST_RATE_LIMIT_EVIDENCE.update({'testMode': True})
+        return None, False
+    for attempt in range(max(1, int(max_attempts))):
         try:
             if use_cooldown:
                 _wait_cooldown()
@@ -133,21 +189,30 @@ def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=5, timeout=20,
             if token:
                 headers['Authorization'] = f'Bearer {token}'
             req = urllib.request.Request(API_URL.format(q=urllib.parse.quote(model, safe='')), headers=headers)
+            REQUEST_STATS['search'] += 1
             data = json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode('utf-8', 'ignore'))
             return data, True
         except urllib.error.HTTPError as e:
-            if e.code == 429:
-                # require_login（免登入通道關閉）唔係冷卻問題；有 token 就照舊冷卻重試
-                if use_cooldown:
-                    wait = int(e.headers.get('Retry-After') or 0) or 60
-                    print(f'  ⏳ 429 限流：全局冷卻 {wait}s 後重試（{model}，第 {attempt + 1} 次）', flush=True)
-                    _global_cooldown(wait)
-            elif e.code in (403,):
-                if use_cooldown:
-                    _global_cooldown(60)
-            else:
-                if sleep_on_error:
-                    time.sleep(5 * (attempt + 1))
+            retry_after = None
+            try:
+                retry_after = e.headers.get('Retry-After') if e.headers else None
+            except AttributeError:
+                retry_after = None
+            if e.code in (403, 429):
+                _record_response_evidence(e.code, retry_after)
+                if use_cooldown and retry_after:
+                    wait = int(retry_after) if str(retry_after).strip().isdigit() else 0
+                    if wait > 0:
+                        print(f'  ⏳ {e.code} 限流：honour Retry-After {wait}s（{model}）；'
+                              f'本 model 唔會即刻 retry', flush=True)
+                        _global_cooldown(wait)
+                print(f'  ⏳ {e.code}：唔即刻 retry（{model}）；安全證據已記錄，'
+                      f'冷卻交由 coordinator／項目 48h fallback 處理', flush=True)
+                return None, False
+            if sleep_on_error:
+                time.sleep(5 * (attempt + 1))
+        except BigGoTestModeError:
+            raise
         except Exception:
             if sleep_on_error:
                 time.sleep(3 * (attempt + 1))
@@ -603,35 +668,37 @@ def _smoke_probe(model):
 
 
 def run_smoke(candidates=None):
-    """連線煙霧測試：首個有價即通過；單次 attempt、約 8 秒 timeout、唔等冷卻／唔重試。
+    """連線煙霧測試：approved design C 規定**最多一個 product-search request**。
 
-    - 只有明確 'no-price'（API 正常回覆但暫時無匹配報價）才試下一個候選；
-    - 第一個 'unreachable'（網絡／限流／認證）或者例外就立即回 False，
-      唔會再試其餘候選，亦唔會硬碰；
-    - 全部候選都 'no-price' 亦回 False。工作流收到 False 會跳過本批（安全門禁不變）。
+    只探測第一個候選（預設 `SMOKE_CANDIDATES[0]`），單次 attempt、約 8 秒 timeout、
+    唔等冷卻／唔重試：
+    - 'priced'    → True（正常有價）
+    - 'no-price'  → False（API 正常但暫時無匹配報價；唔會試其餘候選，唔濫用額度）
+    - 'unreachable'／例外 → False
+    工作流收到 False 會安全跳過本批（保留快照）；實際呼叫計數由 `REQUEST_STATS` 記錄。
     """
     cands = SMOKE_CANDIDATES if candidates is None else candidates
-    for cand in cands:
-        model = cand['model'] if isinstance(cand, dict) else str(cand)
-        try:
-            status, result = _smoke_probe(model)
-        except Exception as e:
-            # 只記錄例外類型，唔輸出 exception 內容（避免任何 credential 落入 log）
-            print(f'  ⚠️ smoke 候選 {model} 例外：{type(e).__name__}'
-                  f'（網絡／憑證等，未細分）；立即結束 smoke，唔試其餘候選', flush=True)
-            return False
-        if status == 'priced':
-            print(f'✅ BigGo smoke test 通過：{model} → {result["price"]}'
-                  f'（{result.get("merchants", 0)} 商戶）', flush=True)
-            return True
-        if status == 'no-price':
-            print(f'  ⚠️ smoke 候選 {model}：API 正常但暫時無匹配報價，試下一個候選', flush=True)
-            continue
-        print(f'  ⚠️ smoke 候選 {model}：unreachable'
-              f'（網絡／限流／認證等，現行錯誤分類未細分）；'
-              f'立即結束 smoke，唔試其餘候選、唔硬碰', flush=True)
+    if not cands:
         return False
-    print('   API 連線正常但全部候選暫時無匹配報價：屬個別型號情況，唔係限流', flush=True)
+    cand = cands[0]
+    model = cand['model'] if isinstance(cand, dict) else str(cand)
+    try:
+        status, result = _smoke_probe(model)
+    except Exception as e:
+        # 只記錄例外類型，唔輸出 exception 內容（避免任何 credential 落入 log）
+        print(f'  ⚠️ smoke 候選 {model} 例外：{type(e).__name__}'
+              f'（網絡／憑證等，未細分）；立即結束 smoke', flush=True)
+        return False
+    if status == 'priced':
+        print(f'✅ BigGo smoke test 通過：{model} → {result["price"]}'
+              f'（{result.get("merchants", 0)} 商戶）', flush=True)
+        return True
+    if status == 'no-price':
+        print(f'  ⚠️ smoke 候選 {model}：API 正常但暫時無匹配報價；'
+              f'single-request cap，唔會再試其餘候選', flush=True)
+        return False
+    print(f'  ⚠️ smoke 候選 {model}：unreachable'
+          f'（網絡／限流／認證等，現行錯誤分類未細分）；立即結束 smoke、唔硬碰', flush=True)
     return False
 
 

@@ -231,19 +231,42 @@ def test_daily_stage_reader_uses_queue_contract_without_fallback():
     assert 'exit 1' in stage_block
 
 
-def test_daily_biggo_uses_price_batch_state_exit_codes():
+def test_daily_biggo_stage_runner_gates_and_coordinator_env():
+    """approved C：workflow 入口改為 stage runner（本地階段先決、coordinator-gated）。"""
     text = _text('daily-update.yml')
-    assert 'scripts/price_batch_state.py' in text
     biggo = text[text.index('價錢快照分批更新'):text.index('數據驗證（防壞數據上線）')]
-    assert 'pb_rc' in biggo and 'exit 2' in biggo, 'meta 損毀要阻斷，唔可以當未啟動'
-    assert 'from batch_utils import price_batch_active' not in biggo
-    # 非 force 路徑必須先讀本地狀態；未啟動時唔可以為 smoke 呼叫 BigGo。
-    assert biggo.index('python scripts/price_batch_state.py') < biggo.index(
-        'python fetch_biggo.py --smoke')
-    inactive = biggo[biggo.index('elif [ "$pb_rc" -eq 1 ]'):
-                     biggo.index('else', biggo.index('elif [ "$pb_rc" -eq 1 ]'))]
-    assert 'fetch_biggo.py' not in inactive
-    assert '未呼叫 BigGo API' in inactive
+    # inactive／缺配置／lease／budget 全部由 runner 一個入口判斷
+    assert 'python scripts/biggo_stage_runner.py' in biggo
+    # coordinator 配置只可以經 Secrets；唔准寫死私人 repo 識別
+    assert 'AIRCON_BIGGO_COORDINATOR_REPO: ${{ secrets.AIRCON_BIGGO_COORDINATOR_REPO }}' in biggo
+    assert 'AIRCON_BIGGO_COORDINATOR_TOKEN: ${{ secrets.AIRCON_BIGGO_COORDINATOR_TOKEN }}' in biggo
+    assert 'github.com/' not in biggo, 'workflow 唔可以有私人 repo URL'
+    # workflow 層唔准直接 smoke：smoke 只可以喺 runner 通過階段＋lease＋budget 之後
+    assert 'fetch_biggo.py --smoke' not in biggo
+    # 維護者明確 force override 保留
+    assert 'FORCE_PRICE_BATCH' in biggo and 'fetch_biggo.py --force-batch' in biggo
+    # 硬失敗要阻斷，唔可以靜靜當成功
+    assert '::error::BigGo 階段硬失敗' in biggo and 'exit "$rc"' in biggo
+
+
+def test_biggo_stage_runner_local_stage_first_and_no_auto_rerun():
+    src = open(os.path.join(BASE, 'scripts', 'biggo_stage_runner.py'),
+               encoding='utf-8').read()
+    # 本地階段檢查（inactive → 零 coordinator mutation）必須喺 acquire 之前
+    assert src.index("'skip-not-active'") < src.index('client.acquire(')
+    # 缺 coordinator 配置 → 安全跳過、零 BigGo 呼叫（保留快照）
+    assert src.index('skip-coordinator-not-configured') < src.index('run_smoke()')
+    # completed idempotent；needs_review 禁止自動重跑
+    assert "result == 'completed-idempotent'" in src
+    assert "result == 'needs-review'" in src and 'rerun' in src
+    # 只有成功先 publish；任何已呼叫但未確定 → needs_review
+    assert 'publish-uncertain' in src
+    planner = open(os.path.join(BASE, 'scripts', 'biggo_coordinator.py'),
+                   encoding='utf-8').read()
+    assert 'LEASE_SECONDS = 45 * 60' in planner
+    assert 'RENEW_INTERVAL_SECONDS = 5 * 60' in planner
+    assert 'PROJECT_COOLDOWN_SECONDS = 48 * 3600' in planner
+    assert "'project-48h'" in planner, '48h 要標示為項目 fallback，唔係 provider quota'
 
 
 def test_daily_official_receipt_artifact():
