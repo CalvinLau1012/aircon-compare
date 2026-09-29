@@ -762,3 +762,126 @@ D23 的 inactive 零 BigGo API 路徑已由測試、machine acceptance 與 trust
 - **未變**：EMSD controlled live 雙來源比對仍因本機環境 TLS（`UNEXPECTED_EOF_WHILE_READING`）
   未能執行；未 push／PR／deploy／tag／Release；未改 Secrets／environment；未 SSH 或操作
   任何 production server。
+
+## 19. 2026-09-29 GitHub Actions／EMSD CSV 修復候選（E2；未 commit／未 push／未 deploy）
+
+> 本節只追加；§1–§18 保留當時快照語義。以下係本機候選（E2）證據，唔代表 trusted CI（E3）
+> 或任何部署（E4）。範圍係用戶批准嘅 R2/R3 修復（見 `需求摘要.md` 2026-09-29 節、D27）。
+
+### 19.1 觸發事件（OBSERVED / E3 回讀）
+
+| Run | 事件 | 結論 | 結果 |
+| --- | --- | --- | --- |
+| 36523360069 | workflow_dispatch（master） | failure | step 12「官網核實第一批」failure；BigGo、validate、metadata、commit／Pages 全部 skipped |
+| 36490966449 | schedule（master） | failure | 同上（stage 1 官網核實失敗，後續 skip） |
+
+### 19.2 官方頁 bounded read-only 核實（OBSERVED；2026-09-29，1 request／URL）
+
+| URL | HTTP | bytes | Product JSON-LD | offers |
+| --- | --- | --- | --- | --- |
+| `.../products/frostar-fr-ks7-r32-inverter-cooling-window-air-conditioner-with-dry-mode-and-wireless-remote-control-34hp` | 200 | 452,401 | name 含 `FR-KS7`、sku `69f2f9c9ad79a8c3d8067572` | `2900.0`、InStock |
+| `.../frostar-fr-ks9-...-34hp` | 200 | 452,549 | name 含 `FR-KS9` | `3700.0`、InStock |
+| `.../frostar-fr-ks12-...-34hp` | 200 | 452,571 | name 含 `FR-KS12` | `4700.0`、InStock |
+| `.../frostar-fr-ks18-...-34hp` | 200 | 452,593 | name 含 `FR-KS18` | `5900.0`、InStock |
+
+- 註：頁面 `og:title`／URL slug 嘅匹數字尾（全部 `-34hp`）同實際型號唔一致（例如 FR-KS9 名稱係
+  1 匹）；所以 identity 以 Product JSON-LD name + URL slug 型號 token 為準，唔用 slug 匹數。
+- `cafa-09crn8-pc2`：HTTP 404；`cafa-09crn8pc2`：HTTP 200（33,515 B）。舊 slug 係重複 stale
+  target，移除後 canonical 型號 `CAFA-09CRN8PC2` 仍由正確 slug 覆蓋。
+
+### 19.3 CKAN 目錄 shape（OBSERVED / relay；直接連線 UNKNOWN）
+
+- 本機（Windows Python 同 WSL curl）對 `data.gov.hk` 直連 TLS 即時失敗
+  `UNEXPECTED_EOF_WHILE_READING`（同 §18.4 對 `www.emsd.gov.hk` 情況一致）；因此真實 API shape
+  只經 read-only relay（`r.jina.ai`）讀取，response payload SHA-256
+  `c67e5192f50ce2c357293b33c46778113a75eee5f342f7d7905ad4c33b86be15`（整段 relay 內容）。
+- 實讀形狀：`success: true`；`result.name = hk-emsd-emsd1-meels-listed-models`；`result.resources`
+  11 項；其中 `id 2944ffac-4bb3-4240-a5f8-d902d0531b20`、`name/description = Room Air Conditioners`、
+  `format = CSV`、`state = active`、`url = https://www.emsd.gov.hk/energylabel/files/meels_rac.csv`；
+  `update_frequency = Weekly`、`organization.name = hk-emsd`。Catalog 頁顯示 provider EMSD、
+  Format CSV、Update Frequency Weekly、直接 EMSD URL；英文／繁／簡 resource UUID 唔同，所以 resolver
+  按 name／format／state 揀而唔靠 UUID。
+- 直接 API 驗證列 **UNKNOWN**；resolver 以離線契約測試鎖定，live 啟用前由受信任 CI 再核。
+
+### 19.4 本機實數（OBSERVED / E2）
+
+| 命令 | 結果 |
+| --- | --- |
+| `.venv/Scripts/python.exe -m pytest tests/ -q` | **639 passed**、1 預期 duplicate-zip warning、138.01s |
+| `.venv/Scripts/python.exe scripts/feature-check.py --run-tests` | 15 項 required／18 節點 passed、rc=0 |
+| `.venv/Scripts/python.exe scripts/extract_governance.py` | 6 區塊、Schema 完整驗證通過、rc=0 |
+| `.venv/Scripts/python.exe validate_data.py` | 1,834 行／1,773 型號全通過、rc=0 |
+| `.venv/Scripts/python.exe scripts/validate_metadata.py` | version=1.2.9、datasetDate=2026-09-28、rc=0 |
+| `.venv/Scripts/python.exe scripts/check_public_privacy.py --mode worktree` | 0 命中、rc=0 |
+| `git diff --check` | rc=0 |
+| `.venv/Scripts/python.exe scripts/run_acceptance.py --report "D:\tmp\aircon-acceptance-20260929.json" --log-dir "D:\tmp\aircon-acceptance-20260929-logs"` | ok=true、7 gates（GOVERNANCE_EXTRACT／VALIDATE_DATA／VALIDATE_METADATA／PRIVACY_WORKTREE／PYTEST／FEATURE_CHECK／DIFF_CHECK）全部 rc=0、report 喺 repo 外；PYTEST log = 639 passed／1 warning |
+| Frostar／CAFA bounded 官方頁核實 | 4×HTTP 200＋1×404＋1×200（見 §19.2） |
+
+新增測試範圍（全部離線 fake／fixture）：CKAN 正常選擇、changed URL、transient outage fallback、
+malformed／duplicate resource、unknown host／redirect、HTML masquerade、schema change、304 拒絕、
+dual-source mismatch 保留舊 CSV；Frostar 有效頁／404 coverage pending／transport 硬失敗／
+200 空白／identity mismatch／未知型號；receipt counts／sets／skipped／failureReasons 一致；
+D1-B pending 不 advance、queue／舊規格保留；hard reason／缺 reasons／pending 唔屬 failed／
+reason 唔 allowlist 全部 fail-closed；no blacklist、零 `crawl_utils.fetch` 呼叫。
+
+### 19.5 本輪唔手動重生 payload（依 D24）
+
+`generate_html.py` 已加 DATA.GOV.HK attribution，但 `index.html`／`空調對比報告.pdf` 保持由
+下一次 daily 全量重生；`空調對比報告.md` 本輪追加日誌後，預期下一次 daily 前任何 push 嘅
+GATE-08 `payload.pdf_matches_metadata` 會紅一次（待 daily 重生恢復），屬 D24 已記錄語義。
+
+### 19.6 UNKNOWN／未執行
+
+- trusted CI（E3）、任何 deployment（E4）、tag／Release。
+- 真實 CKAN live fetch（本機 TLS 被阻）、真實 EMSD 抓取、真實 BigGo API（零呼叫）。
+- 下次自然 daily 嘅 coverage pending 平台 behavior；首次 direct CKAN 驗證。
+- 未改私人 repo；未 SSH／操作生產或私人 server。
+
+### 19.7 2026-09-29 返修：Codex review 六項缺陷（追加；E2）
+
+> 只追加；§19.1–§19.6 原文保留。本節係同一輪修復嘅第二輪返修，全部只收緊門禁。
+
+| # | 缺陷 | 修正 | 證據 |
+| --- | --- | --- | --- |
+| 1 | D1-B 只睇 `missing_coverage`；script 確認 pending 但已被另一 script／舊快照覆蓋時會 advance | `run_official_batch` 分開 `missingQueueCoverage`／`scriptCoveragePending`；任一非空即 `queue-kept-pending-coverage`、唔 advance；只有 `markerValid` receipt 可貢獻 pending；status 加 `missingQueueCoverage`；UI hint 列 script pending 型號 | 新回歸 `test_script_pending_covered_by_another_script_still_keeps_queue`（rc=0、無 advance、queue 不變）；`test_script_pending_plus_hard_failure_still_exits_1`；`test_invalid_marker_cannot_contribute_script_pending`；status／hint 測試 |
+| 2 | `urlopen` 自動跟 redirect，未驗 target | `http_get` 加 redirect 前 validator（`_ValidatingRedirectHandler`）；CKAN 用 `validate_catalog_api_url`（完整 path/query identity）、CSV 用官方 URL allowlist；`finalUrl` 仍要過完整 identity | loopback HTTP server：未批准 redirect 目的地**零請求**、批准 redirect 正常跟；validator 傳遞測試；same-host wrong path／wrong query finalUrl 測試 |
+| 3 | CKAN 未驗 provider；injected non-200 全部當 unavailable | 要求 `result.organization.name == 'hk-emsd'`；non-200 對齊 `_catalog_unavailable`（4xx fail closed，只 5xx／408／425／429 retry 後 fallback）；200 invalid-schema 行為不變 | wrong／missing／non-dict provider 測試；403／404 一次即 CatalogInvalid；503 兩次 → CatalogUnavailable |
+| 4 | `fetch_rasonic` 用 substring：FR-KS7 誤中 FR-KS70 | URL slug 精確 token == Product JSON-LD token；evidence 只聲明 configured URL slug＋Product name | `FR-KS7` vs `FR-KS70`、`RC-XG7` vs `RC-XG70` 硬失敗；四個真實 Frostar slug 仍成功 |
+| 5 | `always()` 直接上載 checkout tracked receipt／status，早退時舊 bytes 冒充本 run | 新增 `scripts/stage_run_evidence.py`；EMSD／official 只上載 `RUNNER_TEMP` staging dir；run-start lower bound＋UTC timestamp freshness；`run-status.json` 逐檔 reason＋早退 error record；生產 receipt 不刪不改 | `tests/test_stage_run_evidence.py` 9 cases（舊 checkout receipt／raw receipt／status excluded；fresh failure receipt staged；missing 檔 error record；future／bad timestamp excluded；status 無絕對路徑）；workflow 靜態測試鎖定 staging helper／run-start／只上載 staging dir |
+| 6 | 文檔修正 | D27 返修節、本節、`CHANGELOG.md` 返修條目（append-only） | 本次三處純追加；舊條目原文保留 |
+
+**本輪實數（OBSERVED / E2）**：
+
+| 命令 | 結果 |
+| --- | --- |
+| `.venv/Scripts/python.exe -m pytest tests/ -q` | **664 passed**、1 預期 duplicate-zip warning、128.33s、rc=0 |
+| `.venv/Scripts/python.exe scripts/run_acceptance.py --report "D:\tmp\aircon-acceptance-20260929-r2.json" --log-dir "D:\tmp\aircon-acceptance-20260929-r2-logs"` | ok=true、7/7 gates rc=0；PYTEST log 664 passed（report／log 喺 repo 外） |
+| `scripts/extract_governance.py` / `scripts/feature-check.py --run-tests` / `validate_data.py` / `scripts/validate_metadata.py` / `scripts/check_public_privacy.py --mode worktree` / `git diff --check` | 全部 rc=0（feature-check 15 項／18 節點 passed；privacy 0 命中） |
+
+**未變**：UNKNOWN（E3／E4、live CKAN 直接驗證、真實 BigGo）同 §19.6；未 commit／push／deploy、
+未觸發 Actions、未改私人 repo、未改 `index.html`／`metadata.json`／PDF／EMSD CSV。
+
+### 19.8 2026-09-29 第二次返修：baseline provenance＋fetch_official pending 身份（追加；E2）
+
+| # | 缺陷 | 修正 | 證據 |
+| --- | --- | --- | --- |
+| 1 | timestamp-only staging：前一次 run 喺 300s 內嘅 tracked receipt／status 可被當本 run | `stage_run_evidence.py` 加 `--write-baseline`（source step 前記錄 presence／SHA-256）；staging 要求 timestamp `>= runStart`（無 skew）＋hash 同 baseline 唔同（或 baseline absent）＋run id（如有）match；baseline 放 `RUNNER_TEMP/evidence-baseline/` 唔入 artifact；缺失／損毀 baseline rc=2 | `tests/test_stage_run_evidence.py`：pre-run 1 秒排除、baseline hash 相同但 timestamp 移入 window 排除、fresh changed content staged、absent→fresh staged、run-id mismatch excluded、baseline 缺失／損毀 rc=2、baseline 唔入 staging／status 無絕對路徑；workflow 靜態測試鎖定 `--write-baseline` 喺 fetch 前、`--baseline` 喺 staging、冇 `--skew-seconds`、upload path 唔含 `evidence-baseline` |
+| 2 | `fetch_official` 任何 404／410 都 pending，冇核對 URL 身份／EMSD 登記 | `emsd_registered()` 每 batch 一次 load；`pending_eligible()` 要求 404/410＋model 喺 EMSD set＋URL token 精確等於 model；Panasonic `CW-…` token、HITACHI constructed URL `RA-…`／`RAW-…` token、COMFEE slug；唔合即 `product-hard-failure` | `tests/test_official_batch_gate.py`：registered Panasonic／COMFEE／HITACHI 404 → pending；URL mismatch 404 → hard；unregistered 404 → hard；非 404 成功（即使唔喺 EMSD set）不受影響；CAFA duplicate removal 測試保持 |
+
+**本輪實數（OBSERVED / E2）**：
+
+| 命令 | 結果 |
+| --- | --- |
+| `.venv/Scripts/python.exe -m pytest tests/ -q` | **670 passed**、1 預期 duplicate-zip warning、128.24s、rc=0 |
+| `.venv/Scripts/python.exe scripts/run_acceptance.py --report "D:\tmp\aircon-acceptance-20260929-r3.json" --log-dir "D:\tmp\aircon-acceptance-20260929-r3-logs"` | 見本節後續最終 run（預期 ok=true、7/7 gates rc=0） |
+| extract_governance／feature-check --run-tests／validate_data／validate_metadata／privacy worktree／git diff --check | 全部 rc=0（見最終驗證） |
+
+**未變**：UNKNOWN（E3／E4、live CKAN、真實 BigGo）同 §19.6／§19.7；未 commit／push／deploy、
+未觸發 Actions、未改私人 repo、未改生產生成物。
+
+**§19.8 最終驗證（2026-09-29 第二次返修完成後）**：
+
+- `.venv/Scripts/python.exe -m pytest tests/ -q` → **670 passed**、1 預期 duplicate-zip warning、128.24s、rc=0。
+- `.venv/Scripts/python.exe scripts/run_acceptance.py --report "D:\tmp\aircon-acceptance-20260929-r3.json" --log-dir "D:\tmp\aircon-acceptance-20260929-r3-logs"` → ok=true、7/7 gates rc=0、PYTEST log 670 passed（report／log 喺 repo 外）。
+- `extract_governance.py`／`feature-check.py --run-tests`（15 項／18 節點）／`validate_data.py`／`validate_metadata.py`／`check_public_privacy.py --mode worktree`／`git diff --check` → 全部 rc=0。
+- 聚焦組合（stage_run_evidence＋official_batch_gate＋workflow_security＋emsd_dual_source）→ 128 passed。

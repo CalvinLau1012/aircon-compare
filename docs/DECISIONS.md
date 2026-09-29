@@ -597,3 +597,188 @@
 - **證據（E2）**：見 `docs/STATUS.md` §18.5；私人文檔 runbook 同步追加返修節。
 - **邊界**：本返修冇執行 sudo／apt／system package／server／production／SSH／deploy／push／
   真實 BigGo；公開同私人 server 兩條線保持分離。
+
+## D27 · GitHub Actions 與 EMSD CSV 修復（Frostar 解析／receipt 會計／D1-B coverage pending／CKAN resolver）
+
+- **日期**：2026-09-29
+- **狀態**：已實作候選（本機 E2）；未 commit、未 push、未 deploy；用戶已批准 R2/R3 範圍，交獨立
+  驗收後由 Codex 決定最終本地 commit。
+- **背景**：master daily run `36523360069`、`36490966449` EMSD 抓取成功，但 stage 1 官網核實
+  以非零結束，令 BigGo 同發布被 skip。觀察到兩類問題：（1）`fetch_rasonic.py` 只認 `RC-` 型號，
+  Frostar `FR-KS7/9/12/18` 四個官方頁雖然 HTTP 200 且 Product JSON-LD 完整，仍被判失敗；
+  （2）`fetch_official.py` receipt 會計受 hitachi 列表頁影響，且舊 target `cafa-09crn8-pc2`
+  （連字號）實測 404（正確 `cafa-09crn8pc2` 為 200）令每日重試同 stage 1 硬失敗。
+  另外現行 D1-B 只在「所有腳本 rc=0」時才可 coverage pending，確認頁面已消失嘅情況會變硬失敗；
+  EMSD 主來源仍用固定 direct URL，缺少官方目錄解析；daily 失敗時冇結構化 EMSD 證據留存。
+- **選項**：
+  - A：只把失敗目標剝走／改成硬編碼例外——會失去身份驗證、掩蓋真失敗，否決；
+  - B（採用）：修 parser 同 receipt 契約，精準區分「確認頁面消失」同硬失敗；用官方 CKAN
+    dataset 目錄解析 primary CSV（仍然保留逐頁 cross-check）；失敗時 always() 上載脫敏證據；
+  - C：放寬門禁令 daily 直接跳過官網核實——唔可接受，否決。
+- **決策**：採 B，範圍限定用戶批准嘅修復：
+  1. **Frostar FR-KS**：`fetch_rasonic.py` 支援 `FR-KS`（同 `RC-` 一樣）；型號必須同時出現喺
+     Product JSON-LD name 同 URL slug（正規化後）；身份唔完整、200 空白／登入／parser 例外
+     一律硬失敗。舊「stale／truncated URL」假設已由 4 個 HTTP 200 官方頁實測否證。
+  2. **CAFA stale target**：移除重複舊 slug `cafa-09crn8-pc2`（404）；保留 `cafa-09crn8pc2`
+     （200），canonical 型號 cover 不變。
+  3. **Receipt 契約**：`emit_fetch_receipt` 加 `skipped`、`failureReasons`、
+     `coveragePendingModels／coveragePendingReasons`；嚴格驗證 counts／lists／covers 一致；
+     hitachi 列表頁當 infra 前置，成功唔計型號 succeeded，失敗以 `HITACHI-LISTING:<url>`
+     單位計入 failed（硬失敗）。唔准把 skipped 當 newly succeeded。
+  4. **D1-B coverage pending 精準化**：只有 HTTP 404／410（且 URL 型號對得上 EMSD 登記）可以
+     歸類 coverage pending；網絡、timeout、200 空白／登入、parser 例外、identity 不確定、
+     receipt／output 不一致一律 fail-closed。pending 時 queue stage／models 原樣保留、舊規格
+     保留、唔 advance、唔自動淘汰；只有純 coverage gap 可以繼續 EMSD daily 發布（公開 status
+     顯示待核）。
+  5. **CKAN resolver**：以 DATA.GOV.HK `package_show` dataset ID
+     `hk-emsd-emsd1-meels-listed-models` 揀唯一 active Room Air Conditioners CSV resource
+     （name／description、format CSV、state active、URL allowlist；唔靠 UUID——catalog 頁
+     英／繁／簡 resource UUID 唔同）。request／final URL 都要 HTTPS +
+     `www.emsd.gov.hk` + `/energylabel/files/*.csv`；HTML masquerade、schema 唔明、redirect
+     去非 allowlist host 全部 fail-closed。目錄暫時不可用（網絡／5xx／429）才 fallback 上次
+     批准 direct URL **重新抓新鮮 bytes**（唔用 cache／304 bytes）；目錄有回應但 URL／身份唔合
+     契約即 fail closed、無 silent fallback。逐頁 paginated 來源仍是 mandatory cross-check。
+  6. **Receipt 擴充**：公開 EMSD receipt 加 catalog dataset ID／resource ID／catalog URL／
+     dataset page URL／resolved CSV URL／resolution time，以及 CSV ETag／Last-Modified／
+     byteLength／SHA-256；`metadata.json` 內嵌 Schema 不變，`gen-metadata.py` 接受批准
+     resolved URL（regex allowlist）並驗證 catalog block；私人 raw sink／raw byte hash 不變。
+  7. **Daily 失敗證據**：以 `always()` 上載 EMSD diff／`emsd_receipt.json`／
+     `emsd_raw_receipt.json` 同 official machine receipt／status；只含已脫敏檔，無 secrets／
+     私人路徑。cron 00:30 HKT、trusted master／PR、pinned `ubuntu-24.04` 同 actions、BigGo
+     coordinator gating 全部不變。
+  8. **Attribution**：UI／README 加「資料目錄：DATA.GOV.HK；資料由機電工程署提供」；依 D24
+     唔手動重生 `index.html`／PDF，由下一次 daily 全量重生。
+- **原因**：官方頁仍然有效時必須解析而唔係跳過；只有可證實「頁面已消失」才可 pending；目錄解析
+  令 primary CSV 來源可追溯至官方 catalog，同時保留獨立逐頁核對；失敗證據要機器可讀先可審計。
+  一切改動唔降低 required 功能、Metadata Schema、成功標準或 fail-closed 門禁。
+- **後果（分類）**：
+  - `REQUIREMENT`：15 項 required 功能、protection、Metadata Schema（`metadata.json` 欄位不變）、
+    成功標準、全部阻斷門禁及公開 attribution 無放寬；D1-B 只放行可證實嘅純 coverage gap。
+  - `OBSERVED / E2`：完整 pytest **638 passed**（1 預期 duplicate-zip warning）；
+    `feature-check.py --run-tests` 15 項／18 節點 passed；`extract_governance`／
+    `validate_data`／`validate_metadata`／`check_public_privacy --mode worktree`／
+    `git diff --check` 全 rc=0；四個 Frostar 頁同 CAFA 404 係 bounded read-only 官方頁核實
+    （非 BigGo、非 EMSD 抓取）。
+  - `OBSERVED / relay`：CKAN API 真實回應 shape 經 read-only relay 讀取（本機直連
+    `data.gov.hk` TLS `UNEXPECTED_EOF_WHILE_READING`）：`success: true`、`result.name =
+    hk-emsd-emsd1-meels-listed-models`、11 resources、Room Air Conditioners CSV active direct
+    EMSD URL；正式直接驗證仍屬 UNKNOWN。
+  - `UNKNOWN`：受信任 CI（E3）、任何部署（E4）、真實 CKAN live fetch（本地 TLS 被阻）、
+    真實 BigGo、下次自然 daily 嘅 coverage pending 平台行為。
+  - `BOUNDARY`：冇 commit／push／merge／deploy／tag／Release、冇觸發任何 GitHub Actions、
+    冇操作 Secrets／environment、冇 SSH 生產或私人 server、冇改私人 repo、冇改
+    `index.html`／PDF／EMSD CSV／`metadata.json` 生產生成物。
+- **回滾**：本輪全部改動喺 `codex/dual-writer-coordination` 工作樹，未 commit；可用
+  `git checkout -- <path>` 或 commit 後 `git revert` 還原。如需停用 CKAN resolver，可在
+  `fetch_emsd.py` 直接使用 `dual.CSV_URL`（still fresh fetch）而同一次 revert 收據擴充；
+  D1-B／receipt 欄位屬 additive，舊 receipt／舊 daily 格式仍可被 wrapper 拒絕（fail-closed），
+  不存在資料遷移。
+
+### D27 · 2026-09-29 返修（追加；不刪改上文）：Codex review 六項缺陷修正
+
+- **背景**：Codex 對 D27 首版 diff 做獨立審查，發現六項具體缺陷：D1-B 判斷只睇
+  `missing_coverage`（script pending 但已有其他覆蓋時仍然 advance）；`http_get` 用
+  `urlopen` 自動跟 redirect，未跟之前冇驗證 target；CKAN resolver 冇驗 provider 身份，
+  且 injected non-200 全部當 unavailable；`fetch_rasonic` 用 normalized substring 比對 URL，
+  `FR-KS7` 會誤中 `FR-KS70`；daily `always()` 直接上載 checkout tracked receipt／status，
+  早退時舊 bytes 會被當成本 run 證據；文檔需 append-only 修正。
+- **決策（全部喺同一 D27 範圍內收緊，無新產品政策）**：
+  1. **D1-B 判斷修正**：`run_official_batch` 分開兩個事實
+     `missingQueueCoverage`（queue model 冇任何覆蓋）同 `scriptCoveragePending`
+     （通過 `validate_marker` 嘅 receipt 明確 404／410 pending）；任何一項非空
+     都 `decision=queue-kept-pending-coverage`、唔 advance、queue／舊規格原樣保留；
+     `coveragePending` 為兩者 OR。只有 `markerValid is True` 嘅 receipt 才可貢獻
+     covers／pending；invalid marker 只可以係 hard failure。`publish_official_status`
+     加 `missingQueueCoverage`；UI pending hint 會列出 script pending 型號。
+  2. **Redirect pre-validation**：`http_get` 新增 optional `validator`；自訂
+     `_ValidatingRedirectHandler` 喺 `redirect_request` 內**先**驗證 target，唔合格即
+     raise（保留 `CatalogInvalid` kind，唔會貶為 network_error）。CKAN request 帶
+     `validate_catalog_api_url`（https＋`data.gov.hk`＋固定 path＋dataset query＋無
+     userinfo／port／fragment）；CSV request 帶 `validate_official_csv_url`。同一
+     allowlist 內嘅官方 redirect 可以照跟。Injected transport 嘅 `finalUrl` 一樣要過
+     完整 identity（唔再只驗 hostname）。離線 loopback HTTP server 測試證明未批准
+     redirect 目的地零請求、批准 redirect 正常跟隨。
+  3. **CKAN provider 身份**：由先前 read-only relay 觀察到嘅真實 shape
+     `result.organization.name='hk-emsd'`；resolver 要求 `organization` 係 dict 且
+     `name == 'hk-emsd'`，缺失／唔同／非 dict 即 `CatalogInvalid`（fail closed）。
+     Injected response `status != 200` 分支改用 `_catalog_unavailable` 同一政策：
+     400／401／403／404 等即硬失敗；只有網絡／5xx／408／425／429 可以 bounded retry
+     之後當 `CatalogUnavailable`。200 但 invalid schema／HTML／歧義 resource 行為不變
+     （全部 fail closed）。
+  4. **型號身份精確比對**：`fetch_rasonic.parse_product_page` 由 substring 改為
+     `_model_from_url` 抽出嘅精確 URL slug token 同 Product JSON-LD name token
+     canonical 相等。`FR-KS7` vs `FR-KS70`、`RC-XG7` vs `RC-XG70` 加入硬失敗回歸；
+     四個真實 Frostar slug 保持成功。crawl_utils.fetch 冇 redirect final URL 證據，
+     所以 evidence 註明 identity = configured URL slug + Product JSON-LD name
+     （`identityBasis`、`configuredUrl`、`urlSlugToken`），唔聲稱 final URL 已驗證。
+  5. **Per-run evidence staging**：新增 `scripts/stage_run_evidence.py`。EMSD fetch 先寫
+     `$RUNNER_TEMP/emsd-evidence/run-start.utc`，失敗／成功都經 staging helper：只複製
+     存在、JSON object、有 UTC timestamp（`retrievedAt`／`startedAt`／`finishedAt`／
+     `generatedAt`）、timestamp >= run start（容忍 clock skew）且非未來嘅檔；舊
+     checkout receipt／status 只會標記 excluded。`run-status.json` 記錄 source rc、
+     run id、commit、逐檔 staged／excluded 原因；source rc 非零且零檔 staged 時寫
+     `source-rc-N-and-no-current-run-evidence` error。Official 同樣 stage 本 run
+     receipt／status（official_stage1／2 output rc；projection 成功先寫 current status）。
+     Workflow artifact 只上載兩個 RUNNER_TEMP staging dir；唔會刪除／改寫生產 receipt，
+     private sink 路徑／token／objectId 唔入 staging。
+  6. **文檔追加**：本節、`docs/STATUS.md` §19.7、`CHANGELOG.md` 返修條目；舊記述原文保留。
+- **原因**：六項都係 fail-closed 契約缺口或證據完整性問題；修正只收緊，冇降低任何
+  required 功能、Metadata Schema、成功標準或門禁。
+- **後果（分類）**：
+  - `REQUIREMENT`：D1-B、redirect allowlist、EMSD provider 身份、identity 精確比對、
+    證據新鮮度、Metadata Schema、required 功能全部無放寬。
+  - `OBSERVED / E2`：完整 pytest **664 passed**（1 預期 duplicate-zip warning）；
+    `feature-check.py --run-tests` 15 項／18 節點 passed；machine acceptance
+    **7/7 gates rc=0**（report `D:\tmp\aircon-acceptance-20260929-r2.json`，
+    PYTEST log 664 passed）；`extract_governance`／`validate_data`／
+    `validate_metadata`／`check_public_privacy --mode worktree`／`git diff --check`
+    全 rc=0；新增／更新測試全部離線（loopback HTTP、fake transport、fake scripts）。
+  - `UNKNOWN`：同 D27 主文（E3／E4、live CKAN 直接驗證、真實 BigGo）不變。
+  - `BOUNDARY`：未 commit／push／deploy、未觸發任何 GitHub Actions、未呼叫真實
+    BigGo／EMSD、未改私人 repo、未改生產生成物（`index.html`／`metadata.json`／PDF／CSV）。
+- **回滾**：同 D27 主文；新增欄位全部 additive，舊 receipt 仍會被 wrapper fail-closed
+  拒絕（唔存在弱化路徑）。
+
+### D27 · 2026-09-29 第二次返修（追加；不刪改上文）：provenance baseline＋fetch_official pending 身份
+
+- **背景**：Codex 第二輪 focused review 發現兩個 acceptance gap：
+  （1）`stage_run_evidence` 只靠 `timestamp >= runStart − 300s`，前一次手動 run 喺 5 分鐘內嘅
+  tracked receipt／status 會被當成本 run 證據；timestamp 單獨唔證明 provenance；
+  （2）D27 要求 404／410 coverage pending 必須有 URL target identity＋EMSD 登記型號，但
+  `fetch_official.py` 對 Panasonic／HITACHI／COMFEE 任何 404 都直接 pending，冇核對登記同
+  URL 型號身份。
+- **決策（只收緊，無新產品政策）**：
+  1. **Pre-step baseline provenance**：`stage_run_evidence.py` 加
+     `--write-baseline`（source step 前捕捉每個候選檔 presence＋SHA-256；缺席都記錄
+     `present: false`）。staging 必須傳 `--baseline`，只有同時滿足：
+     存在／regular file（拒 symlink）／JSON object／有 UTC timestamp／
+     `timestamp >= runStartedAt`（**冇 skew 容忍，pre-run 1 秒都排除**）／非未來／
+     hash 同 baseline 唔同（baseline absent 或 content 有變）／如 receipt 有
+     `runId`／`githubRunId` 而 `--run-id` 有提供就必須相等；先會 stage。baseline 檔寫喺
+     `$RUNNER_TEMP/evidence-baseline/`（evidence dir 以外），唔會上載。`run-status.json`
+     逐檔列出 `before-run-start`／`baseline-unchanged`／`run-id-mismatch`／`missing` 等原因，
+     source rc 非零且零檔 staged 時寫 error record；baseline 缺失／損毀即 rc=2 fail closed。
+     Workflow EMSD step 同 official pre-step 各自寫 baseline；upload path 只含
+     `emsd-evidence/`／`official-evidence/`。
+  2. **fetch_official pending 身份**：`main` 每次 batch 只 load 一次 EMSD 已登記型號 canonical
+     set（`emsd_registered()`，可 inject）。`pending_eligible(reason, model, url_token,
+     registered)` 要求 reason 係 404／410、model 喺登記 set、URL token 同 model canonical
+     相等：Panasonic 由 URL 抽 `CW-…` token；HITACHI 由 constructed product URL 抽
+     `RA-…`／`RAW-…` token；COMFEE 用 URL 最後 path segment（即 slug）。三者缺一即
+     `product-hard-failure`（唔會 pending）；非 404 成功完全唔受登記檢查影響；CAFA 重複
+     stale slug 移除保持不變。
+  3. **文檔**：本節、`docs/STATUS.md` §19.8、`CHANGELOG.md` 第二次返修條目（append-only）。
+- **原因**：timestamp 可以被舊檔／人為更新蒙混；provenance 需要 pre-step baseline hash＋
+  run window＋run id；coverage pending 係「已確認官方頁面消失」嘅窄分類，必須先確定
+  target 身份同 EMSD 登記，否則一律硬失敗。
+- **後果（分類）**：
+  - `REQUIREMENT`：D1-B、來源身份、fail-closed 門禁、Metadata Schema、required 功能不變。
+  - `OBSERVED / E2`：完整 pytest **670 passed**（1 預期 duplicate-zip warning）；
+    新增 staging provenance 回歸（pre-run 1 秒、baseline hash 相同但 timestamp 入 window、
+    fresh changed content、run-id mismatch、baseline 缺失／損毀 fail closed、baseline 唔入
+    artifact）＋fetch_official pending 身份回歸（registered 404 pending、URL mismatch／
+    unregistered hard fail、非 404 成功不受影響）；全部離線 fake／fixture。
+  - `UNKNOWN`：E3／E4、live CKAN 直接驗證、真實 BigGo／EMSD，同 D27 主文。
+  - `BOUNDARY`：未 commit／push／deploy、未觸發 Actions、未改私人 repo、未改生產生成物。
+- **回滾**：同 D27 主文；baseline／pending 欄位全部 additive，舊 receipt 仍被 wrapper
+  fail-closed 拒絕（冇弱化路徑）。
