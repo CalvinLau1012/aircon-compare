@@ -1,10 +1,10 @@
 {
-  "retrievedAt": "2026-09-27T19:53:03Z",
-  "sourceUrl": "https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50",
+  "retrievedAt": "2026-09-29T19:58:47Z",
+  "sourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
   "success": true,
   "pagesExpected": 37,
   "pagesFetched": 37,
-  "totalRows": 1834,
+  "totalRows": 1816,
   "aborted": false,
   "error": null,
   "perPageRows": [
@@ -44,8 +44,102 @@
     50,
     50,
     50,
-    34
+    16
   ],
-  "datasetHash": "sha256:f362a542f8b46daa07f5af08cd49ed50ec231f6f9c1d82bb51ab39892e41dc86",
-  "rawReceiptHash": "sha256:9bcc0b6896f03bce8ccddaba163eea741b67d6b16c862def9eede541645ae3d7"
+  "sourceKind": "emsd-open-data-csv",
+  "dualSource": {
+    "schemaVersion": 1,
+    "primary": "emsd-open-data-csv",
+    "crossCheck": "emsd-energy-label-paginated",
+    "equal": true,
+    "retrievedAt": "2026-09-29T19:58:47Z",
+    "sources": {
+      "emsd-open-data-csv": {
+        "sourceKind": "emsd-open-data-csv",
+        "sourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
+        "resolvedUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
+        "status": 200,
+        "notModified": false,
+        "byteLength": 896597,
+        "sha256": "sha256:018f368a6cd7c5b89585571da587e6e9b477c4fdd7b10c43b143d02f7491409b",
+        "fetchedAt": "2026-09-29T19:58:48Z",
+        "lastModified": "Tue, 29 Sep 2026 04:06:35 GMT",
+        "etag": null,
+        "encoding": "utf-8-sig",
+        "rowCount": 1816,
+        "minRowsGate": 1700,
+        "catalog": {
+          "mode": "catalog",
+          "datasetId": "hk-emsd-emsd1-meels-listed-models",
+          "resourceId": "2944ffac-4bb3-4240-a5f8-d902d0531b20",
+          "resourceName": "Room Air Conditioners",
+          "catalogApiUrl": "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-emsd-emsd1-meels-listed-models",
+          "datasetPageUrl": "https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models",
+          "resolvedCsvUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
+          "resolvedAt": "2026-09-29T19:58:47Z",
+          "fallbackReason": null
+        },
+        "archive": {
+          "persisted": true,
+          "adapter": "github-release-asset",
+          "archiveHash": "sha256:b4a4cfb1d86583c1504c20ecd0a072db00d927d047f9d3156a2161ff65e14833",
+          "verified": true,
+          "durableRemote": true,
+          "retentionDays": 90
+        }
+      },
+      "emsd-energy-label-paginated": {
+        "sourceKind": "emsd-energy-label-paginated",
+        "sourceUrl": "https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50",
+        "pageCount": 37,
+        "totalRows": 1816,
+        "archiveHash": null,
+        "fetchedAt": "2026-09-29T19:58:47Z",
+        "archive": {
+          "persisted": true,
+          "adapter": "github-release-asset",
+          "archiveHash": "sha256:f0f5851a0b8193221842a29bdfa63fb2253e5a733bddf1386f615a76658334a8",
+          "verified": true,
+          "durableRemote": true,
+          "retentionDays": 90
+        }
+      }
+    },
+    "counts": {
+      "csv": {
+        "registrationCount": 1816,
+        "uniqueRegistrationKeys": 1816,
+        "modelCount": 1755
+      },
+      "paginated": {
+        "registrationCount": 1816,
+        "uniqueRegistrationKeys": 1816,
+        "modelCount": 1755
+      }
+    },
+    "catalog": {
+      "mode": "catalog",
+      "datasetId": "hk-emsd-emsd1-meels-listed-models",
+      "resourceId": "2944ffac-4bb3-4240-a5f8-d902d0531b20",
+      "resourceName": "Room Air Conditioners",
+      "catalogApiUrl": "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-emsd-emsd1-meels-listed-models",
+      "datasetPageUrl": "https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models",
+      "resolvedCsvUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
+      "resolvedAt": "2026-09-29T19:58:47Z",
+      "fallbackReason": null
+    }
+  },
+  "catalog": {
+    "mode": "catalog",
+    "datasetId": "hk-emsd-emsd1-meels-listed-models",
+    "resourceId": "2944ffac-4bb3-4240-a5f8-d902d0531b20",
+    "resourceName": "Room Air Conditioners",
+    "catalogApiUrl": "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-emsd-emsd1-meels-listed-models",
+    "datasetPageUrl": "https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models",
+    "resolvedCsvUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
+    "resolvedAt": "2026-09-29T19:58:47Z",
+    "fallbackReason": null
+  },
+  "datasetHash": "sha256:12df3e49b5c08585a319e96f5b7e54a694e3e3cdf78f47ba39a84df777cb7294",
+  "rawReceiptHash": "sha256:1c6471b5e23721c04eba5af7e4ff26d2eac9ea55a01781b37254bbdf31883769"
 }

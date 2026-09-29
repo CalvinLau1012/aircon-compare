@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "decision": "queue-kept-pending-coverage",
+  "stage": 1,
+  "pendingCoverage": true,
+  "missingQueueCoverage": true,
+  "scriptCoveragePending": [],
+  "missingModels": [
+    "WRK07MIZH1",
+    "WRK09MIZH1",
+    "WRK18MIZH1"
+  ],
+  "missingCanonicalModels": [
+    "WRK07MIZH1",
+    "WRK09MIZH1",
+    "WRK18MIZH1"
+  ],
+  "coveragePendingReasons": {},
+  "generatedAt": "2026-09-29T20:01:58Z",
+  "source": "run_official_batch.py"
+}
