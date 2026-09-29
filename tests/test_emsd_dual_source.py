@@ -211,8 +211,9 @@ class _FakeTransport:
         self.outcomes = list(outcomes)
         self.calls = []
 
-    def __call__(self, url, *, headers=None, timeout=None, now=None):
-        self.calls.append({'url': url, 'headers': dict(headers or {}), 'timeout': timeout})
+    def __call__(self, url, *, headers=None, timeout=None, now=None, validator=None):
+        self.calls.append({'url': url, 'headers': dict(headers or {}), 'timeout': timeout,
+                           'validator': validator})
         outcome = self.outcomes.pop(0)
         if isinstance(outcome, Exception):
             raise outcome
@@ -260,12 +261,19 @@ def _fake_pages():
     return [page(rows, True)], rows
 
 
-def _wire(monkeypatch, pages, csv_body):
+def _wire(monkeypatch, pages, csv_body, resolution=None):
     def fake_fetch(p):
         return pages[p - 1] if p - 1 < len(pages) else ''
 
     fetch.fetch_page = fake_fetch
     fetch.fetch_csv_source = lambda **kw: _resp(csv_body)
+    # 離線：CKAN resolver 一律注入固定 catalog resolution（唔打真網絡）
+    fetch.resolve_csv_source = lambda **kw: (resolution or {
+        'schemaVersion': 1, 'mode': 'catalog',
+        'datasetId': dual.CATALOG_DATASET_ID,
+        'resourceId': 'test-resource-1', 'resourceName': 'Room Air Conditioners',
+        'catalogApiUrl': dual.CATALOG_API_URL, 'datasetPageUrl': dual.CATALOG_DATASET_PAGE,
+        'resolvedCsvUrl': dual.CSV_URL, 'resolvedAt': '2026-09-28T00:00:00Z'})
 
 
 def test_integration_mismatch_fail_closed_preserves_csv_and_writes_diff(tmp_path, monkeypatch):
@@ -333,3 +341,358 @@ def test_raw_sink_source_kind_namespace_rejects_invalid():
     records = [fetch.raw_page_record(1, b'x')]
     with pytest.raises(prs.SinkError):
         prs.persist_local(records, '/tmp/never-used-aircon-sink', source_kind='BAD KIND')
+
+
+# ---------------------------------------------------------------- CKAN resolver（2026-09-29）
+
+_ALT_CSV = 'https://www.emsd.gov.hk/energylabel/files/meels_rac_2027.csv'
+_ROOM_RESOURCE = {
+    'id': '2944ffac-4bb3-4240-a5f8-d902d0531b20',
+    'name': 'Room Air Conditioners',
+    'description': 'Room Air Conditioners',
+    'format': 'CSV',
+    'url': dual.CSV_URL,
+    'state': 'active',
+    'created': '2025-12-30T16:33:52.852724',
+}
+
+
+def _catalog_body(resources, dataset_name=None, success=True, provider='hk-emsd',
+                  include_provider=True):
+    result = {'name': dataset_name or dual.CATALOG_DATASET_ID,
+              'resources': resources}
+    if include_provider:
+        result['organization'] = {'id': '62c2c828-93f0-4182-828a-72a8850c1491',
+                                  'name': provider,
+                                  'title': 'Electrical and Mechanical Services Department'}
+    return json.dumps({
+        'help': 'https://data.gov.hk/en-data/api/3/action/help_show?name=package_show',
+        'success': success,
+        'result': result,
+    }, ensure_ascii=False).encode('utf-8')
+
+
+def _catalog_resp(body=None, status=200, headers=None, final_url=None):
+    return dual.RawResponse(url=dual.CATALOG_API_URL, status=status,
+                            body=body if body is not None else _catalog_body([_ROOM_RESOURCE]),
+                            headers=headers or {'Content-Type': 'application/json'},
+                            fetchedAt='2026-09-29T00:00:00Z',
+                            finalUrl=final_url or dual.CATALOG_API_URL)
+
+
+def test_catalog_resolver_selects_single_active_room_csv_without_uuid():
+    transport = _FakeTransport([_catalog_resp()])
+    res = dual.resolve_csv_resource(transport=transport)
+    assert res['mode'] == 'catalog'
+    assert res['datasetId'] == dual.CATALOG_DATASET_ID
+    assert res['resolvedCsvUrl'] == dual.CSV_URL
+    assert res['catalogApiUrl'] == dual.CATALOG_API_URL
+    assert res['datasetPageUrl'] == dual.CATALOG_DATASET_PAGE
+    assert res['resourceId'] == _ROOM_RESOURCE['id']
+    assert res['resolvedAt'].endswith('Z')
+    assert transport.calls[0]['url'] == dual.CATALOG_API_URL
+
+
+def test_catalog_resolver_accepts_changed_but_allowlisted_url():
+    changed = dict(_ROOM_RESOURCE, url=_ALT_CSV)
+    res = dual.resolve_csv_resource(transport=_FakeTransport([_catalog_resp(
+        _catalog_body([changed]))]))
+    assert res['resolvedCsvUrl'] == _ALT_CSV, 'catalog 改 URL 但仍在 allowlist 就採用'
+
+
+@pytest.mark.parametrize('resources', [
+    [],
+    [dict(_ROOM_RESOURCE, state='deleted')],
+    [dict(_ROOM_RESOURCE, format='JSON')],
+    [dict(_ROOM_RESOURCE, name='Washing Machines', description='Washing Machines')],
+    [_ROOM_RESOURCE, dict(_ROOM_RESOURCE, id='second-uuid')],
+])
+def test_catalog_resolver_missing_or_ambiguous_fails_closed(resources):
+    with pytest.raises(dual.CatalogAmbiguous):
+        dual.resolve_csv_resource(transport=_FakeTransport([_catalog_resp(
+            _catalog_body(resources))]))
+
+
+def test_catalog_resolver_rejects_unknown_host_resource_url():
+    bad = dict(_ROOM_RESOURCE, url='https://evil.example.com/meels_rac.csv')
+    with pytest.raises(dual.CatalogInvalid):
+        dual.resolve_csv_resource(transport=_FakeTransport([_catalog_resp(
+            _catalog_body([bad]))]))
+
+
+def test_catalog_resolver_rejects_redirect_off_catalog_host():
+    resp = _catalog_resp(final_url='https://evil.example.com/package_show')
+    with pytest.raises(dual.CatalogInvalid):
+        dual.resolve_csv_resource(transport=_FakeTransport([resp]))
+
+
+def test_catalog_resolver_rejects_dataset_identity_mismatch():
+    with pytest.raises(dual.CatalogInvalid):
+        dual.resolve_csv_resource(transport=_FakeTransport([_catalog_resp(
+            _catalog_body([_ROOM_RESOURCE], dataset_name='other-dataset'))]))
+
+
+def test_catalog_resolver_html_masquerade_and_bad_json_fail_closed():
+    html = _catalog_resp(body=b'<!DOCTYPE html><html>login</html>',
+                         headers={'Content-Type': 'text/html'})
+    with pytest.raises(dual.CatalogInvalid):
+        dual.resolve_csv_resource(transport=_FakeTransport([html]))
+    bad = _catalog_resp(body=b'{not-json', headers={'Content-Type': 'application/json'})
+    with pytest.raises(dual.CatalogInvalid):
+        dual.resolve_csv_resource(transport=_FakeTransport([bad]))
+    not_ok = _catalog_resp(body=_catalog_body([_ROOM_RESOURCE], success=False))
+    with pytest.raises(dual.CatalogInvalid):
+        dual.resolve_csv_resource(transport=_FakeTransport([not_ok]))
+
+
+def test_catalog_resolver_transient_outage_allows_only_last_known_good_fallback():
+    transport = _FakeTransport([
+        dual.DualSourceError('網絡錯誤', kind='network_error'),
+        dual.DualSourceError('HTTP 503', kind='http_error', diff={'status': 503}),
+    ])
+    with pytest.raises(dual.CatalogUnavailable):
+        dual.resolve_csv_resource(transport=transport, max_attempts=2)
+    fb = dual.last_known_good_resolution(reason='catalog_unavailable',
+                                        now=1759104000.0)
+    assert fb['mode'] == 'last-known-good-fallback'
+    assert fb['resolvedCsvUrl'] == dual.CSV_URL, 'fallback 仍係批准 direct URL（唔用 cache）'
+    assert fb['resourceId'] is None
+
+
+def test_catalog_resolver_hard_4xx_is_invalid_not_fallbackable():
+    transport = _FakeTransport([
+        dual.DualSourceError('HTTP 403', kind='http_error', diff={'status': 403}),
+    ])
+    with pytest.raises(dual.CatalogInvalid):
+        dual.resolve_csv_resource(transport=transport, max_attempts=3)
+    assert len(transport.calls) == 1, '403 唔應該再 retry／fallback'
+
+
+def test_fetch_csv_raw_validates_request_and_redirect_urls():
+    evil = dual.RawResponse(url='https://evil.example.com/meels_rac.csv', status=200,
+                            body=_rows([_row('R')]), headers={},
+                            fetchedAt='2026-09-29T00:00:00Z')
+    with pytest.raises(dual.CatalogInvalid):
+        dual.fetch_csv_raw(url='https://evil.example.com/meels_rac.csv',
+                           transport=_FakeTransport([evil]))
+    redirected = dual.RawResponse(url=dual.CSV_URL, status=200, body=_rows([_row('R')]),
+                                  headers={}, fetchedAt='2026-09-29T00:00:00Z',
+                                  finalUrl='https://evil.example.com/meels_rac.csv')
+    with pytest.raises(dual.CatalogInvalid):
+        dual.fetch_csv_raw(transport=_FakeTransport([redirected]))
+
+
+def test_fetch_csv_raw_rejects_html_masquerade_and_empty_bytes():
+    html = dual.RawResponse(url=dual.CSV_URL, status=200, body=b'<html>no csv</html>',
+                            headers={'Content-Type': 'text/html'},
+                            fetchedAt='2026-09-29T00:00:00Z')
+    with pytest.raises(dual.DualSourceError) as exc:
+        dual.fetch_csv_raw(transport=_FakeTransport([html]))
+    assert exc.value.kind == 'content_type'
+    empty = dual.RawResponse(url=dual.CSV_URL, status=200, body=b'   ',
+                             headers={'Content-Type': 'text/csv'},
+                             fetchedAt='2026-09-29T00:00:00Z')
+    with pytest.raises(dual.DualSourceError) as exc:
+        dual.fetch_csv_raw(transport=_FakeTransport([empty]))
+    assert exc.value.kind == 'csv_incomplete'
+
+
+def test_verify_rejects_304_cached_bytes_and_uses_resolved_catalog_summary():
+    csv_rows = [_row('REG-1')]
+    pag_rows = [_paginated(_row('REG-1'))[0]]
+    resolution = {
+        'schemaVersion': 1, 'mode': 'catalog', 'datasetId': dual.CATALOG_DATASET_ID,
+        'resourceId': _ROOM_RESOURCE['id'], 'resourceName': 'Room Air Conditioners',
+        'catalogApiUrl': dual.CATALOG_API_URL, 'datasetPageUrl': dual.CATALOG_DATASET_PAGE,
+        'resolvedCsvUrl': _ALT_CSV, 'resolvedAt': '2026-09-29T00:00:00Z',
+    }
+    resp = dual.RawResponse(url=_ALT_CSV, status=200, body=_rows(csv_rows),
+                            headers={}, fetchedAt='2026-09-29T00:00:00Z')
+    out = dual.verify_dual_source(paginated_rows=pag_rows,
+                                  paginated_raw_records=[{'page': 1}],
+                                  retrieved_at='2026-09-29T00:00:00Z', min_rows=1,
+                                  raw_response=resp, resolution=resolution)
+    assert out['csv']['sourceUrl'] == _ALT_CSV
+    assert out['csv']['resolvedUrl'] == _ALT_CSV
+    assert out['csv']['catalog']['datasetId'] == dual.CATALOG_DATASET_ID
+    not_modified = dual.RawResponse(url=_ALT_CSV, status=304, body=b'', headers={},
+                                    fetchedAt='2026-09-29T00:00:00Z', notModified=True)
+    with pytest.raises(dual.DualSourceError) as exc:
+        dual.verify_dual_source(paginated_rows=pag_rows,
+                                paginated_raw_records=[{'page': 1}],
+                                retrieved_at='2026-09-29T00:00:00Z', min_rows=1,
+                                raw_response=not_modified, resolution=resolution)
+    assert exc.value.kind == 'csv_not_modified', '304 唔可以用 cached bytes'
+
+
+def test_integration_catalog_outage_uses_last_known_good_fresh_bytes(tmp_path, monkeypatch):
+    env = _env(tmp_path, monkeypatch)
+    pages, rows = _fake_pages()
+    calls = {}
+
+    def fake_fetch(p):
+        return pages[p - 1] if p - 1 < len(pages) else ''
+
+    fetch.fetch_page = fake_fetch
+
+    def resolver(**kw):
+        raise dual.CatalogUnavailable('CKAN 下線', diff={'status': 503})
+
+    fetch.resolve_csv_source = resolver
+
+    def csv_source(*, url=None, **kw):
+        calls['url'] = url
+        return _resp(_rows(rows))
+
+    fetch.fetch_csv_source = csv_source
+    assert fetch.main() is None
+    assert calls['url'] == dual.CSV_URL, 'fallback 只可以用批准 direct URL 重新抓 bytes'
+    receipt = json.loads((env / 'emsd_receipt.json').read_text(encoding='utf-8'))
+    assert receipt['success'] is True
+    assert receipt['catalog']['mode'] == 'last-known-good-fallback'
+    assert receipt['catalog']['resolvedCsvUrl'] == dual.CSV_URL
+
+
+def test_integration_catalog_invalid_url_fails_closed_no_fallback(tmp_path, monkeypatch):
+    env = _env(tmp_path, monkeypatch)
+    old = env / 'emsd_空調能源標籤.csv'
+    old.write_bytes(b'OLD-CSV')
+    pages, rows = _fake_pages()
+    fetch.fetch_page = lambda p: pages[p - 1] if p - 1 < len(pages) else ''
+    called = {'csv': False}
+
+    def resolver(**kw):
+        raise dual.CatalogInvalid('resource URL host 唔允許')
+
+    def csv_source(**kw):
+        called['csv'] = True
+        return _resp(_rows(rows))
+
+    fetch.resolve_csv_source = resolver
+    fetch.fetch_csv_source = csv_source
+    with pytest.raises(SystemExit) as exc:
+        fetch.main()
+    assert exc.value.code == 1
+    assert called['csv'] is False, 'catalog 提供 invalid URL 時唔可以有 silent fallback'
+    assert old.read_bytes() == b'OLD-CSV', 'fail-closed 保留上一生產 CSV'
+    receipt = json.loads((env / 'emsd_receipt.json').read_text(encoding='utf-8'))
+    assert receipt['success'] is False and receipt['dualSource']['equal'] is False
+    assert receipt['dualSource']['errorKind'] == 'catalog_invalid'
+
+
+# ---------------------------------------------------------------- redirect policy／provider（2026-09-29 返修）
+
+import http.server  # noqa: E402
+import threading  # noqa: E402
+
+
+class _RedirectHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/start':
+            self.send_response(302)
+            self.send_header('Location',
+                             f'http://127.0.0.1:{self.server.server_port}/blocked')
+            self.end_headers()
+        elif self.path == '/blocked':
+            self.server.blocked_hits += 1
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'BLOCKED-REACHED')
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def log_message(self, *args):
+        pass
+
+
+@pytest.fixture
+def redirect_server():
+    server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), _RedirectHandler)
+    server.blocked_hits = 0
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield server
+    server.shutdown()
+    server.server_close()
+    thread.join(timeout=5)
+
+
+def test_http_get_blocks_cross_origin_redirect_before_request(redirect_server):
+    """CSV validator：redirect target 未批准 → 未跟過去之前已經 raise；blocked 零請求。"""
+    port = redirect_server.server_port
+    with pytest.raises(dual.DualSourceError) as exc:
+        dual.http_get(f'http://127.0.0.1:{port}/start', timeout=5,
+                      validator=dual.validate_official_csv_url)
+    assert isinstance(exc.value, dual.CatalogInvalid)
+    assert redirect_server.blocked_hits == 0, '未批准 redirect 目的地必須零請求'
+
+
+def test_http_get_blocks_cross_origin_catalog_redirect_before_request(redirect_server):
+    port = redirect_server.server_port
+    with pytest.raises(dual.DualSourceError) as exc:
+        dual.http_get(f'http://127.0.0.1:{port}/start', timeout=5,
+                      validator=dual.validate_catalog_api_url)
+    assert isinstance(exc.value, dual.CatalogInvalid)
+    assert redirect_server.blocked_hits == 0, 'CKAN 未批准 redirect 目的地必須零請求'
+
+
+def test_http_get_follows_redirect_when_validator_accepts(redirect_server):
+    """同一 origin（validator 通過）嘅 redirect 仍然要正常跟，證明冇一刀切停用 redirect。"""
+    port = redirect_server.server_port
+    resp = dual.http_get(f'http://127.0.0.1:{port}/start', timeout=5,
+                         validator=lambda _url: None)
+    assert resp.body == b'BLOCKED-REACHED'
+    assert redirect_server.blocked_hits == 1
+
+
+def test_resolver_and_csv_fetch_pass_strict_validators_to_transport():
+    cat = _FakeTransport([_catalog_resp()])
+    dual.resolve_csv_resource(transport=cat, max_attempts=1)
+    assert cat.calls[0]['validator'] is dual.validate_catalog_api_url
+    csvt = _FakeTransport([_resp(_rows([_row('R')]))])
+    dual.fetch_csv_raw(transport=csvt, max_attempts=1)
+    assert csvt.calls[0]['validator'] is dual.validate_official_csv_url
+
+
+def test_catalog_final_url_full_identity_required():
+    wrong_path = _catalog_resp(
+        final_url='https://data.gov.hk/en-data/api/3/action/other'
+                  '?id=hk-emsd-emsd1-meels-listed-models')
+    with pytest.raises(dual.CatalogInvalid):
+        dual.resolve_csv_resource(transport=_FakeTransport([wrong_path]), max_attempts=1)
+    wrong_query = _catalog_resp(
+        final_url='https://data.gov.hk/en-data/api/3/action/package_show?id=other')
+    with pytest.raises(dual.CatalogInvalid):
+        dual.resolve_csv_resource(transport=_FakeTransport([wrong_query]), max_attempts=1)
+
+
+def test_catalog_resolver_rejects_wrong_or_missing_or_non_dict_provider():
+    wrong = _catalog_resp(_catalog_body([_ROOM_RESOURCE], provider='other-org'))
+    with pytest.raises(dual.CatalogInvalid) as exc:
+        dual.resolve_csv_resource(transport=_FakeTransport([wrong]), max_attempts=1)
+    assert 'provider' in str(exc.value) or exc.value.diff.get('provider') == 'other-org'
+    missing = _catalog_resp(_catalog_body([_ROOM_RESOURCE], include_provider=False))
+    with pytest.raises(dual.CatalogInvalid):
+        dual.resolve_csv_resource(transport=_FakeTransport([missing]), max_attempts=1)
+    payload = json.loads(_catalog_body([_ROOM_RESOURCE]).decode('utf-8'))
+    payload['result']['organization'] = 'hk-emsd'
+    bad_type = _catalog_resp(json.dumps(payload).encode('utf-8'))
+    with pytest.raises(dual.CatalogInvalid):
+        dual.resolve_csv_resource(transport=_FakeTransport([bad_type]), max_attempts=1)
+
+
+def test_catalog_injected_4xx_fails_closed_and_5xx_is_unavailable():
+    t403 = _FakeTransport([_catalog_resp(status=403)])
+    with pytest.raises(dual.CatalogInvalid):
+        dual.resolve_csv_resource(transport=t403, max_attempts=3)
+    assert len(t403.calls) == 1, '403 唔可以 retry／fallback'
+    t404 = _FakeTransport([_catalog_resp(status=404)])
+    with pytest.raises(dual.CatalogInvalid):
+        dual.resolve_csv_resource(transport=t404, max_attempts=3)
+    assert len(t404.calls) == 1
+    t503 = _FakeTransport([_catalog_resp(status=503), _catalog_resp(status=503)])
+    with pytest.raises(dual.CatalogUnavailable):
+        dual.resolve_csv_resource(transport=t503, max_attempts=2)
+    assert len(t503.calls) == 2, '503 可以 bounded retry，最後當 unavailable'

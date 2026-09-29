@@ -174,12 +174,11 @@ def receipt_facts(path, csv_path, now=None):
             or receipt.get('totalRows') != sum(counts)):
         raise ValueError('EMSD receipt page counts are incomplete')
     source = urlparse(receipt.get('sourceUrl', ''))
-    approved_paths = {
-        '/energylabel/tc/households/rac/select_ac_result.php',  # legacy paginated
-        '/energylabel/files/meels_rac.csv',                       # dual-source primary (B)
-    }
+    csv_path_ok = bool(re.match(r'^/energylabel/files/[A-Za-z0-9._-]+\.csv$',
+                                source.path or ''))
+    legacy_path_ok = source.path == '/energylabel/tc/households/rac/select_ac_result.php'
     if (source.scheme != 'https' or source.hostname != 'www.emsd.gov.hk'
-            or source.path not in approved_paths):
+            or not (csv_path_ok or legacy_path_ok)):
         raise ValueError('Unapproved EMSD receipt source')
     if source.username or source.password:
         raise ValueError('EMSD receipt source 唔可以有 userinfo')
@@ -194,16 +193,51 @@ def receipt_facts(path, csv_path, now=None):
         if not isinstance(sources, dict) or 'emsd-open-data-csv' not in sources \
                 or 'emsd-energy-label-paginated' not in sources:
             raise ValueError('EMSD dualSource receipt 缺少兩個 sourceKind')
-        if receipt.get('sourceKind') != 'emsd-open-data-csv' \
-                or source.path != '/energylabel/files/meels_rac.csv':
+        if receipt.get('sourceKind') != 'emsd-open-data-csv' or not csv_path_ok:
             raise ValueError('EMSD dualSource primary 必須係 open-data CSV')
         csv_sha = (sources.get('emsd-open-data-csv') or {}).get('sha256')
         if not isinstance(csv_sha, str) or not re.match(r'^sha256:[0-9a-f]{64}$', csv_sha):
             raise ValueError('EMSD dualSource CSV sha256 無效')
+        csv_src = sources.get('emsd-open-data-csv') or {}
+        if csv_src.get('sourceUrl') != receipt.get('sourceUrl'):
+            raise ValueError('EMSD dualSource CSV sourceUrl 同 receipt sourceUrl 唔一致')
+        resolved = urlparse(csv_src.get('resolvedUrl') or csv_src.get('sourceUrl') or '')
+        if (resolved.scheme != 'https' or resolved.hostname != 'www.emsd.gov.hk'
+                or not re.match(r'^/energylabel/files/[A-Za-z0-9._-]+\.csv$',
+                                resolved.path or '')):
+            raise ValueError('EMSD dualSource resolved CSV URL 唔喺批准範圍')
         pag_url = urlparse((sources.get('emsd-energy-label-paginated') or {})
                            .get('sourceUrl', ''))
         if pag_url.path != '/energylabel/tc/households/rac/select_ac_result.php':
             raise ValueError('EMSD dualSource cross-check URL 唔正確')
+    # 2026-09-29（CKAN resolver）：有 catalog block 就必須身份一致；
+    # metadata Schema 不變（新增只存在 receipt 層，唔會寫入 metadata.json）。
+    catalog = receipt.get('catalog')
+    if catalog is not None:
+        if not isinstance(catalog, dict):
+            raise ValueError('EMSD catalog 唔係 object')
+        if catalog.get('datasetId') != 'hk-emsd-emsd1-meels-listed-models':
+            raise ValueError('EMSD catalog datasetId 唔符')
+        if catalog.get('mode') not in ('catalog', 'last-known-good-fallback'):
+            raise ValueError('EMSD catalog mode 唔符')
+        api = urlparse(catalog.get('catalogApiUrl', ''))
+        if api.scheme != 'https' or api.hostname != 'data.gov.hk':
+            raise ValueError('EMSD catalog API URL 唔喺 allowlist')
+        if catalog.get('resolvedCsvUrl') != receipt.get('sourceUrl'):
+            raise ValueError('catalog resolvedCsvUrl 同 receipt sourceUrl 唔一致')
+        if catalog.get('mode') == 'catalog' and not catalog.get('resourceId'):
+            raise ValueError('EMSD catalog mode 必須有 resourceId')
+        resolved_at = catalog.get('resolvedAt', '')
+        if not isinstance(resolved_at, str) or not resolved_at.endswith('Z'):
+            raise ValueError('EMSD catalog resolvedAt 必須係 UTC Z')
+        try:
+            resolved_dt = datetime.fromisoformat(resolved_at.replace('Z', '+00:00'))
+        except ValueError:
+            raise ValueError('EMSD catalog resolvedAt 唔係有效 timestamp')
+        if resolved_dt.tzinfo is None or resolved_dt.utcoffset() != timedelta(0):
+            raise ValueError('EMSD catalog resolvedAt 必須係 UTC')
+        if resolved_dt > (now or datetime.now(timezone.utc)) + timedelta(minutes=5):
+            raise ValueError('EMSD catalog resolvedAt 係未來時間')
     timestamp = receipt.get('retrievedAt', '')
     if not isinstance(timestamp, str) or not timestamp.endswith('Z'):
         raise ValueError('Receipt retrievedAt must be UTC Z')

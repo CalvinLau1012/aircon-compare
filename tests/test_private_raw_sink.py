@@ -66,6 +66,13 @@ def _patch_csv(pages):
     fetch.fetch_csv_source = lambda **kw: emsd_dual_source.RawResponse(
         url=emsd_dual_source.CSV_URL, status=200, body=payload, headers={},
         fetchedAt='2026-09-23T12:00:00Z')
+    fetch.resolve_csv_source = lambda **kw: {
+        'schemaVersion': 1, 'mode': 'catalog',
+        'datasetId': emsd_dual_source.CATALOG_DATASET_ID,
+        'resourceId': 'test-resource-1', 'resourceName': 'Room Air Conditioners',
+        'catalogApiUrl': emsd_dual_source.CATALOG_API_URL,
+        'datasetPageUrl': emsd_dual_source.CATALOG_DATASET_PAGE,
+        'resolvedCsvUrl': emsd_dual_source.CSV_URL, 'resolvedAt': '2026-09-23T12:00:00Z'}
 
 
 class FakeGitHub:

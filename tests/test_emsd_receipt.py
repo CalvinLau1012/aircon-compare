@@ -61,6 +61,14 @@ def _run_main(pages, csv_bytes=None):
         return pages[p - 1] if p - 1 < len(pages) else ''
 
     fetch_emsd.fetch_page = fake_fetch
+    # 離線：CKAN resolver 固定注入（唔打真網絡）
+    fetch_emsd.resolve_csv_source = lambda **kwargs: {
+        'schemaVersion': 1, 'mode': 'catalog',
+        'datasetId': emsd_dual_source.CATALOG_DATASET_ID,
+        'resourceId': 'test-resource-1', 'resourceName': 'Room Air Conditioners',
+        'catalogApiUrl': emsd_dual_source.CATALOG_API_URL,
+        'datasetPageUrl': emsd_dual_source.CATALOG_DATASET_PAGE,
+        'resolvedCsvUrl': emsd_dual_source.CSV_URL, 'resolvedAt': '2026-09-20T18:59:57Z'}
     # 雙來源（B）：測試用 fake CSV 回應，內容由同一組 paginated fixture 推導，
     # 確保離線測試亦真實走 primary-CSV／cross-check 一致性核對。
     if csv_bytes is None:

@@ -38,9 +38,17 @@ PAGINATED_SOURCE_URL = BASE.rstrip('&p=')
 _LAST_HTTP = {}
 
 
-def fetch_csv_source(*, transport=None, now=None, conditional=None):
-    """官方 open-data CSV 抓取（獨立函數，方便測試 monkeypatch 注入 fake transport）。"""
-    return dual.fetch_csv_raw(transport=transport, now=now, conditional=conditional)
+def fetch_csv_source(*, transport=None, now=None, conditional=None, url=None):
+    """官方 open-data CSV 抓取（獨立函數，方便測試 monkeypatch 注入 fake transport）。
+
+    `url` 由 CKAN resolver 提供（預設 dual.CSV_URL 上次批准 direct URL）。
+    """
+    return dual.fetch_csv_raw(url=url, transport=transport, now=now, conditional=conditional)
+
+
+def resolve_csv_source(*, transport=None, now=None):
+    """DATA.GOV.HK CKAN 目錄解析（獨立函數，方便測試注入假 transport）。"""
+    return dual.resolve_csv_resource(transport=transport, now=now)
 
 
 class TableParser(HTMLParser):
@@ -587,20 +595,45 @@ def main():
     # ===== 雙來源（B）：官方 open-data CSV 做主，逐頁結果做獨立核對 =====
     # 兩個來源都完整 + 受治理欄位一致，先可以攞 CSV rows 做 primary；
     # 任何缺失／Schema 唔明／mismatch → fail-closed，保留上一生產 CSV。
+    # 2026-09-29 repair：先用 DATA.GOV.HK CKAN 解析唯一 active Room Air
+    # Conditioners CSV resource；目錄回應唔合契約即 fail-closed；只有目錄
+    # 暫時不可用才 fallback 到上次批准直接 URL，而且一樣即刻重新抓新
+    # bytes（絕不用 cache／304 bytes）。
     csv_resp = None
+    resolution = None
     try:
-        csv_resp = fetch_csv_source(now=time.time())
+        try:
+            resolution = resolve_csv_source(now=time.time())
+        except dual.CatalogUnavailable as e:
+            resolution = dual.last_known_good_resolution(reason=e.kind, now=time.time())
+            print(f'⚠️ CKAN 目錄暫時不可用（{e.kind}）；改用上次批准直接 EMSD URL '
+                  '重新抓新 bytes（唔用 cache）', file=sys.stderr)
+        csv_resp = fetch_csv_source(url=resolution['resolvedCsvUrl'], now=time.time())
         verified = dual.verify_dual_source(
             paginated_rows=all_rows, paginated_raw_records=raw_records,
             retrieved_at=retrieved_at, min_rows=MIN_EMSD_ROWS,
-            raw_response=csv_resp)
+            raw_response=csv_resp, resolution=resolution)
     except dual.DualSourceError as e:
         outcome.update(success=False, aborted=True, error=f'dual-source fail-closed: {e.kind}')
         diff = e.diff or {}
+        csv_summary = diff.get('csv') or {
+            'sourceKind': dual.SOURCE_KIND_CSV,
+            'sourceUrl': (resolution or {}).get('resolvedCsvUrl') or dual.CSV_URL}
+        if resolution and isinstance(csv_summary, dict) and 'catalog' not in csv_summary:
+            csv_summary = dict(csv_summary)
+            csv_summary['catalog'] = {
+                'mode': resolution.get('mode'),
+                'datasetId': resolution.get('datasetId'),
+                'resourceId': resolution.get('resourceId'),
+                'catalogApiUrl': resolution.get('catalogApiUrl'),
+                'datasetPageUrl': resolution.get('datasetPageUrl'),
+                'resolvedCsvUrl': resolution.get('resolvedCsvUrl'),
+                'resolvedAt': resolution.get('resolvedAt'),
+                'fallbackReason': resolution.get('fallbackReason'),
+            }
         report = dual.build_diff_report(
             kind=e.kind, generated_at=retrieved_at,
-            csv_summary=diff.get('csv') or {
-                'sourceKind': dual.SOURCE_KIND_CSV, 'sourceUrl': dual.CSV_URL},
+            csv_summary=csv_summary,
             paginated_summary=diff.get('paginated') or {
                 'sourceKind': dual.SOURCE_KIND_PAGINATED, 'sourceUrl': dual.PAGINATED_URL,
                 'pageCount': len(per_page), 'totalRows': len(all_rows)},
@@ -617,7 +650,9 @@ def main():
             'sourceKind': dual.SOURCE_KIND_CSV,
             'dualSource': {'schemaVersion': 1, 'equal': False, 'errorKind': e.kind,
                            'primary': dual.SOURCE_KIND_CSV,
-                           'crossCheck': dual.SOURCE_KIND_PAGINATED}})
+                           'crossCheck': dual.SOURCE_KIND_PAGINATED,
+                           'catalog': (resolution or {})},
+        })
         print(f'❌ EMSD 雙來源 fail-closed（{e.kind}）：唔覆寫現有 CSV', file=sys.stderr)
         sys.exit(1)
     except Exception as e:  # noqa: BLE001 - 未預期錯誤一樣 fail-closed
@@ -636,7 +671,8 @@ def main():
     header = list(dual.CANONICAL_HEADER)
     dual_receipt = dual.build_receipt_dual_source(
         comparison=verified['comparison'], csv_summary_=verified['csv'],
-        paginated_summary_=verified['paginated'], retrieved_at=retrieved_at)
+        paginated_summary_=verified['paginated'], retrieved_at=retrieved_at,
+        resolution=resolution)
     print(f"🔀 雙來源一致：CSV {verified['parsed']['rowCount']} 行（{verified['parsed']['encoding']}）"
           f" == paginated {len(all_rows)} 行；"
           f"modelCount={verified['comparison']['counts']['csv']['modelCount']}")
@@ -734,7 +770,9 @@ def main():
                     'retentionDays': result.get('retentionDays'),
                 }
                 if kind == dual.SOURCE_KIND_CSV:
-                    entry.update({'sourceUrl': dual.CSV_URL, 'byteLength': len(csv_body),
+                    entry.update({'sourceUrl': verified['csv']['sourceUrl'],
+                                  'resolvedUrl': verified['csv']['resolvedUrl'],
+                                  'byteLength': len(csv_body),
                                   'sha256': 'sha256:' + hashlib.sha256(csv_body).hexdigest()})
                 else:
                     entry.update({'sourceUrl': PAGINATED_SOURCE_URL,
@@ -767,9 +805,10 @@ def main():
     try:
         write_receipt(outcome, per_page, out, retrieved_at=retrieved_at,
                       raw_receipt_hash=raw_receipt_hash,
-                      source_url=dual.CSV_URL,
+                      source_url=verified['csv']['sourceUrl'],
                       extra={'sourceKind': dual.SOURCE_KIND_CSV,
-                             'dualSource': dual_receipt})
+                             'dualSource': dual_receipt,
+                             'catalog': dual_receipt.get('catalog')})
     except Exception as e:
         print(f'❌ 收據寫入失敗（{e}）；CSV 已更新但無有效收據，下游必須阻斷', file=sys.stderr)
         sys.exit(1)

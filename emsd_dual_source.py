@@ -36,6 +36,7 @@ import unicodedata
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
+from urllib.parse import urlsplit
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
@@ -46,6 +47,19 @@ from crawl_utils import canonical_model_key, norm_model  # noqa: E402
 CSV_URL = 'https://www.emsd.gov.hk/energylabel/files/meels_rac.csv'
 PAGINATED_URL = ('https://www.emsd.gov.hk/energylabel/tc/households/rac/'
                  'select_ac_result.php?type=all&searchR=50')
+
+# DATA.GOV.HK CKAN 目錄（官方 API；dataset ID 公開且穩定；唔用 resource UUID 做選擇）
+CATALOG_API_URL = ('https://data.gov.hk/en-data/api/3/action/package_show'
+                   '?id=hk-emsd-emsd1-meels-listed-models')
+CATALOG_DATASET_ID = 'hk-emsd-emsd1-meels-listed-models'
+CATALOG_DATASET_PAGE = ('https://data.gov.hk/en-data/dataset/'
+                        'hk-emsd-emsd1-meels-listed-models')
+CATALOG_API_HOST = 'data.gov.hk'
+CATALOG_RESOURCE_NAME = 'room air conditioners'
+CATALOG_MAX_BYTES = 2 * 1024 * 1024
+CSV_HOST_ALLOWLIST = frozenset({'www.emsd.gov.hk'})
+CSV_PATH_RE = re.compile(r'^/energylabel/files/[A-Za-z0-9._-]+\.csv$')
+HTML_CONTENT_TYPES = ('text/html', 'application/xhtml+xml')
 
 SOURCE_KIND_CSV = 'emsd-open-data-csv'
 SOURCE_KIND_PAGINATED = 'emsd-energy-label-paginated'
@@ -97,6 +111,27 @@ class SourceSchemaError(DualSourceError):
         super().__init__(message, kind='schema', diff=diff)
 
 
+class CatalogUnavailable(DualSourceError):
+    """CKAN 目錄暫時不可用（網絡／5xx／429）：允許 fallback 到上次批准嘅直接 URL。"""
+
+    def __init__(self, message, diff=None):
+        super().__init__(message, kind='catalog_unavailable', diff=diff)
+
+
+class CatalogInvalid(DualSourceError):
+    """CKAN 回應／資源身份／URL 唔符合契約：一律 fail-closed，冇 silent fallback。"""
+
+    def __init__(self, message, kind='catalog_invalid', diff=None):
+        super().__init__(message, kind=kind, diff=diff)
+
+
+class CatalogAmbiguous(DualSourceError):
+    """目錄冇唯一 active Room Air Conditioners CSV resource：fail-closed。"""
+
+    def __init__(self, message, diff=None):
+        super().__init__(message, kind='catalog_ambiguous', diff=diff)
+
+
 @dataclasses.dataclass
 class RawResponse:
     """一次 HTTP GET 嘅實際證據（body 唔可以寫入公開 receipt）。"""
@@ -107,6 +142,7 @@ class RawResponse:
     headers: dict
     fetchedAt: str
     notModified: bool = False
+    finalUrl: str = None
 
 
 def utc_now_iso(now=None):
@@ -341,14 +377,27 @@ def default_diff_report_path(now=None):
     return os.path.join(base, f'aircon-emsd-diff-{stamp}.json')
 
 
-def http_get(url, *, headers=None, timeout=DEFAULT_TIMEOUT, now=None):
-    """真實 HTTP GET（唯一網絡入口；測試用 transport 注入，不會在 import 時呼叫）。"""
+def http_get(url, *, headers=None, timeout=DEFAULT_TIMEOUT, now=None, validator=None):
+    """真實 HTTP GET（唯一網絡入口；測試用 transport 注入，不會在 import 時呼叫）。
+
+    `validator`（可選）：redirect policy。每個 redirect target 會喺**跟之前**先交
+    俾 validator；唔合格即 raise DualSourceError，絕對唔會向未批准 host 發請求。
+    同一 origin（或通過同一 allowlist 契約）嘅官方 redirect 仍然可以跟。
+    """
     req = urllib.request.Request(url, headers=dict(headers or {}))
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        if validator is not None:
+            opener = urllib.request.build_opener(_ValidatingRedirectHandler(validator))
+            resp_ctx = opener.open(req, timeout=timeout)
+        else:
+            resp_ctx = urllib.request.urlopen(req, timeout=timeout)
+        with resp_ctx as resp:
             body = resp.read()
             status = getattr(resp, 'status', 200) or 200
             resp_headers = dict(resp.headers.items())
+            final_url = getattr(resp, 'geturl', lambda: url)() or url
+    except DualSourceError:
+        raise  # redirect validator／URL 契約錯誤：保留 fail-closed kind
     except urllib.error.HTTPError as e:
         raise DualSourceError(f'HTTP {e.code}（來源拒絕，停止硬碰）', kind='http_error',
                               diff={'status': e.code, 'url': url}) from e
@@ -356,13 +405,213 @@ def http_get(url, *, headers=None, timeout=DEFAULT_TIMEOUT, now=None):
         raise DualSourceError(f'網絡錯誤：{type(e).__name__}', kind='network_error',
                               diff={'url': url}) from e
     return RawResponse(url=url, status=status, body=body, headers=resp_headers,
-                       fetchedAt=utc_now_iso(now))
+                       fetchedAt=utc_now_iso(now), finalUrl=str(final_url))
 
 
-def fetch_csv_raw(*, transport=None, now=None, conditional=None,
-                  max_attempts=DEFAULT_MAX_ATTEMPTS, timeout=DEFAULT_TIMEOUT):
-    """抓官方 open-data CSV：明確 UA、有限 retry（只重試網絡／5xx）、403／429 即失敗。"""
+class _ValidatingRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """redirect 前先驗證 target：唔合格就 raise，唔會跟過去（zero request）。"""
+
+    def __init__(self, validator):
+        super().__init__()
+        self._validator = validator
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        self._validator(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def validate_official_csv_url(url):
+    """嚴格官方 CSV URL 契約：HTTPS、allowlist host、/energylabel/files/*.csv、
+    冇 userinfo／非標準 port／query／fragment。違反即 CatalogInvalid（fail-closed）。"""
+    try:
+        parsed = urlsplit(str(url or ''))
+    except ValueError:
+        raise CatalogInvalid('CSV URL 唔可以解析', diff={'field': 'url'})
+    if parsed.scheme != 'https':
+        raise CatalogInvalid('CSV URL 必須係 https', diff={'scheme': parsed.scheme})
+    if parsed.hostname not in CSV_HOST_ALLOWLIST:
+        raise CatalogInvalid('CSV URL host 唔喺 allowlist', diff={'host': parsed.hostname})
+    if parsed.username or parsed.password:
+        raise CatalogInvalid('CSV URL 唔可以有 userinfo')
+    if parsed.port is not None:
+        raise CatalogInvalid('CSV URL 唔可以有非標準 port', diff={'port': parsed.port})
+    if parsed.query or parsed.fragment:
+        raise CatalogInvalid('CSV URL 唔可以有 query／fragment', diff={'query': bool(parsed.query)})
+    if not CSV_PATH_RE.match(parsed.path or ''):
+        raise CatalogInvalid('CSV URL path 唔喺批准／energylabel/files 範圍', diff={'path': parsed.path})
+    return parsed
+
+
+def validate_catalog_api_url(url):
+    """CKAN package_show URL 完整身份：https、data.gov.hk、固定 path＋dataset query、
+    無 userinfo／port／fragment。redirect 同 final URL 都要過呢個契約。"""
+    try:
+        parsed = urlsplit(str(url or ''))
+    except ValueError:
+        raise CatalogInvalid('CKAN URL 唔可以解析', diff={'field': 'url'})
+    if parsed.scheme != 'https' or parsed.hostname != CATALOG_API_HOST:
+        raise CatalogInvalid('CKAN URL scheme／host 唔符',
+                             diff={'scheme': parsed.scheme, 'host': parsed.hostname})
+    if parsed.username or parsed.password:
+        raise CatalogInvalid('CKAN URL 唔可以有 userinfo')
+    if parsed.port is not None:
+        raise CatalogInvalid('CKAN URL 唔可以有非標準 port', diff={'port': parsed.port})
+    if parsed.fragment:
+        raise CatalogInvalid('CKAN URL 唔可以有 fragment')
+    if parsed.path != '/en-data/api/3/action/package_show':
+        raise CatalogInvalid('CKAN URL path 唔符', diff={'path': parsed.path})
+    if parsed.query != 'id=' + CATALOG_DATASET_ID:
+        raise CatalogInvalid('CKAN URL dataset query 唔符', diff={'query': parsed.query[:120]})
+    return parsed
+
+
+def _catalog_unavailable(e):
+    """可 fallback（網絡／5xx／408／425／429）；其他 kind（schema／invalid／ambiguous）硬失敗。"""
+    if e.kind not in ('network_error', 'http_error', 'catalog_unavailable'):
+        return None
+    status = (e.diff or {}).get('status')
+    if isinstance(status, int) and 400 <= status < 500 and status not in (408, 425, 429):
+        return None
+    return CatalogUnavailable('CKAN 目錄暫時不可用（%s）' % e.kind,
+                              diff={'status': status})
+
+
+def resolve_csv_resource(*, transport=None, now=None, max_attempts=DEFAULT_MAX_ATTEMPTS,
+                         timeout=DEFAULT_TIMEOUT):
+    """用 DATA.GOV.HK CKAN package_show 解析唯一 active Room Air Conditioners CSV resource。
+
+    - dataset ID 固定 `hk-emsd-emsd1-meels-listed-models`，唔靠 resource UUID；
+    - 必須 exactly 1 個 name／description = Room Air Conditioners、format CSV、state active、
+      URL 通過官方 allowlist 嘅 resource；0／多過 1 即 CatalogAmbiguous；
+    - 目錄暫時不可用 raise CatalogUnavailable（呼叫方才可 fallback 上次批准 URL）；
+      目錄有回應但內容／身份／URL 唔合 → CatalogInvalid（冇 fallback）。
+    """
     transport = transport or http_get
+    validate_catalog_api_url(CATALOG_API_URL)
+    headers = {'User-Agent': DEFAULT_USER_AGENT,
+               'Accept': 'application/json,*/*;q=0.5'}
+    last_error = None
+    for attempt in range(max(1, max_attempts)):
+        try:
+            resp = transport(CATALOG_API_URL, headers=headers, timeout=timeout, now=now,
+                             validator=validate_catalog_api_url)
+        except DualSourceError as e:
+            unavailable = _catalog_unavailable(e)
+            if unavailable is None:
+                raise CatalogInvalid(
+                    f"CKAN 目錄硬拒絕（{e.kind}）", diff={'status': (e.diff or {}).get('status')})
+            last_error = unavailable
+            if attempt + 1 >= max_attempts:
+                raise last_error
+            time.sleep(min(2 ** attempt, 8))
+            continue
+        final = validate_catalog_api_url(str(resp.finalUrl or resp.url))
+        if resp.status == 304:
+            raise CatalogInvalid('CKAN 回 304（冇可用目錄 bytes，唔准用 cache）',
+                                 diff={'status': 304})
+        if resp.status != 200:
+            probe = DualSourceError(f'CKAN 回 HTTP {resp.status}', kind='http_error',
+                                    diff={'status': resp.status})
+            unavailable = _catalog_unavailable(probe)
+            if unavailable is None:
+                raise CatalogInvalid(f'CKAN 目錄硬拒絕（HTTP {resp.status}）',
+                                     diff={'status': resp.status})
+            last_error = unavailable
+            if attempt + 1 >= max_attempts:
+                raise last_error
+            time.sleep(min(2 ** attempt, 8))
+            continue
+        if len(resp.body) > CATALOG_MAX_BYTES:
+            raise CatalogInvalid('CKAN 目錄回應過大', diff={'byteLength': len(resp.body)})
+        content_type = (resp.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+        head = bytes(resp.body[:64]).lstrip().lower()
+        if content_type in HTML_CONTENT_TYPES or head.startswith(b'<html') \
+                or head.startswith(b'<!doctype'):
+            raise CatalogInvalid('CKAN 回應係 HTML（唔可以當 JSON 目錄）',
+                                 diff={'contentType': content_type})
+        try:
+            payload = json.loads(resp.body.decode('utf-8'))
+        except (UnicodeDecodeError, ValueError) as e:
+            raise CatalogInvalid('CKAN 回應唔係有效 UTF-8 JSON',
+                                 diff={'error': type(e).__name__})
+        if not isinstance(payload, dict) or payload.get('success') is not True \
+                or not isinstance(payload.get('result'), dict):
+            raise CatalogInvalid('CKAN package_show success／result 契約唔符')
+        result = payload['result']
+        if result.get('name') != CATALOG_DATASET_ID:
+            raise CatalogInvalid('CKAN dataset 身份唔符（name != 指定 dataset ID）',
+                                 diff={'datasetName': str(result.get('name'))[:120]})
+        # 2026-09-29 返修：provider 身份必須係 EMSD（實際 package_show shape 有
+        # organization.name='hk-emsd'；缺失或唔同即 fail closed，唔准猜）。
+        organization = result.get('organization')
+        provider = organization.get('name') if isinstance(organization, dict) else None
+        if provider != 'hk-emsd':
+            raise CatalogInvalid('CKAN dataset provider 唔係 EMSD（hk-emsd）',
+                                 diff={'provider': str(provider)[:80] if provider else None})
+        resources = result.get('resources')
+        if not isinstance(resources, list):
+            raise CatalogInvalid('CKAN dataset 冇 resources array')
+        matches = []
+        for res in resources:
+            if not isinstance(res, dict):
+                continue
+            name = ' '.join(str(res.get('name') or res.get('description') or '').split()).lower()
+            if name != CATALOG_RESOURCE_NAME:
+                continue
+            if str(res.get('format') or '').strip().upper() != 'CSV':
+                continue
+            if str(res.get('state') or '').strip().lower() != 'active':
+                continue
+            validate_official_csv_url(res.get('url'))
+            matches.append(res)
+        if len(matches) != 1:
+            raise CatalogAmbiguous(
+                f'active Room Air Conditioners CSV resource 數目 = {len(matches)}（必須 exactly 1）',
+                diff={'count': len(matches)})
+        resource = matches[0]
+        return {
+            'schemaVersion': 1,
+            'mode': 'catalog',
+            'datasetId': CATALOG_DATASET_ID,
+            'resourceId': str(resource.get('id')),
+            'resourceName': ' '.join(str(resource.get('name') or '').split()),
+            'resourceFormat': 'CSV',
+            'catalogApiUrl': CATALOG_API_URL,
+            'datasetPageUrl': CATALOG_DATASET_PAGE,
+            'resolvedCsvUrl': str(resource.get('url')),
+            'resolvedAt': utc_now_iso(now),
+            'catalogFetchedAt': resp.fetchedAt,
+        }
+    raise last_error or CatalogUnavailable('CKAN 目錄抓取失敗')
+
+
+def last_known_good_resolution(*, reason, now=None):
+    """CKAN 暫時不可用時嘅上次批准直接 URL（仍然會重新抓新鮮 bytes，唔用 cache）。"""
+    return {
+        'schemaVersion': 1,
+        'mode': 'last-known-good-fallback',
+        'datasetId': CATALOG_DATASET_ID,
+        'resourceId': None,
+        'resourceName': None,
+        'resourceFormat': None,
+        'catalogApiUrl': CATALOG_API_URL,
+        'datasetPageUrl': CATALOG_DATASET_PAGE,
+        'resolvedCsvUrl': CSV_URL,
+        'resolvedAt': utc_now_iso(now),
+        'fallbackReason': str(reason),
+    }
+
+
+def fetch_csv_raw(*, url=None, transport=None, now=None, conditional=None,
+                  max_attempts=DEFAULT_MAX_ATTEMPTS, timeout=DEFAULT_TIMEOUT):
+    """抓官方 open-data CSV：明確 UA、有限 retry（只重試網絡／5xx）、403／429 即失敗。
+
+    `url` 預設係上次批准嘅直接 URL；CKAN resolver 解析到新 URL 時傳入。無論
+    request URL 定（redirect 後）final URL 都要通過官方 allowlist 契約。
+    """
+    transport = transport or http_get
+    fetch_url = str(url or CSV_URL)
+    validate_official_csv_url(fetch_url)
     headers = {'User-Agent': DEFAULT_USER_AGENT, 'Accept': 'text/csv,*/*;q=0.8',
                'Accept-Language': 'zh-HK,zh;q=0.9,en;q=0.5'}
     if conditional:
@@ -373,16 +622,25 @@ def fetch_csv_raw(*, transport=None, now=None, conditional=None,
     last_error = None
     for attempt in range(max(1, max_attempts)):
         try:
-            resp = transport(CSV_URL, headers=headers, timeout=timeout, now=now)
+            resp = transport(fetch_url, headers=headers, timeout=timeout, now=now,
+                             validator=validate_official_csv_url)
         except DualSourceError as e:
             last_error = e
             if e.kind in ('http_error',) or attempt + 1 >= max_attempts:
                 raise
             time.sleep(min(2 ** attempt, 8))
             continue
+        effective = str(resp.finalUrl or resp.url)
+        validate_official_csv_url(effective)
         if resp.status == 304:
             return dataclasses.replace(resp, notModified=True, body=b'')
         if resp.status == 200:
+            content_type = (resp.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+            head = bytes(resp.body[:64]).lstrip().lower()
+            if content_type in HTML_CONTENT_TYPES or head.startswith(b'<html') \
+                    or head.startswith(b'<!doctype'):
+                raise DualSourceError('CSV 回應係 HTML（唔可以冒充資料）',
+                                      kind='content_type', diff={'contentType': content_type})
             if not resp.body or not resp.body.strip():
                 raise DualSourceError('CSV 回應係空 bytes', kind='csv_incomplete',
                                       diff={'status': resp.status, 'byteLength': len(resp.body)})
@@ -398,12 +656,15 @@ def fetch_csv_raw(*, transport=None, now=None, conditional=None,
     raise last_error or DualSourceError('CSV 抓取失敗', kind='network_error')
 
 
-def csv_summary(resp, parsed, *, min_rows=None):
-    """CSV 來源嘅脫敏摘要（唔含 body）。"""
+def csv_summary(resp, parsed, *, min_rows=None, resolution=None):
+    """CSV 來源嘅脫敏摘要（唔含 body）；包括 catalog／resolved URL 證據。"""
+    resolved_url = (resolution or {}).get('resolvedCsvUrl') or resp.finalUrl or resp.url
     summary = {
         'sourceKind': SOURCE_KIND_CSV,
-        'sourceUrl': CSV_URL,
+        'sourceUrl': resolved_url,
+        'resolvedUrl': resolved_url,
         'status': resp.status,
+        'notModified': bool(resp.notModified),
         'byteLength': len(resp.body),
         'sha256': 'sha256:' + sha256_hex(resp.body),
         'fetchedAt': resp.fetchedAt,
@@ -414,14 +675,26 @@ def csv_summary(resp, parsed, *, min_rows=None):
     }
     if min_rows is not None:
         summary['minRowsGate'] = min_rows
+    if resolution:
+        summary['catalog'] = {
+            'mode': resolution.get('mode'),
+            'datasetId': resolution.get('datasetId'),
+            'resourceId': resolution.get('resourceId'),
+            'resourceName': resolution.get('resourceName'),
+            'catalogApiUrl': resolution.get('catalogApiUrl'),
+            'datasetPageUrl': resolution.get('datasetPageUrl'),
+            'resolvedCsvUrl': resolved_url,
+            'resolvedAt': resolution.get('resolvedAt'),
+            'fallbackReason': resolution.get('fallbackReason'),
+        }
     return summary
 
 
 def build_receipt_dual_source(*, comparison, csv_summary_, paginated_summary_,
                               csv_archive=None, paginated_archive=None,
-                              retrieved_at=None):
+                              retrieved_at=None, resolution=None):
     """主要收據用嘅 dualSource block（計數 + 兩個來源摘要 + raw archive namespace）。"""
-    return {
+    block = {
         'schemaVersion': 1,
         'primary': SOURCE_KIND_CSV,
         'crossCheck': SOURCE_KIND_PAGINATED,
@@ -433,30 +706,51 @@ def build_receipt_dual_source(*, comparison, csv_summary_, paginated_summary_,
         },
         'counts': comparison['counts'],
     }
+    if resolution:
+        block['catalog'] = {
+            'mode': resolution.get('mode'),
+            'datasetId': resolution.get('datasetId'),
+            'resourceId': resolution.get('resourceId'),
+            'resourceName': resolution.get('resourceName'),
+            'catalogApiUrl': resolution.get('catalogApiUrl'),
+            'datasetPageUrl': resolution.get('datasetPageUrl'),
+            'resolvedCsvUrl': resolution.get('resolvedCsvUrl'),
+            'resolvedAt': resolution.get('resolvedAt'),
+            'fallbackReason': resolution.get('fallbackReason'),
+        }
+    return block
 
 
 def verify_dual_source(*, paginated_rows, paginated_raw_records, retrieved_at,
                        transport=None, now=None, min_rows=1700,
                        paginated_archive_hash=None, csv_transport=None,
-                       conditional=None, raw_response=None):
+                       conditional=None, raw_response=None, url=None,
+                       resolution=None):
     """主入口：抓 CSV、parse、min-row gate、比較；成功回 primary rows + 證據。
 
     `raw_response` 供呼叫方／測試注入（fetch_emsd 用可 monkeypatch 嘅 wrapper
-    事先抓好）；唔傳就經 `fetch_csv_raw` 抓。
+    事先抓好）；唔傳就經 `fetch_csv_raw` 抓 `url`（預設 CSV_URL）。
 
-    任何失敗 raise DualSourceError（kind: network_error／http_error／schema／
-    csv_incomplete／paginated_incomplete／mismatch），diff 可供呼叫方寫脫敏 report。
+    任何失敗 raise DualSourceError（kind: network_error／http_error／catalog_*／
+    content_type／schema／csv_incomplete／csv_not_modified／paginated_incomplete／
+    mismatch），diff 可供呼叫方寫脫敏 report。
     """
     if not paginated_rows:
         raise DualSourceError('paginated 來源冇資料，唔可以單獨放行 CSV',
                               kind='paginated_incomplete', diff={'totalRows': 0})
     if not paginated_raw_records:
         raise DualSourceError('paginated 來源冇 raw page 證據', kind='paginated_incomplete')
-    resp = raw_response or fetch_csv_raw(transport=csv_transport or transport, now=now,
-                                         conditional=conditional)
+    fetch_url = (resolution or {}).get('resolvedCsvUrl') or url or CSV_URL
+    resp = raw_response or fetch_csv_raw(url=fetch_url, transport=csv_transport or transport,
+                                         now=now, conditional=conditional)
+    if resp.notModified:
+        raise DualSourceError('CSV 只回 304（cached bytes），唔准用舊 cache 當新鮮資料',
+                              kind='csv_not_modified')
     if not resp.body or not resp.body.strip():
         raise DualSourceError('CSV 回應係空 bytes', kind='csv_incomplete',
                               diff={'status': resp.status, 'byteLength': len(resp.body)})
+    # 注入／redirect 後嘅實際 URL 都要通過官方 allowlist（unknown host／redirect fail-closed）
+    validate_official_csv_url(str(resp.finalUrl or resp.url))
     parsed = parse_open_data_csv(resp.body)
     if parsed['rowCount'] < min_rows:
         raise DualSourceError(
@@ -464,7 +758,7 @@ def verify_dual_source(*, paginated_rows, paginated_raw_records, retrieved_at,
             kind='csv_incomplete',
             diff={'rowCount': parsed['rowCount'], 'minRows': min_rows})
     comparison = compare_sources(parsed['rows'], paginated_rows)
-    csv_sum = csv_summary(resp, parsed, min_rows=min_rows)
+    csv_sum = csv_summary(resp, parsed, min_rows=min_rows, resolution=resolution)
     pag_sum = {
         'sourceKind': SOURCE_KIND_PAGINATED,
         'sourceUrl': PAGINATED_URL,
@@ -478,4 +772,5 @@ def verify_dual_source(*, paginated_rows, paginated_raw_records, retrieved_at,
                               diff={'comparison': comparison, 'csv': csv_sum,
                                     'paginated': pag_sum})
     return {'rows': parsed['rows'], 'csv': csv_sum, 'paginated': pag_sum,
-            'comparison': comparison, 'rawResponse': resp, 'parsed': parsed}
+            'comparison': comparison, 'rawResponse': resp, 'parsed': parsed,
+            'resolution': resolution or {}}
