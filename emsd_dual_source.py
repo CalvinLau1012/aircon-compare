@@ -91,6 +91,20 @@ NUMERIC_FIELDS = frozenset({
 # 空值等價標記（兩來源對「冇資料」嘅寫法可能唔同）
 MISSING_MARKERS = frozenset({'', '-', '--', 'n/a', 'na', 'nil', 'none', '不適用', '待查'})
 
+# 真實 DATA.GOV.HK open-data CSV 觀測契約（2026-09-29 首次受信任 CI live；relay 覆核）：
+# 29 欄、英文 header，並以「Product being Supplied by Information Provider」標示供應狀態。
+# paginated 來源只列目前供應型號，所以只有 'Yes' 行屬現行受治理登記範圍。
+CSV_SUPPLIED_KEY = 'productbeingsuppliedbyinformationprovider'
+CSV_SUPPLIED_ALLOWED = ('Yes', 'No', 'No Information')
+CSV_SUPPLIED_PRIMARY = 'Yes'
+
+# CSV primary 值 → 受治理生產表示（同歷史 paginated 表示等價；未見過 token 即 fail-closed）
+INVERTER_TRUE_TOKENS = frozenset({'Y', 'Yes', 'YES', 'yes', '是', 'True', 'true', '1'})
+INVERTER_FALSE_TOKENS = frozenset({'N', 'No', 'NO', 'no', '否', 'False', 'false', '0'})
+HEATING_MISSING_DEFAULT = '不適用'  # heatingGrade：冇供暖資料
+HEATING_SENTINEL = '—'              # 供暖數值欄：官方 sentinel（validate_data 契約）
+HEATING_NUMERIC_FIELDS = ('heatingAnnualKwh', 'heatingCapacityKw', 'hspf')
+
 DEFAULT_USER_AGENT = ('aircon-compare-emsd-dual-source/1.0 '
                       '(project: aircon-compare; official EMSD open data comparison)')
 DEFAULT_TIMEOUT = 30
@@ -195,7 +209,7 @@ def model_key_of(row):
 def _csv_field_aliases():
     """Canonical field → 可接受 header key 集合（中文 tracked header + 英文別名）。"""
     return {
-        'brand': {'品牌', 'brand'},
+        'brand': {'品牌', 'brand', 'brandtraditionalchinese'},
         'model': {'型號', 'model', 'modelno', 'modelnumber'},
         'registrationNo': {'參考編號', '參考號碼', 'registrationno', 'registrationnumber',
                            'referenceno', 'referencenumber', 'refno', 'refnumber'},
@@ -210,7 +224,8 @@ def _csv_field_aliases():
                              'coolingannualenergyconsumption'},
         'coolingCapacityKw': {'製冷量千瓦', 'coolingcapacitykw', 'coolingcapacity'},
         'cspf': {'製冷季節性表現系數cspf', '製冷季節性表現系數', 'cspf',
-                 'coolingseasonalperformancefactor'},
+                 'coolingseasonalperformancefactor',
+                 'coolingseasonalperformancefactorcspf'},
         'refrigerant': {'製冷劑', 'refrigerant'},
         'heatingGrade': {'能源效益級別供暖1至5', '能源效益級別供暖',
                          'energyefficiencygradeheating', 'energyefficiencygradeheating1to5',
@@ -222,8 +237,10 @@ def _csv_field_aliases():
                              'heatingannualenergyconsumption'},
         'heatingCapacityKw': {'供暖量千瓦', 'heatingcapacitykw', 'heatingcapacity'},
         'hspf': {'供暖季節性表現系數hspf', '供暖季節性表現系數', 'hspf',
-                 'heatingseasonalperformancefactor'},
-        'provider': {'資料提供者', 'dataprovider', 'supplier', 'provider'},
+                 'heatingseasonalperformancefactor',
+                 'heatingseasonalperformancefactorhspf'},
+        'provider': {'資料提供者', 'dataprovider', 'supplier', 'provider',
+                     'informationprovidertraditionalchinese'},
         'inverter': {'變頻', 'inverter', 'invertertype'},
     }
 
@@ -259,10 +276,40 @@ def _decode_csv(raw):
     raise SourceSchemaError('CSV 唔可以用 utf-8-sig／big5／cp950 解碼')
 
 
-def parse_open_data_csv(raw):
-    """官方 open-data CSV bytes → canonical 15 欄 rows（未 normalize，保留原字串）。
+def canonicalize_csv_values(values):
+    """CSV primary row（canonical field dict）→ 受治理生產表示。
 
-    回傳 dict：{'rows', 'header', 'encoding', 'rowCount'}。
+    - inverter：官方 CSV 用 Y／N；生產受治理表示係 是／否（`validate_data.py` 契約）。
+      任何未見過嘅 token 即 `SourceSchemaError`（fail-closed；唔可以當定頻）。
+    - 供暖欄：官方 CSV 用空字串表示冇供暖資料；生產表示沿用歷史 paginated 官方
+      sentinel（`heatingGrade='不適用'`、數值欄='—'），兩者等價。
+    """
+    out = dict(values)
+    inverter = out.get('inverter', '')
+    if inverter in INVERTER_TRUE_TOKENS:
+        out['inverter'] = '是'
+    elif inverter in INVERTER_FALSE_TOKENS:
+        out['inverter'] = '否'
+    else:
+        raise SourceSchemaError('CSV inverter 值唔在受治理集合',
+                                diff={'field': 'inverter'})
+    if out.get('heatingGrade', '') == '':
+        out['heatingGrade'] = HEATING_MISSING_DEFAULT
+    for field in HEATING_NUMERIC_FIELDS:
+        if out.get(field, '') == '':
+            out[field] = HEATING_SENTINEL
+    return out
+
+
+def parse_open_data_csv(raw):
+    """官方 open-data CSV bytes → canonical 15 欄 rows（已轉受治理生產表示）。
+
+    真實 CSV（2026-09-29 首次受信任 CI live 觀測）有 29 欄、英文 header，並以
+    「Product being Supplied by Information Provider」標示供應狀態；只有 `Yes` 行屬
+    現行可比對登記（與 paginated 來源範圍一致）。供應狀態欄缺失／重複、值未知、
+    inverter token 未知一律 fail-closed。
+
+    回傳 dict：{'rows', 'header', 'encoding', 'rowCount', 'excludedRowCount'}。
     """
     if not isinstance(raw, (bytes, bytearray)) or not bytes(raw).strip():
         raise SourceSchemaError('CSV 係空 bytes', diff={'byteLength': len(raw or b'')})
@@ -275,7 +322,16 @@ def parse_open_data_csv(raw):
     if not any(str(h).strip() for h in header):
         raise SourceSchemaError('CSV header 係空')
     mapping = map_csv_headers(header)
+    normalized = [normalize_header_key(h) for h in header]
+    supplied_matches = [i for i, key in enumerate(normalized) if key == CSV_SUPPLIED_KEY]
+    if len(supplied_matches) != 1:
+        raise SourceSchemaError(
+            'CSV 供應狀態欄唔符合契約（必須唯一）',
+            diff={'missing': ['csvSupplied'] if not supplied_matches else [],
+                  'duplicate': ['csvSupplied'] if len(supplied_matches) > 1 else []})
+    supplied_idx = supplied_matches[0]
     rows = []
+    excluded = 0
     for line_no, row in enumerate(reader, start=2):
         if not any(str(c).strip() for c in row):
             continue
@@ -283,9 +339,18 @@ def parse_open_data_csv(raw):
             raise SourceSchemaError(
                 f'CSV 第 {line_no} 行少過 header 欄數（{len(row)} < {len(header)}）',
                 diff={'line': line_no, 'cells': len(row), 'headerCells': len(header)})
-        rows.append(tuple(str(row[mapping[f]]).strip() for f in CANONICAL_FIELDS))
+        supplied = str(row[supplied_idx]).strip()
+        if supplied not in CSV_SUPPLIED_ALLOWED:
+            raise SourceSchemaError('CSV 供應狀態值唔在受治理集合',
+                                    diff={'field': 'csvSupplied', 'line': line_no})
+        if supplied != CSV_SUPPLIED_PRIMARY:
+            excluded += 1
+            continue
+        values = {f: str(row[mapping[f]]).strip() for f in CANONICAL_FIELDS}
+        values = canonicalize_csv_values(values)
+        rows.append(tuple(values[f] for f in CANONICAL_FIELDS))
     return {'rows': rows, 'header': list(header), 'encoding': encoding,
-            'rowCount': len(rows)}
+            'rowCount': len(rows), 'excludedRowCount': excluded}
 
 
 def _index_rows(rows):

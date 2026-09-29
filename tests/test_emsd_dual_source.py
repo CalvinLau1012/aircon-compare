@@ -25,13 +25,15 @@ fetch = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(fetch)
 
 HEADER = list(dual.CANONICAL_HEADER)
+SUPPLIED_HEADER = 'Product being Supplied by Information Provider'
 
 
 def _rows(csv_rows):
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator='\n')
-    w.writerow(HEADER)
-    w.writerows(csv_rows)
+    w.writerow(HEADER + [SUPPLIED_HEADER])
+    for row in csv_rows:
+        w.writerow(list(row) + ['Yes'])
     return buf.getvalue().encode('utf-8-sig')
 
 
@@ -76,7 +78,7 @@ def test_parse_csv_alias_headers_and_canonical_order():
               'Cooling Capacity (kW)', 'CSPF', 'Refrigerant',
               'Energy Efficiency Grade (Heating) (1 to 5)',
               'Annual Energy Consumption (Heating) (kWh)',
-              'Heating Capacity (kW)', 'HSPF', 'Data Provider']
+              'Heating Capacity (kW)', 'HSPF', 'Data Provider', SUPPLIED_HEADER]
     values = dict(zip(dual.CANONICAL_FIELDS, _row('REG-1')))
     field_of = {
         'Ref No.': 'registrationNo', 'Brand': 'brand', 'Inverter': 'inverter',
@@ -93,10 +95,98 @@ def test_parse_csv_alias_headers_and_canonical_order():
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator='\n')
     w.writerow(custom)
-    w.writerow([values[field_of[c]] for c in custom])
+    w.writerow(['Yes' if c == SUPPLIED_HEADER else values[field_of[c]] for c in custom])
     parsed = dual.parse_open_data_csv(buf.getvalue().encode('utf-8-sig'))
     assert parsed['rowCount'] == 1
     assert list(parsed['rows'][0]) == list(_row('REG-1'))
+
+
+# ------------------------------------------------- live DATA.GOV.HK CSV contract
+
+LIVE_HEADER = [
+    'Information Provider English', 'Information Provider Traditional Chinese',
+    'Information Provider Simplified Chinese', 'Reference Number', 'Year',
+    'Brand English', 'Brand Traditional Chinese', 'Brand Simplified Chinese',
+    'Model', 'Category', 'Refrigerant',
+    'Energy Efficiency Grade Cooling (1 to 5)',
+    'Annual Energy Consumption Cooling (kWh)',
+    'Rated Power Consumption Cooling (kW)', 'Rated Cooling Capacity (kW)',
+    'Cooling Capacity (kW)', 'Cooling Seasonal Performance Factor (CSPF)',
+    'Inverter', 'Energy Efficiency Grade Heating (1 to 5)',
+    'Annual Energy Consumption Heating (kWh)',
+    'Rated Power Consumption Heating (kW)', 'Rated Heating Capacity (kW)',
+    'Heating Capacity (kW)', 'Heating Seasonal Performance Factor (HSPF)',
+    'Place of Manufacture English', 'Place of Manufacture Traditional Chinese',
+    'Place of Manufacture Simplified Chinese', SUPPLIED_HEADER,
+    'Supply Information Last Updated Date',
+]
+
+
+def _live_row(reg, *, supplied='Yes', inverter='Y', heating=False):
+    return ['Provider Ltd.', '供應商有限公司', '供应商有限公司', reg, '2020',
+            'General', '珍寶', '珍宝', 'LIVE-MODEL', '4', 'R410A',
+            '1', '525', '1.3', '4.9', '4.97', '4.8154', inverter,
+            '1' if heating else '', '49' if heating else '',
+            '1.4' if heating else '', '4.8' if heating else '',
+            '4.84' if heating else '', '4.2779' if heating else '',
+            'China', '中國', '中国', supplied, '2026-09-16']
+
+
+def _live_bytes(rows):
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator='\n')
+    w.writerow(LIVE_HEADER)
+    w.writerows(rows)
+    return buf.getvalue().encode('utf-8-sig')
+
+
+def test_live_open_data_csv_supplied_scope_and_canonical_values():
+    """真實 29 欄英文 header：只取 Supplied=Yes，值轉受治理生產表示。"""
+    parsed = dual.parse_open_data_csv(_live_bytes([
+        _live_row('REG-LIVE-1', supplied='Yes', inverter='Y'),
+        _live_row('REG-LIVE-2', supplied='No', inverter='N'),
+        _live_row('REG-LIVE-3', supplied='No Information', inverter='N'),
+    ]))
+    assert parsed['rowCount'] == 1
+    assert parsed['excludedRowCount'] == 2
+    row = dict(zip(dual.CANONICAL_FIELDS, parsed['rows'][0]))
+    assert row['brand'] == '珍寶', '繁中 brand 欄先係受治理比對值'
+    assert row['provider'] == '供應商有限公司'
+    assert row['model'] == 'LIVE-MODEL'
+    assert row['cspf'] == '4.8154'
+    assert row['inverter'] == '是'
+    assert row['heatingGrade'] == '不適用'
+    assert row['heatingAnnualKwh'] == '—'
+    assert row['heatingCapacityKw'] == '—'
+    assert row['hspf'] == '—'
+
+
+def test_live_open_data_csv_heating_numeric_and_inverter_false_kept():
+    parsed = dual.parse_open_data_csv(_live_bytes([
+        _live_row('REG-LIVE-4', inverter='N', heating=True),
+    ]))
+    row = dict(zip(dual.CANONICAL_FIELDS, parsed['rows'][0]))
+    assert row['inverter'] == '否'
+    assert row['heatingGrade'] == '1'
+    assert row['heatingAnnualKwh'] == '49'
+    assert row['heatingCapacityKw'] == '4.84'
+    assert row['hspf'] == '4.2779'
+
+
+def test_live_open_data_csv_unknown_supplied_or_inverter_token_fails_closed():
+    with pytest.raises(dual.SourceSchemaError):
+        dual.parse_open_data_csv(_live_bytes([_live_row('REG-X', supplied='Maybe')]))
+    with pytest.raises(dual.SourceSchemaError):
+        dual.parse_open_data_csv(_live_bytes([_live_row('REG-X', inverter='X')]))
+
+
+def test_csv_without_supplied_column_fails_closed():
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator='\n')
+    w.writerow(dual.CANONICAL_HEADER)
+    w.writerow(_row('REG-Y'))
+    with pytest.raises(dual.SourceSchemaError):
+        dual.parse_open_data_csv(buf.getvalue().encode('utf-8-sig'))
 
 
 def test_numeric_and_missing_marker_normalization_is_deterministic():

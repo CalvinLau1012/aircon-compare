@@ -782,3 +782,46 @@
   - `BOUNDARY`：未 commit／push／deploy、未觸發 Actions、未改私人 repo、未改生產生成物。
 - **回滾**：同 D27 主文；baseline／pending 欄位全部 additive，舊 receipt 仍被 wrapper
   fail-closed 拒絕（冇弱化路徑）。
+
+## D28 · live CKAN CSV schema 修復：真實 29 欄 header／供應範圍／值 canonicalization（工程修復；append-only）
+
+- **背景（OBSERVED / E3）**：PR #19 merge（merge commit `4d364ace36bec28888b92a201d17771a1b051df3`）
+  後，手動 dispatch 一次 production daily（run **36590838333**、`workflow_dispatch`、master `4d364ac`、
+  `force_price_batch=false`）喺 step 10「抓取 EMSD + 新機偵測」fail-closed（`kind=schema`）；
+  BigGo step skipped（`prices_meta.json` 冇 `price_batch_start` → inactive，零 BigGo 呼叫）；
+  冇 data commit。脫敏 diff（artifact 11043608164）顯示 CKAN resolver 成功
+  （dataset `hk-emsd-emsd1-meels-listed-models`、resource `2944ffac-4bb3-4240-a5f8-d902d0531b20`、
+  `https://www.emsd.gov.hk/energylabel/files/meels_rac.csv`），但四個受治理欄位無 alias：
+  `missing=['brand','cspf','hspf','provider']`；paginated 來源完整（37 頁、1,816 行）。
+- **真實 CSV shape（OBSERVED；受信任 CI live bytes＋read-only relay 覆核）**：29 欄英文 header，
+  包括 `Reference Number`、`Year`、`Brand Traditional Chinese`、`Model`、`Refrigerant`、
+  `Energy Efficiency Grade Cooling (1 to 5)`、`Annual Energy Consumption Cooling (kWh)`、
+  `Cooling Capacity (kW)`、`Cooling Seasonal Performance Factor (CSPF)`、`Inverter`、
+  `Heating Seasonal Performance Factor (HSPF)`、`Information Provider Traditional Chinese`、
+  `Product being Supplied by Information Provider`（值：Yes／No／No Information）。
+  `Supplied=Yes` 共 1,816 行（同當日 paginated 1,816 行一致）；`No`／`No Information` 歷史登記
+  1,357 行唔屬現行可比對範圍。
+- **決定（工程修復；唔放寬任何門禁）**：
+  1. header alias 只加觀測到嘅真實欄位：`brandtraditionalchinese`、
+     `informationprovidertraditionalchinese`、`coolingseasonalperformancefactorcspf`、
+     `heatingseasonalperformancefactorhspf`；英文／簡體 brand／provider 欄唔用（避免同
+     paginated 繁中值產生假 mismatch）。
+  2. 要求唯一 `Product being Supplied by Information Provider` 欄；只取 `Yes` 行做 primary
+     同 cross-check 範圍；欄缺失／重複或值未知即 `SourceSchemaError`（fail-closed）。
+  3. CSV primary 值轉受治理生產表示：`inverter` 只接受 Y／N 等價 token → 是／否，未知 token
+     fail-closed；`heatingGrade` 空 → `不適用`；供暖數值欄空 → `—`（同歷史 paginated 官方
+     sentinel 等價，符合 `validate_data.py` 契約）。
+- **離線證據（OBSERVED / E2；relay bytes 只作診斷，唔入 repo）**：live shape 解析 → 1,816 行、
+  排除 1,357；同 repo paginated 快照（2026-09-27、1,834 行）交集 1,813 行 **0 值 mismatch**，
+  差異只係 21 行過期＋3 行新增嘅兩日時間差。
+- **測試**：新增 live 29 欄 header 回歸（supplied 範圍／繁中欄選擇／inverter 是-否／供暖
+  sentinel／未知 token 或欄位缺失 fail-closed）；三個 fetch_emsd 離線 fixture（receipt／
+  raw receipt／private sink）補真實供應欄。
+- **後果（分類）**：
+  - `REQUIREMENT`：metadata Schema、required 功能、成功標準、fail-closed 路徑全部不變；
+    production 輸出值表示同歷史 paginated 等價。
+  - `OBSERVED / E2`：完整 pytest **674 passed**（1 預期 duplicate-zip warning）；7/7
+    acceptance gates rc=0；feature-check 15 項／18 節點；validate_data 1,834 行；
+    validate_metadata version 1.2.9／datasetDate 2026-09-28。
+  - `UNKNOWN`：修復後第二次 production daily（自然 schedule）尚未執行；E4 未觀察。
+- **回滾**：revert 本 commit；失敗路徑本身保留舊 CSV（雙來源 fail-closed），舊資料不受影響。

@@ -28,6 +28,7 @@ _SPEC.loader.exec_module(fetch_emsd)
 
 
 HEADER = list(emsd_dual_source.CANONICAL_HEADER)  # 真實 15 欄 canonical header
+SUPPLIED_HEADER = 'Product being Supplied by Information Provider'  # 真實 open-data CSV 供應狀態欄
 
 
 def _html(rows, header=False):
@@ -40,7 +41,7 @@ def _html(rows, header=False):
 
 
 def _rows(n, start='M'):
-    return [[f'品牌{i}', f'{start}{i}'] + [str(i)] * 13 for i in range(n)]
+    return [[f'品牌{i}', f'{start}{i}'] + [str(i)] * 12 + ['是'] for i in range(n)]
 
 
 @pytest.fixture
@@ -82,8 +83,8 @@ def _run_main(pages, csv_bytes=None):
             rows.extend(fetch_emsd.parse_page_rows(html))
         buf = io.StringIO()
         writer = _csv.writer(buf, lineterminator='\n')
-        writer.writerow(header if header else HEADER)
-        writer.writerows(rows)
+        writer.writerow((header if header else HEADER) + [SUPPLIED_HEADER])
+        writer.writerows([list(r) + ['Yes'] for r in rows])
         csv_bytes = buf.getvalue().encode('utf-8-sig')
     fetch_emsd.fetch_csv_source = lambda **kwargs: emsd_dual_source.RawResponse(
         url=emsd_dual_source.CSV_URL, status=200, body=csv_bytes,
