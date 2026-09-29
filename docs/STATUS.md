@@ -885,3 +885,37 @@ GATE-08 `payload.pdf_matches_metadata` 會紅一次（待 daily 重生恢復）�
 - `.venv/Scripts/python.exe scripts/run_acceptance.py --report "D:\tmp\aircon-acceptance-20260929-r3.json" --log-dir "D:\tmp\aircon-acceptance-20260929-r3-logs"` → ok=true、7/7 gates rc=0、PYTEST log 670 passed（report／log 喺 repo 外）。
 - `extract_governance.py`／`feature-check.py --run-tests`（15 項／18 節點）／`validate_data.py`／`validate_metadata.py`／`check_public_privacy.py --mode worktree`／`git diff --check` → 全部 rc=0。
 - 聚焦組合（stage_run_evidence＋official_batch_gate＋workflow_security＋emsd_dual_source）→ 128 passed。
+
+### 19.9 2026-09-29 merge 後首次 production daily：EMSD live CSV schema 返修（追加；E3／E2）
+
+> 只追加；§19.1–§19.8 原文保留。
+
+- **PR #19 merge（OBSERVED）**：`mergedAt=2026-09-29T15:30:52Z`、merge commit
+  `4d364ace36bec28888b92a201d17771a1b051df3`（7 commits 全保留、無 squash／rebase／force；
+  分支未刪）。merge push 只觸發 `Pages 部署（Actions）` run **36590777346**（event=push、master
+  `4d364ac`）：`build`（job 109483002442）同 `deploy`（job 109484193855）success；
+  `部署後核對（GATE-08）`（job 109484294348）fail — 唯一紅項 `payload.pdf_matches_metadata`
+  （online `c54ceb38339ff48a` vs rebuilt `3680730df6318ff4`），屬 D24／AGENTS 規則 11 已記錄嘅
+  預期 fail-closed（md 改動未重生 PDF），等下一次 daily 全量重生。
+- **`daily-update` 冇 push trigger**，所以手動 dispatch 一次：run **36590838333**（event=
+  `workflow_dispatch`、head `4d364ac`、`force_price_batch=false`）。
+- **價格 stage（OBSERVED）**：`prices_meta.json` 冇 `price_batch_start`、`price_batch_idx=7` →
+  `batch_utils.price_batch_active()` False；本機 `scripts/biggo_stage_runner.py` 輸出
+  `BIGGO_STAGE_STATUS: skip-not-active`；workflow 入面 BigGo step（step 19）顯示 **skipped** →
+  本輪 BigGo token／search／API 請求 **0**，亦無 coordinator mutation。
+- **第一次 production daily 結果（E3；fail-closed，唔可以當成功）**：`update` job
+  （109483198455）喺 step 10「抓取 EMSD + 新機偵測」fail：`kind=schema`、
+  `missing=['brand','cspf','hspf','provider']`；paginated 完整（37 頁、1,816 行）。
+  失敗收據＋脫敏 diff artifact：`emsd-evidence-36590838333`（artifact 11043608164）；
+  `emsd_raw_receipt.json` staging 顯示 `before-run-start`（本 run 冇新 raw archive）。
+  後續 steps（官網批次／BigGo／驗證／生成／提交／Pages dispatch）全部 skipped；冇 data commit。
+- **返修（E2）**：D28 — 補真實 29 欄 header alias、只取 `Supplied=Yes`（1,816 行）、值
+  canonicalization（inverter Y/N→是/否、供暖空值→官方 sentinel）；未知 token／欄位缺失
+  維持 fail-closed。離線 live shape 解析 1,816 行、排除 1,357；同 2026-09-27 paginated 快照
+  交集 1,813 行 0 值 mismatch。
+- **E2 實數（本輪）**：`run_acceptance.py` 7/7 gates rc=0；pytest **674 passed**
+  （1 預期 duplicate-zip warning，128.93s）；feature-check 15 項／18 節點；治理 extractor／
+  validate_data（1,834 行）／validate_metadata（1.2.9、datasetDate 2026-09-28）／
+  privacy worktree（0 命中）／`git diff --check` 全部 rc=0。
+- **E4**：UNKNOWN——修復後嘅第二輪 production daily（自然 schedule）同 Pages deploy／GATE-08
+  未執行；本節後續會追加實際結果。

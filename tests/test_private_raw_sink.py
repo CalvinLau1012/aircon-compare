@@ -29,6 +29,7 @@ RECORDS = [fetch.raw_page_record(1, b'<table>page-1</table>'),
            fetch.raw_page_record(2, b'<table>page-2</table>')]
 TOKEN = 'ghp_totally-secret-token'
 REPO = 'owner/private-archive'
+SUPPLIED_HEADER = 'Product being Supplied by Information Provider'
 
 
 def _canonical_pages():
@@ -40,8 +41,8 @@ def _canonical_pages():
         body = ''.join('<tr>' + ''.join(f'<td>{c}</td>' for c in r) + '</tr>' for r in rows)
         return f'<table>{head}{body}</table>'
 
-    rows_a = [[f'A{i}', f'X{i}'] + ['1'] * 13 for i in range(50)]
-    rows_b = [[f'B{i}', f'Y{i}'] + ['1'] * 13 for i in range(50)]
+    rows_a = [[f'A{i}', f'X{i}'] + ['1'] * 12 + ['是'] for i in range(50)]
+    rows_b = [[f'B{i}', f'Y{i}'] + ['1'] * 12 + ['是'] for i in range(50)]
     return [page(rows_a, True), page(rows_b), '']
 
 
@@ -56,8 +57,8 @@ def _csv_from_pages(pages):
         rows.extend(fetch.parse_page_rows(html))
     buf = io.StringIO()
     writer = _csv.writer(buf, lineterminator='\n')
-    writer.writerow(header)
-    writer.writerows(rows)
+    writer.writerow(header + [SUPPLIED_HEADER])
+    writer.writerows([list(r) + ['Yes'] for r in rows])
     return buf.getvalue().encode('utf-8-sig')
 
 

@@ -257,6 +257,26 @@
   `pytest tests/` 529 passed；governance extractor／validate_data／feature-check／
   validate_metadata 全部 rc=0。未改產品版本、未改 `metadata.json`、未改資料。
 
+### 2026-09-29 首次 production daily live CSV schema 返修（未發布；E2）
+
+> PR #19 merge（merge commit `4d364ace36bec28888b92a201d17771a1b051df3`）後手動 dispatch 一次
+> production daily（run 36590838333，`force_price_batch=false`）喺 EMSD step fail-closed
+> （`kind=schema`；CKAN resolver 成功，但真 CSV 四個受治理欄位無 alias：
+> `missing=['brand','cspf','hspf','provider']`）。BigGo step skipped（inactive → 零呼叫）；
+> 冇 data commit。
+
+- **修復（D28；只收緊，唔放寬）**：補真實 29 欄英文 header alias（繁中 brand／provider、
+  `...Factor (CSPF)`／`(HSPF)`）；要求唯一 `Product being Supplied by Information Provider` 欄，
+  只取 `Yes`（1,816 行 = 當日 paginated 1,816 行）；`inverter` Y／N → 是／否（未知 token
+  fail-closed）、供暖空值 → `不適用`／`—`（同歷史 paginated 表示等價，符合 validate_data 契約）。
+- **離線驗證（relay live bytes 只作診斷，唔入 repo）**：解析 1,816 行／排除 1,357；同
+  2026-09-27 paginated 快照交集 1,813 行 0 值 mismatch。
+- **E2**：7/7 acceptance gates rc=0；pytest **674 passed**（1 預期 duplicate-zip warning）；
+  feature-check 15 項／18 節點；validate_data 1,834 行；validate_metadata version=1.2.9／
+  datasetDate=2026-09-28；未改 `models_data.VERSION`、未改生產 `index.html`／PDF／`metadata.json`。
+- **預期**：merge 後由下一次自然 schedule daily 全量重生 payload（同時修復 D24 嘅
+  `payload.pdf_matches_metadata`）；本輪唔會再手動 dispatch production daily。
+
 ## [1.2.9] - 2026-09-24
 
 > 發布事實（2026-09-24 回讀）：tag `v1.2.9` → commit
