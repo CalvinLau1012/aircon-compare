@@ -31,7 +31,7 @@ if BASE not in sys.path:
     sys.path.insert(0, BASE)
 
 from queue_utils import load_queue, QueueError  # noqa: E402
-from crawl_utils import norm_model  # noqa: E402
+from crawl_utils import norm_model, COVERAGE_PENDING_REASONS  # noqa: E402
 
 STAGES = {
     1: {
@@ -150,6 +150,78 @@ def _canon_list_ok(values, label, errors):
     return out
 
 
+def _parse_failure_reasons(marker, failed_norm, errors):
+    """驗證 failureReasons；每個 failed target 都必須有 reason code。
+
+    reason code 係分類 coverage pending（allowlist）同硬失敗嘅唯一機器依據；
+    缺 reasons 而又有 failed → 一律當硬失敗（uncertain）。
+    """
+    fr = marker.get('failureReasons')
+    if fr is None:
+        if failed_norm:
+            errors.append('receipt 有 failed 但冇 failureReasons，無法區分 coverage pending 同硬失敗')
+        return {}
+    if not isinstance(fr, dict):
+        errors.append('failureReasons 必須係 object')
+        return {}
+    reasons = {}
+    for k, v in fr.items():
+        if not isinstance(k, str) or not k.strip() or not isinstance(v, str) or not v.strip():
+            errors.append(f'failureReasons 有無效 entry：{k!r}:{v!r}')
+            return {}
+        reasons[norm_model(k)] = v.strip()
+    if set(reasons) != failed_norm:
+        errors.append('failureReasons 同 failedModels 唔一致')
+    return reasons
+
+
+def _parse_coverage_pending(marker, failed_norm, errors):
+    """驗證 coveragePendingModels／Reasons；回傳 (pending_norm, reasons)。"""
+    models = marker.get('coveragePendingModels') or []
+    reasons = marker.get('coveragePendingReasons') or {}
+    if not isinstance(models, list):
+        errors.append('coveragePendingModels 必須係 array')
+        return set(), {}
+    if not isinstance(reasons, dict):
+        errors.append('coveragePendingReasons 必須係 object')
+        return set(), {}
+    pending = set()
+    for m in models:
+        if not isinstance(m, str) or not m.strip():
+            errors.append(f'coveragePendingModels 有無效 entry：{m!r}')
+            return set(), {}
+        key = norm_model(m)
+        if key in pending:
+            errors.append(f'coveragePendingModels canonical 重覆：{m!r}')
+            return set(), {}
+        pending.add(key)
+    norm_reasons = {}
+    for k, v in reasons.items():
+        if not isinstance(k, str) or not k.strip() or not isinstance(v, str) or not v.strip():
+            errors.append(f'coveragePendingReasons 有無效 entry：{k!r}:{v!r}')
+            return set(), {}
+        norm_reasons[norm_model(k)] = v.strip()
+    if pending != set(norm_reasons):
+        errors.append('coveragePendingModels 同 coveragePendingReasons 唔一致')
+    if not pending <= failed_norm:
+        errors.append('coveragePendingModels 必須係 failedModels subset')
+    unknown = {v for v in norm_reasons.values() if v not in COVERAGE_PENDING_REASONS}
+    if unknown:
+        errors.append(f'coveragePendingReasons 有未知 reason：{sorted(unknown)}')
+    return pending, norm_reasons
+
+
+def coverage_pending_from_marker(marker):
+    """已通過 validate_marker 嘅 receipt → canonical coverage pending model set。"""
+    out = set()
+    if not isinstance(marker, dict):
+        return out
+    for m in marker.get('coveragePendingModels') or []:
+        if isinstance(m, str) and m.strip():
+            out.add(norm_model(m))
+    return out
+
+
 def validate_marker(marker, expected_script, models_with_evidence):
     """嚴格驗證 mark receipt 同 output evidence 綁定；回傳 errors。"""
     errors = []
@@ -169,8 +241,6 @@ def validate_marker(marker, expected_script, models_with_evidence):
         if counts['attempted'] != counts['succeeded'] + counts['failed']:
             errors.append(f"receipt counts 唔一致：{counts['attempted']} != "
                           f"{counts['succeeded']}+{counts['failed']}")
-        if counts['failed'] != 0:
-            errors.append(f"receipt failed={counts['failed']} > 0（唔可能成功）")
     succeeded = _canon_list_ok(marker.get('succeededModels'), 'succeededModels', errors)
     failed = _canon_list_ok(marker.get('failedModels'), 'failedModels', errors)
     already = _canon_list_ok(marker.get('alreadyVerified'), 'alreadyVerified', errors)
@@ -179,8 +249,32 @@ def validate_marker(marker, expected_script, models_with_evidence):
         errors.append(f"len(succeededModels) {len(succeeded)} != succeeded {counts['succeeded']}")
     if counts['failed'] is not None and len(failed) != counts['failed']:
         errors.append(f"len(failedModels) {len(failed)} != failed {counts['failed']}")
+    skipped = marker.get('skipped')
+    if skipped is not None:
+        if not isinstance(skipped, int) or isinstance(skipped, bool) or skipped < 0:
+            errors.append(f'receipt skipped 必須係非負整數（got {skipped!r}）')
+        elif skipped != len(already):
+            errors.append(f'len(alreadyVerified) {len(already)} != skipped {skipped}')
     if covers != (succeeded | already):
         errors.append('covers 唔等於 canonical union(succeededModels, alreadyVerified)')
+    if succeeded & failed:
+        errors.append('同一個 model 唔可以同時 succeeded 同 failed')
+    reasons = _parse_failure_reasons(marker, failed, errors)
+    pending, pending_reasons = _parse_coverage_pending(marker, failed, errors)
+    if pending & (succeeded | already):
+        errors.append('coveragePendingModels 唔可以同時係 succeeded／alreadyVerified')
+    if reasons and pending_reasons:
+        mismatch = {k for k, v in pending_reasons.items() if reasons.get(k) != v}
+        if mismatch:
+            errors.append(f'coveragePendingReasons 同 failureReasons 唔一致：'
+                          f'{sorted(mismatch)[:5]}')
+    if reasons:
+        hard = failed - pending
+        if hard:
+            errors.append(f"receipt failed={counts.get('failed')} > 0（未確認 coverage pending："
+                          f"{sorted(hard)[:5]}）")
+    elif counts['failed']:
+        errors.append(f"receipt failed={counts.get('failed')} > 0（冇 coverage pending 證明）")
     # 所有 listed models 必須喺輸出有 evidence（phantom 阻斷）
     for key in (succeeded | already):
         if not models_with_evidence.get(key):
@@ -283,16 +377,28 @@ def main(argv=None):
             failures.append(f'{script} exit {rc}')
         if marker is None:
             failures.append(f'{script} 冇 machine receipt（未證明本輪完成證據）')
+            entry['markerValid'] = False
         else:
             models = output_models(os.path.join(BASE, output_rel))
-            failures.extend(f'{script}: {e}' for e in validate_marker(marker, script, models))
+            marker_errors = validate_marker(marker, script, models)
+            failures.extend(f'{script}: {e}' for e in marker_errors)
+            entry['markerValid'] = not marker_errors
         receipt['scripts'].append(entry)
 
     covers_norm = set()
+    coverage_pending_norm = set()
+    coverage_pending_reasons = {}
     for entry in receipt['scripts']:
         marker = entry.get('receipt')
-        if isinstance(marker, dict) and entry.get('returncode') == 0:
+        # 只有通過 validate_marker 嘅 receipt 才可貢獻 covers／coverage pending；
+        # 任何 invalid marker 只可以係 hard failure（見上面 failures）。
+        if isinstance(marker, dict) and entry.get('returncode') == 0 \
+                and entry.get('markerValid') is True:
             covers_norm.update(norm_model(m) for m in (marker.get('covers') or []))
+            pending = coverage_pending_from_marker(marker)
+            coverage_pending_norm.update(pending)
+            for m, reason in (marker.get('coveragePendingReasons') or {}).items():
+                coverage_pending_reasons[norm_model(m)] = reason
 
     for rel in plan['outputs']:
         p = os.path.join(BASE, rel)
@@ -307,9 +413,17 @@ def main(argv=None):
     if queue_hash_after != queue_hash_before:
         failures.append('queue 喺批次執行期間被改動；拒絕推進')
     missing_coverage = [m for m in target_models if norm_model(m) not in covers_norm]
-    receipt['coveragePending'] = bool(missing_coverage)
+    script_pending_norm = set(coverage_pending_norm)
+    # 兩個獨立事實：queue model 冇任何覆蓋；script 確認嘅 target coverage pending。
+    # 任何一項非空都必須保留 queue（queue-kept-pending-coverage），包括 script pending
+    # target 已經被另一個 script／舊快照覆蓋嘅情況（D1-B／D27）。
+    receipt['missingQueueCoverage'] = bool(missing_coverage)
+    receipt['scriptCoveragePending'] = bool(script_pending_norm)
+    receipt['coveragePending'] = bool(missing_coverage or script_pending_norm)
     receipt['missingModels'] = list(missing_coverage)
     receipt['missingCanonicalModels'] = sorted({norm_model(m) for m in missing_coverage})
+    receipt['coveragePendingFromScripts'] = sorted(script_pending_norm)
+    receipt['coveragePendingReasons'] = dict(sorted(coverage_pending_reasons.items()))
     failures.extend(verify_receipt_outputs(receipt))
 
     def _finalize(decision, advanced):
@@ -334,22 +448,29 @@ def main(argv=None):
             print('  -', f, file=sys.stderr)
         return 1
 
-    # D1-B：只有「所有腳本／receipt／輸出本身成功，純 coverage 不足」才可走
-    # queue-kept-pending-coverage；queue stage／models 原樣保留，唔會 advance。
-    if missing_coverage:
+    # D1-B：只有「所有腳本／receipt／輸出本身成功」而出現 coverage gap（queue model
+    # 冇覆蓋 或 script 確認嘅 coverage pending）才可走 queue-kept-pending-coverage；
+    # queue stage／models 原樣保留，唔會 advance。Script coverage pending 即使已經被
+    # 另一 script／舊快照覆蓋，仍然必須保留 queue（唔可以藉 missing_coverage 空而推進）。
+    if missing_coverage or script_pending_norm:
         err = _finalize('queue-kept-pending-coverage', False)
         if err:
             print(f'❌ pending coverage receipt 寫入失敗：{err}', file=sys.stderr)
             return 1
         print(f'📄 official batch receipt：{receipt_path}'
               '（decision=queue-kept-pending-coverage）')
-        print('ℹ️ 官網核實本身全部成功，但以下 queue model 未有覆蓋；'
+        print('ℹ️ 官網核實本身全部成功，但有以下 coverage gap；'
               'queue stage／models 原樣保留，發布可繼續並標示規格待核：',
               file=sys.stderr)
+        if missing_coverage:
+            print(f'  - queue model 未有覆蓋：{len(missing_coverage)} 個', file=sys.stderr)
+        if script_pending_norm:
+            print(f'  - script 確認 coverage pending：{len(script_pending_norm)} 個',
+                  file=sys.stderr)
         for m in missing_coverage[:20]:
-            print('  -', m, file=sys.stderr)
+            print('    *', m, file=sys.stderr)
         if len(missing_coverage) > 20:
-            print(f'  … 其餘 {len(missing_coverage) - 20} 項見 receipt', file=sys.stderr)
+            print(f'    … 其餘 {len(missing_coverage) - 20} 項見 receipt', file=sys.stderr)
         return 0
 
     # 推進前先寫 ready receipt；寫唔到就絕不 advance

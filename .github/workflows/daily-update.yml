@@ -162,7 +162,44 @@ jobs:
           AIRCON_EMSD_RAW_RETENTION_DAYS: ${{ secrets.AIRCON_EMSD_RAW_RETENTION_DAYS }}
           # 過渡用 local-dir（唔 durable；只喺未配置 remote 時先會被採用）。
           AIRCON_EMSD_RAW_SINK_DIR: ${{ secrets.AIRCON_EMSD_RAW_SINK_DIR }}
-        run: python fetch_emsd.py
+          # 雙來源 fail-closed diff report（只含計數／欄位名／有限樣本 key，無 secret）：
+          # 寫入本 run 專用 evidence staging dir，失敗時由下面 always() step 上載作審計。
+          AIRCON_EMSD_DIFF_REPORT: ${{ runner.temp }}/emsd-evidence/aircon-emsd-diff.json
+        run: |
+          mkdir -p "$RUNNER_TEMP/emsd-evidence" "$RUNNER_TEMP/evidence-baseline"
+          # run-start 係 run window lower bound；baseline 喺 source step 之前捕捉
+          date -u +%Y-%m-%dT%H:%M:%SZ > "$RUNNER_TEMP/emsd-evidence/run-start.utc"
+          python scripts/stage_run_evidence.py \
+            --write-baseline "$RUNNER_TEMP/evidence-baseline/emsd.json" \
+            emsd_receipt.json emsd_raw_receipt.json
+          set +e
+          python fetch_emsd.py
+          rc=$?
+          python scripts/stage_run_evidence.py \
+            --out-dir "$RUNNER_TEMP/emsd-evidence" --phase emsd \
+            --baseline "$RUNNER_TEMP/evidence-baseline/emsd.json" \
+            --run-id "$GITHUB_RUN_ID" --commit "$GITHUB_SHA" --source-rc "$rc" \
+            --run-started-at "$(cat "$RUNNER_TEMP/emsd-evidence/run-start.utc")" \
+            emsd_receipt.json emsd_raw_receipt.json
+          src=$?
+          set -e
+          if [ "$src" -ne 0 ]; then
+            echo "::error::EMSD evidence staging 失敗（rc=$src）"
+            exit "$src"
+          fi
+          exit "$rc"
+
+      # 失敗時也要留低機器證據（always()）：只上載本 run staging dir（run-status.json
+      # 會標明每個檔 staged／excluded；舊 checkout receipt 因為 timestamp 過舊而唔入）。
+      # private raw sink 路徑／token／objectId 一律唔喺 staging；亦唔會上載。
+      - name: 上載 EMSD 收據與 diff（失敗審計；always）
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: emsd-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/emsd-evidence/
+          retention-days: 30
+          if-no-files-found: warn
 
       - name: 讀取更新階段（共用 queue 契約；錯誤即失敗，冇 stage-0 fallback）
         id: stage
@@ -173,17 +210,39 @@ jobs:
           echo "今日更新階段：$STAGE"
 
       # ============ 第 2 步：新機官網核實（分兩日；有實際完成證據先推進隊列） ============
+      # pre-step baseline：本 run 寫 official receipt／status 之前先捕捉 presence＋SHA-256；
+      # 只有 baseline 之後 content 改變嘅檔才可以 stage，舊 tracked status 唔會冒充本 run。
+      - name: 官網核實 pre-step baseline
+        if: steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2'
+        run: |
+          mkdir -p "$RUNNER_TEMP/official-evidence" "$RUNNER_TEMP/evidence-baseline"
+          python scripts/stage_run_evidence.py \
+            --write-baseline "$RUNNER_TEMP/evidence-baseline/official.json" \
+            "${{ runner.temp }}/aircon-official-receipt.json" official_batch_status.json
+
       - name: 官網核實第一批（新機後第 1 日）
         if: steps.stage.outputs.stage == '1'
+        id: official_stage1
         env:
           AIRCON_OFFICIAL_RECEIPT: ${{ runner.temp }}/aircon-official-receipt.json
-        run: python scripts/run_official_batch.py --stage 1
+        run: |
+          set +e
+          python scripts/run_official_batch.py --stage 1
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit "$rc"
 
       - name: 官網核實第二批（新機後第 2 日）
         if: steps.stage.outputs.stage == '2'
+        id: official_stage2
         env:
           AIRCON_OFFICIAL_RECEIPT: ${{ runner.temp }}/aircon-official-receipt.json
-        run: python scripts/run_official_batch.py --stage 2
+        run: |
+          set +e
+          python scripts/run_official_batch.py --stage 2
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit "$rc"
 
       - name: 投影官網 pending status（D1-B；queue coverage 不足時 UI 顯示待核）
         if: steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2'
@@ -192,59 +251,73 @@ jobs:
             --receipt "${{ runner.temp }}/aircon-official-receipt.json" \
             --out official_batch_status.json
 
+      # always()：只把「本 run」 receipt／status 複製去 staging（baseline hash＋timestamp＋
+      # run id 三重檢查）。若官方核實早退而未有 receipt，repo 內 tracked
+      # official_batch_status.json 即使 mtime／generatedAt 貼近 run start，亦會因為 hash 同
+      # baseline 相同或 timestamp 早於 run start 而 excluded，唔會假裝本 run 證據。
+      - name: 準備官網核實 staging（always；只 stage 本 run 檔）
+        if: always() && (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2')
+        run: |
+          RUN_START="$(cat "$RUNNER_TEMP/emsd-evidence/run-start.utc" 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
+          python scripts/stage_run_evidence.py \
+            --out-dir "$RUNNER_TEMP/official-evidence" --phase official \
+            --baseline "$RUNNER_TEMP/evidence-baseline/official.json" \
+            --run-id "$GITHUB_RUN_ID" --commit "$GITHUB_SHA" \
+            --source-rc "${{ steps.official_stage1.outputs.rc || steps.official_stage2.outputs.rc || '1' }}" \
+            --run-started-at "$RUN_START" \
+            "${{ runner.temp }}/aircon-official-receipt.json" official_batch_status.json
+
       - name: 上載官網核實 machine receipt（審計；queue 未必已推進）
         if: always() && (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: official-batch-receipt-${{ github.run_id }}
-          path: ${{ runner.temp }}/aircon-official-receipt.json
+          path: ${{ runner.temp }}/official-evidence/
           retention-days: 30
           if-no-files-found: warn
 
-      # ============ 第 3 步：價錢快照批次（BigGo 官方 JSON API；進度由 batch_utils 共用管理） ============
+      # ============ 第 3 步：價錢快照批次（BigGo 官方 JSON API；approved C coordinator-gated） ============
       # 2026-08-26：改用官方 API api.biggo.com（同被限流嘅網頁版 biggo.hk 唔同 host）
-      - name: 價錢快照分批更新（BigGo API 每月一次·分七日；active 才 smoke）
+      # Repair #1：呢一步**冇任何**繞過 coordinator lease 嘅路徑。force intent 只可以
+      # 改變處理嘅型號集合（runner 內 coordinated force），一樣要 acquire lease、過
+      # cooldown／budget／idempotency／needs_review／publication 檢查。
+      - name: 價錢快照分批更新（BigGo API · coordinator lease；force 亦要 lease）
         env:
           BIGGO_CLIENT_ID: ${{ secrets.BIGGO_CLIENT_ID }}
           BIGGO_CLIENT_SECRET: ${{ secrets.BIGGO_CLIENT_SECRET }}
-          FORCE_PRICE_BATCH: ${{ github.event.inputs.force_price_batch }}
+          # force intent（人手明確一次性）：唔可以直接呼叫 fetch_biggo.py --force-batch；
+          # 只可以交由 runner 喺 coordinator lease 之下執行。
+          AIRCON_BIGGO_FORCE_STAGE: ${{ github.event.inputs.force_price_batch }}
+          # approved design C：共享憑證自動 atomic lease。呢组 secret 未配置時，active
+          # 階段只會安全跳過（保留現有快照、零 BigGo 呼叫）；private coordinator 識別
+          # 只可以放 Secrets，唔准寫入 repo／Variables／log。
+          AIRCON_BIGGO_COORDINATOR_REPO: ${{ secrets.AIRCON_BIGGO_COORDINATOR_REPO }}
+          AIRCON_BIGGO_COORDINATOR_TOKEN: ${{ secrets.AIRCON_BIGGO_COORDINATOR_TOKEN }}
+          AIRCON_BIGGO_COORDINATOR_BRANCH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_BRANCH }}
+          AIRCON_BIGGO_COORDINATOR_STATE_PATH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_STATE_PATH }}
+          AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR: ${{ secrets.AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR }}
+          # Provider quota／window 仍屬 UNKNOWN；只有事實 dashboard／header 證據才可配置。
+          AIRCON_BIGGO_PROVIDER_QUOTA_LIMIT: ${{ secrets.AIRCON_BIGGO_PROVIDER_QUOTA_LIMIT }}
+          AIRCON_BIGGO_PROVIDER_WINDOW_END: ${{ secrets.AIRCON_BIGGO_PROVIDER_WINDOW_END }}
         run: |
           set +e
-          mode="skip-not-active"; rc=0
-          if [ "$FORCE_PRICE_BATCH" = "true" ]; then
-            echo "🚀 強行全量批次（一次性測試）：腳本內部會先 smoke，再全部型號一次過 + 淘汰確認"
-            python fetch_biggo.py --force-batch
-            rc=$?; mode="force-batch"
-          else
-            # 先讀本地批次狀態；未啟動／已完成時零 BigGo API 請求。
-            python scripts/price_batch_state.py >/dev/null 2>&1
-            pb_rc=$?
-            if [ "$pb_rc" -eq 0 ]; then
-              if python fetch_biggo.py --smoke; then
-                python fetch_biggo.py --price-batch
-                rc=$?; mode="price-batch"
-              else
-                echo "⚠️ BigGo API smoke 失敗，跳過本批（未刷新，保留現有價錢快照），唔硬碰"
-                mode="skip-smoke-failed"
-              fi
-            elif [ "$pb_rc" -eq 1 ]; then
-              echo "價錢批次未啟動，跳過（未呼叫 BigGo API；保留現有價錢快照）"
-            else
-              echo "::error::prices_meta.json 損毀，阻斷（唔可以當未啟動跳過）"
-              exit 2
-            fi
-          fi
+          mode="coordinator-gated"; rc=0
+          # 唯一入口：inactive → 零 BigGo；active／force → CAS lease → budget →
+          # bounded smoke → batch → schema-validated publish。
+          python scripts/biggo_stage_runner.py
+          rc=$?
           set -e
           {
             echo "### BigGo 價錢快照"
             echo "- mode: $mode"
             echo "- exit: $rc"
-            if [ "$mode" = "skip-smoke-failed" ] || [ "$mode" = "skip-not-active" ]; then
-              echo "- 明確結果：本批未刷新，保留現有價錢快照（skip 唔等於抓取成功）"
+            echo "- force intent: ${AIRCON_BIGGO_FORCE_STAGE:-false}（同樣經 coordinator lease，冇繞過路徑）"
+            if [ "$rc" -eq 0 ]; then
+              echo "- 結果：安全完成或安全跳過（skip 唔等於抓取成功；快照以 coordinator／本地狀態為準）"
             fi
           } >> "$GITHUB_STEP_SUMMARY" || true
           if [ "$rc" -ne 0 ]; then
-            echo "::error::BigGo 批次真失敗（exit $rc，代碼 $mode）：未推進批次進度，保留現有快照"
+            echo "::error::BigGo 階段硬失敗（exit $rc，代碼 $mode）：未推進批次進度，保留現有快照"
             exit "$rc"
           fi
 

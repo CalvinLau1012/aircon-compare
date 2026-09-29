@@ -9,21 +9,25 @@
 """
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import sys
+import csv as _csv
 
 import pytest
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
 
+import emsd_dual_source  # noqa: E402
+
 _SPEC = importlib.util.spec_from_file_location('fetch_emsd_mod', os.path.join(BASE, 'fetch_emsd.py'))
 fetch_emsd = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(fetch_emsd)
 
 
-HEADER = ['品牌', '型號'] + [f'c{i}' for i in range(13)]
+HEADER = list(emsd_dual_source.CANONICAL_HEADER)  # 真實 15 欄 canonical header
 
 
 def _html(rows, header=False):
@@ -49,7 +53,7 @@ def env(tmp_path, monkeypatch):
     return tmp_path
 
 
-def _run_main(pages):
+def _run_main(pages, csv_bytes=None):
     calls = {'i': 0}
 
     def fake_fetch(p):
@@ -57,6 +61,34 @@ def _run_main(pages):
         return pages[p - 1] if p - 1 < len(pages) else ''
 
     fetch_emsd.fetch_page = fake_fetch
+    # 離線：CKAN resolver 固定注入（唔打真網絡）
+    fetch_emsd.resolve_csv_source = lambda **kwargs: {
+        'schemaVersion': 1, 'mode': 'catalog',
+        'datasetId': emsd_dual_source.CATALOG_DATASET_ID,
+        'resourceId': 'test-resource-1', 'resourceName': 'Room Air Conditioners',
+        'catalogApiUrl': emsd_dual_source.CATALOG_API_URL,
+        'datasetPageUrl': emsd_dual_source.CATALOG_DATASET_PAGE,
+        'resolvedCsvUrl': emsd_dual_source.CSV_URL, 'resolvedAt': '2026-09-20T18:59:57Z'}
+    # 雙來源（B）：測試用 fake CSV 回應，內容由同一組 paginated fixture 推導，
+    # 確保離線測試亦真實走 primary-CSV／cross-check 一致性核對。
+    if csv_bytes is None:
+        rows = []
+        header = None
+        for html in pages:
+            if not html:
+                continue
+            if header is None:
+                header = fetch_emsd.page_header(html)
+            rows.extend(fetch_emsd.parse_page_rows(html))
+        buf = io.StringIO()
+        writer = _csv.writer(buf, lineterminator='\n')
+        writer.writerow(header if header else HEADER)
+        writer.writerows(rows)
+        csv_bytes = buf.getvalue().encode('utf-8-sig')
+    fetch_emsd.fetch_csv_source = lambda **kwargs: emsd_dual_source.RawResponse(
+        url=emsd_dual_source.CSV_URL, status=200, body=csv_bytes,
+        headers={'Last-Modified': 'Wed, 01 Jan 2026 00:00:00 GMT'},
+        fetchedAt='2026-09-20T18:59:57Z')
     try:
         fetch_emsd.main()
         return 0
@@ -187,9 +219,7 @@ def test_commit_replaces_failure_rolls_back_all_three(env, monkeypatch, fail_nam
 
     monkeypatch.setattr(fetch_emsd.os, 'replace', fake_replace)
     pages = [_html(_rows(50, 'A'), header=True), _html(_rows(50, 'B')), '']
-    with pytest.raises(SystemExit) as exc:
-        fetch_emsd.main()
-    assert exc.value.code == 1
+    assert _run_main(pages) == 1
     after = {p.name: p.read_bytes() for p in env.iterdir() if p.is_file()}
     for name, data in before.items():
         assert after[name] == data, f'{name} 唔應該被改動'
@@ -382,10 +412,10 @@ def test_success_receipt_write_failure_blocks(env, monkeypatch):
     """成功收據寫唔到：exit 1，唔可以當成功（下游 hash 綁定會阻斷）"""
     real = fetch_emsd.write_receipt
 
-    def flaky(outcome, per_page, csv_path=None, retrieved_at=None):
+    def flaky(outcome, per_page, csv_path=None, retrieved_at=None, **kwargs):
         if csv_path is not None:
             raise OSError('receipt disk full')
-        return real(outcome, per_page, csv_path, retrieved_at)
+        return real(outcome, per_page, csv_path, retrieved_at, **kwargs)
 
     monkeypatch.setattr(fetch_emsd, 'write_receipt', flaky)
     pages = [_html(_rows(50, 'A'), header=True), _html(_rows(50, 'B')), '']

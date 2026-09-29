@@ -5,6 +5,139 @@
 
 ## [Unreleased]
 
+### 2026-09-29 GitHub Actions／EMSD CSV 修復候選（未發布、未部署）
+
+> 用戶批准嘅 R2/R3 來源與門禁行為修復（scope 限定為已批准計劃）。只係本機候選（E2）：
+> 未 commit、未 push、未 deploy、未觸發任何 GitHub Actions、未呼叫真實 BigGo；
+> metadata Schema、required 功能、成功標準及 fail-closed 門禁無放寬。
+
+- **Frostar FR-KS 解析（OBSERVED）**：四個 rasonicshop.hk Frostar 產品 URL（FR-KS7／9／12／18）
+  2026-09-29 實測 HTTP 200，Product JSON-LD 有正確型號同名稱及 offer（$2,900／$3,700／$4,700／$5,900，
+  InStock）。`fetch_rasonic.py` 除 `RC-` 外新增 `FR-KS` 支援，型號身份必須同時出現喺 Product name
+  同 URL slug（正規化後）才可當成功；舊診斷「stale／truncated URL」證實唔成立。
+- **CAFA stale target 移除（OBSERVED）**：`fetch_official.py` 舊 target `cafa-09crn8-pc2`（連字號）
+  實測 HTTP 404，而 `cafa-09crn8pc2`（無連字號）HTTP 200 且係官方在售頁；移除重複 stale slug，
+  唔會移除任何型號（canonical cover 由正確 slug 提供）。
+- **Receipt 會計修正**：`emit_fetch_receipt` 加 `skipped`、`failureReasons`、
+  `coveragePendingModels`／`coveragePendingReasons`；收據嚴格要求
+  `attempted == succeeded + failed`、`len(list) == count`、`skipped == len(alreadyVerified)`、
+  `covers == canonical union(succeeded, alreadyVerified)`；hitachi 列表頁唔再冒充型號成功。
+- **D1-B coverage pending 精準化**：只有經 HTTP 404／410 確認嘅目標（且 URL 型號對得上 EMSD
+  登記）可歸類 coverage pending；網絡／parser／200 空白或登入／identity 不確定／receipt 不一致
+  一律硬失敗。pending 時 queue stage／models 原樣保留、舊規格保留、唔會 advance、唔會自動入黑名單；
+  EMSD daily 發布可以繼續並顯示「官網規格待核」。
+- **EMSD CKAN resolver**：用 DATA.GOV.HK `package_show` dataset ID
+  `hk-emsd-emsd1-meels-listed-models` 揀唯一 active Room Air Conditioners CSV resource（按 name／
+  format／state／URL allowlist，唔靠 UUID）；HTTPS＋`www.emsd.gov.hk`／`/energylabel/files/*.csv`
+  嚴格 allowlist、redirect 驗證、HTML masquerade 拒絕、schema／min-row／hash／雙來源 cross-check
+  不變；目錄暫時不可用才用批准 direct URL 重新抓新鮮 bytes（絕不用 cache／304 bytes）；目錄有回應但
+  URL 唔合契約即 fail closed、無 silent fallback。
+- **EMSD 收據擴充**：新增 catalog dataset ID／resource ID／catalog URL／resolved CSV URL／
+  resolution time，同 CSV ETag／Last-Modified／byteLength／SHA-256；`metadata.json`
+  內嵌 Schema 不變（新增只在收據層），`gen-metadata.py` 接受批准 resolved CSV URL 並驗證 catalog
+  block；私人 raw sink 同 raw byte hash 行為不變。
+- **daily workflow 失敗證據**：新增 `always()` artifact 上載（EMSD diff／receipt／raw receipt；
+  official machine receipt／status），只含已脫敏檔，無 secrets／私人路徑；cron 00:30 HKT、
+  trusted master／PR 限制、pinned runner／actions、BigGo coordinator gating 不變。
+- **UI／文檔 attribution**：`generate_html.py` 來源註明「資料目錄：DATA.GOV.HK（資料由機電工程署
+  提供；dataset hk-emsd-emsd1-meels-listed-models）」；依 D24 唔手動重生 `index.html`／PDF，由
+  下一次 daily 全量重生（`空調對比報告.md` 已追加日誌，預期下一次 daily 前 GATE-08 PDF 核對會紅一次）。
+- **本機驗證（E2）**：完整 pytest 639 passed（新增 pending reason mismatch 測試）、feature-check 18 nodes passed、extract_governance／
+  validate_data／validate_metadata／privacy worktree／git diff --check 全 rc=0；零真實 BigGo／EMSD
+  網絡抓取（四個 Frostar 頁同 CAFA 404 係 bounded read-only 官方頁核實）。詳見
+  `docs/STATUS.md` §19、`docs/DECISIONS.md` D27、`需求摘要.md` 2026-09-29 節。
+
+### 2026-09-29 返修（追加；Codex review 六項缺陷；未發布、未部署）
+
+> Codex 獨立審查首版 diff 後要求六項修正；全部只收緊 fail-closed 契約，無新產品政策，
+> metadata Schema／required 功能／門禁無放寬。舊 2026-09-29 條目原文保留。
+
+- **D1-B 判斷修正**：`run_official_batch` 分開 `missingQueueCoverage` 同
+  `scriptCoveragePending`；任何一項非空都 `queue-kept-pending-coverage`、唔 advance、
+  queue／舊規格原樣保留（包括 script pending 型號已被另一 script 覆蓋嘅情況）。
+  只有 `markerValid` receipt 可貢獻 pending；invalid marker 只可以 hard fail。
+  公開 status 加 `missingQueueCoverage`，UI hint 列出 script pending 型號。
+- **Redirect pre-validation**：`http_get` 新增 redirect 前驗證（`_ValidatingRedirectHandler`）；
+  CKAN 用 `validate_catalog_api_url`（https／data.gov.hk／固定 path＋dataset query／
+  無 userinfo、port、fragment），CSV 用既有官方 URL allowlist；未批准 redirect 目的地
+  零請求（離線 loopback server 測試證明），批准 redirect 正常跟；injected `finalUrl`
+  一樣要過完整 identity。
+- **CKAN provider 身份**：要求 `result.organization.name == 'hk-emsd'`（實際 relay shape），
+  缺失／唔同／非 dict 即 fail closed；injected non-200 分支對齊
+  `_catalog_unavailable`（4xx fail closed；只 5xx／408／425／429 bounded retry 可 fallback）。
+- **型號身份精確比對**：`fetch_rasonic` 由 substring 改為 URL slug 精確 token == Product
+  JSON-LD token；`FR-KS7` vs `FR-KS70`、`RC-XG7` vs `RC-XG70` 硬失敗回歸；四個 Frostar
+  slug 保持成功；evidence 只聲明 configured URL slug＋Product name（冇 redirect final URL）。
+- **Per-run evidence staging**：新增 `scripts/stage_run_evidence.py`；EMSD／official
+  artifact 只上載 `RUNNER_TEMP` 新 staging dir，以 run-start lower bound＋UTC timestamp
+  freshness 排除舊 checkout receipt／status；`run-status.json` 有逐檔 reason 同早退 error
+  record；生產 receipt 不被刪除／改寫，private sink 資料不入 artifact。
+- **本機驗證（E2）**：完整 pytest **664 passed**（1 預期 duplicate-zip warning）；
+  feature-check 15 項／18 節點 passed；machine acceptance 7/7 gates rc=0；
+  extract_governance／validate_data／validate_metadata／privacy worktree／git diff --check
+  全 rc=0。詳見 `docs/STATUS.md` §19.7、`docs/DECISIONS.md` D27 返修節。
+
+### 2026-09-29 第二次返修（追加；provenance baseline＋pending 身份；未發布、未部署）
+
+> Codex 第二輪 focused review 兩個 acceptance gap；只收緊門禁，舊條目原文保留。
+
+- **證據 provenance**：`scripts/stage_run_evidence.py` 改為兩段式：source step 前
+  `--write-baseline` 記錄每個候選檔 presence＋SHA-256；staging 必須 `--baseline`，要求
+  timestamp `>= runStart`（**冇 300 秒 skew 容忍，pre-run 1 秒都排除**）＋hash 同 baseline
+  唔同（或 baseline absent）＋run-specific id（如有）match；baseline 寫喺
+  `RUNNER_TEMP/evidence-baseline/`（唔入 artifact）；缺失／損毀 baseline rc=2。
+  `run-status.json` 逐檔 reason（`before-run-start`／`baseline-unchanged`／`run-id-mismatch`／
+  `missing`…）。
+- **fetch_official pending 身份**：`emsd_registered()` 每 batch 一次 load EMSD 登記型號
+  canonical set；`pending_eligible()` 要求 404/410＋model 已登記＋URL token 精確等於 model
+  （Panasonic `CW-…`、HITACHI `RA-…`／`RAW-…`、COMFEE slug）；唔合即 hard failure。
+  非 404 成功不受登記檢查影響；CAFA 重複 stale slug 移除保持。
+- **本機驗證（E2）**：完整 pytest **670 passed**（1 預期 warning）；新回歸覆蓋 pre-run 1 秒、
+  baseline hash 相同但 timestamp 入 window、fresh changed content、run-id mismatch、
+  baseline 缺失／損毀 fail closed、registered／mismatch／unregistered 404。詳見
+  `docs/STATUS.md` §19.8、`docs/DECISIONS.md` D27 第二次返修節。
+
+### R3 雙 writer／EMSD 雙來源／BigGo atomic lease候選（未發布、未部署）
+
+> 2026-09-28 用戶明確批准嘅 R3 資料來源＋部署＋權限架構改變。只係本機候選（E2）：
+> 未 push、未開 PR、未改 Secrets／environment、未 deploy。
+
+- **兩個隔離 deployment writer**：GitHub Actions 繼續寫 GitHub Pages（workflow 架構、
+  權限、environment 不變）；私人 self-host 線改為 one-shot updater＋獨立 read-only
+  nginx web container，只寫自己 versioned release tree（`releases/<build>`＋atomic
+  `current` symlink），三個 isolated named volumes（production-data／test-data／
+  raw-evidence）。
+- **EMSD 雙來源 fail-closed**：官方 open-data CSV（`meels_rac.csv`）經確定性正規化後
+  做主來源，現有逐頁 energy-label 結果做獨立 cross-check；registration key 集合、
+  品牌／canonical 型號、受治理欄位、計數同 raw hash 必須一致，否則唔覆寫生產 CSV，
+  寫脫敏 diff report（repo 外）並保留上一資料集。兩個來源 raw bytes 以獨立
+  `sourceKind` namespace 入私人 raw archive；公開收據新增 `dualSource` 區塊
+  （metadata Schema 不變）。
+- **BigGo 共享憑證自動 atomic lease**：新 generic coordinator client（只靠環境／Secrets，
+  無私人 repo 識別）；GitHub Contents API blob SHA CAS；lease 45 分鐘、每 5 分鐘 renew；
+  completed cycle+stage idempotent；任何呼叫但 snapshot 未確定 → `needs_review` 且禁止
+  自動重跑；本地 cap 1 smoke＋2×queued；smoke 最多一個 search request（8 秒 timeout）；
+  正常 search 最多 2 attempts，403／429 唔即刻 retry（honour Retry-After，否則項目自身
+  48h fallback，唔係 provider quota window）；provider 官方 quota／window 保持 UNKNOWN。
+- **私人 server 唯一 scheduler**：host systemd timer 明確 `Asia/Hong_Kong`、每日 00:45、
+  `Persistent=true`、`RandomizedDelaySec=0`；container cron／entrypoint 移除；test profile
+  獨立 port／network／volume 並預設阻擋 `api.biggo.com`。
+- **本機證據（E2）**：公開 570 non-browser passed＋12 browser smoke、feature-check
+  15 項／18 節點、governance／validate_data／validate_metadata／diff-check 全 rc=0；
+  私人 focused 14 passed／1 skipped、sandbox/restore PASS=117 FAIL=0、SHA256SUMS
+  35 檔 deterministic 驗證。詳見 `docs/STATUS.md` §18、`docs/DECISIONS.md` D26、
+  `需求摘要.md` 2026-09-28 節。
+- **後續返修（2026-09-28，仍是未發布候選）**：force intent 移除任何 coordinator bypass
+  （workflow 唔再直接 `--force-batch`，改經 runner；`fetch_biggo.py` 全部 CLI 網絡入口
+  exit 2 fail closed）；runner 加真正 `LeaseHeartbeat`（smoke／batch／publication 全程、
+  45 分鐘 lease、5 分鐘 renew、lease lost → should_abort + needs_review、`finally`
+  保證停止）；Retry-After 同時支援 delta-seconds 同 HTTP-date（無法解析只用項目 48h
+  fallback，唔猜 provider quota）。舊文檔「批次保持 5 次 retry」記述由本條目及
+  `需求摘要.md` 2026-09-28 返修節取代（歷史原文保留）。
+- **邊界**：零真實 BigGo 請求；EMSD controlled live 雙來源比對因本機環境 TLS 被阻而
+  未執行；未 push／PR／deploy／tag／Release，未改任何生產生成物；本返修亦冇再執行
+  sudo／apt／system package／server／production／SSH 動作。
+
 ### Node.js 24 官方 Actions／bounded smoke／ubuntu-24.04 runner hotfix（未發布）
 
 > 2026-09-24 使用者要求：修復 GitHub Actions deprecation 警告，但唔可以為消除警告

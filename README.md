@@ -385,6 +385,20 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 ## 📅 更新日誌
 
+### 2026-09-29 — GitHub Actions／EMSD CSV 修復（本機候選，未部署；追加）
+
+| 類別 | 內容 |
+| --- | --- |
+| 🌡️ Frostar | `fetch_rasonic.py` 新增 `FR-KS` 支援；四個 Frostar 官方頁 2026-09-29 bounded 實測 HTTP 200 且 Product JSON-LD 完整（FR-KS7/9/12/18，$2,900/$3,700/$4,700/$5,900、InStock）；型號必須同時出現喺 Product name 同 URL slug，舊「stale URL」診斷證實唔成立 |
+| 🧾 Receipt | `fetch_official.py` / `crawl_utils.py` receipt 加 `skipped`／`failureReasons`／`coveragePendingModels`；修正 hitachi 列表頁會計；COMFEE 舊 target `cafa-09crn8-pc2`（實測 404）移除，保留 200 嘅 `cafa-09crn8pc2` |
+| ⏳ D1-B | 確認 404／410 且 URL 型號對得上 EMSD 嘅目標可 coverage pending：queue／舊規格保留、唔 advance、唔自動淘汰；其他網絡／parser／不確定情況硬失敗 |
+| 🗂️ EMSD 來源 | 新增 DATA.GOV.HK CKAN resolver（dataset `hk-emsd-emsd1-meels-listed-models`），按 name／format／state／URL allowlist 揀唯一 active Room Air Conditioners CSV；目錄暫時不可用才 fallback 批准 direct URL 重新抓新 bytes；resolved URL／ETag／Last-Modified／hash 寫入公開 receipt；`metadata.json` Schema 不變 |
+| 🧯 失敗證據 | daily 以 `always()` 上載脫敏 EMSD diff／receipt 同 official receipt；cron、權限、pinned actions、BigGo gating 不變 |
+| 🏛️ Attribution | 資料目錄：**DATA.GOV.HK**；資料由**機電工程署提供**（dataset `hk-emsd-emsd1-meels-listed-models`，CSV 每週更新） |
+| 📊 本機證據 | pytest 638 passed、feature-check 18 nodes、governance／data／metadata／privacy／diff-check 全 rc=0；未 commit／未 push／未 deploy、零真實 BigGo／EMSD 抓取 |
+
+> 依 D24：本輪唔手動重生 `index.html`／PDF，由下一次 daily 全量重生；詳見 `docs/STATUS.md` §19。
+
 ### 2026-09-24 — v1.2.9 已發布 · production 驗收 · GATE-08 自動閉環
 
 | 類別 | 內容 |

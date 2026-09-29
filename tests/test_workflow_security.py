@@ -218,8 +218,9 @@ def test_daily_build_unique_and_trusted_sources():
     assert "github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'" in text, (
         '手動 dispatch 只准 master')
     assert 'persist-credentials: true' in text, 'daily 需要 push，要明確標示憑證用途'
-    assert "FORCE_PRICE_BATCH: ${{ github.event.inputs.force_price_batch }}" in text, (
-        'shell input 要經 env 傳入')
+    assert "AIRCON_BIGGO_FORCE_STAGE: ${{ github.event.inputs.force_price_batch }}" in text, (
+        'shell input 要經 env 傳入（force 亦只可以經 coordinated runner）')
+    assert 'FORCE_PRICE_BATCH:' not in text, '舊 force env 唔應該再存在（會被當 bypass）'
 
 
 def test_daily_stage_reader_uses_queue_contract_without_fallback():
@@ -231,19 +232,56 @@ def test_daily_stage_reader_uses_queue_contract_without_fallback():
     assert 'exit 1' in stage_block
 
 
-def test_daily_biggo_uses_price_batch_state_exit_codes():
+def test_daily_biggo_stage_runner_gates_and_coordinator_env():
+    """approved C：workflow 入口改為 stage runner（本地階段先決、coordinator-gated）。"""
     text = _text('daily-update.yml')
-    assert 'scripts/price_batch_state.py' in text
     biggo = text[text.index('價錢快照分批更新'):text.index('數據驗證（防壞數據上線）')]
-    assert 'pb_rc' in biggo and 'exit 2' in biggo, 'meta 損毀要阻斷，唔可以當未啟動'
-    assert 'from batch_utils import price_batch_active' not in biggo
-    # 非 force 路徑必須先讀本地狀態；未啟動時唔可以為 smoke 呼叫 BigGo。
-    assert biggo.index('python scripts/price_batch_state.py') < biggo.index(
-        'python fetch_biggo.py --smoke')
-    inactive = biggo[biggo.index('elif [ "$pb_rc" -eq 1 ]'):
-                     biggo.index('else', biggo.index('elif [ "$pb_rc" -eq 1 ]'))]
-    assert 'fetch_biggo.py' not in inactive
-    assert '未呼叫 BigGo API' in inactive
+    # inactive／缺配置／lease／budget 全部由 runner 一個入口判斷
+    assert 'python scripts/biggo_stage_runner.py' in biggo
+    # coordinator 配置只可以經 Secrets；唔准寫死私人 repo 識別
+    assert 'AIRCON_BIGGO_COORDINATOR_REPO: ${{ secrets.AIRCON_BIGGO_COORDINATOR_REPO }}' in biggo
+    assert 'AIRCON_BIGGO_COORDINATOR_TOKEN: ${{ secrets.AIRCON_BIGGO_COORDINATOR_TOKEN }}' in biggo
+    assert 'github.com/' not in biggo, 'workflow 唔可以有私人 repo URL'
+    # workflow 層唔准直接 smoke／batch／force：所有網絡入口只可以經 coordinated runner
+    # （只檢查實際命令列，註釋提及唔算 bypass）
+    biggo_cmds = '\n'.join(line for line in biggo.splitlines()
+                           if not line.strip().startswith('#'))
+    assert 'fetch_biggo.py --smoke' not in biggo_cmds
+    assert 'fetch_biggo.py --price-batch' not in biggo_cmds
+    assert 'fetch_biggo.py --force-batch' not in biggo_cmds, 'force 唔可以繞過 coordinator'
+    # force intent 只可以經 runner（env 轉發）
+    assert 'AIRCON_BIGGO_FORCE_STAGE' in biggo
+    # 硬失敗要阻斷，唔可以靜靜當成功
+    assert '::error::BigGo 階段硬失敗' in biggo and 'exit "$rc"' in biggo
+
+
+def test_biggo_stage_runner_local_stage_first_and_no_auto_rerun():
+    src = open(os.path.join(BASE, 'scripts', 'biggo_stage_runner.py'),
+               encoding='utf-8').read()
+    # 本地階段檢查（inactive → 零 coordinator mutation）必須喺 acquire 之前
+    assert src.index("'skip-not-active'") < src.index('client.acquire(')
+    # 缺 coordinator 配置 → 安全跳過、零 BigGo 呼叫（保留快照）
+    assert src.index('skip-coordinator-not-configured') < src.index('run_smoke()')
+    # completed idempotent；needs_review 禁止自動重跑
+    assert "result == 'completed-idempotent'" in src
+    assert "result == 'needs-review'" in src and 'rerun' in src
+    # 只有成功先 publish；任何已呼叫但未確定 → needs_review
+    assert 'publish-uncertain' in src
+    # repair #2：真正 heartbeat（唔止 maybe_renew 函式存在）；finally 保證停止
+    assert 'LeaseHeartbeat' in src and 'maybe_renew()' in src
+    assert 'heartbeat.start()' in src and 'heartbeat.stop()' in src
+    assert 'finally:' in src and 'should_abort=lambda: heartbeat.lost' in src
+    # repair #1：force 亦要 acquire lease，冇 direct bypass
+    assert 'run_force_batch' in src and 'AIRCON_BIGGO_FORCE_STAGE' in src
+    assert src.index('client.acquire(cycle_id') < src.index('run_force_batch(')
+    planner = open(os.path.join(BASE, 'scripts', 'biggo_coordinator.py'),
+                   encoding='utf-8').read()
+    assert 'LEASE_SECONDS = 45 * 60' in planner
+    assert 'RENEW_INTERVAL_SECONDS = 5 * 60' in planner
+    assert 'PROJECT_COOLDOWN_SECONDS = 48 * 3600' in planner
+    assert "'project-48h'" in planner, '48h 要標示為項目 fallback，唔係 provider quota'
+    assert 'delta-seconds' in planner and 'HTTP-date' in planner, \
+        'Retry-After 兩種標準形式都要支援'
 
 
 def test_daily_official_receipt_artifact():
@@ -358,7 +396,8 @@ def test_daily_raw_sink_env_wiring_secret_only_and_fail_closed():
                  'AIRCON_EMSD_RAW_SINK_DIR'):
         ref = '${{ secrets.' + name + ' }}'
         assert env.get(name) == ref, f'{name} 必須由 Secrets 提供：{env.get(name)!r}'
-    assert fetch_step['run'] == 'python fetch_emsd.py'
+    assert 'python fetch_emsd.py' in fetch_step['run']
+    assert 'scripts/stage_run_evidence.py' in fetch_step['run']
     text = _text('daily-update.yml')
     assert '${{ vars.' not in text, 'raw sink／require 唔可以用 repo Variables（可能公開）'
     for name in ('AIRCON_EMSD_REQUIRE_RAW_SINK', 'AIRCON_EMSD_RAW_REMOTE_REPO',
@@ -367,3 +406,91 @@ def test_daily_raw_sink_env_wiring_secret_only_and_fail_closed():
         assert values, f'缺 {name} 接線'
         ref = '${{ secrets.' + name + ' }}'
         assert all(v.strip() == ref for v in values), f'{name} 有非 Secrets 值：{values}'
+
+
+# ---------------------------------------------------------------- 失敗證據 upload（2026-09-29 repair）
+
+def _update_steps():
+    return _load('daily-update.yml')['jobs']['update']['steps']
+
+
+def test_daily_failure_evidence_uploads_are_always_pinned_and_allowlisted():
+    uploads = [s for s in _update_steps()
+               if isinstance(s.get('uses'), str)
+               and s['uses'].startswith('actions/upload-artifact@')]
+    emsd = [s for s in uploads
+            if str(s.get('with', {}).get('name', '')).startswith('emsd-evidence-')]
+    official = [s for s in uploads
+                if str(s.get('with', {}).get('name', '')).startswith('official-batch-receipt-')]
+    assert len(emsd) == 1, 'EMSD receipt／diff 失敗證據要有一個 upload step'
+    assert len(official) == 1, 'official machine receipt 要有一個 upload step'
+    for step in emsd + official:
+        assert str(step.get('if', '')).startswith('always()'), '失敗證據必須 always() 上載'
+        assert step['uses'] in PINNED, 'upload action 必須已核實完整 SHA pin'
+    emsd_paths = {line.strip() for line in str(emsd[0]['with']['path']).splitlines()
+                  if line.strip()}
+    assert emsd_paths == {'${{ runner.temp }}/emsd-evidence/'}, \
+        'EMSD artifact 只可以上載本 run staging dir（唔可以直接上載 tracked receipt）'
+    official_paths = {line.strip() for line in str(official[0]['with']['path']).splitlines()
+                      if line.strip()}
+    assert official_paths == {'${{ runner.temp }}/official-evidence/'}, \
+        'official artifact 只可以上載本 run staging dir（唔可以直接上載 tracked status）'
+    for path in emsd_paths | official_paths:
+        assert 'secrets.' not in path, 'artifact path 唔可以引用 secrets 上下文'
+        assert 'AIRCON_' not in path, 'artifact path 唔可以暴露 private env 值'
+        assert not path.startswith('/'), 'artifact path 唔可以係任意絕對路徑'
+        assert '..' not in path
+
+
+def test_daily_failure_evidence_uses_freshness_staging_helper_only():
+    """舊 checkout receipt／status 唔可以經 always() 上載冒充本 run 證據。"""
+    steps = _update_steps()
+    text = _text('daily-update.yml')
+    assert 'python scripts/stage_run_evidence.py' in text, '必須用 staging helper'
+    assert 'run-start.utc' in text, '必須有 run-start lower bound'
+    assert '--write-baseline' in text, '必須喺 source step 前捕捉 baseline hash／absence'
+    assert '--baseline "$RUNNER_TEMP/evidence-baseline' in text or \
+        '--baseline' in text, 'staging 必須用 baseline 做 provenance'
+    assert '--skew-seconds' not in text, '唔可以再用 skew 容忍 pre-run timestamp'
+    emsd_step = [s for s in steps if s.get('name') == '抓取 EMSD + 新機偵測']
+    assert len(emsd_step) == 1
+    run = str(emsd_step[0].get('run', ''))
+    write_pos = run.find('--write-baseline')
+    fetch_pos = run.find('python fetch_emsd.py')
+    baseline_pos = run.find('--baseline "$RUNNER_TEMP/evidence-baseline/emsd.json"')
+    assert write_pos != -1 and fetch_pos != -1 and baseline_pos != -1
+    assert write_pos < fetch_pos, 'baseline 一定要喺 fetch_emsd 之前寫'
+    assert fetch_pos < baseline_pos, 'staging 一定要喺 fetch 之後行'
+    assert '--source-rc "$rc"' in run
+    assert 'emsd_receipt.json emsd_raw_receipt.json' in run
+    official_baseline = [s for s in steps if s.get('name') == '官網核實 pre-step baseline']
+    assert len(official_baseline) == 1, 'official 都要 pre-step baseline'
+    brun = str(official_baseline[0].get('run', ''))
+    assert '--write-baseline' in brun
+    assert 'official_batch_status.json' in brun
+    official_stage = [s for s in steps
+                      if s.get('name') == '準備官網核實 staging（always；只 stage 本 run 檔）']
+    assert len(official_stage) == 1, 'official receipt／status 要有 freshness staging step'
+    assert str(official_stage[0].get('if', '')).startswith('always()')
+    orun = str(official_stage[0].get('run', ''))
+    assert 'stage_run_evidence.py' in orun
+    assert '--baseline "$RUNNER_TEMP/evidence-baseline/official.json"' in orun
+    assert 'aircon-official-receipt.json' in orun and 'official_batch_status.json' in orun
+    # baseline 檔唔可以喺任何 upload path 內（唔入 artifact）
+    uploads = [s for s in steps if isinstance(s.get('uses'), str)
+               and s['uses'].startswith('actions/upload-artifact@')]
+    for step in uploads:
+        path = str(step.get('with', {}).get('path', ''))
+        assert 'evidence-baseline' not in path, 'baseline 檔唔可以上載'
+
+
+def test_daily_emsd_diff_report_env_is_runner_temp_only():
+    emsd_step = [s for s in _update_steps() if s.get('name') == '抓取 EMSD + 新機偵測']
+    assert len(emsd_step) == 1
+    env = emsd_step[0]['env']
+    assert env['AIRCON_EMSD_DIFF_REPORT'] == \
+        '${{ runner.temp }}/emsd-evidence/aircon-emsd-diff.json'
+    # 私人 raw sink 只可以經 secrets 傳入；唔可以寫死路徑／repo 識別
+    for key, value in env.items():
+        if key.startswith('AIRCON_EMSD_RAW_REMOTE') or key == 'AIRCON_EMSD_RAW_SINK_DIR':
+            assert str(value).startswith('${{ secrets.'), f'{key} 只可以經 Secrets 配置'

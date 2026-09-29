@@ -249,7 +249,14 @@ def test_workflow_uses_receipt_and_fails_closed():
         if 'fetch_biggo.py' in line:
             assert '|| true' not in line, f'BigGo 命令唔可以吞失敗：{line.strip()}'
     assert 'GITHUB_STEP_SUMMARY' in biggo, 'skip／失敗要有可審計結果'
-    assert '--force-batch' in biggo and '--smoke' in biggo, 'force-batch 亦要 smoke 保護'
+    assert 'scripts/biggo_stage_runner.py' in biggo, '非 force 路徑要經 coordinator stage runner'
+    assert 'fetch_biggo.py --smoke' not in biggo, 'smoke 唔可以繞過階段／lease／budget 喺 workflow 直接呼叫'
+    assert 'fetch_biggo.py --force-batch' not in biggo, 'force 唔可以繞過 coordinator'
+    assert 'AIRCON_BIGGO_FORCE_STAGE' in biggo, 'force intent 只可以經 runner 轉發'
+    runner_src = open(os.path.join(BASE, 'scripts', 'biggo_stage_runner.py'),
+                      encoding='utf-8').read()
+    assert 'fetch_mod.run_smoke()' in runner_src, 'runner 要真正行 bounded smoke'
+    assert 'run_force_batch' in runner_src and 'LeaseHeartbeat' in runner_src
     assert 'exit "$rc"' in biggo or 'exit $rc' in biggo, '真失敗要非零退出，唔可以當成功'
 
 
@@ -352,3 +359,129 @@ def test_finalize_rejects_rawcount_mismatch(tmp_path):
              '--dataset-csv', str(tmp_path / 'emsd.csv'))
     assert r.returncode != 0
     assert 'rawRecordCount' in r.stderr
+
+
+# ---------------------------------------------------------------- CKAN catalog receipt（2026-09-29 repair）
+
+ALT_CSV = 'https://www.emsd.gov.hk/energylabel/files/meels_rac_2027.csv'
+CATALOG_API = ('https://data.gov.hk/en-data/api/3/action/package_show'
+               '?id=hk-emsd-emsd1-meels-listed-models')
+
+
+def _dual_receipt(csv_path, **over):
+    digest = 'sha256:' + hashlib.sha256(open(csv_path, 'rb').read()).hexdigest()
+    csv_url = over.pop('csv_url', ALT_CSV)
+    catalog = over.pop('catalog', {
+        'mode': 'catalog',
+        'datasetId': 'hk-emsd-emsd1-meels-listed-models',
+        'resourceId': '2944ffac-4bb3-4240-a5f8-d902d0531b20',
+        'catalogApiUrl': CATALOG_API,
+        'datasetPageUrl': 'https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models',
+        'resolvedCsvUrl': csv_url,
+        'resolvedAt': '2026-09-29T00:00:00Z',
+    })
+    receipt = {
+        'retrievedAt': '2026-09-20T18:59:57Z',
+        'sourceUrl': csv_url,
+        'sourceKind': 'emsd-open-data-csv',
+        'success': True,
+        'pagesExpected': 2,
+        'pagesFetched': 2,
+        'totalRows': 60,
+        'aborted': False,
+        'error': None,
+        'perPageRows': [50, 10],
+        'datasetHash': digest,
+        'dualSource': {
+            'schemaVersion': 1,
+            'equal': True,
+            'primary': 'emsd-open-data-csv',
+            'crossCheck': 'emsd-energy-label-paginated',
+            'sources': {
+                'emsd-open-data-csv': {
+                    'sourceUrl': csv_url, 'resolvedUrl': csv_url, 'sha256': digest,
+                    'byteLength': 1234, 'etag': '"abc"',
+                    'lastModified': 'Wed, 01 Jan 2026 00:00:00 GMT',
+                },
+                'emsd-energy-label-paginated': {'sourceUrl': SOURCE},
+            },
+        },
+    }
+    if catalog is not None:
+        receipt['catalog'] = catalog
+    receipt.update(over)
+    return receipt
+
+
+def test_receipt_facts_accepts_resolved_csv_url_and_catalog(tmp_path):
+    csv_path = tmp_path / 'emsd.csv'
+    make_csv(csv_path)
+    r = tmp_path / 'r.json'
+    receipt = _dual_receipt(csv_path)
+    r.write_text(json.dumps(receipt), encoding='utf-8')
+    facts = gen_metadata.receipt_facts(str(r), str(csv_path))
+    assert facts['datasetSourceUrl'] == ALT_CSV
+    assert facts['datasetHash'] == receipt['datasetHash']
+
+
+def test_receipt_facts_accepts_last_known_good_fallback_catalog(tmp_path):
+    csv_path = tmp_path / 'emsd.csv'
+    make_csv(csv_path)
+    r = tmp_path / 'r.json'
+    csv_url = 'https://www.emsd.gov.hk/energylabel/files/meels_rac.csv'
+    fallback = {
+        'mode': 'last-known-good-fallback',
+        'datasetId': 'hk-emsd-emsd1-meels-listed-models',
+        'resourceId': None,
+        'catalogApiUrl': CATALOG_API,
+        'datasetPageUrl': 'https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models',
+        'resolvedCsvUrl': csv_url,
+        'resolvedAt': '2026-09-29T00:00:00Z',
+        'fallbackReason': 'catalog_unavailable',
+    }
+    r.write_text(json.dumps(_dual_receipt(csv_path, csv_url=csv_url, catalog=fallback)),
+                 encoding='utf-8')
+    facts = gen_metadata.receipt_facts(str(r), str(csv_path))
+    assert facts['datasetSourceUrl'] == csv_url
+
+
+@pytest.mark.parametrize('mutate,label', [
+    (lambda c: c.update(datasetId='other-dataset'), 'datasetId'),
+    (lambda c: c.update(resolvedCsvUrl='https://evil.example.com/x.csv'), 'resolvedCsvUrl'),
+    (lambda c: c.update(catalogApiUrl='https://evil.example.com/api'), 'catalogApiUrl'),
+    (lambda c: c.update(resolvedAt='2026-09-29T00:00:00+00:00'), 'resolvedAt'),
+    (lambda c: c.update(mode='catalog', resourceId=None), 'resourceId'),
+    (lambda c: c.update(mode='bogus'), 'mode'),
+])
+def test_receipt_facts_rejects_bad_catalog(tmp_path, mutate, label):
+    csv_path = tmp_path / 'emsd.csv'
+    make_csv(csv_path)
+    r = tmp_path / 'r.json'
+    receipt = _dual_receipt(csv_path)
+    mutate(receipt['catalog'])
+    r.write_text(json.dumps(receipt), encoding='utf-8')
+    with pytest.raises(ValueError):
+        gen_metadata.receipt_facts(str(r), str(csv_path))
+
+
+def test_receipt_facts_rejects_dual_csv_source_url_mismatch(tmp_path):
+    csv_path = tmp_path / 'emsd.csv'
+    make_csv(csv_path)
+    r = tmp_path / 'r.json'
+    receipt = _dual_receipt(csv_path)
+    receipt['dualSource']['sources']['emsd-open-data-csv']['sourceUrl'] = \
+        'https://www.emsd.gov.hk/energylabel/files/other.csv'
+    r.write_text(json.dumps(receipt), encoding='utf-8')
+    with pytest.raises(ValueError):
+        gen_metadata.receipt_facts(str(r), str(csv_path))
+
+
+def test_receipt_facts_rejects_unapproved_resolved_url_even_with_valid_receipt(tmp_path):
+    csv_path = tmp_path / 'emsd.csv'
+    make_csv(csv_path)
+    r = tmp_path / 'r.json'
+    receipt = _dual_receipt(csv_path, csv_url='https://evil.example.com/meels_rac.csv')
+    receipt['catalog']['resolvedCsvUrl'] = 'https://evil.example.com/meels_rac.csv'
+    r.write_text(json.dumps(receipt), encoding='utf-8')
+    with pytest.raises(ValueError, match='Unapproved'):
+        gen_metadata.receipt_facts(str(r), str(csv_path))

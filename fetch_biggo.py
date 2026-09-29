@@ -48,16 +48,84 @@ UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
 # access_token 快取（client credentials；55 分鐘 TTL，token 一般 60 分鐘有效）
 _TOKEN = {'value': None, 'expires': 0.0}
 
+# ===== approved design C：兩次 attempt、403／429 即停、離線 guard、可審計計數 =====
+# 每個 model 最多 2 次 attempt；403／429 唔會即刻 retry（honour Retry-After，否則項目
+# 自身 48 小時冷卻；48h 唔係 provider 嘅 quota window）。
+DEFAULT_MAX_ATTEMPTS = 2
+# 項目自身 fallback 冷卻（秒）；呢個係 aircon-compare 政策，唔代表 provider quota。
+PROJECT_COOLDOWN_SECONDS = 48 * 3600
+# 只計實際發出嘅 HTTP request，token 同 search 分開。
+REQUEST_STATS = {'token': 0, 'search': 0}
+# 最近一次 403／429 嘅安全 rate-limit 證據（只 status／Retry-After，無 auth／body）。
+LAST_RATE_LIMIT_EVIDENCE = {}
+BIGGO_TEST_MODE_ENV = 'AIRCON_BIGGO_TEST_MODE'
+
+
+class BigGoTestModeError(RuntimeError):
+    """測試模式禁止真實 BigGo 網絡呼叫（E2 實作階段硬保險）。"""
+
+
+def reset_request_stats():
+    REQUEST_STATS['token'] = 0
+    REQUEST_STATS['search'] = 0
+    LAST_RATE_LIMIT_EVIDENCE.clear()
+
+
+def snapshot_request_stats():
+    return dict(REQUEST_STATS)
+
+
+def _network_guard():
+    """測試模式：任何真實網絡入口即 raise（唔會靜默繼續）。"""
+    if os.environ.get(BIGGO_TEST_MODE_ENV) == '1':
+        raise BigGoTestModeError('BigGo 測試模式：禁止真實網絡呼叫')
+
+
+def _record_response_evidence(status, retry_after=None):
+    LAST_RATE_LIMIT_EVIDENCE.clear()
+    LAST_RATE_LIMIT_EVIDENCE.update({'status': int(status)})
+    if retry_after is not None:
+        LAST_RATE_LIMIT_EVIDENCE['retryAfter'] = str(retry_after)[:128]
+
+
+def _retry_after_seconds(value, now=None):
+    """Retry-After → 秒數 int／None。支持 delta-seconds 同 HTTP-date 兩種標準寫法。
+
+    唔會推斷 provider 嘅 quota reset；只係 honour 來源實際提供嘅值。
+    """
+    if value is None:
+        return None
+    text = str(value).strip()
+    if text.isdigit():
+        return int(text)
+    try:
+        from email.utils import parsedate_to_datetime
+        target = parsedate_to_datetime(text)
+    except (TypeError, ValueError):
+        return None
+    if target is None:
+        return None
+    if target.tzinfo is None:
+        import datetime as _dt
+        target = target.replace(tzinfo=_dt.timezone.utc)
+    base = now if now is not None else time.time()
+    try:
+        return max(0, int(target.timestamp() - float(base)))
+    except (OverflowError, OSError, ValueError):
+        return None
+
 
 def _get_access_token(timeout=20):
     """用 BIGGO_CLIENT_ID/SECRET 攞 access_token（免費官方認證；冇配置就 None = 免登入 fallback）
 
     `timeout` 預設 20 秒，同原本批次行為一致；smoke 會傳較短 timeout 令連線測試有界。
+    測試模式（AIRCON_BIGGO_TEST_MODE=1）下任何真實呼叫即 BigGoTestModeError。
     """
     cid = os.environ.get('BIGGO_CLIENT_ID', '').strip()
     csec = os.environ.get('BIGGO_CLIENT_SECRET', '').strip()
     if not cid or not csec:
         return None
+    _network_guard()
     now = time.time()
     if _TOKEN['value'] and now < _TOKEN['expires']:
         return _TOKEN['value']
@@ -68,7 +136,14 @@ def _get_access_token(timeout=20):
         'Content-Type': 'application/x-www-form-urlencoded',
         'User-Agent': UA,
     })
-    tok = json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode('utf-8')).get('access_token')
+    REQUEST_STATS['token'] += 1
+    try:
+        tok = json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode('utf-8')).get('access_token')
+    except urllib.error.HTTPError as e:
+        if e.code in (403, 429):
+            _record_response_evidence(e.code, (e.headers or {}).get('Retry-After')
+                                      if hasattr(e.headers, 'get') else None)
+        raise
     if tok:
         _TOKEN['value'] = tok
         _TOKEN['expires'] = now + 55 * 60
@@ -111,18 +186,26 @@ def _wait_pace():
         time.sleep(wait)
 
 
-def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=5, timeout=20,
+def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=DEFAULT_MAX_ATTEMPTS, timeout=20,
                 use_cooldown=True, use_pace=True, sleep_on_error=True):
     """官方 API 搜尋：回 (data, reachable)
     reachable=True  → API 有正常回覆（data 可能係空結果 = 乾淨無匹配）
-    reachable=False → 網絡/限流錯誤（唔計入淘汰統計）
+    reachable=False → 網絡／限流錯誤（唔計入淘汰統計）
 
-    額外 keyword 參數全部有預設值，維持原本批次／正常查詢嘅完整 retry（5 次）、
-    冷卻（429/403）同限速（MIN_PACE）語義；smoke 專用路徑會傳
-    `max_attempts=1`、`timeout=8`、`use_cooldown=False`、`use_pace=False`、
-    `sleep_on_error=False`，唔會等 60／90 秒冷卻或者硬碰重試。
+    Approved design C 語義：
+    - 每個 model 最多 `max_attempts` 次（預設 2）；
+    - 403／429 **唔會即刻 retry**：記錄安全證據（status／Retry-After）後直接回
+      reachable=False；Retry-After 有就交 coordinator honour，冇就由項目自身 48 小時
+      冷卻接手（唔係 provider quota window）；
+    - 其他錯誤才按 attempt backoff retry；
+    - smoke 會傳 max_attempts=1、timeout=8、use_cooldown=False、use_pace=False、
+      sleep_on_error=False，維持有界。
     """
-    for attempt in range(max_attempts):
+    LAST_RATE_LIMIT_EVIDENCE.clear()
+    if os.environ.get(BIGGO_TEST_MODE_ENV) == '1':
+        LAST_RATE_LIMIT_EVIDENCE.update({'testMode': True})
+        return None, False
+    for attempt in range(max(1, int(max_attempts))):
         try:
             if use_cooldown:
                 _wait_cooldown()
@@ -133,21 +216,30 @@ def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=5, timeout=20,
             if token:
                 headers['Authorization'] = f'Bearer {token}'
             req = urllib.request.Request(API_URL.format(q=urllib.parse.quote(model, safe='')), headers=headers)
+            REQUEST_STATS['search'] += 1
             data = json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode('utf-8', 'ignore'))
             return data, True
         except urllib.error.HTTPError as e:
-            if e.code == 429:
-                # require_login（免登入通道關閉）唔係冷卻問題；有 token 就照舊冷卻重試
-                if use_cooldown:
-                    wait = int(e.headers.get('Retry-After') or 0) or 60
-                    print(f'  ⏳ 429 限流：全局冷卻 {wait}s 後重試（{model}，第 {attempt + 1} 次）', flush=True)
-                    _global_cooldown(wait)
-            elif e.code in (403,):
-                if use_cooldown:
-                    _global_cooldown(60)
-            else:
-                if sleep_on_error:
-                    time.sleep(5 * (attempt + 1))
+            retry_after = None
+            try:
+                retry_after = e.headers.get('Retry-After') if e.headers else None
+            except AttributeError:
+                retry_after = None
+            if e.code in (403, 429):
+                _record_response_evidence(e.code, retry_after)
+                if use_cooldown and retry_after:
+                    wait = _retry_after_seconds(retry_after, now=time.time()) or 0
+                    if wait > 0:
+                        print(f'  ⏳ {e.code} 限流：honour Retry-After {wait}s（{model}）；'
+                              f'本 model 唔會即刻 retry', flush=True)
+                        _global_cooldown(wait)
+                print(f'  ⏳ {e.code}：唔即刻 retry（{model}）；安全證據已記錄，'
+                      f'冷卻交由 coordinator／項目 48h fallback 處理', flush=True)
+                return None, False
+            if sleep_on_error:
+                time.sleep(5 * (attempt + 1))
+        except BigGoTestModeError:
+            raise
         except Exception:
             if sleep_on_error:
                 time.sleep(3 * (attempt + 1))
@@ -236,15 +328,23 @@ def _brand_of(brand_lookup):
     return lambda m: brand_lookup.get(norm_model(m)) or 'UNKNOWN'
 
 
-def run_force_batch(limit=None):
-    """一次性強行全量批次（測試用）：唔分 7 日，一次過查晒全部非黑名單型號
+def run_force_batch(limit=None, *, smoke=True, should_abort=None, exit_on_fail=True):
+    """一次性強行全量批次（受 coordinator 約束嘅 force intent）：唔分 7 日，一次過查晒全部非黑名單型號
     - 淘汰確認：乾淨無報價計 misses（閾值 2 先自動黑名單）；網絡錯誤唔計
     - 核心 29 + 官方網店價型號受保護，唔會淘汰
     - 唔推進每月批次進度；只記 meta['last_force_batch'] 審計痕跡
+    - `smoke=True`（預設）先做 bounded smoke；coordinated runner 已做過 smoke 會傳
+      `smoke=False`，確保 per-stage 最多一個 smoke request。
+    - `should_abort`（optional callable）係 coordinator lease heartbeat 接口：回 True
+      即停止提交新工作並以 aborted 收尾（唔會聲稱完成）。
+    - `exit_on_fail=True`（預設，CLI 舊行為）失敗即 sys.exit；runner 傳 False 取回
+      status 由 coordinator 記 needs_review／安全收手。
     """
-    if not run_smoke():
+    if smoke and not run_smoke():
         print('❌ 強行批次中止：smoke 唔過（BigGo API 對當前 IP 唔友好）')
-        sys.exit(1)
+        if exit_on_fail:
+            sys.exit(1)
+        return {'status': 'smoke-failed'}
 
     brand_lookup = load_brand_lookup()
     all_models = load_models()
@@ -273,6 +373,10 @@ def run_force_batch(limit=None):
         futures = {ex.submit(_search_tri_state, m): m for m in todo}
         done_count = 0
         for fut in as_completed(futures):
+            if should_abort is not None and should_abort():
+                print('⚠️ coordinator lease 已失效：中止 force batch（唔會聲稱完成）', flush=True)
+                aborted = True
+                break
             model, result, ok = fut.result()
             if result:
                 results[model] = result
@@ -308,7 +412,10 @@ def run_force_batch(limit=None):
 
     if aborted:
         print(f'  （中止前已得價 {len(got)} · 無報價 {len(clean_miss)} · 錯誤 {len(net_err)}）', flush=True)
-        sys.exit(1)
+        if exit_on_fail:
+            sys.exit(1)
+        return {'status': 'aborted', 'got': len(got), 'cleanMiss': len(clean_miss),
+                'netErrors': len(net_err)}
 
     # 淘汰確認（閾值 2；網絡錯誤唔計；受保護唔淘汰；batch_id 防同一批重跑重複計 miss）
     rec = [(m, True) for m in got] + [(m, False) for m in clean_miss]
@@ -435,7 +542,7 @@ def review_blacklist_batch(idx):
         print(f'  ♻️ 復活清單（前 30）：{revived[:30]}')
 
 
-def run_price_batch():
+def run_price_batch(should_abort=None):
     """執行當日 BigGo 價錢批次（每月一次、分 7 日；切片/推進由 batch_utils 共用）
 
     - 黑名單型號完全排除（復核由 review_blacklist_batch 小額輪轉處理）
@@ -445,6 +552,8 @@ def run_price_batch():
     - 增量寫入 biggo_prices.json：每個寫入 entry 都係真實抓到嘅證據；部分成功會保留，
       唔會聲稱整批「全保留原樣」。批次進度／淘汰統計要整批乾淨才推進。
     - 淘汰確認用 batch_id 去重（同一批重跑唔重複計 miss）；並發 2（D3）
+    - `should_abort`（optional callable）係 coordinator lease heartbeat 接口：回 True
+      即停止提交新工作、cancel 未開始 futures，以 aborted 收尾。
 
     回傳 status dict（status: not-active／cooldown-skip／aborted／partial-net-errors／completed）。
     """
@@ -474,11 +583,18 @@ def run_price_batch():
     got, clean_miss, net_err = [], [], []
     consec_fail = 0
     aborted = False
+    lease_lost = False
     t0 = time.time()
-    with ThreadPoolExecutor(max_workers=2) as ex:
+    ex = ThreadPoolExecutor(max_workers=2)
+    try:
         futures = {ex.submit(_search_tri_state, m): m for m in todo}
         done_count = 0
         for fut in as_completed(futures):
+            if should_abort is not None and should_abort():
+                print('⚠️ coordinator lease 已失效：中止本批（唔會推進進度）', flush=True)
+                aborted = True
+                lease_lost = True
+                break
             m = futures[fut]
             try:
                 model, result, ok = fut.result()
@@ -504,6 +620,8 @@ def run_price_batch():
                 print('⚠️ 連續 40 個失敗，疑似被限流，中止本批', flush=True)
                 aborted = True
                 break
+    finally:
+        ex.shutdown(wait=False, cancel_futures=True)
 
     # 最終寫入：partial 成功嘅真實報價保留（唔係「全保留原樣」；進度唔會前進）
     with open(OUT_PATH, 'w', encoding='utf-8') as f:
@@ -519,7 +637,8 @@ def run_price_batch():
         save_meta(meta)
         print(f'❌ 本批中止（網絡／限流）：idx 未推進，聽日重試；已得價 {len(got)} 會保留')
         return {'status': 'aborted', 'idx': idx, 'got': len(got),
-                'cleanMiss': len(clean_miss), 'netErrors': len(net_err), 'advanced': False}
+                'cleanMiss': len(clean_miss), 'netErrors': len(net_err),
+                'advanced': False, 'leaseLost': lease_lost}
 
     # 淘汰確認（三態；同一 batch_id 重跑唔重複計 miss）——partial 都記錄真實證據
     rec = [(m, True) for m in got] + [(m, False) for m in clean_miss]
@@ -582,7 +701,8 @@ def _smoke_probe(model):
 
     有界語義：單次 attempt、timeout=SMOKE_TIMEOUT（約 8 秒）、唔等全局冷卻、
     唔限速等待、唔喺錯誤後 sleep；`_get_access_token`／`_api_search` 原本批次
-    預設（5 次 retry、冷卻、限速）完全不變，只有 smoke 傳呢組參數。
+    預設（2 attempts、403／429 唔即刻 retry、冷卻、限速）維持 approved C 語義；
+    只有 smoke 傳呢組有界參數。公眾文檔舊「5 次 retry」記述已由 2026-09-28 新條目取代。
 
     限制（唔虛構）：`_api_search` 目前將 429／403、網絡例外同認證失敗一律回
     reachable=False，所以呢度唔會細分原因，只如實報 'unreachable'；
@@ -603,56 +723,54 @@ def _smoke_probe(model):
 
 
 def run_smoke(candidates=None):
-    """連線煙霧測試：首個有價即通過；單次 attempt、約 8 秒 timeout、唔等冷卻／唔重試。
+    """連線煙霧測試：approved design C 規定**最多一個 product-search request**。
 
-    - 只有明確 'no-price'（API 正常回覆但暫時無匹配報價）才試下一個候選；
-    - 第一個 'unreachable'（網絡／限流／認證）或者例外就立即回 False，
-      唔會再試其餘候選，亦唔會硬碰；
-    - 全部候選都 'no-price' 亦回 False。工作流收到 False 會跳過本批（安全門禁不變）。
+    只探測第一個候選（預設 `SMOKE_CANDIDATES[0]`），單次 attempt、約 8 秒 timeout、
+    唔等冷卻／唔重試：
+    - 'priced'    → True（正常有價）
+    - 'no-price'  → False（API 正常但暫時無匹配報價；唔會試其餘候選，唔濫用額度）
+    - 'unreachable'／例外 → False
+    工作流收到 False 會安全跳過本批（保留快照）；實際呼叫計數由 `REQUEST_STATS` 記錄。
     """
     cands = SMOKE_CANDIDATES if candidates is None else candidates
-    for cand in cands:
-        model = cand['model'] if isinstance(cand, dict) else str(cand)
-        try:
-            status, result = _smoke_probe(model)
-        except Exception as e:
-            # 只記錄例外類型，唔輸出 exception 內容（避免任何 credential 落入 log）
-            print(f'  ⚠️ smoke 候選 {model} 例外：{type(e).__name__}'
-                  f'（網絡／憑證等，未細分）；立即結束 smoke，唔試其餘候選', flush=True)
-            return False
-        if status == 'priced':
-            print(f'✅ BigGo smoke test 通過：{model} → {result["price"]}'
-                  f'（{result.get("merchants", 0)} 商戶）', flush=True)
-            return True
-        if status == 'no-price':
-            print(f'  ⚠️ smoke 候選 {model}：API 正常但暫時無匹配報價，試下一個候選', flush=True)
-            continue
-        print(f'  ⚠️ smoke 候選 {model}：unreachable'
-              f'（網絡／限流／認證等，現行錯誤分類未細分）；'
-              f'立即結束 smoke，唔試其餘候選、唔硬碰', flush=True)
+    if not cands:
         return False
-    print('   API 連線正常但全部候選暫時無匹配報價：屬個別型號情況，唔係限流', flush=True)
+    cand = cands[0]
+    model = cand['model'] if isinstance(cand, dict) else str(cand)
+    try:
+        status, result = _smoke_probe(model)
+    except Exception as e:
+        # 只記錄例外類型，唔輸出 exception 內容（避免任何 credential 落入 log）
+        print(f'  ⚠️ smoke 候選 {model} 例外：{type(e).__name__}'
+              f'（網絡／憑證等，未細分）；立即結束 smoke', flush=True)
+        return False
+    if status == 'priced':
+        print(f'✅ BigGo smoke test 通過：{model} → {result["price"]}'
+              f'（{result.get("merchants", 0)} 商戶）', flush=True)
+        return True
+    if status == 'no-price':
+        print(f'  ⚠️ smoke 候選 {model}：API 正常但暫時無匹配報價；'
+              f'single-request cap，唔會再試其餘候選', flush=True)
+        return False
+    print(f'  ⚠️ smoke 候選 {model}：unreachable'
+          f'（網絡／限流／認證等，現行錯誤分類未細分）；立即結束 smoke、唔硬碰', flush=True)
     return False
 
 
 if __name__ == '__main__':
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-    if '--smoke' in sys.argv:
-        sys.exit(0 if run_smoke() else 1)
-    if '--force-batch' in sys.argv:
-        i = sys.argv.index('--force-batch')
-        lim = None
-        if len(sys.argv) > i + 1 and sys.argv[i + 1].isdigit():
-            lim = int(sys.argv[i + 1])
-        run_force_batch(lim)
-    elif '--price-batch' in sys.argv:
-        status = run_price_batch()
-        if isinstance(status, dict) and status.get('status') == 'aborted':
-            sys.exit(1)
-    elif len(sys.argv) > 1:
-        # 單型號測試：python fetch_biggo.py RA-10RF
-        for m in sys.argv[1:]:
-            print(m, '→', fetch_biggo_price(m))
-    else:
-        print('用法：python fetch_biggo.py --smoke  /  --price-batch  /  --force-batch [N]  /  <型號>')
+    # Repair #1：所有會共用 BigGo 憑證嘅 CLI 網絡入口都必須經 coordinator runner
+    # （scripts/biggo_stage_runner.py）取 lease；呢度一律 fail closed，冇繞過路徑。
+    if any(arg in ('--smoke', '--price-batch', '--force-batch') for arg in sys.argv[1:]):
+        print('❌ BigGo 網絡動作必須經 coordinator lease：'
+              'python scripts/biggo_stage_runner.py\n'
+              '   force intent 用環境變數 AIRCON_BIGGO_FORCE_STAGE=1；'
+              '本 CLI 唔提供繞過 lease 嘅路徑（fail closed）。', file=sys.stderr)
+        sys.exit(2)
+    if len(sys.argv) > 1:
+        print('❌ 單型號查詢同樣共用 BigGo 憑證，必須經 coordinator runner；'
+              '本 CLI 唔提供繞過 lease 嘅路徑（fail closed）。', file=sys.stderr)
+        sys.exit(2)
+    print('用法：python scripts/biggo_stage_runner.py（coordinator-gated）；'
+          '本模組函式由 runner import 使用，唔可以直接做網絡動作。')

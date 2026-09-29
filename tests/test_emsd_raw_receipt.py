@@ -2,21 +2,24 @@
 """D7-A：原始 EMSD response bytes、公開 hash receipt、私人 sink、90 日 retention。"""
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import sys
 import datetime as dt
+import csv as _csv
 
 import pytest
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
+import emsd_dual_source  # noqa: E402
 _SPEC = importlib.util.spec_from_file_location('fetch_emsd_raw_mod', os.path.join(BASE, 'fetch_emsd.py'))
 fetch = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(fetch)
 
 
-HEADER = ['品牌', '型號'] + [f'c{i}' for i in range(13)]
+HEADER = list(emsd_dual_source.CANONICAL_HEADER)
 
 
 def _html(rows, header=True):
@@ -53,6 +56,29 @@ def _run_main(pages):
         return pages[p - 1] if p - 1 < len(pages) else ''
 
     fetch.fetch_page = fake_fetch
+    rows = []
+    header = None
+    for html in pages:
+        if not html:
+            continue
+        if header is None:
+            header = fetch.page_header(html)
+        rows.extend(fetch.parse_page_rows(html))
+    buf = io.StringIO()
+    writer = _csv.writer(buf, lineterminator='\n')
+    writer.writerow(header if header else HEADER)
+    writer.writerows(rows)
+    payload = buf.getvalue().encode('utf-8-sig')
+    fetch.fetch_csv_source = lambda **kw: emsd_dual_source.RawResponse(
+        url=emsd_dual_source.CSV_URL, status=200, body=payload, headers={},
+        fetchedAt='2026-09-22T00:00:00Z')
+    fetch.resolve_csv_source = lambda **kw: {
+        'schemaVersion': 1, 'mode': 'catalog',
+        'datasetId': emsd_dual_source.CATALOG_DATASET_ID,
+        'resourceId': 'test-resource-1', 'resourceName': 'Room Air Conditioners',
+        'catalogApiUrl': emsd_dual_source.CATALOG_API_URL,
+        'datasetPageUrl': emsd_dual_source.CATALOG_DATASET_PAGE,
+        'resolvedCsvUrl': emsd_dual_source.CSV_URL, 'resolvedAt': '2026-09-22T00:00:00Z'}
     try:
         fetch.main()
         return 0

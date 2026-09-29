@@ -513,8 +513,12 @@ def official_pending_hint():
     missing = st.get('missingModels')
     if not isinstance(missing, list):
         missing = []
-    count = len(missing) or len(st.get('missingCanonicalModels') or [])
-    sample = '、'.join(str(m) for m in missing[:5]) if missing else '見狀態檔'
+    script_pending = st.get('scriptCoveragePending')
+    if not isinstance(script_pending, list):
+        script_pending = []
+    count = len(missing) or len(st.get('missingCanonicalModels') or []) or len(script_pending)
+    sample = '、'.join(str(m) for m in missing[:5]) if missing else \
+        ('、'.join(str(m) for m in script_pending[:5]) if script_pending else '見狀態檔')
     more = f' 等 {count} 個' if count > 5 else ''
     return ('<div class="chint" style="border-left-color:var(--warn);color:var(--warn)">'
             '⚠️ 官網規格待核：EMSD 官方資料已照常更新，但以下型號未有品牌官網目錄覆蓋，'
@@ -971,7 +975,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（__EMSD_REGISTRATIONS__ 筆登記 · __TOTAL_MODELS__ 型號）· 8 品牌官網核實 220 型號（2026-08-15）· 價錢快照：BigGo 官方 JSON API + PricesAPI 核心 29 驗收 + Price.com.hk 舊快照（分批更新；缺價標「待查」；🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
+    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（__EMSD_REGISTRATIONS__ 筆登記 · __TOTAL_MODELS__ 型號）· 資料目錄：DATA.GOV.HK（資料由機電工程署提供；dataset hk-emsd-emsd1-meels-listed-models，Room Air Conditioners CSV 每週更新）· 8 品牌官網核實 220 型號（2026-08-15）· 價錢快照：BigGo 官方 JSON API + PricesAPI 核心 29 驗收 + Price.com.hk 舊快照（分批更新；缺價標「待查」；🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
     <div class="date" id="deployInfo">__DATE_STATUS__</div>
   </div>
 </header>
@@ -1085,6 +1089,7 @@ __CONTENT__
   <div class="blk">
     <h3>🙏 資料來源鳴謝</h3>
     <p>· 機電工程署 EMSD 能源標籤資料庫（官方能源/雪種/耗電數據）<br>
+      · 資料目錄：DATA.GOV.HK（資料由機電工程署提供；dataset hk-emsd-emsd1-meels-listed-models）<br>
       · 品牌官網及總代理：信興集團、樂信網店、Panasonic、世紀開利、GENERAL 第一電業、HITACHI、COMFEE、美的<br>
       · 價格快照：BigGo 官方 JSON API（更新至 2026-09-14）+ PricesAPI 核心 29 驗收 + Price.com.hk 2026-08-15 舊快照（分批快照；點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
   </div>

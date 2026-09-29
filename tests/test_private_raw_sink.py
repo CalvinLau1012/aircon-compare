@@ -3,10 +3,12 @@
 import datetime as dt
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import subprocess
 import sys
+import csv as _csv
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -15,6 +17,7 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
 sys.path.insert(0, os.path.join(BASE, 'scripts'))
 import private_raw_sink as prs  # noqa: E402
+import emsd_dual_source  # noqa: E402
 
 _FETCH_SPEC = importlib.util.spec_from_file_location('fetch_emsd_sink_mod',
                                                      os.path.join(BASE, 'fetch_emsd.py'))
@@ -26,6 +29,50 @@ RECORDS = [fetch.raw_page_record(1, b'<table>page-1</table>'),
            fetch.raw_page_record(2, b'<table>page-2</table>')]
 TOKEN = 'ghp_totally-secret-token'
 REPO = 'owner/private-archive'
+
+
+def _canonical_pages():
+    """50+50 行（canonical 15 欄 header），供 fetch_emsd 雙來源離線測試用。"""
+    def page(rows, with_header=False):
+        head = ('<tr>' + ''.join(f'<th>{c}</th>'
+                                 for c in emsd_dual_source.CANONICAL_HEADER) + '</tr>'
+                ) if with_header else ''
+        body = ''.join('<tr>' + ''.join(f'<td>{c}</td>' for c in r) + '</tr>' for r in rows)
+        return f'<table>{head}{body}</table>'
+
+    rows_a = [[f'A{i}', f'X{i}'] + ['1'] * 13 for i in range(50)]
+    rows_b = [[f'B{i}', f'Y{i}'] + ['1'] * 13 for i in range(50)]
+    return [page(rows_a, True), page(rows_b), '']
+
+
+def _csv_from_pages(pages):
+    rows = []
+    header = None
+    for html in pages:
+        if not html:
+            continue
+        if header is None:
+            header = fetch.page_header(html)
+        rows.extend(fetch.parse_page_rows(html))
+    buf = io.StringIO()
+    writer = _csv.writer(buf, lineterminator='\n')
+    writer.writerow(header)
+    writer.writerows(rows)
+    return buf.getvalue().encode('utf-8-sig')
+
+
+def _patch_csv(pages):
+    payload = _csv_from_pages(pages)
+    fetch.fetch_csv_source = lambda **kw: emsd_dual_source.RawResponse(
+        url=emsd_dual_source.CSV_URL, status=200, body=payload, headers={},
+        fetchedAt='2026-09-23T12:00:00Z')
+    fetch.resolve_csv_source = lambda **kw: {
+        'schemaVersion': 1, 'mode': 'catalog',
+        'datasetId': emsd_dual_source.CATALOG_DATASET_ID,
+        'resourceId': 'test-resource-1', 'resourceName': 'Room Air Conditioners',
+        'catalogApiUrl': emsd_dual_source.CATALOG_API_URL,
+        'datasetPageUrl': emsd_dual_source.CATALOG_DATASET_PAGE,
+        'resolvedCsvUrl': emsd_dual_source.CSV_URL, 'resolvedAt': '2026-09-23T12:00:00Z'}
 
 
 class FakeGitHub:
@@ -126,9 +173,10 @@ def test_remote_refuses_clobber_of_existing_asset():
     fake = FakeGitHub()
     fake.release = {'id': 5, 'tag_name': 'emsd-raw-archive'}
     archive_hash = prs.records_archive_hash(RECORDS)
-    blob = prs.build_zip(RECORDS, archive_hash, '2026-09-23T12:00:00Z')
+    blob = prs.build_zip(RECORDS, archive_hash, '2026-09-23T12:00:00Z',
+                         source_kind=prs.DEFAULT_SOURCE_KIND)
     object_hash = 'sha256:' + hashlib.sha256(blob).hexdigest()
-    name = f'raw-20260923T120000Z-{object_hash[7:19]}.zip'
+    name = f'raw-{prs.DEFAULT_SOURCE_KIND}-20260923T120000Z-{object_hash[7:19]}.zip'
     fake.assets = [{'id': 9, 'name': name, 'created_at': '2026-09-23T00:00:00Z',
                     'url': f'https://api.github.com/repos/{REPO}/releases/assets/9'}]
     with pytest.raises(prs.SinkError, match='同名'):
@@ -153,8 +201,8 @@ def test_remote_retention_deletes_only_expired_matching_assets():
     assert 'raw-20260623T120000Z-old.zip' not in names
     assert 'raw-20260922T120000Z-fresh.zip' in names
     assert 'unrelated.zip' in names
-    # 剛剛上傳嘅對象唔會被自己清理
-    assert any(n.startswith('raw-20260923') for n in names)
+    # 剛剛上傳嘅對象唔會被自己清理；namespace 帶 sourceKind
+    assert any(n.startswith(f'raw-{prs.DEFAULT_SOURCE_KIND}-20260923') for n in names)
 
 
 @pytest.mark.parametrize('env', [
@@ -235,9 +283,10 @@ class _CannedRemoteSink:
         self.api = api
         _CannedRemoteSink.calls.append({'repo': repo, 'token': token, 'api': api})
 
-    def persist(self, records, archive_hash, now=None, created_at=None):
+    def persist(self, records, archive_hash, now=None, created_at=None, source_kind=None):
         return {'adapter': 'github-release-asset', 'persisted': True, 'verified': True,
-                'durableRemote': True, 'objectId': 'raw-fake.zip',
+                'durableRemote': True, 'sourceKind': source_kind or prs.DEFAULT_SOURCE_KIND,
+                'objectId': 'raw-fake.zip',
                 'archiveHash': archive_hash, 'retentionDays': 90, 'expiredRemoved': 0}
 
 
@@ -251,19 +300,13 @@ def test_fetch_emsd_remote_adapter_wiring_and_token_never_in_public_files(tmp_pa
     monkeypatch.setenv('AIRCON_EMSD_RAW_REMOTE_TOKEN', TOKEN)
     monkeypatch.setattr(fetch.private_raw_sink, 'GitHubReleaseAssetSink', _CannedRemoteSink)
     _CannedRemoteSink.calls.clear()
-    pages = ['<table><tr><th>品牌</th><th>型號</th><th>c0</th><th>c1</th><th>c2</th><th>c3</th>'
-             '<th>c4</th><th>c5</th><th>c6</th><th>c7</th><th>c8</th><th>c9</th><th>c10</th>'
-             '<th>c11</th><th>c12</th></tr>' +
-             ''.join(f'<tr><td>A{i}</td><td>X{i}</td>' + '<td>1</td>' * 13 + '</tr>'
-                     for i in range(50)) + '</table>',
-             '<table>' + ''.join(f'<tr><td>B{i}</td><td>Y{i}</td>' + '<td>1</td>' * 13 + '</tr>'
-                                 for i in range(50)) + '</table>',
-             '']
+    pages = _canonical_pages()
 
     def fake_fetch(p):
         return pages[p - 1] if p - 1 < len(pages) else ''
 
     fetch.fetch_page = fake_fetch
+    _patch_csv(pages)
     assert fetch.main() is None
     raw = json.loads((tmp_path / 'emsd_raw_receipt.json').read_text(encoding='utf-8'))
     success = json.loads((tmp_path / 'emsd_receipt.json').read_text(encoding='utf-8'))
@@ -289,23 +332,17 @@ def test_fetch_emsd_remote_failure_writes_no_success_receipt(tmp_path, monkeypat
     monkeypatch.setenv('AIRCON_EMSD_RAW_REMOTE_TOKEN', TOKEN)
 
     class Boom(_CannedRemoteSink):
-        def persist(self, records, archive_hash, now=None, created_at=None):
+        def persist(self, records, archive_hash, now=None, created_at=None, source_kind=None):
             raise prs.SinkError('上傳後下載核驗失敗')
 
     monkeypatch.setattr(fetch.private_raw_sink, 'GitHubReleaseAssetSink', Boom)
-    pages = ['<table><tr><th>品牌</th><th>型號</th><th>c0</th><th>c1</th><th>c2</th><th>c3</th>'
-             '<th>c4</th><th>c5</th><th>c6</th><th>c7</th><th>c8</th><th>c9</th><th>c10</th>'
-             '<th>c11</th><th>c12</th></tr>' +
-             ''.join(f'<tr><td>A{i}</td><td>X{i}</td>' + '<td>1</td>' * 13 + '</tr>'
-                     for i in range(50)) + '</table>',
-             '<table>' + ''.join(f'<tr><td>B{i}</td><td>Y{i}</td>' + '<td>1</td>' * 13 + '</tr>'
-                                 for i in range(50)) + '</table>',
-             '']
+    pages = _canonical_pages()
 
     def fake_fetch(p):
         return pages[p - 1] if p - 1 < len(pages) else ''
 
     fetch.fetch_page = fake_fetch
+    _patch_csv(pages)
     with pytest.raises(SystemExit) as e:
         fetch.main()
     assert e.value.code == 1

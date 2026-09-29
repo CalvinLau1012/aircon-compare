@@ -2,10 +2,10 @@
 """BigGo smoke 候選與有界連線回歸（無外網；全部 mock）
 
 - 候選集中管理、跨品牌、有本地證據（核心 29／受保護／有快照報價／非黑名單）
-- smoke 有界：單次 attempt、每網絡階段 timeout=8s、唔等 60/90s 冷卻、錯誤後唔 sleep
-- 首個有價即 True；只有明確 no-price 才試下一個候選；
-  第一個 unreachable／例外立即 False，唔會試其餘候選
-- 批次／正常查詢路徑仍用 `_api_search` 預設完整 retry（5 次）＋冷卻＋限速
+- smoke 有界：approved C 規定最多一個 product-search request、單次 attempt、timeout=8s、
+  唔等 60/90s 冷卻、錯誤後唔 sleep
+- 首個候選有價即 True；no-price／unreachable／例外一律 False（唔會試其餘候選）
+- 批次／正常查詢路徑：每個 model 最多 2 次 attempt；403／429 唔即刻 retry
 - 例外唔可以洩漏 secret
 - 安全門禁不變：run_smoke False → CI 跳過批次
 """
@@ -109,26 +109,13 @@ def test_smoke_first_candidate_success_uses_one_call(monkeypatch):
     assert calls[0][0] == SMOKE_CANDIDATES[0]['model']
 
 
-def test_smoke_falls_back_when_first_has_no_price(monkeypatch):
-    calls = []
-    monkeypatch.setattr(fetch_biggo, '_api_search', _fake_search(calls))
-
-    def fake_extract(data, model):
-        return {'price': '$9,999', 'merchants': 1} if model == SMOKE_CANDIDATES[1]['model'] else None
-
-    monkeypatch.setattr(fetch_biggo, '_extract_price', fake_extract)
-    assert run_smoke() is True
-    assert [m for m, _ in calls] == [SMOKE_CANDIDATES[0]['model'], SMOKE_CANDIDATES[1]['model']]
-    assert len(calls) == 2, '第一個無價才 fallback；第二個成功即停'
-    assert all(kw == SMOKE_KWARGS for _, kw in calls), '每個候選都要保持有界 smoke 參數'
-
-
-def test_smoke_all_no_price_returns_false(monkeypatch, capsys):
+def test_smoke_no_price_single_request_does_not_try_other_candidates(monkeypatch, capsys):
     calls = []
     monkeypatch.setattr(fetch_biggo, '_api_search', _fake_search(calls))
     monkeypatch.setattr(fetch_biggo, '_extract_price', lambda data, model: None)
     assert run_smoke() is False
-    assert len(calls) == len(SMOKE_CANDIDATES), '全部候選都要試過'
+    assert len(calls) == 1, 'approved C：最多一個 product-search request'
+    assert calls[0][0] == SMOKE_CANDIDATES[0]['model']
     out = capsys.readouterr().out
     assert 'no-price' in out or '無匹配報價' in out
     assert 'unreachable' not in out, 'API 正常時唔應該報 unreachable'
@@ -182,7 +169,7 @@ def test_smoke_accepts_explicit_candidate_list(monkeypatch):
     monkeypatch.setattr(fetch_biggo, '_api_search', _fake_search(calls))
     monkeypatch.setattr(fetch_biggo, '_extract_price', lambda data, model: None)
     assert run_smoke(['AAA-1', {'model': 'BBB-2', 'brand': 'X', 'reason': 'test'}]) is False
-    assert [m for m, _ in calls] == ['AAA-1', 'BBB-2']
+    assert [m for m, _ in calls] == ['AAA-1'], 'single-request cap：只探測第一個候選'
 
 
 # ---------------------------------------------------------------- 有界連線（無 sleep 硬碰）
@@ -240,8 +227,8 @@ def test_get_access_token_timeout_is_forwarded(monkeypatch):
     assert observed['timeout'] == 8, 'smoke 嘅 token 階段都要用 8 秒 timeout'
 
 
-def test_api_search_defaults_keep_full_retry_and_backoff(monkeypatch):
-    """冇傳 smoke 參數時，批次語義不變：5 次 attempt + 原本 backoff。"""
+def test_api_search_defaults_two_attempts_and_backoff(monkeypatch):
+    """冇傳 smoke 參數時：approved C = 每個 model 最多 2 次 attempt + 原本 backoff。"""
     observed = {'urlopen': 0, 'sleeps': [], 'timeouts': []}
     monkeypatch.delenv('BIGGO_CLIENT_ID', raising=False)
     monkeypatch.delenv('BIGGO_CLIENT_SECRET', raising=False)
@@ -260,17 +247,18 @@ def test_api_search_defaults_keep_full_retry_and_backoff(monkeypatch):
     data, reachable = fetch_biggo._api_search('RA-10RF')
 
     assert (data, reachable) == (None, False)
-    assert observed['urlopen'] == 5, '預設仍然係 5 次 retry'
-    assert observed['sleeps'] == [5, 10, 15, 20, 25], '預設 backoff 次序不變'
-    assert observed['timeouts'] == [20] * 5, '預設 network timeout 仍係 20 秒'
+    assert observed['urlopen'] == 2, 'approved C：預設最多 2 次 attempt'
+    assert observed['sleeps'] == [5, 10], '預設 backoff 次序不變（每 attempt 一次）'
+    assert observed['timeouts'] == [20] * 2, '預設 network timeout 仍係 20 秒'
 
 
-def test_api_search_defaults_429_uses_retry_after_cooldown(monkeypatch):
+def test_api_search_defaults_429_no_immediate_retry_and_evidence(monkeypatch):
     observed = {'urlopen': 0}
     cooldowns = []
     monkeypatch.delenv('BIGGO_CLIENT_ID', raising=False)
     monkeypatch.delenv('BIGGO_CLIENT_SECRET', raising=False)
     monkeypatch.setattr(fetch_biggo, '_TOKEN', {'value': None, 'expires': 0.0})
+    fetch_biggo.LAST_RATE_LIMIT_EVIDENCE.clear()
 
     def fake_urlopen(req, timeout=None):
         observed['urlopen'] += 1
@@ -286,8 +274,51 @@ def test_api_search_defaults_429_uses_retry_after_cooldown(monkeypatch):
     data, reachable = fetch_biggo._api_search('RA-10RF')
 
     assert (data, reachable) == (None, False)
-    assert observed['urlopen'] == 5
-    assert cooldowns == [75] * 5, '預設 429 仍然尊重 Retry-After 並全局冷卻'
+    assert observed['urlopen'] == 1, '429 唔可以即刻 retry'
+    assert cooldowns == [75], 'honour Retry-After（一次）'
+    assert fetch_biggo.LAST_RATE_LIMIT_EVIDENCE['status'] == 429
+    assert fetch_biggo.LAST_RATE_LIMIT_EVIDENCE['retryAfter'] == '75'
+
+
+def test_api_search_403_no_immediate_retry_and_fallback_evidence(monkeypatch):
+    observed = {'urlopen': 0}
+    monkeypatch.delenv('BIGGO_CLIENT_ID', raising=False)
+    monkeypatch.delenv('BIGGO_CLIENT_SECRET', raising=False)
+    monkeypatch.setattr(fetch_biggo, '_TOKEN', {'value': None, 'expires': 0.0})
+    fetch_biggo.LAST_RATE_LIMIT_EVIDENCE.clear()
+
+    def fake_urlopen(req, timeout=None):
+        observed['urlopen'] += 1
+        raise urllib.error.HTTPError('https://x', 403, 'forbidden', {}, None)
+
+    monkeypatch.setattr(fetch_biggo.urllib.request, 'urlopen', fake_urlopen)
+    monkeypatch.setattr(fetch_biggo, '_global_cooldown',
+                        lambda s: (_ for _ in ()).throw(AssertionError('冇 Retry-After 唔應該即時冷卻')))
+    monkeypatch.setattr(fetch_biggo.time, 'sleep', lambda s: None)
+    monkeypatch.setattr(fetch_biggo, '_wait_cooldown', lambda: None)
+    monkeypatch.setattr(fetch_biggo, '_wait_pace', lambda: None)
+
+    data, reachable = fetch_biggo._api_search('RA-10RF')
+
+    assert (data, reachable) == (None, False)
+    assert observed['urlopen'] == 1
+    assert fetch_biggo.LAST_RATE_LIMIT_EVIDENCE.get('status') == 403
+    assert 'retryAfter' not in fetch_biggo.LAST_RATE_LIMIT_EVIDENCE, \
+        '冇 Retry-After 就交項目 48h fallback 處理（唔係 provider quota window）'
+
+
+def test_biggo_test_mode_guard_prevents_any_network(monkeypatch):
+    """AIRCON_BIGGO_TEST_MODE=1：直接 urlopen 亦唔會被呼叫。"""
+    def forbidden(*args, **kwargs):
+        raise AssertionError('測試模式唔可以有真實網絡呼叫')
+
+    monkeypatch.setattr(fetch_biggo.urllib.request, 'urlopen', forbidden)
+    monkeypatch.setenv(fetch_biggo.BIGGO_TEST_MODE_ENV, '1')
+    monkeypatch.setenv('BIGGO_CLIENT_ID', 'cid')
+    monkeypatch.setenv('BIGGO_CLIENT_SECRET', 'csec')
+    data, reachable = fetch_biggo._api_search('RA-10RF')
+    assert (data, reachable) == (None, False)
+    assert fetch_biggo.LAST_RATE_LIMIT_EVIDENCE.get('testMode') is True
 
 
 def test_batch_tri_state_still_uses_default_search(monkeypatch):
