@@ -162,7 +162,44 @@ jobs:
           AIRCON_EMSD_RAW_RETENTION_DAYS: ${{ secrets.AIRCON_EMSD_RAW_RETENTION_DAYS }}
           # 過渡用 local-dir（唔 durable；只喺未配置 remote 時先會被採用）。
           AIRCON_EMSD_RAW_SINK_DIR: ${{ secrets.AIRCON_EMSD_RAW_SINK_DIR }}
-        run: python fetch_emsd.py
+          # 雙來源 fail-closed diff report（只含計數／欄位名／有限樣本 key，無 secret）：
+          # 寫入本 run 專用 evidence staging dir，失敗時由下面 always() step 上載作審計。
+          AIRCON_EMSD_DIFF_REPORT: ${{ runner.temp }}/emsd-evidence/aircon-emsd-diff.json
+        run: |
+          mkdir -p "$RUNNER_TEMP/emsd-evidence" "$RUNNER_TEMP/evidence-baseline"
+          # run-start 係 run window lower bound；baseline 喺 source step 之前捕捉
+          date -u +%Y-%m-%dT%H:%M:%SZ > "$RUNNER_TEMP/emsd-evidence/run-start.utc"
+          python scripts/stage_run_evidence.py \
+            --write-baseline "$RUNNER_TEMP/evidence-baseline/emsd.json" \
+            emsd_receipt.json emsd_raw_receipt.json
+          set +e
+          python fetch_emsd.py
+          rc=$?
+          python scripts/stage_run_evidence.py \
+            --out-dir "$RUNNER_TEMP/emsd-evidence" --phase emsd \
+            --baseline "$RUNNER_TEMP/evidence-baseline/emsd.json" \
+            --run-id "$GITHUB_RUN_ID" --commit "$GITHUB_SHA" --source-rc "$rc" \
+            --run-started-at "$(cat "$RUNNER_TEMP/emsd-evidence/run-start.utc")" \
+            emsd_receipt.json emsd_raw_receipt.json
+          src=$?
+          set -e
+          if [ "$src" -ne 0 ]; then
+            echo "::error::EMSD evidence staging 失敗（rc=$src）"
+            exit "$src"
+          fi
+          exit "$rc"
+
+      # 失敗時也要留低機器證據（always()）：只上載本 run staging dir（run-status.json
+      # 會標明每個檔 staged／excluded；舊 checkout receipt 因為 timestamp 過舊而唔入）。
+      # private raw sink 路徑／token／objectId 一律唔喺 staging；亦唔會上載。
+      - name: 上載 EMSD 收據與 diff（失敗審計；always）
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: emsd-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/emsd-evidence/
+          retention-days: 30
+          if-no-files-found: warn
 
       - name: 讀取更新階段（共用 queue 契約；錯誤即失敗，冇 stage-0 fallback）
         id: stage
@@ -173,17 +210,39 @@ jobs:
           echo "今日更新階段：$STAGE"
 
       # ============ 第 2 步：新機官網核實（分兩日；有實際完成證據先推進隊列） ============
+      # pre-step baseline：本 run 寫 official receipt／status 之前先捕捉 presence＋SHA-256；
+      # 只有 baseline 之後 content 改變嘅檔才可以 stage，舊 tracked status 唔會冒充本 run。
+      - name: 官網核實 pre-step baseline
+        if: steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2'
+        run: |
+          mkdir -p "$RUNNER_TEMP/official-evidence" "$RUNNER_TEMP/evidence-baseline"
+          python scripts/stage_run_evidence.py \
+            --write-baseline "$RUNNER_TEMP/evidence-baseline/official.json" \
+            "${{ runner.temp }}/aircon-official-receipt.json" official_batch_status.json
+
       - name: 官網核實第一批（新機後第 1 日）
         if: steps.stage.outputs.stage == '1'
+        id: official_stage1
         env:
           AIRCON_OFFICIAL_RECEIPT: ${{ runner.temp }}/aircon-official-receipt.json
-        run: python scripts/run_official_batch.py --stage 1
+        run: |
+          set +e
+          python scripts/run_official_batch.py --stage 1
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit "$rc"
 
       - name: 官網核實第二批（新機後第 2 日）
         if: steps.stage.outputs.stage == '2'
+        id: official_stage2
         env:
           AIRCON_OFFICIAL_RECEIPT: ${{ runner.temp }}/aircon-official-receipt.json
-        run: python scripts/run_official_batch.py --stage 2
+        run: |
+          set +e
+          python scripts/run_official_batch.py --stage 2
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit "$rc"
 
       - name: 投影官網 pending status（D1-B；queue coverage 不足時 UI 顯示待核）
         if: steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2'
@@ -192,12 +251,28 @@ jobs:
             --receipt "${{ runner.temp }}/aircon-official-receipt.json" \
             --out official_batch_status.json
 
+      # always()：只把「本 run」 receipt／status 複製去 staging（baseline hash＋timestamp＋
+      # run id 三重檢查）。若官方核實早退而未有 receipt，repo 內 tracked
+      # official_batch_status.json 即使 mtime／generatedAt 貼近 run start，亦會因為 hash 同
+      # baseline 相同或 timestamp 早於 run start 而 excluded，唔會假裝本 run 證據。
+      - name: 準備官網核實 staging（always；只 stage 本 run 檔）
+        if: always() && (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2')
+        run: |
+          RUN_START="$(cat "$RUNNER_TEMP/emsd-evidence/run-start.utc" 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
+          python scripts/stage_run_evidence.py \
+            --out-dir "$RUNNER_TEMP/official-evidence" --phase official \
+            --baseline "$RUNNER_TEMP/evidence-baseline/official.json" \
+            --run-id "$GITHUB_RUN_ID" --commit "$GITHUB_SHA" \
+            --source-rc "${{ steps.official_stage1.outputs.rc || steps.official_stage2.outputs.rc || '1' }}" \
+            --run-started-at "$RUN_START" \
+            "${{ runner.temp }}/aircon-official-receipt.json" official_batch_status.json
+
       - name: 上載官網核實 machine receipt（審計；queue 未必已推進）
         if: always() && (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: official-batch-receipt-${{ github.run_id }}
-          path: ${{ runner.temp }}/aircon-official-receipt.json
+          path: ${{ runner.temp }}/official-evidence/
           retention-days: 30
           if-no-files-found: warn
 

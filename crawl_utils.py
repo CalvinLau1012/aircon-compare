@@ -154,43 +154,102 @@ def jitter_sleep(lo=0.3, hi=0.9):
     time.sleep(random.uniform(lo, hi))
 
 
+# 經確認嘅「官方頁面唔再存在」reason code（HTTP 4xx gone）：只可以配 failed target
+# 用，唔可以當 succeeded；wrapper 只會將呢啲 reason 歸類為 coverage pending。
+COVERAGE_PENDING_REASONS = frozenset({'http-404', 'http-410'})
+
+
+def coverage_pending_reason(exc):
+    """HTTP 404／410 → 'http-404'／'http-410'；其他錯誤回 None（一律當硬失敗）。"""
+    import urllib.error as _urlerror
+    if isinstance(exc, _urlerror.HTTPError) and exc.code in (404, 410):
+        return f'http-{exc.code}'
+    return None
+
+
 def emit_fetch_receipt(script, attempted, succeeded, failed, succeeded_models=None,
-                       already_verified=None, failed_models=None, covers=None, extra=None):
+                       already_verified=None, failed_models=None, covers=None, extra=None,
+                       skipped=None, failure_reasons=None, coverage_pending_models=None,
+                       coverage_pending_reasons=None):
     """印出可審計機器 receipt（單行 JSON；wrapper 解析）；唔含 token／私人路徑。
 
     契約：attempted == succeeded + failed；len(succeededModels)==succeeded；
-    len(failedModels)==failed；covers == canonical union(succeededModels, alreadyVerified)。
+    len(failedModels)==failed；len(alreadyVerified)==skipped；
+    covers == canonical union(succeededModels, alreadyVerified)。
+
+    新增（向後兼容、可選）：
+    - failureReasons：{failed model: reason code}，必須覆蓋全部 failedModels；
+    - coveragePendingModels／coveragePendingReasons：failed 之中經確認「官方頁面
+      已唔存在」嘅 subset；reason 只准 COVERAGE_PENDING_REASONS。
+    數量／集合唔一致即 ValueError（呼叫方 fail-closed，唔會出假 receipt）。
     """
     import sys as _sys
     succ = sorted({str(m) for m in (succeeded_models or [])})
     already = sorted({str(m) for m in (already_verified or [])})
     failm = sorted({str(m) for m in (failed_models or [])})
-    cov = sorted({str(m) for m in (covers if covers is not None else succ + already)})
+    if int(attempted) != int(succeeded) + int(failed):
+        raise ValueError('receipt attempted != succeeded + failed')
+    if len(succ) != int(succeeded):
+        raise ValueError('receipt len(succeededModels) != succeeded')
+    if len(failm) != int(failed):
+        raise ValueError('receipt len(failedModels) != failed')
+    skip_count = len(already) if skipped is None else int(skipped)
+    if skip_count != len(already):
+        raise ValueError('receipt skipped != len(alreadyVerified)')
+    cov = sorted({norm_model(m) for m in (covers if covers is not None else succ + already)})
+    succ_norm = {norm_model(m) for m in succ}
+    already_norm = {norm_model(m) for m in already}
+    fail_norm = {norm_model(m) for m in failm}
+    if cov != sorted(succ_norm | already_norm):
+        raise ValueError('receipt covers != canonical union(succeededModels, alreadyVerified)')
+    if succ_norm & fail_norm:
+        raise ValueError('receipt model 同時 succeeded 同 failed')
     payload = {
         'schemaVersion': 1,
         'script': script,
         'attempted': int(attempted),
         'succeeded': int(succeeded),
         'failed': int(failed),
+        'skipped': skip_count,
         'succeededModels': succ,
         'failedModels': failm,
         'alreadyVerified': already,
         'covers': cov,
     }
+    if failure_reasons is not None:
+        reasons = {str(k): str(v) for k, v in dict(failure_reasons).items()}
+        if {norm_model(k) for k in reasons} != fail_norm:
+            raise ValueError('receipt failureReasons 同 failedModels 唔一致')
+        payload['failureReasons'] = reasons
+    pending = [str(m) for m in (coverage_pending_models or [])]
+    if pending:
+        pending_reasons = {str(k): str(v) for k, v in dict(coverage_pending_reasons or {}).items()}
+        pending_norm = {norm_model(m) for m in pending}
+        if not pending_norm <= fail_norm:
+            raise ValueError('receipt coveragePendingModels 必須係 failedModels subset')
+        if pending_norm != {norm_model(k) for k in pending_reasons}:
+            raise ValueError('receipt coveragePendingReasons 同 coveragePendingModels 唔一致')
+        bad = {v for v in pending_reasons.values() if v not in COVERAGE_PENDING_REASONS}
+        if bad:
+            raise ValueError(f'receipt coveragePendingReasons 有未知 reason：{sorted(bad)}')
+        payload['coveragePendingModels'] = sorted(set(pending))
+        payload['coveragePendingReasons'] = pending_reasons
     if extra:
         payload.update(extra)
     _sys.stdout.write('AIRCON_FETCH_RECEIPT ' + json.dumps(payload, ensure_ascii=False) + '\n')
     _sys.stdout.flush()
 
 
-def batch_failed(attempted, errors):
+def batch_failed(attempted, errors, coverage_pending=0):
     """批次成敗判定：任一「實際嘗試」嘅目標失敗就係失敗（errors > 0）。
 
     - 已有有效資料而明確 skip 嘅目標唔計 attempted，亦唔算失敗；
     - attempted=0（完全冇待抓目標）唔算失敗，可成功保留既有快照；
+    - `coverage_pending`：failed 之中經確認「官方頁面已唔存在」嘅數量（只可以
+      由呼叫方用 HTTP 404／410 等實證分類；硬失敗一律要非零）；
     - 任何失敗都唔可以寫出部分結果覆寫上次完整快照（呼叫方須先檢查）。
     """
-    return errors > 0
+    return errors - int(coverage_pending) > 0
 
 
 def fetch(url, timeout=15, retries=3, extra_headers=None, context=None):
@@ -212,6 +271,8 @@ def fetch(url, timeout=15, retries=3, extra_headers=None, context=None):
             return urllib.request.urlopen(req, timeout=timeout, context=context).read().decode('utf-8', 'ignore')
         except urllib.error.HTTPError as e:
             last = e
+            if e.code in (404, 410):
+                raise  # 頁面確認唔存在：即刻停止，唔好再重試（由呼叫方分類 coverage pending）
             if e.code in (403, 429) and attempt < retries - 1:
                 wait = int(e.headers.get('Retry-After') or 0) or 10 * (attempt + 1)
                 time.sleep(wait)

@@ -396,7 +396,8 @@ def test_daily_raw_sink_env_wiring_secret_only_and_fail_closed():
                  'AIRCON_EMSD_RAW_SINK_DIR'):
         ref = '${{ secrets.' + name + ' }}'
         assert env.get(name) == ref, f'{name} 必須由 Secrets 提供：{env.get(name)!r}'
-    assert fetch_step['run'] == 'python fetch_emsd.py'
+    assert 'python fetch_emsd.py' in fetch_step['run']
+    assert 'scripts/stage_run_evidence.py' in fetch_step['run']
     text = _text('daily-update.yml')
     assert '${{ vars.' not in text, 'raw sink／require 唔可以用 repo Variables（可能公開）'
     for name in ('AIRCON_EMSD_REQUIRE_RAW_SINK', 'AIRCON_EMSD_RAW_REMOTE_REPO',
@@ -405,3 +406,91 @@ def test_daily_raw_sink_env_wiring_secret_only_and_fail_closed():
         assert values, f'缺 {name} 接線'
         ref = '${{ secrets.' + name + ' }}'
         assert all(v.strip() == ref for v in values), f'{name} 有非 Secrets 值：{values}'
+
+
+# ---------------------------------------------------------------- 失敗證據 upload（2026-09-29 repair）
+
+def _update_steps():
+    return _load('daily-update.yml')['jobs']['update']['steps']
+
+
+def test_daily_failure_evidence_uploads_are_always_pinned_and_allowlisted():
+    uploads = [s for s in _update_steps()
+               if isinstance(s.get('uses'), str)
+               and s['uses'].startswith('actions/upload-artifact@')]
+    emsd = [s for s in uploads
+            if str(s.get('with', {}).get('name', '')).startswith('emsd-evidence-')]
+    official = [s for s in uploads
+                if str(s.get('with', {}).get('name', '')).startswith('official-batch-receipt-')]
+    assert len(emsd) == 1, 'EMSD receipt／diff 失敗證據要有一個 upload step'
+    assert len(official) == 1, 'official machine receipt 要有一個 upload step'
+    for step in emsd + official:
+        assert str(step.get('if', '')).startswith('always()'), '失敗證據必須 always() 上載'
+        assert step['uses'] in PINNED, 'upload action 必須已核實完整 SHA pin'
+    emsd_paths = {line.strip() for line in str(emsd[0]['with']['path']).splitlines()
+                  if line.strip()}
+    assert emsd_paths == {'${{ runner.temp }}/emsd-evidence/'}, \
+        'EMSD artifact 只可以上載本 run staging dir（唔可以直接上載 tracked receipt）'
+    official_paths = {line.strip() for line in str(official[0]['with']['path']).splitlines()
+                      if line.strip()}
+    assert official_paths == {'${{ runner.temp }}/official-evidence/'}, \
+        'official artifact 只可以上載本 run staging dir（唔可以直接上載 tracked status）'
+    for path in emsd_paths | official_paths:
+        assert 'secrets.' not in path, 'artifact path 唔可以引用 secrets 上下文'
+        assert 'AIRCON_' not in path, 'artifact path 唔可以暴露 private env 值'
+        assert not path.startswith('/'), 'artifact path 唔可以係任意絕對路徑'
+        assert '..' not in path
+
+
+def test_daily_failure_evidence_uses_freshness_staging_helper_only():
+    """舊 checkout receipt／status 唔可以經 always() 上載冒充本 run 證據。"""
+    steps = _update_steps()
+    text = _text('daily-update.yml')
+    assert 'python scripts/stage_run_evidence.py' in text, '必須用 staging helper'
+    assert 'run-start.utc' in text, '必須有 run-start lower bound'
+    assert '--write-baseline' in text, '必須喺 source step 前捕捉 baseline hash／absence'
+    assert '--baseline "$RUNNER_TEMP/evidence-baseline' in text or \
+        '--baseline' in text, 'staging 必須用 baseline 做 provenance'
+    assert '--skew-seconds' not in text, '唔可以再用 skew 容忍 pre-run timestamp'
+    emsd_step = [s for s in steps if s.get('name') == '抓取 EMSD + 新機偵測']
+    assert len(emsd_step) == 1
+    run = str(emsd_step[0].get('run', ''))
+    write_pos = run.find('--write-baseline')
+    fetch_pos = run.find('python fetch_emsd.py')
+    baseline_pos = run.find('--baseline "$RUNNER_TEMP/evidence-baseline/emsd.json"')
+    assert write_pos != -1 and fetch_pos != -1 and baseline_pos != -1
+    assert write_pos < fetch_pos, 'baseline 一定要喺 fetch_emsd 之前寫'
+    assert fetch_pos < baseline_pos, 'staging 一定要喺 fetch 之後行'
+    assert '--source-rc "$rc"' in run
+    assert 'emsd_receipt.json emsd_raw_receipt.json' in run
+    official_baseline = [s for s in steps if s.get('name') == '官網核實 pre-step baseline']
+    assert len(official_baseline) == 1, 'official 都要 pre-step baseline'
+    brun = str(official_baseline[0].get('run', ''))
+    assert '--write-baseline' in brun
+    assert 'official_batch_status.json' in brun
+    official_stage = [s for s in steps
+                      if s.get('name') == '準備官網核實 staging（always；只 stage 本 run 檔）']
+    assert len(official_stage) == 1, 'official receipt／status 要有 freshness staging step'
+    assert str(official_stage[0].get('if', '')).startswith('always()')
+    orun = str(official_stage[0].get('run', ''))
+    assert 'stage_run_evidence.py' in orun
+    assert '--baseline "$RUNNER_TEMP/evidence-baseline/official.json"' in orun
+    assert 'aircon-official-receipt.json' in orun and 'official_batch_status.json' in orun
+    # baseline 檔唔可以喺任何 upload path 內（唔入 artifact）
+    uploads = [s for s in steps if isinstance(s.get('uses'), str)
+               and s['uses'].startswith('actions/upload-artifact@')]
+    for step in uploads:
+        path = str(step.get('with', {}).get('path', ''))
+        assert 'evidence-baseline' not in path, 'baseline 檔唔可以上載'
+
+
+def test_daily_emsd_diff_report_env_is_runner_temp_only():
+    emsd_step = [s for s in _update_steps() if s.get('name') == '抓取 EMSD + 新機偵測']
+    assert len(emsd_step) == 1
+    env = emsd_step[0]['env']
+    assert env['AIRCON_EMSD_DIFF_REPORT'] == \
+        '${{ runner.temp }}/emsd-evidence/aircon-emsd-diff.json'
+    # 私人 raw sink 只可以經 secrets 傳入；唔可以寫死路徑／repo 識別
+    for key, value in env.items():
+        if key.startswith('AIRCON_EMSD_RAW_REMOTE') or key == 'AIRCON_EMSD_RAW_SINK_DIR':
+            assert str(value).startswith('${{ secrets.'), f'{key} 只可以經 Secrets 配置'

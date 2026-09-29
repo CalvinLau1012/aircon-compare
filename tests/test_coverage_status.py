@@ -73,3 +73,32 @@ def test_daily_workflow_wires_pending_status_projection():
                 encoding='utf-8').read()
     assert 'scripts/publish_official_status.py' in text
     assert 'official_batch_status.json' in text
+
+
+def test_publish_script_pending_without_missing_queue_coverage_is_pending(tmp_path):
+    """D1-B 返修：script 確認 pending 但 M1 已被另一 script 覆蓋（missing 空）都要 pending。"""
+    r = _receipt(tmp_path, 'queue-kept-pending-coverage', missing=())
+    data = json.load(open(r, encoding='utf-8'))
+    data.update({'missingQueueCoverage': False,
+                 'scriptCoveragePending': ['M1'],
+                 'coveragePendingFromScripts': ['M1']})
+    r.write_text(json.dumps(data), encoding='utf-8')
+    out = tmp_path / 'status.json'
+    assert pub.main(['--receipt', str(r), '--out', str(out)]) == 0
+    st = json.load(open(out, encoding='utf-8'))
+    assert st['pendingCoverage'] is True
+    assert st['missingQueueCoverage'] is False
+    assert st['scriptCoveragePending'] == ['M1']
+    assert st['missingModels'] == []
+
+
+def test_generate_html_script_pending_hint_lists_script_models(tmp_path, monkeypatch):
+    gen = _load('generate_html_mod_cov2', 'generate_html.py')
+    monkeypatch.setattr(gen, 'BASE', str(tmp_path))
+    (tmp_path / 'official_batch_status.json').write_text(json.dumps({
+        'schemaVersion': 1, 'decision': 'queue-kept-pending-coverage',
+        'pendingCoverage': True, 'missingQueueCoverage': False,
+        'missingModels': [], 'scriptCoveragePending': ['FR-KS18'],
+    }), encoding='utf-8')
+    hint = gen.official_pending_hint()
+    assert '官網規格待核' in hint and 'FR-KS18' in hint

@@ -40,13 +40,27 @@ def main(argv=None):
     canon = receipt.get('missingCanonicalModels')
     if not isinstance(canon, list):
         canon = []
+    script_pending = receipt.get('coveragePendingFromScripts')
+    if not isinstance(script_pending, list):
+        script_pending = []
+    pending_reasons = receipt.get('coveragePendingReasons')
+    if not isinstance(pending_reasons, dict):
+        pending_reasons = {}
     status = {
         'schemaVersion': 1,
         'decision': decision,
         'stage': receipt.get('stage'),
+        # pendingCoverage 係 OR：queue model 未有覆蓋 或 script 確認 coverage pending
         'pendingCoverage': decision == 'queue-kept-pending-coverage',
+        'missingQueueCoverage': receipt.get('missingQueueCoverage')
+        if isinstance(receipt.get('missingQueueCoverage'), bool)
+        else bool(missing),
+        'scriptCoveragePending': [m for m in script_pending if isinstance(m, str)],
         'missingModels': [m for m in missing if isinstance(m, str)],
         'missingCanonicalModels': [m for m in canon if isinstance(m, str)],
+        'coveragePendingReasons': {
+            str(k): str(v) for k, v in pending_reasons.items()
+            if isinstance(v, str)},
         'generatedAt': receipt.get('finishedAt') or receipt.get('startedAt'),
         'source': 'run_official_batch.py',
     }

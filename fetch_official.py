@@ -11,7 +11,9 @@ import re
 import sys
 import time
 
-from crawl_utils import fetch, no_verify_ssl_context, batch_failed, save_json, emit_fetch_receipt
+from crawl_utils import (fetch, no_verify_ssl_context, batch_failed, save_json,
+                         emit_fetch_receipt, coverage_pending_reason,
+                         COVERAGE_PENDING_REASONS, load_models, norm_model)
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -57,10 +59,13 @@ HITACHI_PAGES = [
 COMFEE_MODELS = [
     'cwf-07crfn8-ad5', 'cwf-09crfn8-ad5', 'cwf-12crfn8-ad5', 'cwf-18crfn8-ad5',
     'cfw-07ff-m', 'cfw-09ff-m', 'cfw-12ff-m', 'cfw-18ff-m',
-    'cafb-12crn8-pc2', 'cafa-09crn8-pc2', 'cafc-18crn8-qc3', 'cafa-09crn8pc2',
+    'cafb-12crn8-pc2', 'cafc-18crn8-qc3', 'cafa-09crn8pc2',
     'cf-09vagf-h', 'cf-12vagf-h', 'cf-18vagf-h',
     'cfs-10vgpf', 'cfs-13vgpf', 'cfs-18vgpf', 'cfs-25vgpf',
 ]
+# 2026-09-29 repair：舊 target 'cafa-09crn8-pc2'（連字號）實測 HTTP 404，而
+# 'cafa-09crn8pc2'（無連字號）HTTP 200 且係官方在售頁；舊 target 係重複 stale key，
+# 移除佢唔會移除任何型號（canonical cover 由正確 slug 提供）。
 
 
 def get(url, timeout=15):
@@ -100,11 +105,35 @@ def parse_panasonic(html):
     }
 
 
-def fetch_panasonic(existing=None):
+def emsd_registered():
+    """目前 EMSD CSV 已登記型號 canonical set（每次 batch 只 load 一次）。"""
+    return {norm_model(m) for m in load_models()}
+
+
+def pending_eligible(reason, model, url_token, registered):
+    """coverage pending 資格（2026-09-29 返修）：
+
+    - reason 必須係 HTTP 404／410（其他一律硬失敗）；
+    - target model 必須喺目前 EMSD 已登記型號 canonical set；
+    - URL token 必須同 target model canonical 相等（唔靠 substring）；
+    三者缺一即唔可以 pending，交由呼叫方當硬失敗。
+    """
+    if not reason:
+        return False
+    if not registered or norm_model(model) not in registered:
+        return False
+    if not url_token or norm_model(url_token) != norm_model(model):
+        return False
+    return True
+
+
+def fetch_panasonic(existing=None, registered=None):
+    registered = registered if registered is not None else emsd_registered()
     results = {}
     attempted = errors = 0
     skipped = []
     failed = []
+    failure_reasons = {}
     for model, url in PANASONIC:
         if existing and model in existing and existing[model].get('size'):
             skipped.append(model)
@@ -121,35 +150,55 @@ def fetch_panasonic(existing=None):
         except Exception as e:
             errors += 1
             failed.append(model)
+            token_match = re.search(r'(CW-[A-Z0-9]+)', url.upper())
+            url_token = token_match.group(1) if token_match else None
+            reason = coverage_pending_reason(e)
+            if pending_eligible(reason, model, url_token, registered):
+                failure_reasons[model] = reason
+            else:
+                failure_reasons[model] = 'product-hard-failure'
             print(f'  {model}: ERR {str(e)[:60]}')
         time.sleep(0.3)
-    return results, attempted, errors, skipped, failed
+    return results, attempted, errors, skipped, failed, failure_reasons
 
 
-def fetch_hitachi(existing=None):
+def fetch_hitachi(existing=None, registered=None):
+    registered = registered if registered is not None else emsd_registered()
     results = {}
     attempted = errors = 0
     skipped = []
     failed = []
+    failure_reasons = {}
+    listing_failures = []
     models = set()
     for url in HITACHI_PAGES:
-        attempted += 1
+        # 列表頁係列出型號嘅前置步驟，唔係一個「型號 target」：成功抓取唔可以
+        # 計入 succeededModels（否則 counts／lists 唔一致）；失敗就要硬性記錄。
         try:
             html = get(url)
             body = strip_html(html)
             for m in re.finditer(r'\b(RAW-[A-Z]{2}\d{2}[A-Z]+|RA-\d{2}[A-Z]+)\b', body):
                 models.add(m.group(1).upper())
         except Exception as e:
-            errors += 1
-            failed.append(f'URL:{url}')
+            listing_failures.append(url)
             print(f'  列表頁 {url[-25:]}: ERR {str(e)[:50]}')
         time.sleep(0.2)
-    if not models and attempted:
+    for url in listing_failures:
+        attempted += 1
         errors += 1
+        token = f'HITACHI-LISTING:{url}'
+        failed.append(token)
+        failure_reasons[token] = 'listing-hard-failure'
+    if not models and not listing_failures:
+        # 全部列表頁 HTTP 成功但解析唔到任何型號＝預期之外內容（改版／登入／空白）
         for url in HITACHI_PAGES:
-            if f'URL:{url}' not in failed:
-                failed.append(f'URL:{url}')
-        print('  HITACHI 列表頁全部解析唔到型號（可能係空白／登入／錯誤頁），唔可以當成功', file=sys.stderr)
+            attempted += 1
+            errors += 1
+            token = f'HITACHI-LISTING:{url}'
+            failed.append(token)
+            failure_reasons[token] = 'listing-empty-hard-failure'
+        print('  HITACHI 列表頁全部解析唔到型號（可能係空白／登入／錯誤頁），唔可以當成功',
+              file=sys.stderr)
     print(f'HITACHI 在售型號 {len(models)} 個: {sorted(models)}')
     base = 'https://www.hitachi-homeappliances.com.hk/tc/products/'
     for model in sorted(models):
@@ -179,16 +228,26 @@ def fetch_hitachi(existing=None):
         except Exception as e:
             errors += 1
             failed.append(model)
+            url_token = re.search(r'((?:RAW-[A-Z]{2}\d{2}[A-Z]+|RA-\d{2}[A-Z]+))',
+                                  url.upper())
+            url_token = url_token.group(1) if url_token else None
+            reason = coverage_pending_reason(e)
+            if pending_eligible(reason, model, url_token, registered):
+                failure_reasons[model] = reason
+            else:
+                failure_reasons[model] = 'product-hard-failure'
             print(f'  {model}: ERR {str(e)[:50]}')
         time.sleep(0.25)
-    return results, attempted, errors, skipped, failed
+    return results, attempted, errors, skipped, failed, failure_reasons
 
 
-def fetch_comfee(existing=None):
+def fetch_comfee(existing=None, registered=None):
+    registered = registered if registered is not None else emsd_registered()
     results = {}
     attempted = errors = 0
     skipped = []
     failed = []
+    failure_reasons = {}
     for slug in COMFEE_MODELS:
         key = slug.upper()
         if existing and key in existing and existing[key].get('size'):
@@ -210,14 +269,20 @@ def fetch_comfee(existing=None):
             }
             if not any((spec.get('size'), spec.get('weight'), spec.get('gas'), spec.get('energy'))):
                 raise ValueError('冇有效規格（可能係空白／登入／錯誤頁）')
-            results[slug.upper()] = spec
-            print(f"  {slug.upper()}: {spec.get('size','?')[:45]} | {spec.get('weight','?')[:22]} | gas={spec.get('gas','?')[:20]}")
+            results[key] = spec
+            print(f"  {key}: {spec.get('size','?')[:45]} | {spec.get('weight','?')[:22]} | gas={spec.get('gas','?')[:20]}")
         except Exception as e:
             errors += 1
             failed.append(key)
-            print(f'  {slug.upper()}: ERR {str(e)[:50]}')
+            url_token = url.rsplit('/', 1)[-1].upper()
+            reason = coverage_pending_reason(e)
+            if pending_eligible(reason, key, url_token, registered):
+                failure_reasons[key] = reason
+            else:
+                failure_reasons[key] = 'product-hard-failure'
+            print(f'  {key}: ERR {str(e)[:50]}')
         time.sleep(0.25)
-    return results, attempted, errors, skipped, failed
+    return results, attempted, errors, skipped, failed, failure_reasons
 
 
 def main():
@@ -228,20 +293,35 @@ def main():
             all_results = json.load(f)
     # 只喺記憶體累積；任何目標失敗都唔會寫出部分結果覆寫上次完整快照。
     base = dict(all_results)
-    r, pa, pe, ps, pf = fetch_panasonic(base)
+    # EMSD 已登記型號 set 每次 batch 只 load 一次（coverage pending 資格用）。
+    registered = emsd_registered()
+    r, pa, pe, ps, pf, pr = fetch_panasonic(base, registered)
     base.update(r)
-    r2, ha, he, hs, hf = fetch_hitachi(base)
+    r2, ha, he, hs, hf, hr = fetch_hitachi(base, registered)
     base.update(r2)
-    r3, ca, ce, cs, cf = fetch_comfee(base)
+    r3, ca, ce, cs, cf, cr = fetch_comfee(base, registered)
     base.update(r3)
     attempted = pa + ha + ca
     errors = pe + he + ce
     already_verified = list(ps) + list(hs) + list(cs)
     succeeded_models = (list(r.keys()) + list(r2.keys()) + list(r3.keys()))
-    emit_fetch_receipt('fetch_official.py', attempted, attempted - errors, errors,
+    failed_models = list(pf) + list(hf) + list(cf)
+    failure_reasons = {**pr, **hr, **cr}
+    # 嚴格會計：每個 actual attempt 必須對應一個成功輸出（有 evidence）或一個失敗
+    if len(succeeded_models) != attempted - errors or len(failed_models) != errors:
+        raise RuntimeError(
+            'fetch_official receipt accounting mismatch：'
+            f'attempted={attempted} succeeded={len(succeeded_models)} failed={len(failed_models)}')
+    pending_models = [m for m in failed_models
+                      if failure_reasons.get(m) in COVERAGE_PENDING_REASONS]
+    pending_reasons = {m: failure_reasons[m] for m in pending_models}
+    emit_fetch_receipt('fetch_official.py', attempted, len(succeeded_models), errors,
                        succeeded_models=succeeded_models, already_verified=already_verified,
-                       failed_models=list(pf) + list(hf) + list(cf))
-    if batch_failed(attempted, errors):
+                       failed_models=failed_models, skipped=len(already_verified),
+                       failure_reasons=failure_reasons,
+                       coverage_pending_models=pending_models,
+                       coverage_pending_reasons=pending_reasons)
+    if batch_failed(attempted, errors, coverage_pending=len(pending_models)):
         print(f'❌ Panasonic/HITACHI/COMFEE {errors}/{attempted} 個目標失敗，'
               '唔覆寫現有快照，留待下次重試', file=sys.stderr)
         sys.exit(1)
