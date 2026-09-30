@@ -977,3 +977,41 @@
   - `UNKNOWN`：E3／E4、merge／部署、真實 force run 未觀察。
   - `BOUNDARY`：未 push／deploy／呼叫真實 BigGo／改私人 repo／改生產資料。
 - **回滾**：沿 D29 主文；force 邊界可獨立 revert（但會回復覆寫未完成 cycle 的風險）。
+
+## D30 · Price.com.hk 抓取維持放棄；身份 matcher 聚焦現役來源（人類指示；append-only）
+
+- **日期**：2026-09-30
+- **狀態**：已實行（約定）
+- **背景**：用戶 2026-09-30 明確再確認：Price.com.hk 抓取**早前已**因 Cloudflare
+  anti-bot 硬封鎖而放棄（唔係當日新決定），唔可以「修復」、重啟、即場測試或提出新
+  selector／retry／anti-bot bypass；`fetch_prices.py` 保持原樣；`prices.json` 只係
+  歷史顯示後備。網站目前顯示價源鏈係 BigGo → Gemini → legacy Price.com 舊快照；
+  `fetch_pricesapi.py` 係存在嘅代碼路徑／工具（core-29 驗收，冇 workflow 使用），
+  checkout 冇 `pricesapi_prices.json`，唔係目前載入來源。
+- **選項**：
+  - A：修復／重啟 Price.com 抓取——否決（違反用戶決定；Cloudflare 封鎖）+ 會虛報
+    資料源狀態；
+  - B（採用）：只對 BigGo 代碼路徑同（如日後啟用）`fetch_pricesapi.py` 做身份 matcher；
+    對 legacy `prices.json` 只做嚴格離線、唯讀、標示為「legacy 顯示資料覆核」嘅審計，
+    並保留疑點為 UNKNOWN；同時喺 docs 區分「存在嘅代碼路徑」同「目前網站載入嘅來源」。
+- **決策**：採 B。實作：
+  1. `price_utils.model_in_title` boundary-aware matcher，`is_ac_title` 改用它；
+  2. `fetch_biggo._extract_price` 為新抓取加 optional `matchedTitle`／`nindex` 證據
+     （只限 upstream 真有；舊快照唔補）；
+  3. 新增 `scripts/audit_price_suspects.py`（無網絡、零寫入快照、輸出只列 review
+     reasons，唔判 invalid；預設 stdout／repo 外路徑）；
+  4. docs 只追加；唔改 `fetch_prices.py`、唔改 Price.com parser、唔改生產快照／
+     metadata／index／PDF／version。
+- **原因**：尊重用戶對 Cloudflare 封鎖嘅技術轉向決定；避免 AI 自行復活已放棄嘅來源；
+  同時用保守身份比對保護 BigGo 代碼路徑同（如日後啟用）`fetch_pricesapi.py` 免受
+  substring 誤配。
+- **後果（分類）**：
+  - `REQUIREMENT`：價錢來源範圍、Metadata Schema、required 功能、門禁不變；
+    Price.com 仍標示 legacy／被 Cloudflare 封鎖，唔會被描述為現役來源。
+  - `OBSERVED / E2`：pytest 831 passed；7/7 acceptance gates rc=0；feature-check
+    15 項／18 節點；審計 951 個 review 候選（細節見 `docs/STATUS.md` §25）。
+  - `UNKNOWN`：legacy 低價疑點未證實；Price.com parser fixture 不存在（亦唔打算
+    建立）；E3／E4 未執行。
+  - `BOUNDARY`：無真實 API／無 private repo／無 push／deploy。
+- **回滾**：如日後用戶改變 Price.com 決定，須以新決策取代本項並另行授權；身份
+  matcher 同審計工具可獨立保留。

@@ -27,7 +27,7 @@ import urllib.parse
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 from crawl_utils import norm_model, load_models, canonical_model_key, load_brand_lookup
-from price_utils import num_price as _num_price, is_ac_title
+from price_utils import num_price as _num_price, is_ac_title, model_excerpt
 from batch_utils import (PRICE_BATCH_DAYS, load_meta, get_batch_todo)
 from model_lifecycle import (load_blacklist, filter_active, plan_record_results,
                              plan_revive, compute_effects)
@@ -334,9 +334,15 @@ def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=DEFAULT_MAX_ATTEMPTS, 
 
 
 def _extract_price(data, model):
-    """從 API data 抽最平價（共用過濾規則：型號精確匹配 + 冷氣關鍵字 + 排除配件 + 香港商戶）；冇匹配回 None"""
+    """從 API data 抽最平價（共用過濾規則：型號 boundary-aware 匹配 + 冷氣關鍵字 + 排除配件 + 香港商戶）；冇匹配回 None
+
+    新抓取會一併保留最平項目的 `matchedTitle` 同 `nindex` 作身份證據（公開資料、
+    非秘密；只限 upstream response 真的有嘅值，唔會 retroactively 補舊快照）。
+    `matchedTitle` 係包含匹配型號嘅 bounded NFKC 正規化 excerpt；型號長過 limit → 唔
+    加該欄，唔會聲稱有 identity 證據。
+    """
     nm = norm_model(model)
-    prices = []
+    matched = []
     for it in (data or {}).get('list', []):
         title = (it.get('title') or '').strip()
         # 共用過濾規則（同 PricesAPI 一套）：型號精確匹配 + 冷氣關鍵字 + 排除配件
@@ -348,17 +354,26 @@ def _extract_price(data, model):
             continue
         p = _num_price(it.get('price'))
         if p:
-            prices.append(p)
-    if not prices:
+            matched.append({'price': p, 'excerpt': model_excerpt(title, nm, limit=200),
+                            'nindex': nindex[:64]})
+    if not matched:
         return None
+    prices = [m['price'] for m in matched]
     lo, hi = min(prices), max(prices)
+    cheapest = min(matched, key=lambda m: m['price'])
     price = f'${lo:,}-{hi:,}' if hi > lo else f'${lo:,}起'
-    return {
+    entry = {
         'price': price,
         'merchants': len(prices),
         'url': 'https://biggo.hk/s/?q=' + urllib.parse.quote(model),
         'updated': time.strftime('%Y-%m-%d'),
     }
+    excerpt = cheapest['excerpt']
+    if excerpt:
+        entry['matchedTitle'] = excerpt
+    if cheapest['nindex']:
+        entry['nindex'] = cheapest['nindex']
+    return entry
 
 
 def fetch_biggo_price(model):

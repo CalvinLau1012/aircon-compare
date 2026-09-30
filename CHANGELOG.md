@@ -277,6 +277,42 @@
 - **預期**：merge 後由下一次自然 schedule daily 全量重生 payload（同時修復 D24 嘅
   `payload.pdf_matches_metadata`）；本輪唔會再手動 dispatch production daily。
 
+### 2026-09-30 價錢身份 boundary matcher ＋ 唯讀疑點審計（未發布、未部署）
+
+> Price.com.hk 抓取**早前已**放棄（Cloudflare anti-bot 硬封鎖）；2026-09-30 用戶再確認
+> 維持放棄；`fetch_prices.py` 未改；`prices.json` 只係 legacy 顯示後備。本節只係本機
+> 候選（E2）：未 commit、未 push、未 deploy、未觸發 GitHub Actions、未呼叫真實
+> BigGo／EMSD／Price.com API。
+
+- **型號身份 boundary matcher（OBSERVED / E2）**：`price_utils.model_in_title` 用 NFKC＋
+  alnum boundary＋逐個 candidate 守則檢查；`is_ac_title` 改用它。保護對象係 BigGo 官方
+  API 代碼路徑同（如日後啟用）`fetch_pricesapi.py` 代碼路徑；網站目前顯示價源鏈係
+  BigGo → Gemini → legacy Price.com 舊快照（checkout 冇 `pricesapi_prices.json`，
+  亦冇 workflow 使用 `fetch_pricesapi.py`），唔可以講成網站現時載入緊 PricesAPI。
+  `RC-N1219V` 唔再匹配 `RC-N1219VX`／`XRC-N1219V`／`RC-N12190V`；`-PAC` 等分隔變體
+  亦 conservative fail-closed 拒絕；標題同時有較長變體＋獨立合法型號時，後者通過守則
+  即 True；內部間隔只准空白／標點／符號（CJK 字母唔可以）。`RC N1219V`／`RC／N1219V`／
+  全形等合法標點空格保留。新增服務／零件排除（維修／清洗／冷媒／銅管／service／
+  installation 等），「原廠保養」等主機字眼保留。
+- **BigGo 新抓取身份證據**：`_extract_price` 對最平匹配項加 optional `matchedTitle`
+  （包含匹配型號嘅 bounded NFKC 正規化 excerpt，≤200 字元；型號本身長過 limit → 不加
+  該欄，唔聲稱有 identity 證據）／`nindex`（≤64），只限 upstream response 真有嘅值；
+  舊快照唔會 retroactively 補；coordinator `validate_price_snapshot`／
+  `validate_stage_result` 兼容 extras（測試鎖定）。
+- **唯讀疑點審計**：新增 `scripts/audit_price_suspects.py`（離線、零網絡、零快照寫入），
+  列 legacy `prices.json`／BigGo／Gemini 嘅覆核候選（低價、shared PID、missing identity、
+  single merchant），deterministic JSON 預設 stdout 或 repo 外路徑。只係 review flags，
+  **唔會**標 invalid／停產／隔離，亦唔會因金額單一理由判錯。
+- **本機 run（E2；read-only）**：951 個覆核候選（`low_price` 43、`shared_pid` 661、
+  `missing_identity_evidence` 265、`single_merchant` 244）；Price.com 舊快照候選維持
+  **UNKNOWN，未證實錯**，只作 legacy 顯示資料覆核。
+- **範圍**：Price.com.hk parser 未修、未重啟，唔會新增 selector／retry／anti-bot bypass；
+  現存 legacy 低價疑點唔會被當成已證實錯價。
+- **離線驗證（E2）**：完整 pytest **831 passed**（1 預期 duplicate-zip warning，含 browser
+  smoke 12）；`run_acceptance.py` 7/7 gates rc=0；feature-check 15 項／18 節點；
+  extract_governance／validate_data／validate_metadata／privacy worktree／`git diff --check`
+  全部 rc=0。
+
 ## [1.2.9] - 2026-09-24
 
 > 發布事實（2026-09-24 回讀）：tag `v1.2.9` → commit

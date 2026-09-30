@@ -1162,3 +1162,52 @@ force 可被同日／較舊 normal 奪回。
   extract_governance／validate_data／validate_metadata／privacy worktree／`git diff --check`
   全部 rc=0。
 - **UNKNOWN／未做**：E3／E4 未執行；未 push／deploy／呼叫真實 BigGo。
+
+---
+
+## §25 價錢身份 boundary matcher ＋ 唯讀疑點審計（2026-09-30 追加；E2）
+
+本節只追加，不改寫 §20–§24。對應用戶 2026-09-30 再確認：Price.com.hk 抓取**早前已**因
+Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_prices.py` 不動，
+`prices.json` 只係 legacy 顯示後備。
+
+- **matcher（OBSERVED / E2）**：`price_utils.model_in_title` 用 NFKC 半形化＋
+  alnum boundary＋逐個 candidate 守則檢查；`is_ac_title` 改用它，保護 BigGo 官方 API
+  代碼路徑同（如日後啟用）`fetch_pricesapi.py` 代碼路徑。
+  - **顯示來源事實**：網站目前 `generate_html.best_price` 只用 BigGo → Gemini →
+    legacy Price.com 舊快照（3-source 簽名，pricesapi=None）；checkout 冇
+    `pricesapi_prices.json`，亦冇 workflow 使用 `fetch_pricesapi.py`；唔可以描述成
+    「網站而家載入緊 PricesAPI」。
+  - 拒絕：`RC-N1219VX`、`XRC-N1219V`、`RC-N12190V`、`RC-N1219V-PAC`、`RC-N1219V_1`；
+  - 允許：`RC N1219V`、`RC／N1219V`、`RC-N1219-V`、全形、`RC-N1219V 1匹`、
+    `RC-N1219V窗口機`；標題同時有較長變體＋獨立合法型號時，只要後者通過守則就
+    True（例：`RC-N1219V-PAC / RC-N1219V 窗口冷氣機`）；
+  - 內部間隔只准空白／標點／符號（NFKC 後），CJK 等字母唔可以（`R冷氣C-N1219V` 拒絕）；
+  - model 少於 4 個英數字一律 False（同 BigGo／fetch_pricesapi 上游 `len(nm) < 4` 一致）；
+  - 新增服務／零件排除（維修／清洗／冷卻相關零件／service／installation 等）；
+    「原廠保養」等主機字眼保留。
+  - **Tradeoff（已知 false negative）**：`-PAC` 等分隔變體會被拒；無真實 fixture
+    之前揀保守 fail-closed（寧可漏價，唔可錯配身份）。
+- **BigGo evidence（OBSERVED / E2）**：`fetch_biggo._extract_price` 對最平匹配項加
+  optional `matchedTitle`／`nindex`（≤64）；只限 upstream response 真有嘅值，舊快照
+  唔會 retroactively 補。`matchedTitle` 係包含匹配型號嘅 bounded NFKC 正規化 excerpt
+  （≤200 字元；型號本身長過 limit → 不加該欄，唔聲稱有 identity 證據）；
+  `validate_price_snapshot` 同 `validate_stage_result` 對 extras 兼容（測試鎖定）。
+- **唯讀審計（OBSERVED / E2）**：新增 `scripts/audit_price_suspects.py`；離線、無網絡、
+  零快照寫入；deterministic JSON；預設 stdout，`--out` 只可寫 repo 外（`--allow-repo-path`
+  才可寫 repo 內）。本機 run：951 候選（`low_price` 43、`shared_pid` 661、
+  `missing_identity_evidence` 265、`single_merchant` 244）；全部只係 review flags，
+  **未證實錯價**，亦唔會標 invalid／停產／隔離。
+- **未做／UNKNOWN**：
+  - Price.com.hk parser **未修、未重啟、無新 selector／retry／anti-bot bypass**；
+    `fetch_prices.py` 原樣；
+  - `prices.json` 內低價疑點維持 UNKNOWN（`S1813V-PAC $45`、`S1216H-PAC $48`、
+    `RC-N1219V` legacy `$2,988`／BigGo `$50` 等）；舊 BigGo entry 冇 title 證據，
+    唔可離線追溯證實或否定；
+  - E3／E4 未執行；未 push／deploy／呼叫真實 BigGo／Price.com。
+- **E2 證據（2026-09-30 本機）**：完整 pytest **831 passed**（1 預期 duplicate-zip
+  warning，含 browser smoke 12）；`run_acceptance.py` **7/7 gates rc=0**（report
+  `D:\tmp\aircon-price-identity\acceptance2.json`）；feature-check 15 項／18 節點 passed；
+  extract_governance／validate_data／validate_metadata／privacy worktree／
+  `git diff --check` 全部 rc=0；審計 report 寫喺 repo 外
+  `D:\tmp\aircon-price-identity\audit.json`。
