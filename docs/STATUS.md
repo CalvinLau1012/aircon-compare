@@ -1211,3 +1211,74 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
   extract_governance／validate_data／validate_metadata／privacy worktree／
   `git diff --check` 全部 rc=0；審計 report 寫喺 repo 外
   `D:\tmp\aircon-price-identity\audit.json`。
+
+---
+
+## §26 PDF 監控版本綁定（`--repro-from-commit`；2026-09-30 追加；E2）
+
+本節只追加，不改寫 §20–§25。
+
+- **背景（OBSERVED / E1）**：freshness monitor／GATE-08 之前用 current checkout 嘅
+  `空調對比報告.md`＋current CSV 重建線上 PDF；online `metadata.commit`（部署源碼 commit）
+  可能舊過 checkout，docs-only 改動會造成假 `payload.pdf_matches_metadata` failure
+  （D24 已記錄）。
+- **實作（opt-in；預設行為完全不變）**：
+  1. `scripts/postdeploy_check.py` 加 `--repro-from-commit`；只在原有嚴格
+     metadata／payload 檢查之上做額外 PDF 輸入綁定。
+  2. 只讀**本地 git 物件**（`cat-file -e`、`merge-base --is-ancestor`、`show`；
+     無 fetch／clone／checkout、無遠程 raw URL）；驗證 online `metadata.commit` 係完整
+     40-hex、存在本地、係 current HEAD 或 `origin/master` 祖先。
+  3. 歷史 `空調對比報告.md` bytes 由 `git show` 取得；CSV 用線上已抓 bytes 並再次核對
+     `expected.datasetHash`；唔會 fallback current md／CSV。
+  4. generator 依賴（`generate_pdf.py`／`generate_html.py`／`crawl_utils.py`／
+     `models_data.py`）必須同 `metadata.commit` byte-equal；之後再核**實際 runtime 載入
+     模組** `__file__` `realpath` 係 executing checkout 內（防 `sys.modules` 快取／其他
+     tree 同名 module／symlink 繞過）。code drift → `pdf.repro_code_changed`（fail closed，
+     唔 build、唔執行歷史 code；唔執行 fetched code）。
+  5. `requirements.txt`（metadata.commit 版本）嘅 `markdown`／`reportlab` pin 對比已裝版本；
+     mismatch／缺 pin → `pdf.repro_env_changed`。
+  6. 缺 commit／file／CSV → `pdf.repro_inputs_unavailable`。
+  7. 成功時 report 有 `pdf.repro_inputs_commit`（完整 commit＋ancestry）同
+     `pdf.repro_inputs_sha256`（短碼顯示）；另有 machine-readable
+     `report['reproInputs']`（完整 40-hex commit＋md／csv／requirements／每個 generator
+     dependency 嘅完整 `sha256:…`）。
+  8. 之後仍然要求嚴格 `payload.pdf_matches_metadata`（線上 PDF bytes == 用歷史 md＋
+     線上驗證 CSV＋exact online metadata 重建）；所有 metadata／payload hash 檢查保留。
+  9. `generate_html.expand_dynamic_sections`／`energy_distribution_markdown` 同
+     `generate_pdf.build_pdf` 加 optional `csv_path`／`md_path`；默認（`None`）行為
+     byte 不變；動態能源表用已驗證 online CSV。
+- **workflows**：`freshness-monitor.yml` checkout 加 `fetch-depth: 0` 同
+  `--repro-from-commit`；`postdeploy-verify.yml` 加 `--repro-from-commit`（保留 exact
+  checkout＋master ancestor guard）；`release-archive.yml` 未改（checkout 就係 deployed
+  commit，現行重建已一致）。
+- **E2 證據（2026-09-30 本機）**：
+  - focused（postdeploy／freshness／workflow／pdf guard／energy／twostage／p0／pages 共 8 檔）
+    **112 passed**；`--repro-from-commit` 專項 **11 passed**：docs-only 舊 md pass、online
+    CSV 覆核（local CSV 唔同仍 pass）、missing commit／md、historical code drift、
+    env pin drift、錯 PDF bytes、flag-off 不變、`origin/master` fallback、runtime source
+    binding（cached module 繞過）、git 只讀 allowlist。
+  - 全 pytest（非 browser）**830 passed**（1 預期 duplicate-zip warning）；
+    `run_acceptance.py` **7/7 gates rc=0**、PYTEST **842 passed**（含 browser smoke 12）；
+    extract_governance／feature-check 15 項/18 節點／validate_metadata／validate_data／
+    privacy worktree／`git diff --check` 全部 rc=0。
+- **已知限制（UNKNOWN／residual）**：
+  - 直到下一次自然 daily 用新 generator code 重新部署，舊線上 PDF 可能出現
+    `pdf.repro_code_changed`（fail closed，唔會假過）；next daily 全量重生後恢復。
+  - env binding 只覆蓋 `requirements.txt` 直接 pin 嘅 markdown／reportlab；Python 版本、
+    其 transitive deps、字體／locale 未證明全部 pinned。
+  - `--repo` 只係測試／替代 checkout 嘅歷史來源；runtime attestation 一定綁 executing
+    checkout `BASE`，唔會執行 fetched／歷史 code。
+  - E3／E4 未執行；線上 monitor 實際 run 未觀察；未 push／deploy／呼叫真實
+    BigGo／EMSD／Price.com API。
+
+### §26.1 Codex 獨立驗收（2026-09-30 23:52 HKT；E2）
+
+- 獨立審查實際差異，重跑 postdeploy／freshness／workflow security／PDF metadata／
+  energy distribution／metadata twostage／P0 regressions／Pages deploy 共 8 個測試檔：
+  **138 passed，rc=0**。此組測試同上述 focused 112 組合不同，數字不可混用。
+- 逐一重算 acceptance 的 7 份 gate 日誌 SHA-256，全部與 receipt 一致且 rc=0；
+  PYTEST 日誌確認 **842 passed**，feature 日誌確認 **15 required／18 節點全部通過**。
+- 核對 CHANGELOG／DECISIONS／STATUS 既有行全部依序保留；`需求摘要.md`、AGENTS、
+  metadata、index、PDF、價格快照、Price.com 抓取程式及 VERSION 均未改。
+- 公開 privacy worktree **0 命中**、`git diff --check` 通過。結論只限本機候選；
+  E3／E4 仍 UNKNOWN，未發出遠程更新或 production 任務。

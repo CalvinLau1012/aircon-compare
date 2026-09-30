@@ -365,6 +365,8 @@ def test_postdeploy_reusable_is_chained_to_successful_pages_deploy_securely():
     assert 'git rev-parse "$INPUT_REF"^{commit}' in runs
     assert 'merge-base --is-ancestor HEAD origin/master' in runs
     assert 'postdeploy_check.py' in runs
+    assert '--repro-from-commit' in runs
+    assert '--no-pdf-repro' not in runs, '不可用 no-pdf-repro 繞過 PDF hash 重建'
 
 
 # ---------------------------------------------------------------- release-archive

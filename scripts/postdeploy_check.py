@@ -25,9 +25,12 @@
 """
 import argparse
 import hashlib
+import importlib.metadata
 import importlib.util
 import json
 import os
+import re
+import subprocess
 import sys
 import tempfile
 import time
@@ -46,6 +49,11 @@ REQUIRED_COMPARE_FIELDS = (
     'version', 'build', 'commit', 'workflowRunId', 'releasePayloadHash',
     'datasetHash', 'datasetDate', 'deployTime',
 )
+# --repro-from-commit：實際影響 PDF bytes 嘅 generator 依賴（byte-equal 才可用當前 code）。
+REPRO_CODE_PATHS = ('generate_pdf.py', 'generate_html.py', 'crawl_utils.py', 'models_data.py')
+REPRO_MD_PATH = '空調對比報告.md'
+REPRO_REQUIREMENTS_PATH = 'requirements.txt'
+REPRO_PIN_PACKAGES = ('markdown', 'reportlab')
 
 
 def metadata_schema_errors(meta):
@@ -144,6 +152,195 @@ def check(name, cond, detail=None):
         entry['detail'] = detail if isinstance(detail, (str, int, float)) else str(detail)
     print(('PASS ' if cond else 'FAIL ') + name + (f' :: {detail}' if detail is not None else ''))
     return entry
+
+
+def _git_run(repo, *argv, timeout=30):
+    """只讀本地 git 物件；冇網絡 fetch、無 shell。"""
+    try:
+        return subprocess.run(['git', '-C', repo, *argv], capture_output=True, timeout=timeout)
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _git_ok(repo, *argv):
+    proc = _git_run(repo, *argv)
+    return bool(proc is not None and proc.returncode == 0)
+
+
+def _git_bytes(repo, *argv):
+    proc = _git_run(repo, *argv)
+    if proc is None or proc.returncode != 0:
+        return None
+    return proc.stdout
+
+
+def _repo_file_bytes(repo, rel):
+    try:
+        with open(os.path.join(repo, rel), 'rb') as f:
+            return f.read()
+    except OSError:
+        return None
+
+
+def _sha256_hex(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def _requirement_pins(text, packages=REPRO_PIN_PACKAGES):
+    pins = {}
+    for line in text.splitlines():
+        line = line.strip()
+        m = re.match(r'^([A-Za-z0-9_.-]+)\s*==\s*([^\s#;]+)', line)
+        if not m:
+            continue
+        name = m.group(1).lower().replace('_', '-')
+        if name in packages:
+            pins[name] = m.group(2)
+    return pins
+
+
+def _resolve_repro_inputs(args, expected, online, csv_rel, blobs):
+    """--repro-from-commit 輸入解析；回 (inputs, failure_name, detail)。
+
+    failure_name ∈ {pdf.repro_inputs_unavailable, pdf.repro_code_changed,
+    pdf.repro_env_changed}；任何缺失／hash 唔符都不會 fallback 去 current md／CSV。
+    全程只讀本地 git 物件（git show／cat-file），永遠唔執行 fetched code。
+    """
+    if not isinstance(online, dict):
+        return None, 'pdf.repro_inputs_unavailable', 'online metadata 唔可用'
+    commit = str(online.get('commit') or '')
+    if not re.fullmatch(r'[0-9a-f]{40}', commit):
+        return None, 'pdf.repro_inputs_unavailable', 'metadata.commit 唔係完整 40-hex'
+    repo = args.repo
+    if not _git_ok(repo, 'cat-file', '-e', commit + '^{commit}'):
+        return None, 'pdf.repro_inputs_unavailable', f'commit 唔存在本地：{commit[:12]}'
+    ancestry = None
+    if _git_ok(repo, 'merge-base', '--is-ancestor', commit, 'HEAD'):
+        ancestry = 'head'
+    elif _git_ok(repo, 'merge-base', '--is-ancestor', commit, 'origin/master'):
+        ancestry = 'origin/master'
+    if ancestry is None:
+        return None, 'pdf.repro_inputs_unavailable', \
+            f'commit 唔係 HEAD／origin/master 祖先：{commit[:12]}'
+    code_hashes = {}
+    for rel in REPRO_CODE_PATHS:
+        hist = _git_bytes(repo, 'show', f'{commit}:{rel}')
+        if hist is None:
+            return None, 'pdf.repro_inputs_unavailable', f'{rel} 喺 commit 唔存在'
+        # 對比實際執行 checkout（BASE）嘅 bytes，唔係 caller 提供嘅 repo；
+        # 交付後又會再核 runtime 載入模組嘅 __file__ 係否 BASE 內（避免 cached module bypass）。
+        current = _repo_file_bytes(BASE, rel)
+        if current is None:
+            return None, 'pdf.repro_inputs_unavailable', f'executing checkout 冇 {rel}'
+        if current != hist:
+            return None, 'pdf.repro_code_changed', f'{rel} 同 metadata.commit 版本唔一致'
+        code_hashes[rel] = _sha256_hex(hist)
+    req = _git_bytes(repo, 'show', f'{commit}:{REPRO_REQUIREMENTS_PATH}')
+    if req is None:
+        return None, 'pdf.repro_inputs_unavailable', \
+            f'{REPRO_REQUIREMENTS_PATH} 喺 commit 唔存在'
+    pins = _requirement_pins(req.decode('utf-8', 'replace'))
+    env = {}
+    for pkg in REPRO_PIN_PACKAGES:
+        try:
+            installed = importlib.metadata.version(pkg)
+        except importlib.metadata.PackageNotFoundError:
+            installed = None
+        pin = pins.get(pkg)
+        if pin is None:
+            return None, 'pdf.repro_env_changed', f'requirements 冇 {pkg} 可核實 pin'
+        if installed != pin:
+            return None, 'pdf.repro_env_changed', f'{pkg} 已裝 {installed!r} != pin {pin!r}'
+        env[pkg] = installed
+    md = _git_bytes(repo, 'show', f'{commit}:{REPRO_MD_PATH}')
+    if md is None:
+        return None, 'pdf.repro_inputs_unavailable', f'{REPRO_MD_PATH} 喺 commit 唔存在'
+    csv_bytes = blobs.get(csv_rel) if csv_rel else None
+    if not csv_bytes:
+        return None, 'pdf.repro_inputs_unavailable', '線上 CSV bytes 唔可用'
+    csv_hash = 'sha256:' + _sha256_hex(csv_bytes)
+    if csv_hash != expected.get('datasetHash'):
+        return None, 'pdf.repro_inputs_unavailable', \
+            '線上 CSV 同 expected.datasetHash 唔一致'
+    return {
+        'commit': commit, 'ancestry': ancestry,
+        'md': md, 'csv': csv_bytes,
+        'md_sha256': _sha256_hex(md), 'csv_sha256': _sha256_hex(csv_bytes),
+        'requirements_sha256': _sha256_hex(req),
+        'code_sha256': code_hashes, 'env': env,
+    }, None, None
+
+
+def _pdf_repro_from_commit(args, expected, online, blobs, pdf_rel, csv_rel, rec, report):
+    """Opt-in：用 metadata.commit 嘅 md bytes＋線上驗證 CSV，重建 exact PDF hash。"""
+    inputs, failure, detail = _resolve_repro_inputs(args, expected, online, csv_rel, blobs)
+    if failure:
+        rec(check(failure, False, detail))
+        return
+    rec(check('pdf.repro_inputs_commit', True,
+              f"commit={inputs['commit']} ancestry={inputs['ancestry']}"))
+    code_receipt = ', '.join(f'{name}:{digest[:12]}'
+                             for name, digest in sorted(inputs['code_sha256'].items()))
+    rec(check('pdf.repro_inputs_sha256', True,
+              f"md=sha256:{inputs['md_sha256'][:16]} "
+              f"csv=sha256:{inputs['csv_sha256'][:16]} "
+              f"requirements=sha256:{inputs['requirements_sha256'][:16]} "
+              f"code=[{code_receipt}] env={inputs['env']}"))
+    # 完整 SHA-256 receipts（machine-readable）；短碼只作人類顯示。
+    report['reproInputs'] = {
+        'commit': inputs['commit'],
+        'ancestry': inputs['ancestry'],
+        'mdSha256': 'sha256:' + inputs['md_sha256'],
+        'csvSha256': 'sha256:' + inputs['csv_sha256'],
+        'requirementsSha256': 'sha256:' + inputs['requirements_sha256'],
+        'codeSha256': {rel: 'sha256:' + digest
+                       for rel, digest in sorted(inputs['code_sha256'].items())},
+        'env': dict(inputs['env']),
+    }
+    try:
+        sys.path.insert(0, BASE)
+        import generate_pdf  # noqa: PLC0415
+        import generate_html  # noqa: PLC0415
+        import crawl_utils  # noqa: PLC0415
+        import models_data  # noqa: PLC0415
+    except Exception as e:  # noqa: BLE001
+        rec(check('pdf.repro_code_changed', False,
+                  f'generator import 失敗：{type(e).__name__}'))
+        return
+    # Runtime binding：實際被執行嘅 generator 模組一定要來自 executing checkout（BASE），
+    # 防止 sys.modules 快取或其他 tree 嘅同名 module 繞過 byte comparison；
+    # 任何 symlink 以 realpath 比對，唔一致即 fail closed（唔 rebuild）。
+    base_real = os.path.realpath(BASE)
+    runtime_modules = {'generate_pdf.py': generate_pdf, 'generate_html.py': generate_html,
+                       'crawl_utils.py': crawl_utils, 'models_data.py': models_data}
+    for rel, module in runtime_modules.items():
+        module_file = getattr(module, '__file__', None)
+        expected_path = os.path.realpath(os.path.join(base_real, rel))
+        if not module_file or os.path.realpath(module_file) != expected_path:
+            rec(check('pdf.repro_code_changed', False,
+                      f'{rel} runtime source 唔係 executing checkout'))
+            return
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            meta_path = os.path.join(td, 'online-metadata.json')
+            with open(meta_path, 'w', encoding='utf-8') as f:
+                json.dump(online, f, ensure_ascii=False)
+            md_path = os.path.join(td, 'report.md')
+            with open(md_path, 'wb') as f:
+                f.write(inputs['md'])
+            csv_path = os.path.join(td, 'dataset.csv')
+            with open(csv_path, 'wb') as f:
+                f.write(inputs['csv'])
+            out = os.path.join(td, 'expected.pdf')
+            generate_pdf.build_pdf(out, metadata_path=meta_path,
+                                   md_path=md_path, csv_path=csv_path)
+            with open(out, 'rb') as f:
+                expected_hash = _sha256_hex(f.read())
+        got_hash = _sha256_hex(blobs[pdf_rel])
+        rec(check('payload.pdf_matches_metadata', got_hash == expected_hash,
+                  {'online': got_hash[:16], 'rebuilt': expected_hash[:16]}))
+    except Exception as e:  # noqa: BLE001
+        rec(check('payload.pdf_matches_metadata', False, f'{type(e).__name__}: {e}'))
 
 
 def browser_checks(base, expected, report, timeout):
@@ -391,18 +588,23 @@ def run(args):
         rec(check('payload.pdf_magic', blobs[pdf_rel].startswith(b'%PDF'),
                   blobs[pdf_rel][:8].decode('latin1')))
         if not args.no_pdf_repro:
-            try:
-                sys.path.insert(0, BASE)
-                import generate_pdf  # noqa: PLC0415
-                with tempfile.TemporaryDirectory() as td:
-                    out = os.path.join(td, 'expected.pdf')
-                    generate_pdf.build_pdf(out, metadata_path=args.expected_metadata)
-                    expected_hash = hashlib.sha256(open(out, 'rb').read()).hexdigest()
-                got_hash = hashlib.sha256(blobs[pdf_rel]).hexdigest()
-                rec(check('payload.pdf_matches_metadata', got_hash == expected_hash,
-                          {'online': got_hash[:16], 'rebuilt': expected_hash[:16]}))
-            except Exception as e:  # noqa: BLE001
-                rec(check('payload.pdf_matches_metadata', False, f'{type(e).__name__}: {e}'))
+            if args.repro_from_commit:
+                _pdf_repro_from_commit(args, expected, online, blobs, pdf_rel, csv_rel,
+                                       rec, report)
+            else:
+                try:
+                    sys.path.insert(0, BASE)
+                    import generate_pdf  # noqa: PLC0415
+                    with tempfile.TemporaryDirectory() as td:
+                        out = os.path.join(td, 'expected.pdf')
+                        generate_pdf.build_pdf(out, metadata_path=args.expected_metadata)
+                        expected_hash = hashlib.sha256(open(out, 'rb').read()).hexdigest()
+                    got_hash = hashlib.sha256(blobs[pdf_rel]).hexdigest()
+                    rec(check('payload.pdf_matches_metadata', got_hash == expected_hash,
+                              {'online': got_hash[:16], 'rebuilt': expected_hash[:16]}))
+                except Exception as e:  # noqa: BLE001
+                    rec(check('payload.pdf_matches_metadata', False,
+                              f'{type(e).__name__}: {e}'))
     if args.payload_dir:
         for rel, blob in blobs.items():
             local = os.path.join(args.payload_dir, rel)
@@ -445,6 +647,11 @@ def main(argv=None):
                     help='跳過瀏覽器（只建議喺無 Playwright 環境做 HTTP 部分；唔係完整 GATE-08）')
     ap.add_argument('--no-pdf-repro', action='store_true',
                     help='跳過「線上 PDF bytes 必須等於用 expected metadata 重建」檢查（預設開啟）')
+    ap.add_argument('--repro-from-commit', action='store_true',
+                    help='PDF 重建改用 expected metadata.commit 嘅 md bytes＋線上驗證 CSV；'
+                         'generator code 必須同該 commit byte-equal，否則 fail closed')
+    ap.add_argument('--repo', default=BASE,
+                    help='checkout／git repo 根目錄（--repro-from-commit 用；預設 repo 根）')
     args = ap.parse_args(argv)
     try:
         return run(args)

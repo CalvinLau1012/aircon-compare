@@ -313,6 +313,37 @@
   extract_governance／validate_data／validate_metadata／privacy worktree／`git diff --check`
   全部 rc=0。
 
+### 2026-09-30 PDF monitor 版本綁定（`--repro-from-commit`；未發布、未部署）
+
+> 只係本機候選（E2）：未 commit、未 push、未 deploy、未觸發 GitHub Actions、未呼叫真實
+> BigGo／EMSD／Price.com API；Price.com 抓取維持放棄，冇觸碰 `fetch_prices.py`。
+
+- **`scripts/postdeploy_check.py`**：新增 opt-in `--repro-from-commit`（預設不變）：
+  - 只讀本地 git 物件（`cat-file`／`merge-base`／`show`；無 fetch／clone／checkout、
+    無遠程 raw URL）；驗證 online `metadata.commit` 完整 40-hex、存在、係 HEAD 或
+    `origin/master` 祖先；
+  - 歷史 `空調對比報告.md` bytes＋線上 `datasetHash` 驗證 CSV（不 fallback current
+    md／CSV）；
+  - generator 依賴 byte-equal `metadata.commit` 後，再核實際 runtime 模組 `__file__`
+    realpath 係 executing checkout（防 cached module／symlink 繞過）；drift →
+    `pdf.repro_code_changed`；
+  - requirements pin 對比已裝版本；mismatch／缺 pin → `pdf.repro_env_changed`；
+    缺 commit／file／CSV → `pdf.repro_inputs_unavailable`；
+  - 成功時 `report['reproInputs']` 有完整 SHA-256（md／csv／requirements／4 個 generator）
+    及完整 commit；短碼顯示保留；最後仍要求嚴格 `payload.pdf_matches_metadata`。
+- **generator**：`generate_pdf.build_pdf`／`generate_html.expand_dynamic_sections` 加
+  optional `md_path`／`csv_path`；默認 `None` 行為 byte 不變；動態能源表用已驗證 online CSV。
+- **workflows**：`freshness-monitor.yml` 加 `fetch-depth: 0` 同 `--repro-from-commit`；
+  `postdeploy-verify.yml` 加 `--repro-from-commit`（exact checkout＋master ancestor guard
+  不變）；`release-archive.yml` 未改。
+- **E2**：focused 112 passed（repro 專項 11）；全 pytest（非 browser）830 passed；
+  `run_acceptance.py` 7/7 gates rc=0、PYTEST 842 passed；extract_governance／feature-check
+  15 項/18 節點／validate_metadata／validate_data／privacy worktree／`git diff --check`
+  全 rc=0。
+- **已知限制**：舊線上 PDF 可能一次 `pdf.repro_code_changed`（fail closed），下一次自然
+  daily 全量重生後恢復；env binding 只覆蓋 markdown／reportlab 直接 pin，其他 runtime
+  因素未證明 pinned；E3／E4 UNKNOWN。
+
 ## [1.2.9] - 2026-09-24
 
 > 發布事實（2026-09-24 回讀）：tag `v1.2.9` → commit

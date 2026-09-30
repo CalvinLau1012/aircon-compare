@@ -1015,3 +1015,30 @@
   - `BOUNDARY`：無真實 API／無 private repo／無 push／deploy。
 - **回滾**：如日後用戶改變 Price.com 決定，須以新決策取代本項並另行授權；身份
   matcher 同審計工具可獨立保留。
+
+### D24 · 2026-09-30 追加：PDF 監控版本綁定（`--repro-from-commit`）
+
+- **背景**：D24 記錄咗 docs-only 改動會令 GATE-08／freshness monitor 用 current
+  checkout 嘅 Markdown／CSV 重建舊部署 PDF 而假紅。用戶 2026-09-30 授權 PDF 監控
+  版本綁定階段。
+- **決策（opt-in，預設不改；不降門禁）**：`scripts/postdeploy_check.py` 加
+  `--repro-from-commit`：用 online `metadata.commit` 嘅本地 git 物件讀歷史 md bytes，
+  配線上 `datasetHash` 驗證 CSV；generator 依賴必須 byte-equal `metadata.commit`，
+  並核實際 runtime 模組 `__file__` realpath 係 executing checkout；code drift →
+  `pdf.repro_code_changed`、env pin drift → `pdf.repro_env_changed`、缺輸入 →
+  `pdf.repro_inputs_unavailable`；成功後完整 SHA-256 receipts 入 machine-readable
+  `report['reproInputs']`，最後仍要求嚴格 `payload.pdf_matches_metadata`。全程唔執行
+  fetched／歷史 code、無 fetch／clone／checkout、冇 `--no-pdf-repro` bypass。
+- **原因**：區分「部署包自身可重現」同「current master 同部署一致」；令 docs-only 但
+  generator code／依賴 pin 不變嘅情況唔再假紅，同時任何 code／env drift 都 fail closed。
+- **後果（分類）**：
+  - `REQUIREMENT`：required 功能、Metadata Schema、成功標準、payload hash／CSV hash／
+    完整 metadata 等值、GATE-08 同 Pages source success 閘門全部不變。
+  - `OBSERVED / E2`：focused 112 passed（repro 專項 11）；全 pytest（非 browser）
+    830 passed；7/7 acceptance gates rc=0、PYTEST 842 passed；治理／feature／metadata／
+    data／privacy／diff check 全 rc=0（細節見 `docs/STATUS.md` §26）。
+  - `UNKNOWN`：E3／E4 未執行；線上 monitor 實際 run 未觀察；舊部署 PDF 可能一次
+    `pdf.repro_code_changed`（直到 next daily 用新 code 全量重生）；env binding 未覆蓋
+    Python／transitive deps／字體／locale。
+  - `BOUNDARY`：無 push／deploy／真實 API／私人 repo；未改 `fetch_prices.py`。
+- **回滾**：revert 本階段 commit 即回復舊 current-md 重建行為（連帶回復 D24 假紅窗口）。

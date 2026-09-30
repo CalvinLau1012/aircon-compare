@@ -127,12 +127,15 @@ def _normalize_pdf_bytes(data):
     return data
 
 
-def build_pdf(output_path=None, metadata_path=None):
+def build_pdf(output_path=None, metadata_path=None, md_path=None, csv_path=None):
     """生成 PDF；output_path 預設 repo 根目錄（CI 用），測試應傳 tmp_path 避免覆寫使用者 PDF。
 
     metadata_path：本次部署嘅 metadata 來源；預設讀 repo 根目錄 metadata.json。
     CI 兩階段封裝會傳入同 run 嘅 metadata core（見 docs/DECISIONS.md D14），
     確保 PDF 嘅 version／datasetDate／deployTime 同最終 metadata 完全一致。
+    `md_path`／`csv_path` 可指定報告 Markdown 同動態能源表 CSV 來源；預設（None）
+    行為完全不變。部署後重建（postdeploy_check --repro-from-commit）會傳入歷史
+    commit 嘅 md bytes＋線上經 hash 驗證嘅 CSV bytes。
     """
     out_path = output_path or OUT_PATH
     from reportlab.lib.pagesizes import A4
@@ -179,8 +182,11 @@ def build_pdf(output_path=None, metadata_path=None):
              Paragraph(line2, st_q),
              Spacer(1, 6)]
 
-    with open(MD_PATH, encoding='utf-8') as f:
-        md_text = expand_dynamic_sections(f.read())
+    with open(md_path or MD_PATH, encoding='utf-8') as f:
+        if csv_path is None:
+            md_text = expand_dynamic_sections(f.read())
+        else:
+            md_text = expand_dynamic_sections(f.read(), csv_path=csv_path)
     html = markdown.markdown(md_text, extensions=['tables', 'fenced_code', 'sane_lists'])
     ex = BlockExtractor()
     ex.feed(html)
