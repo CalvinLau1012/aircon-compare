@@ -825,3 +825,155 @@
     validate_metadata version 1.2.9／datasetDate 2026-09-28。
   - `UNKNOWN`：修復後第二次 production daily（自然 schedule）尚未執行；E4 未觀察。
 - **回滾**：revert 本 commit；失敗路徑本身保留舊 CSV（雙來源 fail-closed），舊資料不受影響。
+
+## D29 · BigGo stage bundle 交易與本地 apply（P0 修復；append-only）
+
+- **日期**：2026-09-30
+- **狀態**：已實作候選（本機 E2）；未 push／未開 PR／未 deploy；交獨立驗收
+- **背景**：D26 已批准雙 writer／共享憑證 CAS lease 架構，但 `fetch_biggo` 網絡階段會在
+  coordinator publish 前寫本地四檔並推進 idx；`completed-idempotent` 唔 sync；active
+  loser 只寫 snapshot；`acquire` 可被陳舊 writer 倒退高 stage；snapshot-only 無法重播
+  tracking／blacklist effects（2026-09-30 離線重現）。
+- **選項**：
+  - A：維持現狀＋文件警告——否決：publish 失敗即 remote／本地分歧，且倒退風險仍在；
+  - B（採用）：網絡階段零寫入；write-ahead intent；immutable v2 bundle（base/new
+    snapshot＋stage-result＋manifest）；CAS completed 後 local apply；acquire 單調守門；
+    CI guard／紅 alert；
+  - C：改 coordinator state schema version 或 metadata schema——超出本輪 P0 且影響私人
+    repo／公開 metadata，否決。
+- **決策**：採 B。實作全部在公開 repo；coordinator state 只加 optional 欄位
+  （`callsMayHaveStarted`／`intentAt`／`stageResultHash`／`stageResultPath`／`bundleHash`），
+  schemaVersion 維持 1；舊 v1 snapshot-only manifest 只會被拒絕自動 apply（人手處理）。
+- **原因**：符合 D26「已呼叫但 snapshot 未確定 → needs_review、禁止自動重跑、local
+  stage 先決」同「未確認價格唔可以上線」；所有效果可 hash 驗證、可重入、stage 只前進。
+- **後果（分類）**：
+  - `REQUIREMENT`：metadata Schema、required 功能、成功標準、fail-closed 門禁、
+    403/429／cooldown／budget／48h 規則同 inactive 零 API 全部不變。
+  - `OBSERVED / E2`：7/7 acceptance gates rc=0；pytest 717 passed；feature-check
+    15 項／18 節點；離線故障注入矩陣見 `docs/STATUS.md` §20。
+  - `UNKNOWN`：E3／E4、私人 coordinator 現有 state／legacy bundle、merge／部署未執行。
+  - `BOUNDARY`：未呼叫真實 BigGo／EMSD、未改私人 repo／Secrets、未改 metadata／版本號／
+    `index.html`／PDF／CSV／價格快照（除測試 temp fixture）。
+- **回滾**：revert 本輪 commit；新 runner 對舊 v1 manifest 會拒絕自動 apply 並發 alert；
+  如需完全回舊行為，需同時 revert `fetch_biggo.py`／`model_lifecycle.py`／
+  `biggo_coordinator.py`／`biggo_stage_runner.py`／workflow 同新增模組。
+
+### D29 · 2026-09-30 首輪返修（追加；不刪改上文）
+
+- **背景**：Codex 對 D29 首版 P0 交易實作做獨立審查，發現四類阻斷：stage 間 intent／
+  attempts 污染；same-owner renewed 可重跑；daily 尾步 alerts 會令 source run failure
+  而 `verify_deploy_request` 拒絕 Pages deploy；budget 只在 batch 前查一次、冇逐請求
+  reserve，且 blacklist review 額外請求未計入 cap；另有 `_needs_review` TypeError、
+  status artifact 跌返 error、review 缺 `should_abort`。
+- **決定（全部喺同一 D29 範圍內收緊，無新產品政策）**：
+  1. `_takeover_state` 只對同一 cycle/stage expired active takeover 保留 intent／attempts；
+     合法前進（完成前一 stage／新 cycle）fresh intent=false、attempts=0；completed commit
+     清 intent；cooldownUntil 保留為跨 stage 事實。
+  2. same-owner active 帶 durable intent → `winner-intent`；runner 只可完整 bundle adopt
+     或 needs_review。
+  3. BigGo 警報移至獨立只讀 `workflow_run` workflow；source 嚴格限制本 repo／master／
+     schedule 或 workflow_dispatch／40-hex head_sha／非 PR；success 或 failure 均可核實
+     （alert 不 deploy）；缺 artifact fail-closed。daily 保持 success、Pages source success
+     判定不變；未放寬 `verify_deploy_request`。
+  4. 新增 thread-safe per-request `RequestLimiter`；search cap = 1 smoke + 2×（batch＋
+     review 型號數）；token 1/stage；provider 80% 逐請求；refusal = 網絡錯誤／partial、
+     不當 clean miss。runner 與 fetch 共用 `stage_workload`／`force_workload` 定義。
+  5. `_needs_review` 經 emit 記精確 status／reason／requests；review incremental submit＋
+     `should_abort`＋cancel futures。
+- **原因**：維持 D26／D29 的「未確認唔可上線、交易確認後才 apply、fail-closed」契約；
+  警報可見性唔可以反過來破壞 daily 發布與 Pages 信任閘門。
+- **後果（分類）**：
+  - `REQUIREMENT`：metadata Schema、required 功能、成功標準、門禁全部不變；
+    `verify_deploy_request` 與 GATE-08 未被放寬。
+  - `OBSERVED / E2`：7/7 acceptance gates rc=0；pytest **752 passed**；feature-check
+    15 項／18 節點；離線故障注入見 `docs/STATUS.md` §21。
+  - `UNKNOWN`：E3／E4、merge／部署、alert workflow 實際 workflow_run 觸發未觀察。
+  - `BOUNDARY`：未 push／deploy／呼叫真實 BigGo／改私人 repo／改生產資料。
+- **回滾**：沿 D29 主文；新增 limiter／alert workflow 可獨立 revert（alert workflow
+  revert 後 daily 不受影響，只失去獨立紅色信號）。
+
+### D29 · 2026-09-30 第二輪返修（追加；不刪改上文）
+
+- **背景**：Codex 第二輪審查發現：（a）`acquire` 可讓新 stage 越過 remote 未完成
+  （active／idle）stage，連帶清走 expired active 的 durable intent；（b）providerQuotaLimit
+  的 80% 只按 stage-local attempts 計，跨 stage 可超額，且冇 window ledger；（c）需確認
+  apply／stage guard 只在 remote completed 生效、blocked-incomplete 紅色但唔阻無 diff 的
+  EMSD daily。
+- **決定（同一 D29 範圍收緊，無新產品政策）**：
+  1. `acquire` 未完成（active／idle）或 needs_review 的 remote stage 一律不可跨越：
+     同 stage 安全重入／adopt／needs-review 除外；新 result `blocked-incomplete`
+     （0 PUT、0 本地寫、0 BigGo、紅 alert）；正常／force 一視同仁，冇新 cycle 旁路。
+     `stale-writer` 舊 result 不再由 acquire 產生（runner 保留兼容分支）。
+  2. provider quota／window 有配置（env 或 legacy state）→
+     `blocked-quota-window-unsupported`，零 BigGo；`budget()` 標示
+     `providerWindowAccounting='unsupported'`；runner 不再把 stage-local 80% 傳入
+     limiter。provider window 在未有共享、持久、可核對 ledger 前維持 UNKNOWN／
+     fail-closed；48h 冷卻只係項目 fallback。
+  3. apply／immediate local writes 只在 remote completed 之後；`blocked-incomplete` 無
+     canonical diff，daily guard pass（EMSD 保持 success），獨立 alert workflow 紅；
+     `verify_deploy_request`、privacy、GATE 未改。
+- **後果（分類）**：
+  - `REQUIREMENT`：metadata Schema、required 功能、成功標準、Pages source success 閘門、
+    privacy／GATE 全部不變。
+  - `OBSERVED / E2`：7/7 acceptance gates rc=0；pytest **765 passed**；feature-check
+    15 項／18 節點；離線故障注入見 `docs/STATUS.md` §22。
+  - `UNKNOWN`：E3／E4、merge／部署、provider window 真實 window 用量（維持 fail-closed）。
+  - `BOUNDARY`：未 push／deploy／呼叫真實 BigGo／改私人 repo／改生產資料。
+- **回滾**：沿 D29 主文；acquire 收緊可獨立 revert（但會回復越 stage 風險）。
+
+### D29 · 2026-09-30 第二輪返修｜證據補記（追加；不刪改上文）
+
+- 加入 active stage1 由其他 owner 有效 lease 持有（跨 stage 只可 `lost`、0 PUT）的回歸後，
+  最終 `run_acceptance.py` 7/7 gates rc=0、PYTEST **766 passed**（1 預期 duplicate-zip
+  warning，含 browser smoke 12）；上文 765 為較早一次 run 實數。
+
+### D29 · 2026-09-30 第三輪返修（append-only；不刪改上文）
+
+- **背景**：Codex 第三輪發現：（a）`acquire` 只拒倒退、不拒跳級，remote completed
+  stage1 可跳去 stage3；較新 cycle 可在上一 cycle 未完成時開始；（b）fetch 的
+  `shutdown(wait=False)` 會在 running worker 仍存活時返回，runner 随即清除 limiter／
+  abort context，worker 可能無保護再 outbound。
+- **決定**：
+  1. completed remote 加 7-stage gap 守門：同日期只准 remote.stage+1；較新 cycle 需
+     上一 cycle 已 7/7 且新 cycle 由 stage1 開始；否則 `blocked-stage-gap`（0 PUT、
+     0 BigGo、0 apply、紅 alert）；force 係人手 intent，completed 後可另行處理，但唔可以
+     繞過 active／idle／needs_review；較舊請求維持 `completed-ahead`。
+  2. fetch 三個批次函式改有界 incremental submit + `wait(FIRST_COMPLETED)` +
+     `shutdown(wait=True, cancel_futures=True)`；abort-aware cooldown／pace／retry
+     sleep；token lock 單次 auth；REQUEST_STATS 加鎖；`_reserve` 每個 outbound 前執行。
+     Runner 只會在 fetch 返回後清除共享 context。
+- **原因**：維持 7-day 批次完整性與每請求 hard cap／abort 保護；唔可以出現無保
+  護的 orphan worker outbound。
+- **後果（分類）**：
+  - `REQUIREMENT`：metadata Schema、required 功能、成功標準、Pages source success、
+    privacy／GATE、provider fail-closed（§22）全部不變。
+  - `OBSERVED / E2`：7/7 acceptance gates rc=0；pytest **784 passed**；feature-check
+    15 項／18 節點；離線 worker／gap 故障注入全 pass（見 `docs/STATUS.md` §23）。
+  - `UNKNOWN`：E3／E4、merge／部署未執行；in-flight urlopen 不可中斷屬已知界限。
+  - `BOUNDARY`：未 push／deploy／呼叫真實 BigGo／改私人 repo／改生產資料。
+- **回滾**：沿 D29 主文；gap 守門與 worker wait 契約可獨立 revert（但會回復跳級／
+  orphan worker 風險）。
+
+### D29 · 2026-09-30 第四輪返修（force cycle 邊界；append-only）
+
+- **背景**：Codex 發現 `_stage_gap_reason`／`_guard_regression` 對 force 直接放行，
+  remote completed normal 1/7 可被 force 覆寫，force completed 又可被同日／較舊 normal
+  奪回，月度 cycle 進度遺失。
+- **決定（單一 state 下的最小 fail-closed 轉移，無 schema 變更）**：
+  1. remote normal N/7（N<7）→ 拒絕任何 force：`blocked-force-cycle-incomplete`。
+  2. remote normal 7/7 → 只准日期不早於 normal cycle 日期的 force；較舊 →
+     `blocked-stale`；同日若原 force cycle 已 completed → `completed-idempotent`。
+  3. remote force YYYY-MM-DD → 同日／較舊 normal 或較舊 force → `blocked-stale`；
+     較新 normal 只准 stage1（否則 `blocked-stage-gap`）；較新 force（人手 intent）
+     允許；首次無 state 的 force 允許。
+  4. active／idle／needs_review 一切照舊 fail-closed。
+- **原因**：force 只授權一次受 lease 查價，不代表授權放棄未完成月度 cycle；單一 state
+  下唯一安全做法係只喺 normal 7/7 或無 previous state 時容許 force，並且禁止時序倒退。
+- **後果（分類）**：
+  - `REQUIREMENT`：metadata Schema、required 功能、成功標準、Pages source success、
+    privacy／GATE、provider fail-closed、stage/worker 契約全部不變；冇降門禁。
+  - `OBSERVED / E2`：7/7 acceptance gates rc=0；pytest **800 passed**；feature-check
+    15 項／18 節點；force boundary 離線矩陣見 `docs/STATUS.md` §24。
+  - `UNKNOWN`：E3／E4、merge／部署、真實 force run 未觀察。
+  - `BOUNDARY`：未 push／deploy／呼叫真實 BigGo／改私人 repo／改生產資料。
+- **回滾**：沿 D29 主文；force 邊界可獨立 revert（但會回復覆寫未完成 cycle 的風險）。

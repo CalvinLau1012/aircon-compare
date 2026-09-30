@@ -1,0 +1,73 @@
+name: BigGo 人工覆核警報
+
+# P0 返修：BigGo needs_review／publish-uncertain／apply-failed 等警報唔可以令 daily
+# source run 變紅（否則 verify_deploy_request 的 source success 閘門會拒絕 Pages deploy）。
+# 呢個 workflow 係獨立、可信、只讀：
+#   - 只由 daily workflow_run 觸發；嚴格限制 event／repo／branch／conclusion／run id；
+#   - 唯讀權限；不執行任何 PR 代碼；
+#   - 下載綁定 source run 的 status artifact（缺失即紅，fail-closed）；
+#   - status 顯示需要人手覆核時，呢個 workflow 自己變紅（可見紅色信號），
+#     但 daily run 保持 success、Pages 的 source success 判定不受影響。
+on:
+  workflow_run:
+    workflows: ["每日偵測 · 新機分批更新"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: biggo-alert
+  cancel-in-progress: false
+
+jobs:
+  alert:
+    # 第一層 filter（第二層由 verify_biggo_alert_source.py 再做一次，fail-closed）。
+    # daily success：正常 needs_review／publish-uncertain 路徑（Pages 可繼續部署）；
+    # daily failure：guard 阻斷未確認 diff／apply-failed；alert 仍要可見。
+    if: >
+      (github.event.workflow_run.conclusion == 'success' ||
+       github.event.workflow_run.conclusion == 'failure') &&
+      (github.event.workflow_run.event == 'schedule' ||
+       github.event.workflow_run.event == 'workflow_dispatch') &&
+      github.event.workflow_run.head_branch == 'master' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    # runner 固定 ubuntu-24.04：避免浮動 latest label 於 2026-10-19 起自動轉 Ubuntu 26
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: 取出代碼（default branch；只讀）
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: 設定 Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: 核實來源 run（success／master／本 repo／非 PR）
+        env:
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          python scripts/verify_biggo_alert_source.py \
+            --event "$GITHUB_EVENT_PATH" --run-id "$RUN_ID"
+
+      - name: 下載綁定 source run 的 BigGo status artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: biggo-stage-status-${{ github.event.workflow_run.id }}
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/biggo-alert
+
+      - name: 確認 status artifact 存在（缺失即 fail-closed）
+        run: |
+          set -euo pipefail
+          test -f "$RUNNER_TEMP/biggo-alert/biggo-stage-status.json"
+
+      - name: BigGo 人工覆核警報（紅）
+        run: |
+          python scripts/verify_biggo_stage_artifacts.py --alert-only \
+            --status "$RUNNER_TEMP/biggo-alert/biggo-stage-status.json"

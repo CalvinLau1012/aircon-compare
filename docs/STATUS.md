@@ -919,3 +919,246 @@ GATE-08 `payload.pdf_matches_metadata` 會紅一次（待 daily 重生恢復）�
   privacy worktree（0 命中）／`git diff --check` 全部 rc=0。
 - **E4**：UNKNOWN——修復後嘅第二輪 production daily（自然 schedule）同 Pages deploy／GATE-08
   未執行；本節後續會追加實際結果。
+
+---
+
+## §20 BigGo P0 stage bundle 交易返修（2026-09-30 追加；E2）
+
+本節只追加，不刪除或改寫先前任何記述。本輪係 D26 已批准架構下的 P0 一致性修復；
+未執行任何生產／Push／部署／真實 BigGo 呼叫。
+
+- **背景（OBSERVED / E1，2026-09-30 本機）**：`fetch_biggo` 網絡批次會在 coordinator
+  publish 前寫 `biggo_prices.json`／`prices_meta.json`／`model_blacklist.json`／
+  `model_status.json`（離線重現：本地 idx 0→1、snapshot 已含新價、當時零 publish）；
+  `biggo_stage_runner` 的 `completed-idempotent` 只 skip、active loser 只寫 snapshot；
+  `acquire` 過期 takeover 可被陳舊 writer 倒退至較低 stage。
+- **交易語義（本輪實作）**：
+  1. **網絡階段零本地寫入**：smoke／force／batch／blacklist review 之後，canonical 四檔
+     byte 不變；效果只以 staged payload 回傳（`plan_record_results`／`plan_revive`／
+     `compute_effects` 純函數）。
+  2. **Write-ahead intent**：任何真實 BigGo 請求之前先 CAS 持久化
+     `callsMayHaveStarted`；CAS 失敗／lease lost 即禁止請求（`blocked-intent-persist`
+     rc=2／`needs-review`）。唔會每個 request 寫 coordinator。
+  3. **v2 bundle**：每 cycle+stage 寫入 immutable `base-biggo_prices.json`、
+     `biggo_prices.json`、`stage-result.json`（outcome ledger／effects／review evidence／
+     pre/post state hash／request counts）、`manifest.json`；manifest 係凍結點，
+     `state.status=completed` 才係交易確認點。base＋本 stage priced outcomes 必須等於
+     new snapshot（保留舊 stage keys；clean_miss／net_error 不得改 entry）。
+  4. **Local apply**：先全檔 preflight（每檔必須明確等於 pre-image 或 post-image，否則
+     零寫入 fail-closed）；再 snapshot → tracking → blacklist → `prices_meta.json`
+     （最後寫 `appliedBundleHash`／`appliedSnapshotHash`）；同一 bundle no-op、stage 只前進。
+  5. **角色語義**：active loser 零本地寫入、零 BigGo、零 apply；`completed-idempotent`
+     import＋apply；expired active 帶 intent 只可 adopt 完整 bundle（零 BigGo）或
+     `needs_review`，冇完整 bundle 不可自動重跑；legacy snapshot-only bundle 拒絕自動
+     apply（`completed-legacy-manual`）。
+  6. **acquire 單調守門（P0）**：同日期 remote 較高 stage（active／completed）或任何
+     `needs_review` → `stale-writer`／`completed-ahead`／`blocked-needs-review`，
+     **0 PUT、0 本地寫、0 BigGo**。
+  7. **CI guard／alert**：`--status-out` 寫脫敏 status artifact；未 CAS completed 的四檔
+     diff 由 `verify_biggo_stage_artifacts.py` 阻止 push；`needs-review`／
+     `publish-uncertain`／`completed-apply-failed`／legacy 等由 workflow 尾步
+     `--alert-only` 產生紅 run（EMSD 日常發布步驟已完成，唔受阻）。
+- **新增／修改檔案（本輪）**：新增 `biggo_canonical.py`、`scripts/biggo_apply.py`、
+  `scripts/verify_biggo_stage_artifacts.py`；修改 `fetch_biggo.py`、`model_lifecycle.py`、
+  `scripts/biggo_coordinator.py`、`scripts/biggo_stage_runner.py`、
+  `.github/workflows/daily-update.yml` 及對應測試。
+- **E2 證據（本機，2026-09-30）**：`run_acceptance.py` 7/7 gates rc=0（report
+  `D:\tmp\aircon-biggo-p0\acceptance-final.json`）；PYTEST **717 passed**（1 預期
+  duplicate-zip warning）；feature-check 15 項／18 節點 passed；extract_governance、
+  validate_data、validate_metadata、privacy worktree、`git diff --check` 全部 rc=0。
+  新增離線故障注入：lost active、completed idempotent、expired intent adopt／
+  no-bundle、partial／corrupt bundle、publish／commit／apply 失敗、pre/post mismatch、
+  meta last、stage monotonic 0 PUT、guard／alert、inactive token/search=0、force 無 bypass。
+- **UNKNOWN／未做**：未 commit／push／PR／merge／deploy；未呼叫真實 BigGo／EMSD；
+  未改私人 coordinator repo／Secrets；E3（受信任 CI）同 E4（部署後觀察）未執行；
+  legacy bundle 是否存在於私人 coordinator 屬 UNKNOWN（由 audit／alert 覆蓋）。
+- **補記（2026-09-30 同日）**：加入黑名單 review staged 回歸後，最終
+  `run_acceptance.py` 7/7 gates rc=0、PYTEST **718 passed**（1 預期 duplicate-zip
+  warning，含 browser smoke 12）；本節上文 717 為較早一次 run 的實數，兩者皆為 E2。
+
+---
+
+## §21 BigGo P0 首輪返修（Codex 四類阻斷；2026-09-30 追加；E2）
+
+本節只追加，不改寫 §20 任何記述。對應 Codex 首輪審查（P0 阻斷 1–5）的修正與離線回歸。
+
+- **1. stage N+1 intent 污染**：`_takeover_state` 只在「同一 cycle/stage 的 expired
+  active takeover」保留 write-ahead intent／per-stage attempts；完成前一 stage 或切新
+  cycle 一律 fresh `callsMayHaveStarted=false`、`attempts=0`；`commit(status='completed')`
+  亦會清 intent。`cooldownUntil`（時間事實）保留，但唔會將 per-stage attempts 當 provider
+  window 用量帶過。（`tests/test_biggo_bundle.py`：連續兩 stage／新 cycle／expired 保留／
+  cooldown-only 保留／completed 清 intent。）
+- **2. renewed 唔可以重跑**：同 cycle/stage 同一 owner active 而 `callsMayHaveStarted=true`
+  時，`acquire` 回 `winner-intent`；runner 只可 adopt 完整 bundle（`completed-recovered`）
+  或 `needs_review`，零 BigGo。（runner fake tests 兩條：冇 bundle／完整 bundle。）
+- **3. 警報唔再阻 Pages**：daily 尾步 alert 已移除；新增獨立只讀
+  `.github/workflows/biggo-alert.yml`（`workflow_run` on daily completed；嚴格
+  repo／event（schedule／workflow_dispatch）／branch master／head_sha 40-hex／非 PR；
+  success 或 failure 都可由 `verify_biggo_alert_source.py` 核實；缺 artifact 由
+  `download-artifact`＋`test -f` fail-closed）。daily 正常 needs_review／publish-uncertain
+  路徑保持 success（guard 無 diff），Pages source success 判定不變；
+  `verify_deploy_request` 的 success-only 閘門未動（既有 `test_non_success_conclusion_rejected`
+  繼續覆蓋）。離線測試證明 alert 紅而 daily source 仍 success。
+- **4. 每請求 hard cap**：新增 `biggo_limiter.py`（thread-safe `reserve(kind)`；search cap
+  = 1 smoke + 2×本 stage 實際處理型號數（batch＋blacklist review）；token cap = 1/ stage；
+  provider factual 80% 對 token+search 合計逐請求再收緊；到 cap sticky `reached` 並
+  raise）。`fetch_biggo._api_search`／`_get_access_token` 在真正 outbound 前 reserve；
+  cap refusal 當網絡錯誤（partial／fail-closed），唔會當 clean miss。runner 用
+  `stage_workload`／`force_workload` 與 fetch 同一定義計 `queuedModels`，並在網絡階段
+  set／clear limiter。（`tests/test_biggo_limiter.py`：per-kind／provider／20 threads 精確
+  cap／batch cap boundary／review 計入 cap／abort 停止排隊。）
+- **5. 附帶修正**：`_needs_review` 改經 runner `emit` closure，修 LeaseLostError 分支的
+  duplicate `commit` kwarg TypeError；status artifact 記精確 `needs-review`／reason／
+  已用 requests，唔再跌返通用 `error`；`_run_blacklist_review` 接受 `should_abort`，
+  改 incremental submit＋結果迴圈檢查＋`cancel_futures`，lease lost 後唔再排新查詢。
+- **新增／修改**：新增 `biggo_limiter.py`、`scripts/verify_biggo_alert_source.py`、
+  `.github/workflows/biggo-alert.yml`；修改 `fetch_biggo.py`、`scripts/biggo_coordinator.py`、
+  `scripts/biggo_stage_runner.py`、`scripts/verify_biggo_stage_artifacts.py`（`::error::`
+  註釋）、`.github/workflows/daily-update.yml`（移除尾步 alert）及測試。
+- **E2 證據（2026-09-30 本機）**：`run_acceptance.py` **7/7 gates rc=0**（report
+  `D:\tmp\aircon-biggo-p0\acceptance-rework-final.json`）；PYTEST **752 passed**（1 預期
+  duplicate-zip warning，含 browser smoke 12）；feature-check 15 項／18 節點 passed；
+  extract_governance／validate_data／validate_metadata／privacy worktree／`git diff --check`
+  全部 rc=0。
+- **UNKNOWN／未做**：E3（受信任 CI）／E4（部署後觀察）未執行；本輪未 push／未 deploy／
+  未呼叫真實 BigGo；alert workflow 需 merge 到 default branch 後才會收到 workflow_run。
+
+---
+
+## §22 BigGo P0 第二輪返修（不可跨越未完成 stage／provider window 安全；2026-09-30 追加；E2）
+
+本節只追加，不改寫 §20／§21。對應 Codex 第二輪審查缺口。
+
+- **1. 唔可以跨越未完成／待覆核 stage**：`acquire` 次序重寫：
+  - remote `needs_review`（任何 cycle）→ `blocked-needs-review`（0 PUT）；
+  - remote `active` 同一 stage：其他 owner 有效 lease → `lost`；同 owner → renew
+    （有 intent 回 `winner-intent`，否則 `renewed`）；其他 owner expired → 同一 stage
+    安全重入（有 intent 回 `winner-intent`，冇 intent 回 `winner`）；
+  - remote `active`／`idle` **不同 cycle/stage** → `blocked-incomplete`（0 PUT、0 BigGo、
+    0 本地寫）；即使 expired、同 owner、冇 intent、force cycle 都唔可以前進；no new
+    cycle／force 旁路；
+  - remote 同一 stage `idle` 且無 intent → 安全重入 `winner`（保留 attempts 審計）；idle
+    帶 intent → `blocked-incomplete`；
+  - 只有 remote `completed`（方向單調；同日期較高 stage → `completed-ahead`）才可前進，
+    新 stage fresh `intent=false`、`attempts=0`。
+  runner 將 `blocked-incomplete` 記入 status artifact（`alert=true`、
+  `rerun=prohibited`）；0 本地寫入 → 四檔無 diff → daily guard pass（EMSD 日常保持
+  success），BigGo 獨立 alert workflow 紅。
+- **2. provider quota／window 安全**：`providerQuotaLimit` 或 `providerWindowEnd` 有配置
+  （env 或 legacy state）時，runner 直接 `blocked-quota-window-unsupported`：零 BigGo、
+  零 coordinator mutation（env 檢查在 acquire 前；legacy state 在 acquire 後釋放 lease）、
+  alert 紅；原因明言 `quota-window-accounting-unsupported`。**唔會**用 stage-local 80%
+  冒充 provider window；`budget()` 加 `providerWindowAccounting='unsupported'` 標示，limiter
+  的 `providerCap` 不再由 runner 傳入；48h 冷卻繼續只作項目自身 fallback，唔係 provider
+  window。無 provider 事實時本地 hard cap（1 smoke＋2×stage 型號數、token 1）不變。
+- **3. apply 只限 remote completed**：winner apply 只會在 `commit(status='completed')`
+  之後；completed-idempotent／recovered 只會由 completed state 或 commit 後進入；
+  `blocked-incomplete` 零 apply、零本地寫；guard 只在有 canonical diff 時阻斷，無 diff 的
+  EMSD daily 保持成功。Pages source success 驗證、privacy、GATE 全部未改。
+- **E2 證據（2026-09-30 本機）**：`run_acceptance.py` **7/7 gates rc=0**（report
+  `D:\tmp\aircon-biggo-p0\acceptance-rework2.json`）；PYTEST **765 passed**（1 預期
+  duplicate-zip warning，含 browser smoke 12）；feature-check 15 項／18 節點 passed；
+  extract_governance／validate_data／validate_metadata／privacy worktree／`git diff --check`
+  全部 rc=0。新增 targeted tests：`test_stage2_blocked_by_active_stage1_*`、
+  `test_force_cannot_jump_active_stage`、`test_stage2_blocked_by_idle_stage1`、
+  `test_same_stage_idle_no_intent_safe_reentry`、`test_idle_with_intent_blocks`、
+  `test_provider_*_blocks_*`、`test_blocked_incomplete_guard_passes_but_alert_red`、
+  `test_alert_blocked_incomplete_is_red`、`test_alert_quota_window_unsupported_is_red`。
+- **UNKNOWN／未做**：E3／E4 未執行；provider window usage ledger 仍未實作（因此配置路徑
+  一律 fail-closed）；未 push／deploy／呼叫真實 BigGo。
+- **補記（2026-09-30 同日）**：加入「active stage1 由其他 owner 有效 lease 持有 → stage2 只可
+  `lost`、bytes 不變」回歸後，最終 `run_acceptance.py` 7/7 gates rc=0、PYTEST **766 passed**；
+  本節上文 765 為較早一次 run 的實數，兩者皆為 E2。
+
+---
+
+## §23 BigGo P0 第三輪返修（stage gap／worker 生命周期；2026-09-30 追加；E2）
+
+本節只追加，不改寫 §20–§22。對應 Codex 第三輪兩個實質缺口。
+
+- **1. stage gap 守門**：`acquire` 對 remote `completed` 增加 `_stage_gap_reason`：
+  - 同日期 normal：下一個合法 stage 必須精確 = remote.stage + 1；`stage > +1` →
+    `blocked-stage-gap`（reason `stage-skip`）；
+  - 較新日期 normal：remote 上一個 cycle 必須 `N/N`（7/7）；未達 total →
+    reason `previous-cycle-incomplete`；已完成而新 cycle 必須由 stage 1 開始，否則
+    reason `new-cycle-must-start-at-1`；
+  - 較舊日期維持 `completed-ahead`；force 係明確人手 intent，completed 後可另行處理，
+    但唔可以繞過 active／idle／needs_review（仍 `blocked-incomplete`／
+    `blocked-needs-review`）。
+  runner 將 `blocked-stage-gap` 記入 status artifact（`alert=true`、
+  `rerun=prohibited`）＋remote cycle/stage；0 PUT、0 BigGo、0 本地寫、0 apply；無
+  canonical diff → daily guard pass（EMSD 保持 success），獨立 alert workflow 紅。
+  回歸：stage1→stage2 pass、stage1→stage3 block、stage6/7→新 cycle block、7/7→新 cycle
+  stage1 pass、新 cycle stage2 block、completed-ahead、force boundary、runner
+  `blocked-stage-gap` alert artifact。
+- **2. worker 生命周期**：
+  - `run_price_batch`／`run_force_batch`／`_run_blacklist_review` 改為**有界 incremental
+    submit**（最多 2 個 running，用 `wait(FIRST_COMPLETED)`），abort 後唔再 submit；
+    `shutdown(wait=True, cancel_futures=True)` 確保所有已啟動 worker 完成／abort 後 fetch
+    才返回，runner 才可以安全清除共享 limiter／abort context——函式返回後 0 worker、0
+    orphan outbound。
+  - `_wait_cooldown`／`_wait_pace`／retry backoff 改為 abort-aware 分段 wait
+    （`_sleep_abortable`；有 abort context 才可以截斷，無 context 保留單次 sleep 舊契約），
+    失 lease 後唔會再等長時間／再發請求。
+  - token 取得全程 `_TOKEN_LOCK` 序列化（cache miss 只發一次 auth request，第二個 worker
+    等 cache）；REQUEST_STATS 加 `_STATS_LOCK`（bundle 計數準確）。
+  - `_reserve(token/search)` 仍然喺每個 outbound 前執行（auth 與 search 分開），
+    abort check 先於 reserve；cooldown／pace／retry 期間 abort 亦會被檢查。
+  - 回歸（`tests/test_biggo_worker_lifecycle.py`）：run 返回後 0 worker、pending futures
+    cancel（實啟動 = 2）、返回後／context 清除後 0 outbound、abort 截斷 retry sleep
+    （calls 只 1）、abort 截斷 cooldown／pace、兩 thread 只取一次 token；另有
+    `test_biggo_limiter.py` 的 cap／50 次 request 上限不變。
+- **已知限制（UNKNOWN／residual）**：in-flight `urlopen` 本身無法被 abort 中斷（受
+  timeout 界住，smoke 8s／批次 20s）；token lock 等待受第一個 auth timeout 界住；
+  force cycle 會覆寫 remote 的 normal cycle 進度記錄（單一 state 設計），屬人手 intent
+  的既有邊界，未在本輪擴張 schema。provider window ledger 仍 `unsupported`（見 §22）。
+- **E2 證據（2026-09-30 本機）**：`run_acceptance.py` **7/7 gates rc=0**（report
+  `D:\tmp\aircon-biggo-p0\acceptance-rework3.json`）；PYTEST **784 passed**（1 預期
+  duplicate-zip warning，含 browser smoke 12）；feature-check 15 項／18 節點 passed；
+  extract_governance／validate_data／validate_metadata／privacy worktree／`git diff --check`
+  全部 rc=0。
+
+---
+
+## §24 BigGo P0 force cycle 邊界返修（單一 coordinator state；2026-09-30 追加；E2）
+
+本節只追加，不改寫 §20–§23。對應 Codex 第四輪：force 可覆寫未完成 normal cycle 或
+force 可被同日／較舊 normal 奪回。
+
+- **新轉移（completed remote，0 PUT／0 BigGo／0 apply）**：
+  - remote `normal N/7`（N<7）→ 任何 force：**`blocked-force-cycle-incomplete`**
+    （reason `normal-cycle-incomplete`）；未完成月度進度唔可以被 force 覆寫。
+  - remote `normal 7/7` → force 日期早於 normal cycle 日期：**`blocked-stale`**
+    （reason `force-older-than-normal-cycle`）；日期不早於則允許（人手 intent）。
+  - remote `force YYYY-MM-DD` → 同日 normal 或較舊日期嘅任何 normal／force：
+    **`blocked-stale`**（reason `same-day-normal-after-force`／
+    `request-older-than-force-cycle`）；較新日期 normal 只准 stage 1
+    （stage>1 → `blocked-stage-gap` reason `new-cycle-must-start-at-1`）；
+    較新 force 允許（明確人手 intent）；同日同 force cycle → `completed-idempotent`。
+  - 首次 force（無 previous state）保持允許；active／idle／needs_review 嘅
+    force 仍按既有 `blocked-incomplete`／`blocked-needs-review`／`lost` 一律唔准跨越。
+- runner 新增 `blocked-force-cycle-incomplete`／`blocked-stale` routes
+  （status artifact `alert=true`、`rerun=prohibited`、reason＋remote cycle/stage）；
+  `verify_biggo_stage_artifacts.ALERT_STATUSES` 同步；無 canonical diff → daily guard
+  pass（EMSD 保持 success），獨立 BigGo alert workflow 紅；Pages source success 閘門、
+  privacy、GATE 不變。
+- **冇改 state schema**：normal 7/7 完成後才允許 force，所以單一 state 被 force
+  取代時唔存在未完成 normal 進度可 resume；normal cycle 的完成事實仍可喺公開
+  `prices_meta.last_full`／Git 資料 commit 審計。未完成 normal cycle 一律 fail-closed。
+- **回歸（先失敗後修）**：`test_force_blocked_by_completed_normal_incomplete`、
+  `test_force_allowed_after_completed_normal_7_of_7`、
+  `test_force_older_than_completed_normal_7_of_7_blocked_stale`、
+  `test_force_then_same_day_normal_blocked`、`test_force_then_older_normal_blocked`、
+  `test_force_then_newer_normal_stage1_passes`、
+  `test_force_then_newer_normal_stage2_blocked`、`test_force_then_older_force_blocked`、
+  `test_force_then_newer_force_allowed`、`test_force_same_cycle_idempotent`、
+  `test_first_force_without_state_allowed`、`test_force_blocked_by_idle_normal_stage`、
+  `test_force_after_incomplete_normal_blocked`、`test_normal_same_day_after_force_blocked`；
+  runner `test_blocked_force_cycle_incomplete_zero_biggo_and_alert`、
+  `test_blocked_stale_zero_biggo_and_alert`；guard 兩個新 alert 測試。
+- **E2 證據（2026-09-30 本機）**：`run_acceptance.py` **7/7 gates rc=0**（report
+  `D:\tmp\aircon-biggo-p0\acceptance-rework4.json`）；PYTEST **800 passed**（1 預期
+  duplicate-zip warning，含 browser smoke 12）；feature-check 15 項／18 節點 passed；
+  extract_governance／validate_data／validate_metadata／privacy worktree／`git diff --check`
+  全部 rc=0。
+- **UNKNOWN／未做**：E3／E4 未執行；未 push／deploy／呼叫真實 BigGo。

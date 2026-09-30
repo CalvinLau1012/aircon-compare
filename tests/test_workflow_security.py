@@ -253,6 +253,45 @@ def test_daily_biggo_stage_runner_gates_and_coordinator_env():
     assert 'AIRCON_BIGGO_FORCE_STAGE' in biggo
     # 硬失敗要阻斷，唔可以靜靜當成功
     assert '::error::BigGo 階段硬失敗' in biggo and 'exit "$rc"' in biggo
+    # P0 status artifact ＋ guard（未確認價格阻斷）
+    assert '--status-out' in biggo
+    assert 'scripts/verify_biggo_stage_artifacts.py' in biggo
+
+
+def test_daily_biggo_guard_and_alert_wired():
+    """P0：guard 喺 push 前；alert 移到獨立只讀 workflow（daily 保持 success）。"""
+    text = _text('daily-update.yml')
+    assert '--status-out "$RUNNER_TEMP/biggo-stage-status.json"' in text
+    assert 'verify_biggo_stage_artifacts.py' in text
+    assert text.index('--status-out') < text.index('BigGo canonical 檔推送守門')
+    assert text.index('BigGo canonical 檔推送守門') < text.index('數據驗證（防壞數據上線）')
+    # daily 尾步唔可以再有 alert（否則 source run failure → Pages dispatch 被拒）
+    assert '--alert-only' not in text
+    assert 'biggo-alert.yml' in text
+
+
+def test_biggo_alert_workflow_readonly_and_strict():
+    """獨立 BigGo alert：workflow_run 只讀；嚴格來源過濾；缺 artifact fail-closed。"""
+    text = _text('biggo-alert.yml')
+    wf = _load('biggo-alert.yml')
+    assert 'workflow_run' in wf[True] if True in wf else wf['on']
+    assert wf['permissions'] == {'contents': 'read', 'actions': 'read'}
+    assert list(wf['jobs']) == ['alert']
+    job = wf['jobs']['alert']
+    assert job.get('runs-on') == RUNNER_PIN
+    assert 'conclusion' in str(job.get('if'))
+    assert "'success'" in str(job.get('if'))
+    assert "'failure'" in str(job.get('if'))
+    assert 'schedule' in str(job.get('if')) and 'workflow_dispatch' in str(job.get('if'))
+    assert 'head_branch' in str(job.get('if')) and 'master' in str(job.get('if'))
+    assert 'head_repository' in str(job.get('if'))
+    assert 'verify_biggo_alert_source.py' in text
+    assert '--run-id' in text
+    assert 'download-artifact' in text
+    assert 'run-id: ${{ github.event.workflow_run.id }}' in text
+    assert 'test -f' in text
+    assert '--alert-only' in text
+    assert 'persist-credentials: false' in text
 
 
 def test_biggo_stage_runner_local_stage_first_and_no_auto_rerun():

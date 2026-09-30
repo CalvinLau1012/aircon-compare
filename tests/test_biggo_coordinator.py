@@ -196,6 +196,8 @@ def test_quota_80_percent_cap_and_budget_minimum():
     a._sha = 'sha-x'
     b = a.budget(100)
     assert b['effectiveSearchCap'] == 8
+    assert b['providerWindowAccounting'] == 'unsupported', \
+        'stage-local 80% 唔可以當 provider window enforce'
     assert b['allowed'] is False
 
 

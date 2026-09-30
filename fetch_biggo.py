@@ -12,25 +12,27 @@ BigGo 香港格價價錢快照抓取（官方 JSON API）
 共享工具（同 fetch_pricesapi 一套規則，唔會走樣）：
 - crawl_utils：norm_model / load_models
 - price_utils：num_price / is_ac_title（冷氣關鍵字 + 配件排除同一套）
-- batch_utils：prices_meta 讀寫、批次切片 get_batch_todo / 推進 advance_batch
+- batch_utils：prices_meta 讀取、批次切片 get_batch_todo（網絡階段零寫入）
 """
 import base64
 import json
 import os
 import random
 import sys
+import threading
 import time
 import urllib.request
 import urllib.error
 import urllib.parse
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
 from crawl_utils import norm_model, load_models, canonical_model_key, load_brand_lookup
 from price_utils import num_price as _num_price, is_ac_title
-from batch_utils import (PRICE_BATCH_DAYS, load_meta, save_meta, set_cooldown,
-                         get_batch_todo, advance_batch)
-from model_lifecycle import (load_blacklist, filter_active, revive_model,
-                             record_results)
+from batch_utils import (PRICE_BATCH_DAYS, load_meta, get_batch_todo)
+from model_lifecycle import (load_blacklist, filter_active, plan_record_results,
+                             plan_revive, compute_effects)
+from biggo_canonical import canonical_json_bytes, sha256_json
+from biggo_limiter import BigGoLimitExceeded, RequestLimiter
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT_PATH = os.path.join(BASE, 'biggo_prices.json')
@@ -47,6 +49,10 @@ UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
 
 # access_token 快取（client credentials；55 分鐘 TTL，token 一般 60 分鐘有效）
 _TOKEN = {'value': None, 'expires': 0.0}
+# token 取得序列化：兩個 worker 同時 cache miss 亦只可以發一次 auth request。
+_TOKEN_LOCK = threading.Lock()
+# REQUEST_STATS 由多個 worker 更新；加鎖避免 lost update（bundle 計數要準確）。
+_STATS_LOCK = threading.Lock()
 
 # ===== approved design C：兩次 attempt、403／429 即停、離線 guard、可審計計數 =====
 # 每個 model 最多 2 次 attempt；403／429 唔會即刻 retry（honour Retry-After，否則項目
@@ -65,10 +71,73 @@ class BigGoTestModeError(RuntimeError):
     """測試模式禁止真實 BigGo 網絡呼叫（E2 實作階段硬保險）。"""
 
 
+class BigGoAbortedError(RuntimeError):
+    """lease lost／should_abort：唔可以再發新請求。"""
+
+
+# 每個 stage 由 runner 注入；同一時間只有一個 limiter（請求前 thread-safe reserve）。
+_REQUEST_LIMITER = None
+_ABORT_CHECK = None
+
+
+def set_request_limiter(limiter):
+    global _REQUEST_LIMITER
+    _REQUEST_LIMITER = limiter
+
+
+def set_abort_check(check):
+    global _ABORT_CHECK
+    _ABORT_CHECK = check
+
+
+def get_request_limiter():
+    return _REQUEST_LIMITER
+
+
+def _reserve(kind):
+    """每個真正 outbound 請求前：先查 abort，再向 limiter reserve。"""
+    if _ABORT_CHECK is not None and _ABORT_CHECK():
+        raise BigGoAbortedError('lease lost／abort：停止新 BigGo 請求')
+    if _REQUEST_LIMITER is not None:
+        _REQUEST_LIMITER.reserve(kind)
+
+
 def reset_request_stats():
-    REQUEST_STATS['token'] = 0
-    REQUEST_STATS['search'] = 0
+    with _STATS_LOCK:
+        REQUEST_STATS['token'] = 0
+        REQUEST_STATS['search'] = 0
     LAST_RATE_LIMIT_EVIDENCE.clear()
+
+
+def _bump_stats(kind):
+    with _STATS_LOCK:
+        REQUEST_STATS[kind] += 1
+
+
+def _abort_requested():
+    return _ABORT_CHECK is not None and _ABORT_CHECK()
+
+
+def _sleep_abortable(seconds, *, chunk=0.2):
+    """可被 abort 截斷的 sleep；abort 即 raise BigGoAbortedError。
+
+    `_ABORT_CHECK is None`（例如 standalone fetch 測試／非 runner 呼叫）時維持原本
+    單次 sleep 契約；runner 全程一定設置 abort check，所以生產等待都係可截斷分段。
+    """
+    seconds = max(0.0, float(seconds))
+    if seconds <= 0:
+        return
+    if _ABORT_CHECK is None:
+        time.sleep(seconds)
+        return
+    end = time.monotonic() + seconds
+    while True:
+        if _abort_requested():
+            raise BigGoAbortedError('abort during wait：停止新 BigGo 請求')
+        remain = end - time.monotonic()
+        if remain <= 0:
+            return
+        time.sleep(min(remain, chunk))
 
 
 def snapshot_request_stats():
@@ -120,6 +189,7 @@ def _get_access_token(timeout=20):
 
     `timeout` 預設 20 秒，同原本批次行為一致；smoke 會傳較短 timeout 令連線測試有界。
     測試模式（AIRCON_BIGGO_TEST_MODE=1）下任何真實呼叫即 BigGoTestModeError。
+    token 取得全程 token lock 序列化：cache miss 時只會發一次 auth request。
     """
     cid = os.environ.get('BIGGO_CLIENT_ID', '').strip()
     csec = os.environ.get('BIGGO_CLIENT_SECRET', '').strip()
@@ -129,25 +199,30 @@ def _get_access_token(timeout=20):
     now = time.time()
     if _TOKEN['value'] and now < _TOKEN['expires']:
         return _TOKEN['value']
-    cred = base64.b64encode(f'{cid}:{csec}'.encode()).decode()
-    data = urllib.parse.urlencode({'grant_type': 'client_credentials'}).encode()
-    req = urllib.request.Request(AUTH_URL, data=data, headers={
-        'Authorization': f'Basic {cred}',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': UA,
-    })
-    REQUEST_STATS['token'] += 1
-    try:
-        tok = json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode('utf-8')).get('access_token')
-    except urllib.error.HTTPError as e:
-        if e.code in (403, 429):
-            _record_response_evidence(e.code, (e.headers or {}).get('Retry-After')
-                                      if hasattr(e.headers, 'get') else None)
-        raise
-    if tok:
-        _TOKEN['value'] = tok
-        _TOKEN['expires'] = now + 55 * 60
-    return tok
+    with _TOKEN_LOCK:
+        now = time.time()
+        if _TOKEN['value'] and now < _TOKEN['expires']:
+            return _TOKEN['value']
+        _reserve('token')
+        cred = base64.b64encode(f'{cid}:{csec}'.encode()).decode()
+        data = urllib.parse.urlencode({'grant_type': 'client_credentials'}).encode()
+        req = urllib.request.Request(AUTH_URL, data=data, headers={
+            'Authorization': f'Basic {cred}',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': UA,
+        })
+        _bump_stats('token')
+        try:
+            tok = json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode('utf-8')).get('access_token')
+        except urllib.error.HTTPError as e:
+            if e.code in (403, 429):
+                _record_response_evidence(e.code, (e.headers or {}).get('Retry-After')
+                                          if hasattr(e.headers, 'get') else None)
+            raise
+        if tok:
+            _TOKEN['value'] = tok
+            _TOKEN['expires'] = now + 55 * 60
+        return tok
 
 # 全局冷卻狀態：遇 429 就冷卻 60-120s，期間所有新請求停喺度等（防止批次被限流打死）
 _COOLDOWN_UNTIL = 0.0
@@ -167,23 +242,23 @@ def _global_cooldown(seconds):
 
 
 def _wait_cooldown():
-    """喺發請求前等待全局冷卻結束"""
-    with _LOCK:
-        remain = _COOLDOWN_UNTIL - time.time()
-    while remain > 0:
-        time.sleep(min(remain, 5))
+    """喺發請求前等待全局冷卻結束；等待期間可被 abort 截斷。"""
+    while True:
         with _LOCK:
             remain = _COOLDOWN_UNTIL - time.time()
+        if remain <= 0:
+            return
+        _sleep_abortable(min(remain, 0.5))
 
 
 def _wait_pace():
-    """全局最小請求間隔（主動限速，避免觸發 API rate limit）"""
+    """全局最小請求間隔（主動限速）；等待期間可被 abort 截斷。"""
     global _NEXT_SLOT
     with _LOCK:
         wait = _NEXT_SLOT - time.time()
         _NEXT_SLOT = max(time.time(), _NEXT_SLOT) + MIN_PACE
     if wait > 0:
-        time.sleep(wait)
+        _sleep_abortable(wait)
 
 
 def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=DEFAULT_MAX_ATTEMPTS, timeout=20,
@@ -206,6 +281,7 @@ def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=DEFAULT_MAX_ATTEMPTS, 
         LAST_RATE_LIMIT_EVIDENCE.update({'testMode': True})
         return None, False
     for attempt in range(max(1, int(max_attempts))):
+        retry_wait = None
         try:
             if use_cooldown:
                 _wait_cooldown()
@@ -215,8 +291,9 @@ def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=DEFAULT_MAX_ATTEMPTS, 
             token = _get_access_token(timeout=timeout)
             if token:
                 headers['Authorization'] = f'Bearer {token}'
+            _reserve('search')
             req = urllib.request.Request(API_URL.format(q=urllib.parse.quote(model, safe='')), headers=headers)
-            REQUEST_STATS['search'] += 1
+            _bump_stats('search')
             data = json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode('utf-8', 'ignore'))
             return data, True
         except urllib.error.HTTPError as e:
@@ -236,13 +313,23 @@ def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=DEFAULT_MAX_ATTEMPTS, 
                 print(f'  ⏳ {e.code}：唔即刻 retry（{model}）；安全證據已記錄，'
                       f'冷卻交由 coordinator／項目 48h fallback 處理', flush=True)
                 return None, False
-            if sleep_on_error:
-                time.sleep(5 * (attempt + 1))
+            retry_wait = 5 * (attempt + 1)
         except BigGoTestModeError:
             raise
+        except BigGoAbortedError:
+            print(f'  ⏹️ abort：停止新請求（{model}）；當網絡錯誤，唔會再排隊', flush=True)
+            return None, False
+        except BigGoLimitExceeded as e:
+            print(f'  ⛔ {e}（{model}）；當網絡錯誤，唔會當 clean miss', flush=True)
+            return None, False
         except Exception:
-            if sleep_on_error:
-                time.sleep(3 * (attempt + 1))
+            retry_wait = 3 * (attempt + 1)
+        if retry_wait is not None and sleep_on_error:
+            try:
+                _sleep_abortable(retry_wait)
+            except BigGoAbortedError:
+                print(f'  ⏹️ abort：停止新請求（{model}）；當網絡錯誤，唔會再排隊', flush=True)
+                return None, False
     return None, False
 
 
@@ -328,17 +415,249 @@ def _brand_of(brand_lookup):
     return lambda m: brand_lookup.get(norm_model(m)) or 'UNKNOWN'
 
 
+# ===== P0 staged batch（網絡階段零本地寫入；效果交 coordinator bundle）=====
+
+
+def _load_snapshot_readonly():
+    """讀本地 biggo_prices.json（唯讀）；缺失／壞檔回 {}。"""
+    if not os.path.exists(OUT_PATH):
+        return {}
+    try:
+        with open(OUT_PATH, encoding='utf-8') as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _read_tracking():
+    """讀本地 model_status.json（唯讀）。"""
+    from crawl_utils import load_json
+    from model_lifecycle import TRACKING_PATH
+    data = load_json(TRACKING_PATH, {})
+    return data if isinstance(data, dict) else {}
+
+
+def _state_hashes(tracking, blacklist):
+    return {'trackingHash': sha256_json(tracking),
+            'blacklistHash': sha256_json(blacklist)}
+
+
+def _key_of(model, brand_lookup):
+    return canonical_model_key(brand_lookup.get(norm_model(model)) or 'UNKNOWN', model)
+
+
+def _merge_outcomes(got, clean_miss, net_err, revived, results, brand_lookup):
+    """組合 outcome ledger（priced／clean_miss／net_error）；每個 model 最多一次。"""
+    out = []
+    seen = set()
+    for m in list(got) + [m for m in revived if m in results]:
+        if m in seen:
+            continue
+        seen.add(m)
+        entry = results.get(m)
+        if entry is not None:
+            out.append({'model': m, 'canonicalKey': _key_of(m, brand_lookup),
+                        'outcome': 'priced', 'price': entry})
+    for m in clean_miss:
+        if m in seen:
+            continue
+        seen.add(m)
+        out.append({'model': m, 'canonicalKey': _key_of(m, brand_lookup),
+                    'outcome': 'clean_miss'})
+    for m in net_err:
+        if m in seen:
+            continue
+        seen.add(m)
+        out.append({'model': m, 'canonicalKey': _key_of(m, brand_lookup),
+                    'outcome': 'net_error'})
+    return out
+
+
+def _partial_payload(status, base, results, got, clean_miss, net_err, brand_lookup, **extra):
+    """未完成 stage：保留 staged 證據，但唔會有 effects／發佈。"""
+    payload = {
+        'status': status,
+        'baseSnapshot': base,
+        'snapshot': results,
+        'outcomes': _merge_outcomes(got, clean_miss, net_err, [], results, brand_lookup),
+        'counters': {'got': len(got), 'cleanMiss': len(clean_miss),
+                     'netErrors': len(net_err)},
+    }
+    payload.update(extra)
+    return payload
+
+
+def _completed_payload(*, idx, base, results, got, clean_miss, net_err, revived,
+                       review_evidence, pre_tracking, pre_black, post_tracking,
+                       post_black, brand_lookup):
+    effects = compute_effects(pre_tracking, pre_black, post_tracking, post_black)
+    return {
+        'status': 'completed',
+        'idx': idx,
+        'baseSnapshot': base,
+        'snapshot': results,
+        'outcomes': _merge_outcomes(got, clean_miss, net_err, revived, results, brand_lookup),
+        'counters': {'got': len(got) + len(revived),
+                     'cleanMiss': len(clean_miss), 'netErrors': len(net_err)},
+        'blacklistReview': {'quotaIndex': idx, 'reviewed': review_evidence},
+        'preState': _state_hashes(pre_tracking, pre_black),
+        'postState': _state_hashes(post_tracking, post_black),
+        'effects': effects,
+    }
+
+
+def blacklist_review_slice(idx, blacklist=None):
+    """黑名單復核 quota 切片（同 workload／cap 計數共用同一定義）。"""
+    black = sorted(blacklist if blacklist is not None else load_blacklist())
+    if not black:
+        return []
+    chunks = max(1, (len(black) + BLACKLIST_REVIEW_QUOTA - 1) // BLACKLIST_REVIEW_QUOTA)
+    start = (idx % chunks) * BLACKLIST_REVIEW_QUOTA
+    return black[start:start + BLACKLIST_REVIEW_QUOTA]
+
+
+def stage_workload(meta=None):
+    """本 stage 實際會處理嘅型號（batch + review）；cap = 1 + 2×queuedModels。
+
+    batch 切片先 `filter_active` 再 `get_batch_todo`，同 run_price_batch 完全一致；
+    review 切片用同一 quota 定義，避免 runner 同 fetch 兩套計數。
+    """
+    meta = load_meta() if meta is None else meta
+    brand_lookup = load_brand_lookup()
+    todo_src, _ = filter_active(load_models(), key_of=lambda m: canonical_model_key(
+        brand_lookup.get(norm_model(m)) or 'UNKNOWN', m))
+    batch = get_batch_todo(todo_src, meta)
+    if not batch:
+        return None
+    todo, idx, total = batch
+    review = blacklist_review_slice(idx)
+    return {'batch': todo, 'review': review, 'idx': idx, 'total': total,
+            'queuedModels': len(todo) + len(review)}
+
+
+def force_workload(limit=None):
+    """Force 實際會處理嘅型號（batch + review）；限制同 run_force_batch 一致。"""
+    brand_lookup = load_brand_lookup()
+    todo, _ = filter_active(load_models(), key_of=lambda m: canonical_model_key(
+        brand_lookup.get(norm_model(m)) or 'UNKNOWN', m))
+    if limit:
+        todo = todo[:limit]
+    black = sorted(load_blacklist())
+    if limit:
+        black = black[:limit]
+    review = black[:BLACKLIST_REVIEW_QUOTA]
+    return {'batch': todo, 'review': review, 'idx': 0, 'total': len(todo),
+            'queuedModels': len(todo) + len(review)}
+
+
+def _run_blacklist_review(idx, results, *, tracking, blacklist, brand_lookup,
+                          review_todo=None, should_abort=None):
+    """黑名單復核（staged、零寫檔）：查到有價 → plan 復活並加入 results。
+
+    - `review_todo` 由 workload 預先固定，確保 request cap 同實際查詢一致；
+    - incremental submit＋`should_abort`：lease lost 後停止新排隊、cancel 未開始 futures；
+    - `limitReached` 反映 limiter sticky 狀態，caller 必須 fail-closed；
+    - 回傳 {'results','tracking','blacklist','reviewed','revived','confirmed',
+      'netErrors','aborted','limitReached'}；唔會呼叫 plan_revive 以外的任何寫入。
+    """
+    evidence = []
+    revived, confirmed, blk_err = [], [], []
+    aborted = False
+    if review_todo is None:
+        review_todo = blacklist_review_slice(idx, blacklist)
+    todo = [k for k in review_todo if k in blacklist]
+    if not todo:
+        return {'results': results, 'tracking': tracking, 'blacklist': blacklist,
+                'reviewed': evidence, 'revived': revived, 'confirmed': confirmed,
+                'netErrors': blk_err, 'aborted': False, 'limitReached': False}
+    print(f'\n🔎 黑名單復核（批次 {idx + 1}）：{len(todo)} 個型號確認「不再賣」狀態...')
+    consec_fail = 0
+    ex = ThreadPoolExecutor(max_workers=2)
+    pending = {}
+    todo_iter = iter(todo)
+
+    def _submit_next():
+        try:
+            key = next(todo_iter)
+        except StopIteration:
+            return False
+        pending[ex.submit(_search_tri_state, key.split('|', 1)[1])] = key
+        return True
+
+    try:
+        for _ in range(2):
+            _submit_next()
+        while pending:
+            if should_abort is not None and should_abort():
+                aborted = True
+                break
+            done, _ = wait(list(pending), return_when=FIRST_COMPLETED)
+            for fut in done:
+                key = pending.pop(fut)
+                try:
+                    model, result, ok = fut.result()
+                except Exception:
+                    model, result, ok = key.split('|', 1)[1], None, False
+                if result:
+                    results[model] = result
+                    tracking, blacklist, was = plan_revive(
+                        key, tracking=tracking, blacklist=blacklist)
+                    if was:
+                        revived.append(key)
+                    evidence.append({'key': key, 'model': model, 'result': 'revived',
+                                     'price': result})
+                    consec_fail = 0
+                elif ok:
+                    confirmed.append(key)
+                    evidence.append({'key': key, 'model': model, 'result': 'confirmed'})
+                    consec_fail = 0
+                else:
+                    blk_err.append(key)
+                    evidence.append({'key': key, 'model': model, 'result': 'net_error'})
+                    consec_fail += 1
+                if consec_fail >= 12:
+                    print(f'  ⏳ 復核連續 {consec_fail} 個失敗：全局冷卻 90s 再繼續', flush=True)
+                    _global_cooldown(90)
+                    consec_fail = 0
+            if aborted:
+                break
+            while len(pending) < 2:
+                if should_abort is not None and should_abort():
+                    aborted = True
+                    break
+                if not _submit_next():
+                    break
+            if aborted:
+                break
+    finally:
+        # wait=True：確保所有已啟動 worker 完成／abort 後才返回，runner 才可以安全清除
+        # limiter／abort context；cancel_futures 取消未開始 futures（worker 生命週期契約）。
+        ex.shutdown(wait=True, cancel_futures=True)
+    limit_reached = bool(_REQUEST_LIMITER is not None and _REQUEST_LIMITER.reached)
+    print(f'🔎 復核完成：♻️ 復活 {len(revived)} ｜ ✅ 確認不再賣 {len(confirmed)} ｜ ⚠️ 網絡錯誤 {len(blk_err)}'
+          f'{" ｜ ⏹️ aborted" if aborted else ""}'
+          f'{" ｜ ⛔ limit reached" if limit_reached else ""}')
+    if revived:
+        print(f'  ♻️ 復活清單（前 30）：{revived[:30]}')
+    return {'results': results, 'tracking': tracking, 'blacklist': blacklist,
+            'reviewed': evidence, 'revived': revived, 'confirmed': confirmed,
+            'netErrors': blk_err, 'aborted': aborted, 'limitReached': limit_reached}
+
+
+def review_blacklist_batch(idx):
+    """黑名單復核（staged 唯讀入口；唔寫任何本地檔）。"""
+    return _run_blacklist_review(
+        idx, _load_snapshot_readonly(), tracking=_read_tracking(),
+        blacklist=dict(load_blacklist()), brand_lookup=load_brand_lookup())
+
+
 def run_force_batch(limit=None, *, smoke=True, should_abort=None, exit_on_fail=True):
-    """一次性強行全量批次（受 coordinator 約束嘅 force intent）：唔分 7 日，一次過查晒全部非黑名單型號
-    - 淘汰確認：乾淨無報價計 misses（閾值 2 先自動黑名單）；網絡錯誤唔計
-    - 核心 29 + 官方網店價型號受保護，唔會淘汰
-    - 唔推進每月批次進度；只記 meta['last_force_batch'] 審計痕跡
-    - `smoke=True`（預設）先做 bounded smoke；coordinated runner 已做過 smoke 會傳
-      `smoke=False`，確保 per-stage 最多一個 smoke request。
-    - `should_abort`（optional callable）係 coordinator lease heartbeat 接口：回 True
-      即停止提交新工作並以 aborted 收尾（唔會聲稱完成）。
-    - `exit_on_fail=True`（預設，CLI 舊行為）失敗即 sys.exit；runner 傳 False 取回
-      status 由 coordinator 記 needs_review／安全收手。
+    """一次性強行全量批次（受 coordinator 約束嘅 force intent）：唔分 7 日。
+
+    P0 交易語義：網絡階段零本地寫入（唔再寫 biggo_prices.json／prices_meta.json／
+    model_blacklist.json／model_status.json）。效果全部經 `plan_*` 純函數回傳，
+    由 runner 在 coordinator CAS completed 之後才 apply。
     """
     if smoke and not run_smoke():
         print('❌ 強行批次中止：smoke 唔過（BigGo API 對當前 IP 唔友好）')
@@ -346,239 +665,152 @@ def run_force_batch(limit=None, *, smoke=True, should_abort=None, exit_on_fail=T
             sys.exit(1)
         return {'status': 'smoke-failed'}
 
+    workload = force_workload(limit)
     brand_lookup = load_brand_lookup()
-    all_models = load_models()
-    todo, skipped = filter_active(all_models, key_of=lambda m: canonical_model_key(
-        brand_lookup.get(norm_model(m)) or 'UNKNOWN', m))
-    if limit:
-        todo = todo[:limit]
-    print(f'🚀 強行全量批次開始：{len(todo)} 個型號（已排除黑名單 {len(skipped)} 個）')
+    todo = workload['batch']
+    print(f'🚀 強行全量批次開始：{len(todo)} 個型號'
+          f'（review {len(workload["review"])} 個）')
 
-    results = {}
-    if os.path.exists(OUT_PATH):
-        with open(OUT_PATH, encoding='utf-8') as f:
-            results = json.load(f)
-
+    base = _load_snapshot_readonly()
+    results = dict(base)
+    pre_tracking = _read_tracking()
+    pre_black = dict(load_blacklist())
     protected = protected_models()
-    before_black = set(load_blacklist())
-    got = []        # 有價
-    clean_miss = []  # API 正常但乾淨無匹配
-    net_err = []    # 網絡/限流錯誤
+    got, clean_miss, net_err = [], [], []
     consec_fail = 0
     t0 = time.time()
 
     aborted = False
     ex = ThreadPoolExecutor(max_workers=2)
+    pending = {}
+    todo_iter = iter(todo)
+
+    def _submit_next():
+        try:
+            m = next(todo_iter)
+        except StopIteration:
+            return False
+        pending[ex.submit(_search_tri_state, m)] = m
+        return True
+
     try:
-        futures = {ex.submit(_search_tri_state, m): m for m in todo}
+        for _ in range(2):
+            _submit_next()
         done_count = 0
-        for fut in as_completed(futures):
+        while pending:
             if should_abort is not None and should_abort():
                 print('⚠️ coordinator lease 已失效：中止 force batch（唔會聲稱完成）', flush=True)
                 aborted = True
                 break
-            model, result, ok = fut.result()
-            if result:
-                results[model] = result
-                got.append(model)
-                consec_fail = 0
-            elif ok:
-                clean_miss.append(model)
-                consec_fail = 0
-            else:
-                net_err.append(model)
-                consec_fail += 1
-            done_count += 1
-            if done_count % 25 == 0:
-                el = time.time() - t0
-                print(f'  進度 {done_count}/{len(todo)}（得價 {len(got)} · 無報價 {len(clean_miss)} · 錯誤 {len(net_err)}）· {el:.0f}s', flush=True)
-                with open(OUT_PATH, 'w', encoding='utf-8') as f:
-                    json.dump(results, f, ensure_ascii=False)
-            # 連續失敗就全局冷卻 90s 再繼續；要 40 連錯先中止（冷卻後仍全錯 = 真係唔友好）
-            if consec_fail >= 12 and done_count < len(todo):
-                print(f'  ⏳ 連續 {consec_fail} 個失敗：全局冷卻 90s 再繼續', flush=True)
-                _global_cooldown(90)
-                consec_fail = 0
-            if done_count >= 40 and consec_fail >= 40:
-                print('⚠️ 連續 40 個網絡錯誤，疑似被限流，中止本批', flush=True)
-                set_cooldown()
-                aborted = True
+            done, _ = wait(list(pending), return_when=FIRST_COMPLETED)
+            for fut in done:
+                model = pending.pop(fut)
+                try:
+                    _model, result, ok = fut.result()
+                except Exception:
+                    result, ok = None, False
+                if result:
+                    results[model] = result
+                    got.append(model)
+                    consec_fail = 0
+                elif ok:
+                    clean_miss.append(model)
+                    consec_fail = 0
+                else:
+                    net_err.append(model)
+                    consec_fail += 1
+                done_count += 1
+                if done_count % 25 == 0:
+                    el = time.time() - t0
+                    print(f'  進度 {done_count}/{len(todo)}（得價 {len(got)} · 無報價 {len(clean_miss)} · 錯誤 {len(net_err)}）· {el:.0f}s', flush=True)
+                if consec_fail >= 12 and done_count < len(todo):
+                    print(f'  ⏳ 連續 {consec_fail} 個失敗：全局冷卻 90s 再繼續', flush=True)
+                    _global_cooldown(90)
+                    consec_fail = 0
+                if done_count >= 40 and consec_fail >= 40:
+                    print('⚠️ 連續 40 個網絡錯誤，疑似被限流，中止本批', flush=True)
+                    aborted = True
+                    break
+            if aborted:
+                break
+            while len(pending) < 2:
+                if should_abort is not None and should_abort():
+                    aborted = True
+                    break
+                if not _submit_next():
+                    break
+            if aborted:
                 break
     finally:
-        ex.shutdown(wait=False, cancel_futures=True)
-
-    with open(OUT_PATH, 'w', encoding='utf-8') as f:
-        json.dump(results, f, ensure_ascii=False)
+        # wait=True：確保所有已啟動 worker 完成／abort 後才返回，runner 才可以安全清除
+        # limiter／abort context；cancel_futures 取消未開始 futures（worker 生命週期契約）。
+        ex.shutdown(wait=True, cancel_futures=True)
 
     if aborted:
         print(f'  （中止前已得價 {len(got)} · 無報價 {len(clean_miss)} · 錯誤 {len(net_err)}）', flush=True)
         if exit_on_fail:
             sys.exit(1)
-        return {'status': 'aborted', 'got': len(got), 'cleanMiss': len(clean_miss),
-                'netErrors': len(net_err)}
+        return _partial_payload('aborted', base, results, got, clean_miss, net_err,
+                                brand_lookup, projectCooldown=True)
 
-    # 淘汰確認（閾值 2；網絡錯誤唔計；受保護唔淘汰；batch_id 防同一批重跑重複計 miss）
+    batch_id = 'force-' + time.strftime('%Y%m%d%H%M%S')
     rec = [(m, True) for m in got] + [(m, False) for m in clean_miss]
-    record_results(rec, protected=protected,
-                   batch_id='force-' + time.strftime('%Y%m%d%H%M%S'),
-                   brand_of=_brand_of(brand_lookup))
-    after_black = set(load_blacklist())
-    new_black = sorted(after_black - before_black)
+    post_tracking, post_black = plan_record_results(
+        rec, protected=protected, batch_id=batch_id, brand_of=_brand_of(brand_lookup),
+        tracking=pre_tracking, blacklist=pre_black)
+    review = _run_blacklist_review(0, results, tracking=post_tracking,
+                                   blacklist=post_black, brand_lookup=brand_lookup,
+                                   review_todo=workload['review'],
+                                   should_abort=should_abort)
+    if review['aborted']:
+        print('⚠️ 黑名單復核因 abort 中止：唔會當完成')
+        if exit_on_fail:
+            sys.exit(1)
+        return _partial_payload('aborted', base, results, got, clean_miss, net_err,
+                                brand_lookup, leaseLost=True, projectCooldown=True)
+    if review['limitReached']:
+        print('⛔ 黑名單復核到 request hard cap：唔會當完成')
+        if exit_on_fail:
+            sys.exit(1)
+        return _partial_payload('review-limit-reached', base, results, got, clean_miss,
+                                net_err, brand_lookup,
+                                reviewNetErrors=len(review['netErrors']))
+    payload = _completed_payload(
+        idx=0, base=base, results=review['results'], got=got, clean_miss=clean_miss,
+        net_err=net_err, revived=review['revived'], review_evidence=review['reviewed'],
+        pre_tracking=pre_tracking, pre_black=pre_black,
+        post_tracking=review['tracking'], post_black=review['blacklist'],
+        brand_lookup=brand_lookup)
+    payload['metaFields'] = {'last_force_batch': time.strftime('%Y-%m-%d %H:%M:%S')}
     el = time.time() - t0
     print(f'\n🏁 強行全量批次完成（{el:.0f}s）')
     print(f'  ✅ 得價：{len(got)} ｜ 📭 乾淨無報價：{len(clean_miss)} ｜ ⚠️ 網絡錯誤：{len(net_err)}')
-    if new_black:
-        print(f'  🚫 新自動淘汰：{len(new_black)} 個 — {new_black}')
-    else:
-        print('  🚫 新自動淘汰：0 個')
-    protected_miss = [m for m in clean_miss
-                      if canonical_model_key(brand_lookup.get(norm_model(m)) or 'UNKNOWN', m) in protected]
-    if protected_miss:
-        print(f'  🛡 受保護而唔淘汰（無報價）：{len(protected_miss)} 個 — {protected_miss[:20]}')
-    if clean_miss:
-        print(f'  📭 無報價樣本（前 20）：{clean_miss[:20]}')
-    if net_err:
-        print(f'  ⚠️ 網絡錯誤樣本（前 10）：{net_err[:10]}')
-
-    # ===== 黑名單復核：確認「不再賣」狀態（API 查到有價 → 復活） =====
-    black = sorted(load_blacklist())
-    if limit:
-        black = black[:limit]
-    if black:
-        print(f'\n🔎 黑名單復核開始：{len(black)} 個型號確認「不再賣」狀態...')
-        revived, confirmed, blk_err = [], [], []
-        consec_fail = 0
-        ex = ThreadPoolExecutor(max_workers=2)
-        try:
-            futures = {ex.submit(_search_tri_state, key.split('|', 1)[1]): key for key in black}
-            done = 0
-            for fut in as_completed(futures):
-                key = futures[fut]
-                model, result, ok = fut.result()
-                if result:
-                    results[model] = result
-                    revive_model(key)
-                    revived.append(key)
-                    consec_fail = 0
-                elif ok:
-                    confirmed.append(key)
-                    consec_fail = 0
-                else:
-                    blk_err.append(key)
-                    consec_fail += 1
-                done += 1
-                if done % 100 == 0:
-                    print(f'  復核 {done}/{len(black)}（復活 {len(revived)} · 確認不再賣 {len(confirmed)} · 錯誤 {len(blk_err)}）', flush=True)
-                    with open(OUT_PATH, 'w', encoding='utf-8') as f:
-                        json.dump(results, f, ensure_ascii=False)
-                # 連續失敗就全局冷卻 90s 再繼續（復核可以慢慢嚟）
-                if consec_fail >= 12 and done < len(black):
-                    print(f'  ⏳ 復核連續 {consec_fail} 個失敗：全局冷卻 90s 再繼續', flush=True)
-                    _global_cooldown(90)
-                    consec_fail = 0
-                if done >= 40 and consec_fail >= 40:
-                    print('⚠️ 復核階段連續 40 個網絡錯誤，中止復核（已確認嘅結果保留）', flush=True)
-                    break
-        finally:
-            ex.shutdown(wait=False, cancel_futures=True)
-        with open(OUT_PATH, 'w', encoding='utf-8') as f:
-            json.dump(results, f, ensure_ascii=False)
-        print(f'\n🔎 黑名單復核完成：♻️ 復活 {len(revived)} ｜ ✅ 確認不再賣 {len(confirmed)} ｜ ⚠️ 網絡錯誤 {len(blk_err)}')
-        if revived:
-            print(f'  ♻️ 復活清單（前 30）：{revived[:30]}')
-        if confirmed:
-            print(f'  ✅ 確認樣本（前 10）：{confirmed[:10]}')
-
-    meta = load_meta()
-    meta['last_force_batch'] = time.strftime('%Y-%m-%d %H:%M:%S')
-    save_meta(meta)
-    return True
-
-
-def review_blacklist_batch(idx):
-    """黑名單復核：每個批次日小額 quota，按日輪轉（查到有價 → 自動復活；網絡錯誤唔改狀態）"""
-    black = sorted(load_blacklist())
-    if not black:
-        return
-    chunks = max(1, (len(black) + BLACKLIST_REVIEW_QUOTA - 1) // BLACKLIST_REVIEW_QUOTA)
-    start = (idx % chunks) * BLACKLIST_REVIEW_QUOTA
-    todo = black[start:start + BLACKLIST_REVIEW_QUOTA]
-    if not todo:
-        return
-    print(f'\n🔎 黑名單復核（批次 {idx + 1}）：{len(todo)} 個型號確認「不再賣」狀態...')
-    results = {}
-    if os.path.exists(OUT_PATH):
-        with open(OUT_PATH, encoding='utf-8') as f:
-            results = json.load(f)
-    revived, confirmed, blk_err = [], [], []
-    consec_fail = 0
-    ex = ThreadPoolExecutor(max_workers=2)
-    try:
-        futures = {ex.submit(_search_tri_state, key.split('|', 1)[1]): key for key in todo}
-        for fut in as_completed(futures):
-            key = futures[fut]
-            model, result, ok = fut.result()
-            if result:
-                results[model] = result
-                revive_model(key)
-                revived.append(key)
-                consec_fail = 0
-            elif ok:
-                confirmed.append(key)
-                consec_fail = 0
-            else:
-                blk_err.append(key)
-                consec_fail += 1
-            if consec_fail >= 12:
-                print(f'  ⏳ 復核連續 {consec_fail} 個失敗：全局冷卻 90s 再繼續', flush=True)
-                _global_cooldown(90)
-                consec_fail = 0
-    finally:
-        ex.shutdown(wait=False, cancel_futures=True)
-    with open(OUT_PATH, 'w', encoding='utf-8') as f:
-        json.dump(results, f, ensure_ascii=False)
-    print(f'🔎 復核完成：♻️ 復活 {len(revived)} ｜ ✅ 確認不再賣 {len(confirmed)} ｜ ⚠️ 網絡錯誤 {len(blk_err)}')
-    if revived:
-        print(f'  ♻️ 復活清單（前 30）：{revived[:30]}')
+    return payload
 
 
 def run_price_batch(should_abort=None):
-    """執行當日 BigGo 價錢批次（每月一次、分 7 日；切片/推進由 batch_utils 共用）
+    """執行當日 BigGo 價錢批次（每月一次、分 7 日；切片由 batch_utils 共用）。
 
-    - 黑名單型號完全排除（復核由 review_blacklist_batch 小額輪轉處理）
-    - 三態：有價 / 乾淨無報價 / 網絡錯誤分開計（D8：網絡錯誤唔計淘汰）
-    - **只有整個 slice 零網絡錯誤才 advance_batch**；有任何 net_err 或中止都會保留
-      同一 idx，聽日重跑同一 slice（可重試未完成批次），網絡錯誤永不會當 clean miss
-    - 增量寫入 biggo_prices.json：每個寫入 entry 都係真實抓到嘅證據；部分成功會保留，
-      唔會聲稱整批「全保留原樣」。批次進度／淘汰統計要整批乾淨才推進。
-    - 淘汰確認用 batch_id 去重（同一批重跑唔重複計 miss）；並發 2（D3）
-    - `should_abort`（optional callable）係 coordinator lease heartbeat 接口：回 True
-      即停止提交新工作、cancel 未開始 futures，以 aborted 收尾。
-
-    回傳 status dict（status: not-active／cooldown-skip／aborted／partial-net-errors／completed）。
+    P0 交易語義：網絡階段**零本地寫入**；只有 coordinator CAS completed 之後，
+    runner 才由回傳的 stage payload apply 本地檔。aborted／partial 一律唔會 apply。
     """
     meta = load_meta()
-    brand_lookup = load_brand_lookup()
-    todo_src, _skipped = filter_active(load_models(), key_of=lambda m: canonical_model_key(
-        brand_lookup.get(norm_model(m)) or 'UNKNOWN', m))
-    batch = get_batch_todo(todo_src, meta)
-    if not batch:
+    workload = stage_workload(meta)
+    if not workload:
         print('💰 BigGo 批次：唔喺進行中，跳過')
         return {'status': 'not-active'}
-    todo, idx, total = batch
+    todo, idx, total = workload['batch'], workload['idx'], workload['total']
+    brand_lookup = load_brand_lookup()
     blocked = meta.get('blocked_until')
     if blocked and time.time() < blocked:
         print('🕐 冷卻期內，跳過本批（之後批次會繼續）')
-        meta['last_batch_status'] = 'cooldown-skip'
-        save_meta(meta)
         return {'status': 'cooldown-skip'}
 
     print(f'💰 BigGo 批次 {idx + 1}/{PRICE_BATCH_DAYS}：{len(todo)}/{total} 個型號，開始...')
-
-    results = {}
-    if os.path.exists(OUT_PATH):
-        with open(OUT_PATH, encoding='utf-8') as f:
-            results = json.load(f)
+    base = _load_snapshot_readonly()
+    results = dict(base)
+    pre_tracking = _read_tracking()
+    pre_black = dict(load_blacklist())
 
     got, clean_miss, net_err = [], [], []
     consec_fail = 0
@@ -586,90 +818,109 @@ def run_price_batch(should_abort=None):
     lease_lost = False
     t0 = time.time()
     ex = ThreadPoolExecutor(max_workers=2)
+    pending = {}
+    todo_iter = iter(todo)
+
+    def _submit_next():
+        try:
+            m = next(todo_iter)
+        except StopIteration:
+            return False
+        pending[ex.submit(_search_tri_state, m)] = m
+        return True
+
     try:
-        futures = {ex.submit(_search_tri_state, m): m for m in todo}
+        for _ in range(2):
+            _submit_next()
         done_count = 0
-        for fut in as_completed(futures):
+        while pending:
             if should_abort is not None and should_abort():
                 print('⚠️ coordinator lease 已失效：中止本批（唔會推進進度）', flush=True)
                 aborted = True
                 lease_lost = True
                 break
-            m = futures[fut]
-            try:
-                model, result, ok = fut.result()
-            except Exception:
-                result, ok = None, False
-            if result:
-                results[m] = result
-                got.append(m)
-                consec_fail = 0
-            elif ok:
-                clean_miss.append(m)
-                consec_fail = 0
-            else:
-                net_err.append(m)
-                consec_fail += 1
-            done_count += 1
-            if done_count % 50 == 0:
-                el = time.time() - t0
-                print(f'  進度 {done_count}/{len(todo)}（得價 {len(got)} · 無報價 {len(clean_miss)} · 錯誤 {len(net_err)}）· {el:.0f}s', flush=True)
-                with open(OUT_PATH, 'w', encoding='utf-8') as f:
-                    json.dump(results, f, ensure_ascii=False)
-            if done_count >= 40 and consec_fail >= 40:
-                print('⚠️ 連續 40 個失敗，疑似被限流，中止本批', flush=True)
-                aborted = True
+            done, _ = wait(list(pending), return_when=FIRST_COMPLETED)
+            for fut in done:
+                m = pending.pop(fut)
+                try:
+                    model, result, ok = fut.result()
+                except Exception:
+                    result, ok = None, False
+                if result:
+                    results[m] = result
+                    got.append(m)
+                    consec_fail = 0
+                elif ok:
+                    clean_miss.append(m)
+                    consec_fail = 0
+                else:
+                    net_err.append(m)
+                    consec_fail += 1
+                done_count += 1
+                if done_count % 50 == 0:
+                    el = time.time() - t0
+                    print(f'  進度 {done_count}/{len(todo)}（得價 {len(got)} · 無報價 {len(clean_miss)} · 錯誤 {len(net_err)}）· {el:.0f}s', flush=True)
+                if done_count >= 40 and consec_fail >= 40:
+                    print('⚠️ 連續 40 個失敗，疑似被限流，中止本批', flush=True)
+                    aborted = True
+                    break
+            if aborted:
+                break
+            while len(pending) < 2:
+                if should_abort is not None and should_abort():
+                    aborted = True
+                    lease_lost = True
+                    break
+                if not _submit_next():
+                    break
+            if aborted:
                 break
     finally:
-        ex.shutdown(wait=False, cancel_futures=True)
-
-    # 最終寫入：partial 成功嘅真實報價保留（唔係「全保留原樣」；進度唔會前進）
-    with open(OUT_PATH, 'w', encoding='utf-8') as f:
-        json.dump(results, f, ensure_ascii=False)
-
-    batch_id = f"{meta.get('price_batch_start', time.strftime('%Y-%m-%d'))}:{idx + 1}/{PRICE_BATCH_DAYS}"
+        # wait=True：確保所有已啟動 worker 完成／abort 後才返回，runner 才可以安全清除
+        # limiter／abort context；cancel_futures 取消未開始 futures（worker 生命週期契約）。
+        ex.shutdown(wait=True, cancel_futures=True)
 
     if aborted:
-        set_cooldown()
-        meta['last_batch_status'] = 'aborted'
-        meta['last_batch_idx'] = idx
-        meta['last_batch_net_errors'] = len(net_err)
-        save_meta(meta)
-        print(f'❌ 本批中止（網絡／限流）：idx 未推進，聽日重試；已得價 {len(got)} 會保留')
-        return {'status': 'aborted', 'idx': idx, 'got': len(got),
-                'cleanMiss': len(clean_miss), 'netErrors': len(net_err),
-                'advanced': False, 'leaseLost': lease_lost}
-
-    # 淘汰確認（三態；同一 batch_id 重跑唔重複計 miss）——partial 都記錄真實證據
-    rec = [(m, True) for m in got] + [(m, False) for m in clean_miss]
-    record_results(rec, protected=protected_models(), batch_id=batch_id,
-                   brand_of=_brand_of(brand_lookup))
+        print(f'❌ 本批中止（網絡／限流）：idx 未推進，聽日重試；得價 {len(got)} 只作 staged 證據')
+        return _partial_payload('aborted', base, results, got, clean_miss, net_err,
+                                brand_lookup, idx=idx, leaseLost=lease_lost,
+                                projectCooldown=True)
 
     if net_err:
-        # 網絡錯誤唔可以當完成：idx 唔推進，聽日重跑同一 slice
-        meta['last_batch_status'] = 'partial-net-errors'
-        meta['last_batch_idx'] = idx
-        meta['last_batch_net_errors'] = len(net_err)
-        save_meta(meta)
         print(f'⚠️ 本批有 {len(net_err)} 個網絡錯誤：批次進度唔推進，聽日重試同一 slice'
               f'（得價 {len(got)} · 乾淨無報價 {len(clean_miss)}；錯誤樣本 {net_err[:10]}）')
-        return {'status': 'partial-net-errors', 'idx': idx, 'got': len(got),
-                'cleanMiss': len(clean_miss), 'netErrors': len(net_err), 'advanced': False}
+        return _partial_payload('partial-net-errors', base, results, got, clean_miss,
+                                net_err, brand_lookup, idx=idx)
 
-    # 小額黑名單復核（只在完整成功批次做，避免錯誤期間加載）
-    review_blacklist_batch(idx)
+    # 淘汰確認（三態；同一 batch_id 重跑唔重複計 miss）——純函數，唔寫檔
+    batch_id = f"{meta.get('price_batch_start', time.strftime('%Y-%m-%d'))}:{idx + 1}/{PRICE_BATCH_DAYS}"
+    rec = [(m, True) for m in got] + [(m, False) for m in clean_miss]
+    post_tracking, post_black = plan_record_results(
+        rec, protected=protected_models(), batch_id=batch_id,
+        brand_of=_brand_of(brand_lookup), tracking=pre_tracking, blacklist=pre_black)
 
-    done = advance_batch(meta)
-    meta['last_batch_status'] = 'completed'
-    meta['last_batch_idx'] = idx
-    meta['last_batch_net_errors'] = 0
-    save_meta(meta)
-    if done:
-        print(f'🎉 BigGo 價錢快照全量更新完成（分 {PRICE_BATCH_DAYS} 日）')
-    else:
-        print(f'💰 本批完成（{meta["price_batch_idx"]}/{PRICE_BATCH_DAYS}），聽日繼續')
-    return {'status': 'completed', 'idx': idx, 'got': len(got),
-            'cleanMiss': len(clean_miss), 'netErrors': 0, 'advanced': bool(done)}
+    # 小額黑名單復核（只在完整成功批次做；staged、零寫入）
+    review = _run_blacklist_review(idx, results, tracking=post_tracking,
+                                   blacklist=post_black, brand_lookup=brand_lookup,
+                                   review_todo=workload['review'],
+                                   should_abort=should_abort)
+    if review['aborted']:
+        print('⚠️ 黑名單復核因 abort 中止：唔會當完成，唔會 publish／apply')
+        return _partial_payload('aborted', base, results, got, clean_miss, net_err,
+                                brand_lookup, idx=idx, leaseLost=True,
+                                projectCooldown=True)
+    if review['limitReached']:
+        print('⛔ 黑名單復核到 request hard cap：唔會當完成，唔會 publish／apply')
+        return _partial_payload('review-limit-reached', base, results, got, clean_miss,
+                                net_err, brand_lookup, idx=idx,
+                                reviewNetErrors=len(review['netErrors']))
+
+    return _completed_payload(
+        idx=idx, base=base, results=review['results'], got=got, clean_miss=clean_miss,
+        net_err=net_err, revived=review['revived'], review_evidence=review['reviewed'],
+        pre_tracking=pre_tracking, pre_black=pre_black,
+        post_tracking=review['tracking'], post_black=review['blacklist'],
+        brand_lookup=brand_lookup)
 
 
 # ===== BigGo smoke 候選（集中管理；只喺 API 連線測試用）=====

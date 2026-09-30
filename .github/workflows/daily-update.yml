@@ -282,6 +282,7 @@ jobs:
       # 改變處理嘅型號集合（runner 內 coordinated force），一樣要 acquire lease、過
       # cooldown／budget／idempotency／needs_review／publication 檢查。
       - name: 價錢快照分批更新（BigGo API · coordinator lease；force 亦要 lease）
+        id: biggo_stage
         env:
           BIGGO_CLIENT_ID: ${{ secrets.BIGGO_CLIENT_ID }}
           BIGGO_CLIENT_SECRET: ${{ secrets.BIGGO_CLIENT_SECRET }}
@@ -302,9 +303,10 @@ jobs:
         run: |
           set +e
           mode="coordinator-gated"; rc=0
-          # 唯一入口：inactive → 零 BigGo；active／force → CAS lease → budget →
-          # bounded smoke → batch → schema-validated publish。
-          python scripts/biggo_stage_runner.py
+          # 唯一入口：inactive → 零 BigGo；active／force → CAS lease → intent →
+          # bounded smoke → batch → schema-validated bundle publish → CAS completed → apply。
+          python scripts/biggo_stage_runner.py \
+            --status-out "$RUNNER_TEMP/biggo-stage-status.json"
           rc=$?
           set -e
           {
@@ -320,6 +322,25 @@ jobs:
             echo "::error::BigGo 階段硬失敗（exit $rc，代碼 $mode）：未推進批次進度，保留現有快照"
             exit "$rc"
           fi
+
+      # P0：未確認（completed 前）的 BigGo canonical 四檔 diff 唔可以 push。
+      - name: BigGo canonical 檔推送守門（未確認價格阻斷）
+        if: steps.biggo_stage.outcome == 'success'
+        run: |
+          python scripts/verify_biggo_stage_artifacts.py \
+            --repo . \
+            --status "$RUNNER_TEMP/biggo-stage-status.json"
+
+      - name: 上載 BigGo stage status（審計；always）
+        if: always() && steps.biggo_stage.outcome != 'skipped'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: biggo-stage-status-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/biggo-stage-status.json
+            ${{ runner.temp }}/biggo-review/
+          retention-days: 30
+          if-no-files-found: warn
 
       # ============ 第 4 步：安全閘門 + 生成網頁/PDF + 部署元數據 + 上線 ============
       - name: 數據驗證（防壞數據上線）
@@ -425,3 +446,8 @@ jobs:
             --commit "$NEW_SHA" \
             --source-run-id "$GITHUB_RUN_ID" \
             --source-run-attempt "$GITHUB_RUN_ATTEMPT"
+
+      # P0 返修：BigGo 人工覆核警報唔可以留喺 daily 尾步──佢會令 source run 變 failure，
+      # verify_deploy_request 的 source success 閘門會拒絕 Pages deploy。
+      # 警報已移至獨立只讀 workflow `.github/workflows/biggo-alert.yml`
+      # （workflow_run on daily completed；strict source filter；缺失 artifact fail-closed）。
