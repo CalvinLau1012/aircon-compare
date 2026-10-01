@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0.0",
   "version": "1.2.9",
-  "build": "B20260930.123.1",
-  "commit": "53b33ee944ea2cb5f5bb0d93eb72211de6da4bac",
-  "deployTime": "2026-09-30T21:02:13Z",
-  "workflowRunId": "36775967072",
+  "build": "B20261001.128.1",
+  "commit": "b7ca3bc9d7fc725c3244e085cae15b5c1781ae98",
+  "deployTime": "2026-10-01T03:51:18Z",
+  "workflowRunId": "36812197686",
   "deploymentType": "release",
   "datasetDate": "2026-10-01",
   "datasetDateBasis": "retrieval-date-fallback",
@@ -16,5 +16,5 @@
   "rawRecordCount": 1816,
   "registrationCount": 1816,
   "modelCount": 1755,
-  "releasePayloadHash": "sha256:0b062aba902f7b212428c7de8e0f1b0919c2af5cf3d19b06dc44cf12c9a0ad23"
+  "releasePayloadHash": "sha256:31fe3d5551a0b33825ea995f70ddfaac2ee34b79be4ca3cf79c75f79f38394a5"
 }
