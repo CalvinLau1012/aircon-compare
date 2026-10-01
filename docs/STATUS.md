@@ -1282,3 +1282,47 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
   metadata、index、PDF、價格快照、Price.com 抓取程式及 VERSION 均未改。
 - 公開 privacy worktree **0 命中**、`git diff --check` 通過。結論只限本機候選；
   E3／E4 仍 UNKNOWN，未發出遠程更新或 production 任務。
+
+---
+
+## §27 2026-10-01 本地實跑與 PR 候選驗收（E2；Windows 本機）
+
+本節只追加，不改寫 §20–§26。
+
+- **整合（Phase A）**：`origin/master` `aa48fa0` 已 fetch；用普通 merge（非 reset／rebase／
+  squash）合入 `codex/biggo-stage-bundle`，merge commit `39e0ce9`（parents
+  `e1bb982`、`aa48fa0`）。生產 6 個 data／receipt／PDF／metadata 檔同 origin/master
+  逐 bytes 相同；candidate diff 只含應用／測試／workflow／文檔。
+- **全量本機驗收（E2）**：`scripts/run_acceptance.py` 喺 `39e0ce9` 7/7 gates rc=0；
+  PYTEST **842 passed**（1 預期 duplicate-zip warning，含 browser smoke 12）。
+  Log SHA-256（`D:\tmp\aircon-pr-20261001\acceptance1\logs`）：
+  `GOVERNANCE_EXTRACT=4be7c627…`、`VALIDATE_DATA=8c296df7…`、`VALIDATE_METADATA=823de1ce…`、
+  `PRIVACY_WORKTREE=5abb7130…`、`PYTEST=60a43d2f…`、`FEATURE_CHECK=49807d16…`、
+  `DIFF_CHECK=b7922d9a…`。history audit `--all-refs`：commits 280／blobs 1345／
+  credentialFindings **0**／selfHostFindings 35（已知 residual）；privacy worktree＋index
+  0 命中；`git diff --check` rc=0。
+- **PR 封包實跑（E2；fixture，非 production 證據）**：`make_fixture_release.py` rc=0
+  （build `B20261001.PR-FIXTURE`）→ `build_pages_artifact.py` rc=0
+  （payloadHash `sha256:6e383815…`）→ `verify_candidate.py` rc=0（localhost HTTP、
+  Chromium 核心路徑、exact PDF rebuild、metadata full object、CSV／payload hash）。
+  另喺 `git archive` 隔離 checkout 真跑 `generate_html.py`（1755 型號、1484 KB）＋
+  `generate_pdf.py`（fixture metadata；hash `8d01133c…` 同 release PDF 一致），
+  再封包＋`verify_candidate` rc=0；默認 fixture 工具複製 production index 嘅限制已由
+  呢步補足。
+- **`--repro-from-commit` 真 CLI 實跑（E2；localhost HTTP＋本地 git fixture）**：
+  `scripts/postdeploy_check.py --repro-from-commit` rc=0；`pdf.repro_inputs_commit`
+  pass、`payload.pdf_matches_metadata` pass；`report['reproInputs']` commit 40-hex、
+  md／csv／requirements／4 個 generator 全部完整 `sha256:…`；docs-only 舊報告 pass；
+  code／env／input hash 錯仍 fail closed（由 11 個離線 test 覆蓋）。
+- **BigGo inactive CLI（E2）**：`AIRCON_BIGGO_TEST_MODE=1`、無 force／coordinator 憑證：
+  rc=0、status `skip-not-active`、token/search 0；`biggo_prices.json`／`prices_meta.json`／
+  `model_blacklist.json`／`model_status.json` 逐 bytes 不變；冇 coordinator mutation。
+- **Provider 請求帳**：本地 0 次、線上 0 次（現有快照＋fixture 足夠）。
+- **已知限制／UNKNOWN**：
+  - E2 只係 Windows Python 3.12.10（markdown 3.10.3／reportlab 5.0.0）；E3（Ubuntu 24.04／
+    Python 3.12 受信任 PR CI）同 E4（部署後觀察）未執行。
+  - PDF 版本轉換限制：舊線上 metadata.commit 對應舊 generator bytes，merge 後
+    `--repro-from-commit` 可能紅到下一次正常 daily 全量重生；不得為清紅而手動部署／
+    放寬驗證。
+  - legacy Price.com 疑點價維持 UNKNOWN；冇 provider 呼叫去證明或否定。
+  - 未 merge、未 deploy、未 tag／Release；PR 狀態見 local handoff。

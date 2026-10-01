@@ -344,6 +344,29 @@
   daily 全量重生後恢復；env binding 只覆蓋 markdown／reportlab 直接 pin，其他 runtime
   因素未證明 pinned；E3／E4 UNKNOWN。
 
+### 2026-10-01 HKT 本地實跑與 PR 候選驗收（未發布、未部署）
+
+> 只係本機候選（E2 Windows）：未 merge、未 deploy、未 tag／Release；Price.com 抓取維持放棄，
+> 本輪 provider 實際請求 0 次（local／online）；未改生產資料／metadata／index／PDF。
+
+- **整合**：`origin/master` `aa48fa0` 以普通 merge 合入 `codex/biggo-stage-bundle`，
+  merge commit `39e0ce9`；生產 6 個 data／receipt／PDF／metadata 檔逐 bytes 保留。
+- **全量驗收**：`run_acceptance.py` 7/7 gates rc=0；PYTEST 842 passed（含 browser smoke 12）；
+  history audit credentialFindings=0（selfHostFindings=35 已知 residual）；privacy worktree／
+  index 0 命中；`git diff --check` rc=0。
+- **PR 封包實跑**：`make_fixture_release` → `build_pages_artifact` → `verify_candidate` 全 rc=0
+  （localhost HTTP＋Chromium＋exact PDF rebuild＋metadata/CSV/payload hash）；另喺 `git archive`
+  隔離 checkout 真跑 `generate_html.py`／`generate_pdf.py` 再封包驗證 rc=0（補足默認 fixture
+  複製 production index 嘅盲點）。
+- **`--repro-from-commit` 真 CLI**：rc=0；`pdf.repro_inputs_commit`／
+  `payload.pdf_matches_metadata` pass；`report['reproInputs']` 完整 40-hex commit＋
+  md／csv／requirements／4 generator 完整 SHA-256。
+- **BigGo inactive CLI**：`AIRCON_BIGGO_TEST_MODE=1`、無 force／coordinator 憑證，rc=0、
+  `skip-not-active`、token／search 0、canonical 四檔 bytes 不變。
+- **已知限制**：E3（Ubuntu 24.04／Python 3.12 受信任 PR CI）同 E4 未執行；舊線上
+  metadata.commit 對應舊 generator bytes，merge 後 `--repro-from-commit` 可能紅到下一次
+  正常 daily 全量重生（不得手動部署／放寬驗證）；legacy Price.com 疑點價維持 UNKNOWN。
+
 ## [1.2.9] - 2026-09-24
 
 > 發布事實（2026-09-24 回讀）：tag `v1.2.9` → commit
