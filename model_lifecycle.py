@@ -80,17 +80,43 @@ def blacklist_model(model, reason, status='auto_discontinued', source='biggo', k
 def revive_model(model, brand_of=None):
     """黑名單復活：官方 API 正常查到市售報價 → 移除黑名單 + 清除連續失敗記錄"""
     key = as_key(model, brand_of)
-    models = load_blacklist()
-    if key not in models:
-        return False
-    models.pop(key, None)
-    save_blacklist(models)
     tracking = load_json(TRACKING_PATH, {})
-    if isinstance(tracking, dict) and key in tracking:
-        tracking.pop(key, None)
-        save_json(TRACKING_PATH, tracking, indent=2)
+    new_tracking, new_black, revived = plan_revive(
+        key, tracking=tracking if isinstance(tracking, dict) else {}, blacklist=None)
+    if not revived:
+        return False
+    save_blacklist(new_black)
+    if new_tracking != tracking:
+        save_json(TRACKING_PATH, new_tracking, indent=2)
     print(f'  ♻️ 復活：{key}（黑名單 → 有市售報價）')
     return True
+
+
+def plan_revive(key, *, tracking=None, blacklist=None):
+    """純函數復活：回 (new_tracking, new_blacklist, revived)；唔寫檔。
+
+    `key` 已經係 canonical key（caller 用 as_key 轉好）。
+    """
+    new_tracking = dict(tracking) if isinstance(tracking, dict) else \
+        (load_json(TRACKING_PATH, {}) or {})
+    new_black = dict(blacklist) if isinstance(blacklist, dict) else dict(load_blacklist())
+    if key not in new_black:
+        return new_tracking, new_black, False
+    new_black.pop(key, None)
+    new_tracking.pop(key, None)
+    return new_tracking, new_black, True
+
+
+def compute_effects(pre_tracking, pre_black, post_tracking, post_black):
+    """由 pre/post tracking＋blacklist 計出可驗證的 delta effects（排序固定）。"""
+    return {
+        'trackingUpserts': {k: v for k, v in post_tracking.items()
+                            if pre_tracking.get(k) != v},
+        'trackingRemovals': sorted(k for k in pre_tracking if k not in post_tracking),
+        'blacklistUpserts': {k: v for k, v in post_black.items()
+                             if pre_black.get(k) != v},
+        'blacklistRemovals': sorted(k for k in pre_black if k not in post_black),
+    }
 
 
 def filter_active(models, key_of=None):
@@ -99,6 +125,52 @@ def filter_active(models, key_of=None):
     skipped = [m for m in models if (key_of(m) if key_of else str(m)) in black]
     todo = [m for m in models if (key_of(m) if key_of else str(m)) not in black]
     return todo, skipped
+
+
+def plan_record_results(results, protected=None, batch_id=None, brand_of=None, *,
+                        tracking=None, blacklist=None, today=None):
+    """純函數淘汰計劃：回 (new_tracking, new_blacklist)；唔寫任何檔。
+
+    語義同 `record_results` 完全一致（三態、batch_id 去重、protected、threshold）。
+    """
+    protected = set(protected or ())
+    new_tracking = dict(tracking) if isinstance(tracking, dict) else \
+        (load_json(TRACKING_PATH, {}) or {})
+    if not isinstance(new_tracking, dict):
+        new_tracking = {}
+    new_black = dict(blacklist) if isinstance(blacklist, dict) else dict(load_blacklist())
+    today = today or _today()
+    threshold = int(os.environ.get('MODEL_BLACKLIST_MISS_THRESHOLD', DEFAULT_MISS_THRESHOLD))
+
+    for model, has_price in results:
+        key = as_key(model, brand_of)
+        if key in protected:
+            continue
+        if has_price:
+            new_tracking.pop(key, None)
+            continue
+        rec = new_tracking.get(key)
+        if not isinstance(rec, dict):
+            rec = {'first_missed': today, 'misses': 0}
+        if batch_id and rec.get('batch_id') == batch_id:
+            continue  # 同一批次重跑，唔重複計 miss
+        rec['last_checked'] = today
+        rec['misses'] = int(rec.get('misses', 0)) + 1
+        rec['first_missed'] = rec.get('first_missed') or today
+        rec['batch_id'] = batch_id
+        new_tracking[key] = rec
+        if rec['misses'] >= threshold and key not in new_black:
+            new_black[key] = {
+                'status': 'auto_discontinued',
+                'reason': f'連續 {rec["misses"]} 個更新週期 BigGo 商品搜索都無市售報價',
+                'source': 'biggo',
+                'kept_price_source': 'biggo_prices.json 如有舊快照會保留',
+                'first_missed': rec['first_missed'],
+                'last_checked': today,
+                'blacklisted_at': today,
+                'note': '自動淘汰：保留舊快照，唔再做更新',
+            }
+    return new_tracking, new_black
 
 
 def record_results(results, protected=None, batch_id=None, brand_of=None):
@@ -111,54 +183,18 @@ def record_results(results, protected=None, batch_id=None, brand_of=None):
     batch_id: 今次批次 ID；同一批次重跑唔會重複累加 misses
     brand_of: callable（型號 → 品牌原文），用嚟由型號計 canonical key
     """
-    protected = set(protected or ())
     tracking = load_json(TRACKING_PATH, {})
     if not isinstance(tracking, dict):
         tracking = {}
     black = load_blacklist()
-    today = _today()
-    threshold = int(os.environ.get('MODEL_BLACKLIST_MISS_THRESHOLD', DEFAULT_MISS_THRESHOLD))
-    tracking_changed = False
-    black_changed = False
-
-    for model, has_price in results:
-        key = as_key(model, brand_of)
-        if key in protected:
-            continue
-        if has_price:
-            if key in tracking:
-                tracking.pop(key, None)
-                tracking_changed = True
-            continue
-        rec = tracking.get(key)
-        if not isinstance(rec, dict):
-            rec = {'first_missed': today, 'misses': 0}
-        if batch_id and rec.get('batch_id') == batch_id:
-            continue  # 同一批次重跑，唔重複計 miss
-        rec['last_checked'] = today
-        rec['misses'] = int(rec.get('misses', 0)) + 1
-        rec['first_missed'] = rec.get('first_missed') or today
-        rec['batch_id'] = batch_id
-        tracking[key] = rec
-        tracking_changed = True
-        if rec['misses'] >= threshold and key not in black:
-            black[key] = {
-                'status': 'auto_discontinued',
-                'reason': f'連續 {rec["misses"]} 個更新週期 BigGo 商品搜索都無市售報價',
-                'source': 'biggo',
-                'kept_price_source': 'biggo_prices.json 如有舊快照會保留',
-                'first_missed': rec['first_missed'],
-                'last_checked': today,
-                'blacklisted_at': today,
-                'note': '自動淘汰：保留舊快照，唔再做更新',
-            }
-            black_changed = True
-
-    if tracking_changed:
-        save_json(TRACKING_PATH, tracking, indent=2)
-    if black_changed:
-        save_blacklist(black)
-    return len(black)
+    new_tracking, new_black = plan_record_results(
+        results, protected=protected, batch_id=batch_id, brand_of=brand_of,
+        tracking=tracking, blacklist=black)
+    if new_tracking != tracking:
+        save_json(TRACKING_PATH, new_tracking, indent=2)
+    if new_black != black:
+        save_blacklist(new_black)
+    return len(new_black)
 
 
 def print_blacklist():

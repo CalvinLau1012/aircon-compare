@@ -80,6 +80,7 @@ jobs:
           python scripts/postdeploy_check.py \
             --expected-metadata metadata.json \
             --manifest deploy_payload.json \
+            --repro-from-commit \
             --retries 6 \
             --report "$RUNNER_TEMP/postdeploy-report.json"
 

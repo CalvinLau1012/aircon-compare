@@ -277,6 +277,132 @@
 - **預期**：merge 後由下一次自然 schedule daily 全量重生 payload（同時修復 D24 嘅
   `payload.pdf_matches_metadata`）；本輪唔會再手動 dispatch production daily。
 
+### 2026-09-30 價錢身份 boundary matcher ＋ 唯讀疑點審計（未發布、未部署）
+
+> Price.com.hk 抓取**早前已**放棄（Cloudflare anti-bot 硬封鎖）；2026-09-30 用戶再確認
+> 維持放棄；`fetch_prices.py` 未改；`prices.json` 只係 legacy 顯示後備。本節只係本機
+> 候選（E2）：未 commit、未 push、未 deploy、未觸發 GitHub Actions、未呼叫真實
+> BigGo／EMSD／Price.com API。
+
+- **型號身份 boundary matcher（OBSERVED / E2）**：`price_utils.model_in_title` 用 NFKC＋
+  alnum boundary＋逐個 candidate 守則檢查；`is_ac_title` 改用它。保護對象係 BigGo 官方
+  API 代碼路徑同（如日後啟用）`fetch_pricesapi.py` 代碼路徑；網站目前顯示價源鏈係
+  BigGo → Gemini → legacy Price.com 舊快照（checkout 冇 `pricesapi_prices.json`，
+  亦冇 workflow 使用 `fetch_pricesapi.py`），唔可以講成網站現時載入緊 PricesAPI。
+  `RC-N1219V` 唔再匹配 `RC-N1219VX`／`XRC-N1219V`／`RC-N12190V`；`-PAC` 等分隔變體
+  亦 conservative fail-closed 拒絕；標題同時有較長變體＋獨立合法型號時，後者通過守則
+  即 True；內部間隔只准空白／標點／符號（CJK 字母唔可以）。`RC N1219V`／`RC／N1219V`／
+  全形等合法標點空格保留。新增服務／零件排除（維修／清洗／冷媒／銅管／service／
+  installation 等），「原廠保養」等主機字眼保留。
+- **BigGo 新抓取身份證據**：`_extract_price` 對最平匹配項加 optional `matchedTitle`
+  （包含匹配型號嘅 bounded NFKC 正規化 excerpt，≤200 字元；型號本身長過 limit → 不加
+  該欄，唔聲稱有 identity 證據）／`nindex`（≤64），只限 upstream response 真有嘅值；
+  舊快照唔會 retroactively 補；coordinator `validate_price_snapshot`／
+  `validate_stage_result` 兼容 extras（測試鎖定）。
+- **唯讀疑點審計**：新增 `scripts/audit_price_suspects.py`（離線、零網絡、零快照寫入），
+  列 legacy `prices.json`／BigGo／Gemini 嘅覆核候選（低價、shared PID、missing identity、
+  single merchant），deterministic JSON 預設 stdout 或 repo 外路徑。只係 review flags，
+  **唔會**標 invalid／停產／隔離，亦唔會因金額單一理由判錯。
+- **本機 run（E2；read-only）**：951 個覆核候選（`low_price` 43、`shared_pid` 661、
+  `missing_identity_evidence` 265、`single_merchant` 244）；Price.com 舊快照候選維持
+  **UNKNOWN，未證實錯**，只作 legacy 顯示資料覆核。
+- **範圍**：Price.com.hk parser 未修、未重啟，唔會新增 selector／retry／anti-bot bypass；
+  現存 legacy 低價疑點唔會被當成已證實錯價。
+- **離線驗證（E2）**：完整 pytest **831 passed**（1 預期 duplicate-zip warning，含 browser
+  smoke 12）；`run_acceptance.py` 7/7 gates rc=0；feature-check 15 項／18 節點；
+  extract_governance／validate_data／validate_metadata／privacy worktree／`git diff --check`
+  全部 rc=0。
+
+### 2026-09-30 PDF monitor 版本綁定（`--repro-from-commit`；未發布、未部署）
+
+> 只係本機候選（E2）：未 commit、未 push、未 deploy、未觸發 GitHub Actions、未呼叫真實
+> BigGo／EMSD／Price.com API；Price.com 抓取維持放棄，冇觸碰 `fetch_prices.py`。
+
+- **`scripts/postdeploy_check.py`**：新增 opt-in `--repro-from-commit`（預設不變）：
+  - 只讀本地 git 物件（`cat-file`／`merge-base`／`show`；無 fetch／clone／checkout、
+    無遠程 raw URL）；驗證 online `metadata.commit` 完整 40-hex、存在、係 HEAD 或
+    `origin/master` 祖先；
+  - 歷史 `空調對比報告.md` bytes＋線上 `datasetHash` 驗證 CSV（不 fallback current
+    md／CSV）；
+  - generator 依賴 byte-equal `metadata.commit` 後，再核實際 runtime 模組 `__file__`
+    realpath 係 executing checkout（防 cached module／symlink 繞過）；drift →
+    `pdf.repro_code_changed`；
+  - requirements pin 對比已裝版本；mismatch／缺 pin → `pdf.repro_env_changed`；
+    缺 commit／file／CSV → `pdf.repro_inputs_unavailable`；
+  - 成功時 `report['reproInputs']` 有完整 SHA-256（md／csv／requirements／4 個 generator）
+    及完整 commit；短碼顯示保留；最後仍要求嚴格 `payload.pdf_matches_metadata`。
+- **generator**：`generate_pdf.build_pdf`／`generate_html.expand_dynamic_sections` 加
+  optional `md_path`／`csv_path`；默認 `None` 行為 byte 不變；動態能源表用已驗證 online CSV。
+- **workflows**：`freshness-monitor.yml` 加 `fetch-depth: 0` 同 `--repro-from-commit`；
+  `postdeploy-verify.yml` 加 `--repro-from-commit`（exact checkout＋master ancestor guard
+  不變）；`release-archive.yml` 未改。
+- **E2**：focused 112 passed（repro 專項 11）；全 pytest（非 browser）830 passed；
+  `run_acceptance.py` 7/7 gates rc=0、PYTEST 842 passed；extract_governance／feature-check
+  15 項/18 節點／validate_metadata／validate_data／privacy worktree／`git diff --check`
+  全 rc=0。
+- **已知限制**：舊線上 PDF 可能一次 `pdf.repro_code_changed`（fail closed），下一次自然
+  daily 全量重生後恢復；env binding 只覆蓋 markdown／reportlab 直接 pin，其他 runtime
+  因素未證明 pinned；E3／E4 UNKNOWN。
+
+### 2026-10-01 HKT 本地實跑與 PR 候選驗收（未發布、未部署）
+
+> 只係本機候選（E2 Windows）：未 merge、未 deploy、未 tag／Release；Price.com 抓取維持放棄，
+> 本輪 provider 實際請求 0 次（local／online）；未改生產資料／metadata／index／PDF。
+
+- **整合**：`origin/master` `aa48fa0` 以普通 merge 合入 `codex/biggo-stage-bundle`，
+  merge commit `39e0ce9`；生產 6 個 data／receipt／PDF／metadata 檔逐 bytes 保留。
+- **全量驗收**：`run_acceptance.py` 7/7 gates rc=0；PYTEST 842 passed（含 browser smoke 12）；
+  history audit credentialFindings=0（selfHostFindings=35 已知 residual）；privacy worktree／
+  index 0 命中；`git diff --check` rc=0。
+- **PR 封包實跑**：`make_fixture_release` → `build_pages_artifact` → `verify_candidate` 全 rc=0
+  （localhost HTTP＋Chromium＋exact PDF rebuild＋metadata/CSV/payload hash）；另喺 `git archive`
+  隔離 checkout 真跑 `generate_html.py`／`generate_pdf.py` 再封包驗證 rc=0（補足默認 fixture
+  複製 production index 嘅盲點）。
+- **`--repro-from-commit` 真 CLI**：rc=0；`pdf.repro_inputs_commit`／
+  `payload.pdf_matches_metadata` pass；`report['reproInputs']` 完整 40-hex commit＋
+  md／csv／requirements／4 generator 完整 SHA-256。
+- **BigGo inactive CLI**：`AIRCON_BIGGO_TEST_MODE=1`、無 force／coordinator 憑證，rc=0、
+  `skip-not-active`、token／search 0、canonical 四檔 bytes 不變。
+- **已知限制**：E3（Ubuntu 24.04／Python 3.12 受信任 PR CI）同 E4 未執行；舊線上
+  metadata.commit 對應舊 generator bytes，merge 後 `--repro-from-commit` 可能紅到下一次
+  正常 daily 全量重生（不得手動部署／放寬驗證）；legacy Price.com 疑點價維持 UNKNOWN。
+
+### 2026-10-01 Verified snapshot rebuild 模式候選（未發布、未部署）
+
+> opt-in 手動 rebuild（`workflow_dispatch` input `rebuild_verified_snapshot`，default
+> false）：重用 72h 內 hash-bound EMSD 快照重建 index／PDF／metadata；normal daily
+> 完全不變。本機 E2 演練；未 dispatch／未 merge／未 deploy；provider 請求 0。
+
+- **Verifier**：新增 `scripts/verify_snapshot_rebuild.py`（`preflight`／`guard`）：
+  metadata Schema／payload 安全／hash／counts／receipt＋raw binding／72h／本地祖先／
+  乾淨 checkout／price stage inactive／force=false；重建後只准 index／PDF／metadata
+  改變，來源 byte 不變；報告禁止寫入 repo。
+- **Workflow**：rebuild 模式 skip EMSD 抓取／官網 staging／queue 推進；BigGo 真
+  inactive 路徑＋`AIRCON_BIGGO_TEST_MODE=1`；force 矛盾 fail-closed；預檢／guard
+  報告 always 上載。
+- **E2**：preflight rc=0；rebuild metadata 沿用原 datasetDate／retrievedAt／hash；
+  `validate_metadata`／`verify_candidate`（24 checks 含 Chromium）／guard 全 rc=0；
+  pytest 855 passed, 1 skipped；未執行 rollout。
+
+### 2026-10-01 Verified snapshot rebuild 覆核返修（未發布、未部署）
+
+> Codex 獨立覆核後嘅 fail-closed 收緊；normal daily 完全不變，未 dispatch／未 merge／
+> 未 deploy，provider 請求 0。
+
+- **工作流**：update checkout `fetch-depth: 0`；rebuild input `type: boolean` default
+  false；新增回歸測試驗完整歷史、exact trigger commit、冇 branch-mutating git 命令。
+- **Verifier**：baseline schema v2（head／commit／createdAt／facts／files 嚴格；26 個
+  required inputs 缺一即拒）；失敗 preflight 失效化舊 baseline；guard 嚴格解析
+  `git status -z`，只准三個 generated outputs 改變；regenerated metadata 過完整治理
+  Schema 且 acquisition facts 不變；raw receipt 加 pages cardinality／頁號連續／
+  durable source／privateArchive／dualSource binding。
+- **Tests**：移除 hardcode 歷史 commit；新增 invalid baseline／git 錯誤／tracked／
+  untracked／staged 非 output／delete／rename／missing brand input／raw provenance／
+  failed-preflight 失效化等負向矩陣。
+- **E2**：focused 54 passed, 1 skipped；全量 pytest 871 passed, 1 skipped；acceptance
+  7/7 rc=0（15 項／18 節點）；隔離重建 preflight／build／guard 全 rc=0（facts 沿舊
+  快照）；詳見 docs/STATUS.md §28.1。
+
 ## [1.2.9] - 2026-09-24
 
 > 發布事實（2026-09-24 回讀）：tag `v1.2.9` → commit

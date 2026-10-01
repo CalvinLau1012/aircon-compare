@@ -919,3 +919,532 @@ GATE-08 `payload.pdf_matches_metadata` 會紅一次（待 daily 重生恢復）�
   privacy worktree（0 命中）／`git diff --check` 全部 rc=0。
 - **E4**：UNKNOWN——修復後嘅第二輪 production daily（自然 schedule）同 Pages deploy／GATE-08
   未執行；本節後續會追加實際結果。
+
+---
+
+## §20 BigGo P0 stage bundle 交易返修（2026-09-30 追加；E2）
+
+本節只追加，不刪除或改寫先前任何記述。本輪係 D26 已批准架構下的 P0 一致性修復；
+未執行任何生產／Push／部署／真實 BigGo 呼叫。
+
+- **背景（OBSERVED / E1，2026-09-30 本機）**：`fetch_biggo` 網絡批次會在 coordinator
+  publish 前寫 `biggo_prices.json`／`prices_meta.json`／`model_blacklist.json`／
+  `model_status.json`（離線重現：本地 idx 0→1、snapshot 已含新價、當時零 publish）；
+  `biggo_stage_runner` 的 `completed-idempotent` 只 skip、active loser 只寫 snapshot；
+  `acquire` 過期 takeover 可被陳舊 writer 倒退至較低 stage。
+- **交易語義（本輪實作）**：
+  1. **網絡階段零本地寫入**：smoke／force／batch／blacklist review 之後，canonical 四檔
+     byte 不變；效果只以 staged payload 回傳（`plan_record_results`／`plan_revive`／
+     `compute_effects` 純函數）。
+  2. **Write-ahead intent**：任何真實 BigGo 請求之前先 CAS 持久化
+     `callsMayHaveStarted`；CAS 失敗／lease lost 即禁止請求（`blocked-intent-persist`
+     rc=2／`needs-review`）。唔會每個 request 寫 coordinator。
+  3. **v2 bundle**：每 cycle+stage 寫入 immutable `base-biggo_prices.json`、
+     `biggo_prices.json`、`stage-result.json`（outcome ledger／effects／review evidence／
+     pre/post state hash／request counts）、`manifest.json`；manifest 係凍結點，
+     `state.status=completed` 才係交易確認點。base＋本 stage priced outcomes 必須等於
+     new snapshot（保留舊 stage keys；clean_miss／net_error 不得改 entry）。
+  4. **Local apply**：先全檔 preflight（每檔必須明確等於 pre-image 或 post-image，否則
+     零寫入 fail-closed）；再 snapshot → tracking → blacklist → `prices_meta.json`
+     （最後寫 `appliedBundleHash`／`appliedSnapshotHash`）；同一 bundle no-op、stage 只前進。
+  5. **角色語義**：active loser 零本地寫入、零 BigGo、零 apply；`completed-idempotent`
+     import＋apply；expired active 帶 intent 只可 adopt 完整 bundle（零 BigGo）或
+     `needs_review`，冇完整 bundle 不可自動重跑；legacy snapshot-only bundle 拒絕自動
+     apply（`completed-legacy-manual`）。
+  6. **acquire 單調守門（P0）**：同日期 remote 較高 stage（active／completed）或任何
+     `needs_review` → `stale-writer`／`completed-ahead`／`blocked-needs-review`，
+     **0 PUT、0 本地寫、0 BigGo**。
+  7. **CI guard／alert**：`--status-out` 寫脫敏 status artifact；未 CAS completed 的四檔
+     diff 由 `verify_biggo_stage_artifacts.py` 阻止 push；`needs-review`／
+     `publish-uncertain`／`completed-apply-failed`／legacy 等由 workflow 尾步
+     `--alert-only` 產生紅 run（EMSD 日常發布步驟已完成，唔受阻）。
+- **新增／修改檔案（本輪）**：新增 `biggo_canonical.py`、`scripts/biggo_apply.py`、
+  `scripts/verify_biggo_stage_artifacts.py`；修改 `fetch_biggo.py`、`model_lifecycle.py`、
+  `scripts/biggo_coordinator.py`、`scripts/biggo_stage_runner.py`、
+  `.github/workflows/daily-update.yml` 及對應測試。
+- **E2 證據（本機，2026-09-30）**：`run_acceptance.py` 7/7 gates rc=0（report
+  `D:\tmp\aircon-biggo-p0\acceptance-final.json`）；PYTEST **717 passed**（1 預期
+  duplicate-zip warning）；feature-check 15 項／18 節點 passed；extract_governance、
+  validate_data、validate_metadata、privacy worktree、`git diff --check` 全部 rc=0。
+  新增離線故障注入：lost active、completed idempotent、expired intent adopt／
+  no-bundle、partial／corrupt bundle、publish／commit／apply 失敗、pre/post mismatch、
+  meta last、stage monotonic 0 PUT、guard／alert、inactive token/search=0、force 無 bypass。
+- **UNKNOWN／未做**：未 commit／push／PR／merge／deploy；未呼叫真實 BigGo／EMSD；
+  未改私人 coordinator repo／Secrets；E3（受信任 CI）同 E4（部署後觀察）未執行；
+  legacy bundle 是否存在於私人 coordinator 屬 UNKNOWN（由 audit／alert 覆蓋）。
+- **補記（2026-09-30 同日）**：加入黑名單 review staged 回歸後，最終
+  `run_acceptance.py` 7/7 gates rc=0、PYTEST **718 passed**（1 預期 duplicate-zip
+  warning，含 browser smoke 12）；本節上文 717 為較早一次 run 的實數，兩者皆為 E2。
+
+---
+
+## §21 BigGo P0 首輪返修（Codex 四類阻斷；2026-09-30 追加；E2）
+
+本節只追加，不改寫 §20 任何記述。對應 Codex 首輪審查（P0 阻斷 1–5）的修正與離線回歸。
+
+- **1. stage N+1 intent 污染**：`_takeover_state` 只在「同一 cycle/stage 的 expired
+  active takeover」保留 write-ahead intent／per-stage attempts；完成前一 stage 或切新
+  cycle 一律 fresh `callsMayHaveStarted=false`、`attempts=0`；`commit(status='completed')`
+  亦會清 intent。`cooldownUntil`（時間事實）保留，但唔會將 per-stage attempts 當 provider
+  window 用量帶過。（`tests/test_biggo_bundle.py`：連續兩 stage／新 cycle／expired 保留／
+  cooldown-only 保留／completed 清 intent。）
+- **2. renewed 唔可以重跑**：同 cycle/stage 同一 owner active 而 `callsMayHaveStarted=true`
+  時，`acquire` 回 `winner-intent`；runner 只可 adopt 完整 bundle（`completed-recovered`）
+  或 `needs_review`，零 BigGo。（runner fake tests 兩條：冇 bundle／完整 bundle。）
+- **3. 警報唔再阻 Pages**：daily 尾步 alert 已移除；新增獨立只讀
+  `.github/workflows/biggo-alert.yml`（`workflow_run` on daily completed；嚴格
+  repo／event（schedule／workflow_dispatch）／branch master／head_sha 40-hex／非 PR；
+  success 或 failure 都可由 `verify_biggo_alert_source.py` 核實；缺 artifact 由
+  `download-artifact`＋`test -f` fail-closed）。daily 正常 needs_review／publish-uncertain
+  路徑保持 success（guard 無 diff），Pages source success 判定不變；
+  `verify_deploy_request` 的 success-only 閘門未動（既有 `test_non_success_conclusion_rejected`
+  繼續覆蓋）。離線測試證明 alert 紅而 daily source 仍 success。
+- **4. 每請求 hard cap**：新增 `biggo_limiter.py`（thread-safe `reserve(kind)`；search cap
+  = 1 smoke + 2×本 stage 實際處理型號數（batch＋blacklist review）；token cap = 1/ stage；
+  provider factual 80% 對 token+search 合計逐請求再收緊；到 cap sticky `reached` 並
+  raise）。`fetch_biggo._api_search`／`_get_access_token` 在真正 outbound 前 reserve；
+  cap refusal 當網絡錯誤（partial／fail-closed），唔會當 clean miss。runner 用
+  `stage_workload`／`force_workload` 與 fetch 同一定義計 `queuedModels`，並在網絡階段
+  set／clear limiter。（`tests/test_biggo_limiter.py`：per-kind／provider／20 threads 精確
+  cap／batch cap boundary／review 計入 cap／abort 停止排隊。）
+- **5. 附帶修正**：`_needs_review` 改經 runner `emit` closure，修 LeaseLostError 分支的
+  duplicate `commit` kwarg TypeError；status artifact 記精確 `needs-review`／reason／
+  已用 requests，唔再跌返通用 `error`；`_run_blacklist_review` 接受 `should_abort`，
+  改 incremental submit＋結果迴圈檢查＋`cancel_futures`，lease lost 後唔再排新查詢。
+- **新增／修改**：新增 `biggo_limiter.py`、`scripts/verify_biggo_alert_source.py`、
+  `.github/workflows/biggo-alert.yml`；修改 `fetch_biggo.py`、`scripts/biggo_coordinator.py`、
+  `scripts/biggo_stage_runner.py`、`scripts/verify_biggo_stage_artifacts.py`（`::error::`
+  註釋）、`.github/workflows/daily-update.yml`（移除尾步 alert）及測試。
+- **E2 證據（2026-09-30 本機）**：`run_acceptance.py` **7/7 gates rc=0**（report
+  `D:\tmp\aircon-biggo-p0\acceptance-rework-final.json`）；PYTEST **752 passed**（1 預期
+  duplicate-zip warning，含 browser smoke 12）；feature-check 15 項／18 節點 passed；
+  extract_governance／validate_data／validate_metadata／privacy worktree／`git diff --check`
+  全部 rc=0。
+- **UNKNOWN／未做**：E3（受信任 CI）／E4（部署後觀察）未執行；本輪未 push／未 deploy／
+  未呼叫真實 BigGo；alert workflow 需 merge 到 default branch 後才會收到 workflow_run。
+
+---
+
+## §22 BigGo P0 第二輪返修（不可跨越未完成 stage／provider window 安全；2026-09-30 追加；E2）
+
+本節只追加，不改寫 §20／§21。對應 Codex 第二輪審查缺口。
+
+- **1. 唔可以跨越未完成／待覆核 stage**：`acquire` 次序重寫：
+  - remote `needs_review`（任何 cycle）→ `blocked-needs-review`（0 PUT）；
+  - remote `active` 同一 stage：其他 owner 有效 lease → `lost`；同 owner → renew
+    （有 intent 回 `winner-intent`，否則 `renewed`）；其他 owner expired → 同一 stage
+    安全重入（有 intent 回 `winner-intent`，冇 intent 回 `winner`）；
+  - remote `active`／`idle` **不同 cycle/stage** → `blocked-incomplete`（0 PUT、0 BigGo、
+    0 本地寫）；即使 expired、同 owner、冇 intent、force cycle 都唔可以前進；no new
+    cycle／force 旁路；
+  - remote 同一 stage `idle` 且無 intent → 安全重入 `winner`（保留 attempts 審計）；idle
+    帶 intent → `blocked-incomplete`；
+  - 只有 remote `completed`（方向單調；同日期較高 stage → `completed-ahead`）才可前進，
+    新 stage fresh `intent=false`、`attempts=0`。
+  runner 將 `blocked-incomplete` 記入 status artifact（`alert=true`、
+  `rerun=prohibited`）；0 本地寫入 → 四檔無 diff → daily guard pass（EMSD 日常保持
+  success），BigGo 獨立 alert workflow 紅。
+- **2. provider quota／window 安全**：`providerQuotaLimit` 或 `providerWindowEnd` 有配置
+  （env 或 legacy state）時，runner 直接 `blocked-quota-window-unsupported`：零 BigGo、
+  零 coordinator mutation（env 檢查在 acquire 前；legacy state 在 acquire 後釋放 lease）、
+  alert 紅；原因明言 `quota-window-accounting-unsupported`。**唔會**用 stage-local 80%
+  冒充 provider window；`budget()` 加 `providerWindowAccounting='unsupported'` 標示，limiter
+  的 `providerCap` 不再由 runner 傳入；48h 冷卻繼續只作項目自身 fallback，唔係 provider
+  window。無 provider 事實時本地 hard cap（1 smoke＋2×stage 型號數、token 1）不變。
+- **3. apply 只限 remote completed**：winner apply 只會在 `commit(status='completed')`
+  之後；completed-idempotent／recovered 只會由 completed state 或 commit 後進入；
+  `blocked-incomplete` 零 apply、零本地寫；guard 只在有 canonical diff 時阻斷，無 diff 的
+  EMSD daily 保持成功。Pages source success 驗證、privacy、GATE 全部未改。
+- **E2 證據（2026-09-30 本機）**：`run_acceptance.py` **7/7 gates rc=0**（report
+  `D:\tmp\aircon-biggo-p0\acceptance-rework2.json`）；PYTEST **765 passed**（1 預期
+  duplicate-zip warning，含 browser smoke 12）；feature-check 15 項／18 節點 passed；
+  extract_governance／validate_data／validate_metadata／privacy worktree／`git diff --check`
+  全部 rc=0。新增 targeted tests：`test_stage2_blocked_by_active_stage1_*`、
+  `test_force_cannot_jump_active_stage`、`test_stage2_blocked_by_idle_stage1`、
+  `test_same_stage_idle_no_intent_safe_reentry`、`test_idle_with_intent_blocks`、
+  `test_provider_*_blocks_*`、`test_blocked_incomplete_guard_passes_but_alert_red`、
+  `test_alert_blocked_incomplete_is_red`、`test_alert_quota_window_unsupported_is_red`。
+- **UNKNOWN／未做**：E3／E4 未執行；provider window usage ledger 仍未實作（因此配置路徑
+  一律 fail-closed）；未 push／deploy／呼叫真實 BigGo。
+- **補記（2026-09-30 同日）**：加入「active stage1 由其他 owner 有效 lease 持有 → stage2 只可
+  `lost`、bytes 不變」回歸後，最終 `run_acceptance.py` 7/7 gates rc=0、PYTEST **766 passed**；
+  本節上文 765 為較早一次 run 的實數，兩者皆為 E2。
+
+---
+
+## §23 BigGo P0 第三輪返修（stage gap／worker 生命周期；2026-09-30 追加；E2）
+
+本節只追加，不改寫 §20–§22。對應 Codex 第三輪兩個實質缺口。
+
+- **1. stage gap 守門**：`acquire` 對 remote `completed` 增加 `_stage_gap_reason`：
+  - 同日期 normal：下一個合法 stage 必須精確 = remote.stage + 1；`stage > +1` →
+    `blocked-stage-gap`（reason `stage-skip`）；
+  - 較新日期 normal：remote 上一個 cycle 必須 `N/N`（7/7）；未達 total →
+    reason `previous-cycle-incomplete`；已完成而新 cycle 必須由 stage 1 開始，否則
+    reason `new-cycle-must-start-at-1`；
+  - 較舊日期維持 `completed-ahead`；force 係明確人手 intent，completed 後可另行處理，
+    但唔可以繞過 active／idle／needs_review（仍 `blocked-incomplete`／
+    `blocked-needs-review`）。
+  runner 將 `blocked-stage-gap` 記入 status artifact（`alert=true`、
+  `rerun=prohibited`）＋remote cycle/stage；0 PUT、0 BigGo、0 本地寫、0 apply；無
+  canonical diff → daily guard pass（EMSD 保持 success），獨立 alert workflow 紅。
+  回歸：stage1→stage2 pass、stage1→stage3 block、stage6/7→新 cycle block、7/7→新 cycle
+  stage1 pass、新 cycle stage2 block、completed-ahead、force boundary、runner
+  `blocked-stage-gap` alert artifact。
+- **2. worker 生命周期**：
+  - `run_price_batch`／`run_force_batch`／`_run_blacklist_review` 改為**有界 incremental
+    submit**（最多 2 個 running，用 `wait(FIRST_COMPLETED)`），abort 後唔再 submit；
+    `shutdown(wait=True, cancel_futures=True)` 確保所有已啟動 worker 完成／abort 後 fetch
+    才返回，runner 才可以安全清除共享 limiter／abort context——函式返回後 0 worker、0
+    orphan outbound。
+  - `_wait_cooldown`／`_wait_pace`／retry backoff 改為 abort-aware 分段 wait
+    （`_sleep_abortable`；有 abort context 才可以截斷，無 context 保留單次 sleep 舊契約），
+    失 lease 後唔會再等長時間／再發請求。
+  - token 取得全程 `_TOKEN_LOCK` 序列化（cache miss 只發一次 auth request，第二個 worker
+    等 cache）；REQUEST_STATS 加 `_STATS_LOCK`（bundle 計數準確）。
+  - `_reserve(token/search)` 仍然喺每個 outbound 前執行（auth 與 search 分開），
+    abort check 先於 reserve；cooldown／pace／retry 期間 abort 亦會被檢查。
+  - 回歸（`tests/test_biggo_worker_lifecycle.py`）：run 返回後 0 worker、pending futures
+    cancel（實啟動 = 2）、返回後／context 清除後 0 outbound、abort 截斷 retry sleep
+    （calls 只 1）、abort 截斷 cooldown／pace、兩 thread 只取一次 token；另有
+    `test_biggo_limiter.py` 的 cap／50 次 request 上限不變。
+- **已知限制（UNKNOWN／residual）**：in-flight `urlopen` 本身無法被 abort 中斷（受
+  timeout 界住，smoke 8s／批次 20s）；token lock 等待受第一個 auth timeout 界住；
+  force cycle 會覆寫 remote 的 normal cycle 進度記錄（單一 state 設計），屬人手 intent
+  的既有邊界，未在本輪擴張 schema。provider window ledger 仍 `unsupported`（見 §22）。
+- **E2 證據（2026-09-30 本機）**：`run_acceptance.py` **7/7 gates rc=0**（report
+  `D:\tmp\aircon-biggo-p0\acceptance-rework3.json`）；PYTEST **784 passed**（1 預期
+  duplicate-zip warning，含 browser smoke 12）；feature-check 15 項／18 節點 passed；
+  extract_governance／validate_data／validate_metadata／privacy worktree／`git diff --check`
+  全部 rc=0。
+
+---
+
+## §24 BigGo P0 force cycle 邊界返修（單一 coordinator state；2026-09-30 追加；E2）
+
+本節只追加，不改寫 §20–§23。對應 Codex 第四輪：force 可覆寫未完成 normal cycle 或
+force 可被同日／較舊 normal 奪回。
+
+- **新轉移（completed remote，0 PUT／0 BigGo／0 apply）**：
+  - remote `normal N/7`（N<7）→ 任何 force：**`blocked-force-cycle-incomplete`**
+    （reason `normal-cycle-incomplete`）；未完成月度進度唔可以被 force 覆寫。
+  - remote `normal 7/7` → force 日期早於 normal cycle 日期：**`blocked-stale`**
+    （reason `force-older-than-normal-cycle`）；日期不早於則允許（人手 intent）。
+  - remote `force YYYY-MM-DD` → 同日 normal 或較舊日期嘅任何 normal／force：
+    **`blocked-stale`**（reason `same-day-normal-after-force`／
+    `request-older-than-force-cycle`）；較新日期 normal 只准 stage 1
+    （stage>1 → `blocked-stage-gap` reason `new-cycle-must-start-at-1`）；
+    較新 force 允許（明確人手 intent）；同日同 force cycle → `completed-idempotent`。
+  - 首次 force（無 previous state）保持允許；active／idle／needs_review 嘅
+    force 仍按既有 `blocked-incomplete`／`blocked-needs-review`／`lost` 一律唔准跨越。
+- runner 新增 `blocked-force-cycle-incomplete`／`blocked-stale` routes
+  （status artifact `alert=true`、`rerun=prohibited`、reason＋remote cycle/stage）；
+  `verify_biggo_stage_artifacts.ALERT_STATUSES` 同步；無 canonical diff → daily guard
+  pass（EMSD 保持 success），獨立 BigGo alert workflow 紅；Pages source success 閘門、
+  privacy、GATE 不變。
+- **冇改 state schema**：normal 7/7 完成後才允許 force，所以單一 state 被 force
+  取代時唔存在未完成 normal 進度可 resume；normal cycle 的完成事實仍可喺公開
+  `prices_meta.last_full`／Git 資料 commit 審計。未完成 normal cycle 一律 fail-closed。
+- **回歸（先失敗後修）**：`test_force_blocked_by_completed_normal_incomplete`、
+  `test_force_allowed_after_completed_normal_7_of_7`、
+  `test_force_older_than_completed_normal_7_of_7_blocked_stale`、
+  `test_force_then_same_day_normal_blocked`、`test_force_then_older_normal_blocked`、
+  `test_force_then_newer_normal_stage1_passes`、
+  `test_force_then_newer_normal_stage2_blocked`、`test_force_then_older_force_blocked`、
+  `test_force_then_newer_force_allowed`、`test_force_same_cycle_idempotent`、
+  `test_first_force_without_state_allowed`、`test_force_blocked_by_idle_normal_stage`、
+  `test_force_after_incomplete_normal_blocked`、`test_normal_same_day_after_force_blocked`；
+  runner `test_blocked_force_cycle_incomplete_zero_biggo_and_alert`、
+  `test_blocked_stale_zero_biggo_and_alert`；guard 兩個新 alert 測試。
+- **E2 證據（2026-09-30 本機）**：`run_acceptance.py` **7/7 gates rc=0**（report
+  `D:\tmp\aircon-biggo-p0\acceptance-rework4.json`）；PYTEST **800 passed**（1 預期
+  duplicate-zip warning，含 browser smoke 12）；feature-check 15 項／18 節點 passed；
+  extract_governance／validate_data／validate_metadata／privacy worktree／`git diff --check`
+  全部 rc=0。
+- **UNKNOWN／未做**：E3／E4 未執行；未 push／deploy／呼叫真實 BigGo。
+
+---
+
+## §25 價錢身份 boundary matcher ＋ 唯讀疑點審計（2026-09-30 追加；E2）
+
+本節只追加，不改寫 §20–§24。對應用戶 2026-09-30 再確認：Price.com.hk 抓取**早前已**因
+Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_prices.py` 不動，
+`prices.json` 只係 legacy 顯示後備。
+
+- **matcher（OBSERVED / E2）**：`price_utils.model_in_title` 用 NFKC 半形化＋
+  alnum boundary＋逐個 candidate 守則檢查；`is_ac_title` 改用它，保護 BigGo 官方 API
+  代碼路徑同（如日後啟用）`fetch_pricesapi.py` 代碼路徑。
+  - **顯示來源事實**：網站目前 `generate_html.best_price` 只用 BigGo → Gemini →
+    legacy Price.com 舊快照（3-source 簽名，pricesapi=None）；checkout 冇
+    `pricesapi_prices.json`，亦冇 workflow 使用 `fetch_pricesapi.py`；唔可以描述成
+    「網站而家載入緊 PricesAPI」。
+  - 拒絕：`RC-N1219VX`、`XRC-N1219V`、`RC-N12190V`、`RC-N1219V-PAC`、`RC-N1219V_1`；
+  - 允許：`RC N1219V`、`RC／N1219V`、`RC-N1219-V`、全形、`RC-N1219V 1匹`、
+    `RC-N1219V窗口機`；標題同時有較長變體＋獨立合法型號時，只要後者通過守則就
+    True（例：`RC-N1219V-PAC / RC-N1219V 窗口冷氣機`）；
+  - 內部間隔只准空白／標點／符號（NFKC 後），CJK 等字母唔可以（`R冷氣C-N1219V` 拒絕）；
+  - model 少於 4 個英數字一律 False（同 BigGo／fetch_pricesapi 上游 `len(nm) < 4` 一致）；
+  - 新增服務／零件排除（維修／清洗／冷卻相關零件／service／installation 等）；
+    「原廠保養」等主機字眼保留。
+  - **Tradeoff（已知 false negative）**：`-PAC` 等分隔變體會被拒；無真實 fixture
+    之前揀保守 fail-closed（寧可漏價，唔可錯配身份）。
+- **BigGo evidence（OBSERVED / E2）**：`fetch_biggo._extract_price` 對最平匹配項加
+  optional `matchedTitle`／`nindex`（≤64）；只限 upstream response 真有嘅值，舊快照
+  唔會 retroactively 補。`matchedTitle` 係包含匹配型號嘅 bounded NFKC 正規化 excerpt
+  （≤200 字元；型號本身長過 limit → 不加該欄，唔聲稱有 identity 證據）；
+  `validate_price_snapshot` 同 `validate_stage_result` 對 extras 兼容（測試鎖定）。
+- **唯讀審計（OBSERVED / E2）**：新增 `scripts/audit_price_suspects.py`；離線、無網絡、
+  零快照寫入；deterministic JSON；預設 stdout，`--out` 只可寫 repo 外（`--allow-repo-path`
+  才可寫 repo 內）。本機 run：951 候選（`low_price` 43、`shared_pid` 661、
+  `missing_identity_evidence` 265、`single_merchant` 244）；全部只係 review flags，
+  **未證實錯價**，亦唔會標 invalid／停產／隔離。
+- **未做／UNKNOWN**：
+  - Price.com.hk parser **未修、未重啟、無新 selector／retry／anti-bot bypass**；
+    `fetch_prices.py` 原樣；
+  - `prices.json` 內低價疑點維持 UNKNOWN（`S1813V-PAC $45`、`S1216H-PAC $48`、
+    `RC-N1219V` legacy `$2,988`／BigGo `$50` 等）；舊 BigGo entry 冇 title 證據，
+    唔可離線追溯證實或否定；
+  - E3／E4 未執行；未 push／deploy／呼叫真實 BigGo／Price.com。
+- **E2 證據（2026-09-30 本機）**：完整 pytest **831 passed**（1 預期 duplicate-zip
+  warning，含 browser smoke 12）；`run_acceptance.py` **7/7 gates rc=0**（report
+  `D:\tmp\aircon-price-identity\acceptance2.json`）；feature-check 15 項／18 節點 passed；
+  extract_governance／validate_data／validate_metadata／privacy worktree／
+  `git diff --check` 全部 rc=0；審計 report 寫喺 repo 外
+  `D:\tmp\aircon-price-identity\audit.json`。
+
+---
+
+## §26 PDF 監控版本綁定（`--repro-from-commit`；2026-09-30 追加；E2）
+
+本節只追加，不改寫 §20–§25。
+
+- **背景（OBSERVED / E1）**：freshness monitor／GATE-08 之前用 current checkout 嘅
+  `空調對比報告.md`＋current CSV 重建線上 PDF；online `metadata.commit`（部署源碼 commit）
+  可能舊過 checkout，docs-only 改動會造成假 `payload.pdf_matches_metadata` failure
+  （D24 已記錄）。
+- **實作（opt-in；預設行為完全不變）**：
+  1. `scripts/postdeploy_check.py` 加 `--repro-from-commit`；只在原有嚴格
+     metadata／payload 檢查之上做額外 PDF 輸入綁定。
+  2. 只讀**本地 git 物件**（`cat-file -e`、`merge-base --is-ancestor`、`show`；
+     無 fetch／clone／checkout、無遠程 raw URL）；驗證 online `metadata.commit` 係完整
+     40-hex、存在本地、係 current HEAD 或 `origin/master` 祖先。
+  3. 歷史 `空調對比報告.md` bytes 由 `git show` 取得；CSV 用線上已抓 bytes 並再次核對
+     `expected.datasetHash`；唔會 fallback current md／CSV。
+  4. generator 依賴（`generate_pdf.py`／`generate_html.py`／`crawl_utils.py`／
+     `models_data.py`）必須同 `metadata.commit` byte-equal；之後再核**實際 runtime 載入
+     模組** `__file__` `realpath` 係 executing checkout 內（防 `sys.modules` 快取／其他
+     tree 同名 module／symlink 繞過）。code drift → `pdf.repro_code_changed`（fail closed，
+     唔 build、唔執行歷史 code；唔執行 fetched code）。
+  5. `requirements.txt`（metadata.commit 版本）嘅 `markdown`／`reportlab` pin 對比已裝版本；
+     mismatch／缺 pin → `pdf.repro_env_changed`。
+  6. 缺 commit／file／CSV → `pdf.repro_inputs_unavailable`。
+  7. 成功時 report 有 `pdf.repro_inputs_commit`（完整 commit＋ancestry）同
+     `pdf.repro_inputs_sha256`（短碼顯示）；另有 machine-readable
+     `report['reproInputs']`（完整 40-hex commit＋md／csv／requirements／每個 generator
+     dependency 嘅完整 `sha256:…`）。
+  8. 之後仍然要求嚴格 `payload.pdf_matches_metadata`（線上 PDF bytes == 用歷史 md＋
+     線上驗證 CSV＋exact online metadata 重建）；所有 metadata／payload hash 檢查保留。
+  9. `generate_html.expand_dynamic_sections`／`energy_distribution_markdown` 同
+     `generate_pdf.build_pdf` 加 optional `csv_path`／`md_path`；默認（`None`）行為
+     byte 不變；動態能源表用已驗證 online CSV。
+- **workflows**：`freshness-monitor.yml` checkout 加 `fetch-depth: 0` 同
+  `--repro-from-commit`；`postdeploy-verify.yml` 加 `--repro-from-commit`（保留 exact
+  checkout＋master ancestor guard）；`release-archive.yml` 未改（checkout 就係 deployed
+  commit，現行重建已一致）。
+- **E2 證據（2026-09-30 本機）**：
+  - focused（postdeploy／freshness／workflow／pdf guard／energy／twostage／p0／pages 共 8 檔）
+    **112 passed**；`--repro-from-commit` 專項 **11 passed**：docs-only 舊 md pass、online
+    CSV 覆核（local CSV 唔同仍 pass）、missing commit／md、historical code drift、
+    env pin drift、錯 PDF bytes、flag-off 不變、`origin/master` fallback、runtime source
+    binding（cached module 繞過）、git 只讀 allowlist。
+  - 全 pytest（非 browser）**830 passed**（1 預期 duplicate-zip warning）；
+    `run_acceptance.py` **7/7 gates rc=0**、PYTEST **842 passed**（含 browser smoke 12）；
+    extract_governance／feature-check 15 項/18 節點／validate_metadata／validate_data／
+    privacy worktree／`git diff --check` 全部 rc=0。
+- **已知限制（UNKNOWN／residual）**：
+  - 直到下一次自然 daily 用新 generator code 重新部署，舊線上 PDF 可能出現
+    `pdf.repro_code_changed`（fail closed，唔會假過）；next daily 全量重生後恢復。
+  - env binding 只覆蓋 `requirements.txt` 直接 pin 嘅 markdown／reportlab；Python 版本、
+    其 transitive deps、字體／locale 未證明全部 pinned。
+  - `--repo` 只係測試／替代 checkout 嘅歷史來源；runtime attestation 一定綁 executing
+    checkout `BASE`，唔會執行 fetched／歷史 code。
+  - E3／E4 未執行；線上 monitor 實際 run 未觀察；未 push／deploy／呼叫真實
+    BigGo／EMSD／Price.com API。
+
+### §26.1 Codex 獨立驗收（2026-09-30 23:52 HKT；E2）
+
+- 獨立審查實際差異，重跑 postdeploy／freshness／workflow security／PDF metadata／
+  energy distribution／metadata twostage／P0 regressions／Pages deploy 共 8 個測試檔：
+  **138 passed，rc=0**。此組測試同上述 focused 112 組合不同，數字不可混用。
+- 逐一重算 acceptance 的 7 份 gate 日誌 SHA-256，全部與 receipt 一致且 rc=0；
+  PYTEST 日誌確認 **842 passed**，feature 日誌確認 **15 required／18 節點全部通過**。
+- 核對 CHANGELOG／DECISIONS／STATUS 既有行全部依序保留；`需求摘要.md`、AGENTS、
+  metadata、index、PDF、價格快照、Price.com 抓取程式及 VERSION 均未改。
+- 公開 privacy worktree **0 命中**、`git diff --check` 通過。結論只限本機候選；
+  E3／E4 仍 UNKNOWN，未發出遠程更新或 production 任務。
+
+---
+
+## §27 2026-10-01 本地實跑與 PR 候選驗收（E2；Windows 本機）
+
+本節只追加，不改寫 §20–§26。
+
+- **整合（Phase A）**：`origin/master` `aa48fa0` 已 fetch；用普通 merge（非 reset／rebase／
+  squash）合入 `codex/biggo-stage-bundle`，merge commit `39e0ce9`（parents
+  `e1bb982`、`aa48fa0`）。生產 6 個 data／receipt／PDF／metadata 檔同 origin/master
+  逐 bytes 相同；candidate diff 只含應用／測試／workflow／文檔。
+- **全量本機驗收（E2）**：`scripts/run_acceptance.py` 喺 `39e0ce9` 7/7 gates rc=0；
+  PYTEST **842 passed**（1 預期 duplicate-zip warning，含 browser smoke 12）。
+  Log SHA-256（`D:\tmp\aircon-pr-20261001\acceptance1\logs`）：
+  `GOVERNANCE_EXTRACT=4be7c627…`、`VALIDATE_DATA=8c296df7…`、`VALIDATE_METADATA=823de1ce…`、
+  `PRIVACY_WORKTREE=5abb7130…`、`PYTEST=60a43d2f…`、`FEATURE_CHECK=49807d16…`、
+  `DIFF_CHECK=b7922d9a…`。history audit `--all-refs`：commits 280／blobs 1345／
+  credentialFindings **0**／selfHostFindings 35（已知 residual）；privacy worktree＋index
+  0 命中；`git diff --check` rc=0。
+- **PR 封包實跑（E2；fixture，非 production 證據）**：`make_fixture_release.py` rc=0
+  （build `B20261001.PR-FIXTURE`）→ `build_pages_artifact.py` rc=0
+  （payloadHash `sha256:6e383815…`）→ `verify_candidate.py` rc=0（localhost HTTP、
+  Chromium 核心路徑、exact PDF rebuild、metadata full object、CSV／payload hash）。
+  另喺 `git archive` 隔離 checkout 真跑 `generate_html.py`（1755 型號、1484 KB）＋
+  `generate_pdf.py`（fixture metadata；hash `8d01133c…` 同 release PDF 一致），
+  再封包＋`verify_candidate` rc=0；默認 fixture 工具複製 production index 嘅限制已由
+  呢步補足。
+- **`--repro-from-commit` 真 CLI 實跑（E2；localhost HTTP＋本地 git fixture）**：
+  `scripts/postdeploy_check.py --repro-from-commit` rc=0；`pdf.repro_inputs_commit`
+  pass、`payload.pdf_matches_metadata` pass；`report['reproInputs']` commit 40-hex、
+  md／csv／requirements／4 個 generator 全部完整 `sha256:…`；docs-only 舊報告 pass；
+  code／env／input hash 錯仍 fail closed（由 11 個離線 test 覆蓋）。
+- **BigGo inactive CLI（E2）**：`AIRCON_BIGGO_TEST_MODE=1`、無 force／coordinator 憑證：
+  rc=0、status `skip-not-active`、token/search 0；`biggo_prices.json`／`prices_meta.json`／
+  `model_blacklist.json`／`model_status.json` 逐 bytes 不變；冇 coordinator mutation。
+- **Provider 請求帳**：本地 0 次、線上 0 次（現有快照＋fixture 足夠）。
+- **已知限制／UNKNOWN**：
+  - E2 只係 Windows Python 3.12.10（markdown 3.10.3／reportlab 5.0.0）；E3（Ubuntu 24.04／
+    Python 3.12 受信任 PR CI）同 E4（部署後觀察）未執行。
+  - PDF 版本轉換限制：舊線上 metadata.commit 對應舊 generator bytes，merge 後
+    `--repro-from-commit` 可能紅到下一次正常 daily 全量重生；不得為清紅而手動部署／
+    放寬驗證。
+  - legacy Price.com 疑點價維持 UNKNOWN；冇 provider 呼叫去證明或否定。
+  - 未 merge、未 deploy、未 tag／Release；PR 狀態見 local handoff。
+
+### §27.1 Codex 獨立核對與受信任 PR CI（2026-10-01；E2／E3）
+
+- `f1cc089d04688da73b69ee8905c136ba50ae7cd8` 的本機 acceptance 7/7 gate 日誌
+  SHA-256 已逐一重算一致；日誌確認 pytest **842 passed**、15 required／18 個綁定節點
+  全部通過。兩份 localhost candidate 報告均 `ok=true`，PDF／CSV／payload／metadata
+  與 Chromium 核心路徑通過；CLI historical-input 重建有完整 SHA-256 receipts。
+- 從 GitHub 直接回讀 PR #22 與 exact-head runs：`36805646883` 的
+  `pull-request-gates`、`36805647163` 的 `build` 均 success；`update`／`deploy`／
+  production GATE-08 均 skipped，符合 PR 路徑。
+- 實際 runner 日誌為 **Ubuntu 24.04／CPython 3.12.14**，與本機 Windows／3.12.10
+  分開記錄；Chromium 先於測試安裝。PR 歷史審計 credentialFindings=0；指定的
+  Node.js 20／ubuntu-latest 遷移警告未見命中。
+- 此階段 merge 只保留 master `aa48fa0` 的最新 production bytes；沒有修改應用實作。
+  元文件的新條目把分段安排歸因為用戶限制，已以追加澄清；原文及歷史保留。
+- E3 證據只適用上述 SHA。後續純文檔提交須等新 head 的 CI，再宣稱該 head 通過。
+  本輪尚未正式部署，E4 未執行；PDF code／舊部署 commit 轉換限制仍保留。
+- Codex 另行執行已重新生成候選的 `verify_candidate.py`（localhost HTTP＋Chromium；
+  非 E4）亦 rc=0：完整 metadata、CSV／payload hash、PDF 重建與 bytes、搜尋／篩選／
+  排序／比較／鍵盤／響應式全部通過，無 console error／failed request。
+
+### §28. Verified snapshot rebuild 模式（2026-10-01；E2 本地演練；未 dispatch／未部署）
+
+- **背景**：喺有限 provider allowance 下，release 需要「先確認、後發布」路徑：重用
+  現有、hash-bound、72 小時內嘅 EMSD 快照，只重新生成 index／PDF／metadata。Reuse
+  係技術方法，唔係新用戶需求；`需求摘要.md` 要求語義不變。
+- **實作（工作樹 branch `codex/verified-snapshot-rebuild`，base `005e469`；本地 code＋
+  tests commit `e7a8098…`）**：
+  - `scripts/verify_snapshot_rebuild.py`：
+    `preflight`（離線唯讀）驗證完整 metadata Schema／payload manifest 安全（拒
+    symlink／traversal／缺檔）／`releasePayloadHash`／CSV hash／counts
+    （`load_models`／`load_registrations` 對 metadata）／receipt＋raw receipt hash-bound
+    facts／`receipt_facts` 交叉核對（datasetDate／retrievedAt／sourceUrl／snapshotId／
+    datasetHash／rawRecordCount／registrationCount）／72h 時效（未來／格式錯即拒）／
+    `metadata.commit` 係完整 40-hex 且本地 HEAD／origin/master 祖先／乾淨 checkout／
+    price stage inactive 且 force=false；成功先寫 baseline（repo 外）。
+    `guard`（重建後）逐 bytes 比對 baseline 來源檔；只有 index.html／PDF／
+    metadata.json 可變；tracked preserved paths 要乾淨、generated artifacts 要存在
+    （拒 symlink）。報告輸出路徑預設禁止喺 repo 內。
+  - `.github/workflows/daily-update.yml`：`workflow_dispatch` 新增
+    `rebuild_verified_snapshot`（default false）；normal schedule 完全不變。Rebuild
+    dispatch 時 skip EMSD 抓取／staging 上載、官網 queue 推進／enrichment／官方發布；
+    BigGo runner 保留行真 inactive 路徑（另加 `AIRCON_BIGGO_TEST_MODE=1`
+    defense-in-depth，唔跑 smoke／force）；`force_price_batch=true`＋rebuild 矛盾喺
+    任何 provider 呼叫前 fail-closed；預檢喺 build 前、guard 喺 commit 前；報告
+    always 上載（repo 外）。
+- **本地演練（E2；零 provider）**：工作樹喺 Windows Temp（`%LOCALAPPDATA%\Temp\
+  aircon-verified-snapshot-rebuild`；repo 外；絕對路徑見 local handoff）。
+  - `preflight`：rc=0、全部檢查 pass；baseline 記錄 19 個來源檔 hash（全部存在）。
+  - 重建：`generate_html.py`＋`validate_data.py` rc=0；core metadata
+    （`B20261001.99999.1`、`commit=e7a8098…`、datasetDate `2026-10-01`、
+    datasetRetrievedAt `2026-09-30T20:59:20Z`、datasetHash `sha256:12df3e49…` 全部沿用
+    原 receipt，冇偽造新抓取事實）；`validate_metadata.py --core` rc=0；
+    `generate_pdf.py` rc=0；finalize `releasePayloadHash=sha256:99da9110…`；
+    `validate_metadata.py` rc=0；`verify_candidate.py` ok=true（24 checks，含 Chromium
+    search／filter／sort／compare／responsive／console）rc=0。
+  - `guard`：rc=0、6/6 checks pass、`changedAllowed=[]`（實際只 PDF／metadata 變，
+    index bytes 不變）；之後還原生成物，工作樹乾淨。
+  - 全量回歸：`pytest tests/ -q` → **855 passed, 1 skipped**（Windows 唔支援 symlink
+    測試；Linux CI 會執行）；`extract_governance.py`／`feature-check.py`／
+    `validate_metadata.py` 全 rc=0；`git diff --check` rc=0。
+  - Provider 請求：本地 0、線上 0；冇真 BigGo／EMSD／Price.com 呼叫；冇 coordinator
+    mutation／secrets。
+- **分類**：`TARGET_STATE`：新增可選 release 重建路徑；`OBSERVED / E2`：上述本地
+  證據；`UNKNOWN`：實際 `workflow_dispatch` run（E3）、CI BigGo coordinator inactive
+  run、Pages deploy／E4 均未執行；72h 窗口（到 `2026-10-03T20:59:20Z`）過後 preflight
+  會 fail closed，需要先有新 snapshot。
+- **邊界**：未 merge、未 deploy、未 tag／Release、未改生產 payload／metadata／Secrets；
+  rollout 命令只喺 handoff 提供，未執行。
+
+### §28.1 Codex 獨立覆核返修（2026-10-01；E2；同日追加，不改 §28 歷史）
+
+- **背景**：Codex 對 §28 初版提出七類 release blocker：fresh Actions checkout 只有
+  fetch-depth 1 令 `metadata.commit` 祖先不可用（實際 production checkout 會 fail）；
+  guard baseline 只驗 JSON object；失敗 preflight 仍寫 baseline；測試 hardcode 歷史
+  commit；raw receipt cardinality 可繞過；guard 冇驗 regenerated metadata 保留
+  acquisition facts；欠負向測試。
+- **修復（code＋tests commit `4aed1d47845c45f20c55dd58eb9b7498c04a8f8d`）**：
+  1. `daily-update.yml` update checkout 加 `fetch-depth: 0`（唔設 ref，exact trigger
+     commit 不變）；rebuild input 改 `type: boolean`、default false；新增 workflow 回歸
+     測試驗更新 job 完整歷史、冇 branch-mutating git 命令、preflight 用 `$GITHUB_SHA`／
+     RUNNER_TEMP、pull-request-gates 永不執行 verifier。
+  2. baseline schema v2：嚴格驗 `head`／`metadataCommit`／`createdAt`／`facts`／`files`；
+     `files` 必須恰好等於 26 個 required inputs（新增 `pana_official.json`／
+     `midea_official.json`／`空調對比報告.md`／`whale_girl.webp`／
+     `blue_fantasy_art.txt`／governance／`deploy_payload.json` 等），拒空、漏、額外、
+     traversal 同壞 hash。
+  3. `preflight` 只有全部檢查通過先寫 valid baseline；失敗會將同一路徑嘅舊 baseline
+     失效化（只喺 repo 外）並保留結構化失敗報告。
+  4. 測試唔再 hardcode 歷史 commit／日期／counts：預期值全部由真 repo fixture 動態
+     讀出，時間由 `--now` 注入；shallow checkout 有明確 fail 測試。
+  5. raw receipt：pages／perPageRows cardinality、頁號連續唯一、`byteLength`／`sha256`
+     形狀（bool 唔算 int）、`sources` persisted／verified／durableRemote、
+     `privateArchive`、`dualSource` 同 raw sources 互相 archive／hash／length binding。
+  6. `guard`：嚴格 `git status --porcelain -z`，worktree／index 改動只准
+     `index.html`／`空調對比報告.pdf`／`metadata.json`，git 命令失敗即 fail；regenerated
+     metadata 必須過完整治理 Schema 且所有 acquisition facts（datasetDate／
+     datasetDateBasis／datasetRetrievedAt／datasetSourceUrl／datasetSnapshotId／
+     datasetHash／recordCount／rawRecordCount／registrationCount／modelCount）同
+     baseline 一致；commit／build／runId／deployTime／releasePayloadHash 可合法改變。
+  7. 負向矩陣：invalid／traversal／missing baseline、git 錯誤、tracked／untracked／
+     staged 非 output 改動、delete／rename、missing brand input、failed preflight
+     失效化、raw cardinality／provenance mismatch、source timestamp mutation。
+- **E2 證據（code HEAD `4aed1d47…`；docs commit 追加後 code bytes 不變）**：
+  - focused（`tests/test_verify_snapshot_rebuild.py`＋`tests/test_workflow_security.py`）：
+    **54 passed, 1 skipped**（Windows 唔支援 symlink；Linux CI 會執行）。
+  - 全量 `pytest tests/ -q`：**871 passed, 1 skipped**。
+  - `run_acceptance.py` 7/7 gates rc=0（含 FEATURE_CHECK 15 項／18 節點、PYTEST、
+    PRIVACY_WORKTREE、DIFF_CHECK）；privacy index mode 0 命中；history audit
+    credentialFindings=0、selfHostFindings=35（D4-A 已知 residual）。
+  - 隔離重建演練（零 provider）：preflight rc=0（26 files、schema 2）；core→PDF→
+    finalize→validate→`verify_candidate`（24 checks 含 Chromium）→guard rc=0；
+    guard `changed=[metadata.json, 空調對比報告.pdf]`；datasetDate `2026-10-01`／
+    retrievedAt `2026-09-30T20:59:20Z`／datasetHash `sha256:12df3e49…`／counts 全部
+    沿用；之後還原生成物，worktree 乾淨。
+  - 證據檔案（repo 外）：`D:\tmp\aircon-rebuild-rehearsal\run2\`（preflight／baseline／
+    guard／candidate／build.log／evidence.log）、`pytest2\full-a7d.log`、
+    `acceptance.json`＋`acceptance-logs\`、`history-audit.json`。
+- **UNKNOWN**：實際 rebuild `workflow_dispatch`（E3）、CI BigGo coordinator inactive run、
+  Pages／E4 未執行；72h 窗口到 `2026-10-03T20:59:20Z`。
+- **邊界**：未 merge、未 deploy、未 tag／Release、未改 Secrets／私人 repo；rollout 只喺
+  local handoff 記錄，未執行。

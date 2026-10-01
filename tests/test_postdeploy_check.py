@@ -435,3 +435,305 @@ def test_postdeploy_browser_runtime_check(site):
         assert 'browser.compare_modal' in browser_names
     finally:
         srv.shutdown()
+
+
+# ---------------------------------------------------------------- --repro-from-commit（離線）
+
+
+_REPRO_GEN_FILES = ('generate_pdf.py', 'generate_html.py', 'crawl_utils.py', 'models_data.py')
+_OLD_MD = ('# 香港空調對比報告\n\n> 舊部署版本（fixture）\n\n'
+           '<!-- AIRCON:DYNAMIC:ENERGY_DISTRIBUTION -->\n\n## 段落\n\n- 內容\n')
+
+
+def _git(repo, *args):
+    import subprocess
+    env = dict(os.environ, GIT_AUTHOR_NAME='t', GIT_AUTHOR_EMAIL='t@example.invalid',
+               GIT_COMMITTER_NAME='t', GIT_COMMITTER_EMAIL='t@example.invalid')
+    return subprocess.run(['git', '-C', str(repo), *args], capture_output=True,
+                          timeout=60, env=env)
+
+
+def _commit_all(repo, message):
+    assert _git(repo, 'add', '-A').returncode == 0
+    assert _git(repo, 'commit', '-qm', message).returncode == 0
+    return _git(repo, 'rev-parse', 'HEAD').stdout.decode().strip()
+
+
+def _checkout_repo(tmp_path, *, docs_only=True, code_drift=False, env_drift=False,
+                   missing_md=False):
+    """建立本機 fixture git repo：commit A = 部署版本；HEAD 可為較新 checkout。
+
+    `code_drift`／`env_drift` 會直接寫入 commit A（模擬部署版本本身嘅 generator／
+    requirements 同 executing checkout 唔一致）；`docs_only` 則在 commit A 後追加改動。
+    """
+    repo = tmp_path / 'checkout'
+    repo.mkdir()
+    for rel in (*_REPRO_GEN_FILES, 'requirements.txt'):
+        shutil.copy2(os.path.join(BASE, rel), repo / rel)
+    if code_drift:
+        p = repo / 'generate_pdf.py'
+        p.write_text(p.read_text(encoding='utf-8') + '\n# historical drift\n',
+                     encoding='utf-8')
+    if env_drift:
+        req = (repo / 'requirements.txt').read_text(encoding='utf-8')
+        (repo / 'requirements.txt').write_text(
+            req.replace('markdown==3.10.3', 'markdown==0.0.0'), encoding='utf-8')
+    md_path = repo / '空調對比報告.md'
+    if not missing_md:
+        md_path.write_text(_OLD_MD, encoding='utf-8')
+    assert _git(repo, 'init', '-q').returncode == 0
+    commit_a = _commit_all(repo, 'old deployment')
+    if missing_md:
+        md_path.write_text(_OLD_MD, encoding='utf-8')
+        _commit_all(repo, 'add md')
+    elif docs_only and not code_drift and not env_drift:
+        md_path.write_text(_OLD_MD + '\n## 2026-10-01 追加\n\n- docs-only 改動\n',
+                           encoding='utf-8')
+        _commit_all(repo, 'newer checkout')
+    return repo, commit_a
+
+
+def _online_csv(rows=3):
+    lines = ['brand,model,ref,year,energy,kwh,kw,cspf,a,b,c,d,e,f,provider']
+    for i in range(rows):
+        lines.append(f'Brand{i},MODEL{i},R{i},2020,{(i % 5) + 1},100,1.5,4.0,'
+                     f'a,b,c,d,e,f,Prov{i}')
+    return ('\n'.join(lines) + '\n').encode('utf-8')
+
+
+def _repro_site(tmp_path, commit, md_bytes, csv_bytes, *, corrupt_pdf=False):
+    import hashlib
+    site_dir = tmp_path / 'site'
+    site_dir.mkdir()
+    meta = dict(META)
+    meta['commit'] = commit
+    meta['datasetHash'] = 'sha256:' + hashlib.sha256(csv_bytes).hexdigest()
+    (site_dir / 'metadata.json').write_text(json.dumps(meta, ensure_ascii=False),
+                                            encoding='utf-8')
+    (site_dir / 'index.html').write_text('<!doctype html><html><body>x</body></html>',
+                                         encoding='utf-8')
+    (site_dir / 'emsd_空調能源標籤.csv').write_bytes(csv_bytes)
+    md_file = site_dir / 'old.md'
+    md_file.write_bytes(md_bytes)
+    csv_file = site_dir / 'online.csv'
+    csv_file.write_bytes(csv_bytes)
+    import generate_pdf
+    generate_pdf.build_pdf(str(site_dir / '空調對比報告.pdf'),
+                           metadata_path=str(site_dir / 'metadata.json'),
+                           md_path=str(md_file), csv_path=str(csv_file))
+    if corrupt_pdf:
+        with open(site_dir / '空調對比報告.pdf', 'ab') as f:
+            f.write(b'\n% trailing junk')
+    manifest = {'files': FILES}
+    (site_dir / 'deploy_payload.json').write_text(json.dumps(manifest), encoding='utf-8')
+    meta['releasePayloadHash'] = gen_metadata.hash_files(FILES, base=str(site_dir))
+    (site_dir / 'metadata.json').write_text(json.dumps(meta, ensure_ascii=False),
+                                            encoding='utf-8')
+    return site_dir
+
+
+def _run_repro(tmp_path, site_dir, repo, *, flag=True, expected_meta=None):
+    srv, base = serve(str(site_dir))
+    try:
+        argv = ['--expected-metadata', expected_meta or str(site_dir / 'metadata.json'),
+                '--manifest', str(site_dir / 'deploy_payload.json'),
+                '--base-url', base, '--report', str(tmp_path / 'report.json'),
+                '--retries', '1', '--no-browser', '--repo', str(repo)]
+        if flag:
+            argv.append('--repro-from-commit')
+        rc = postdeploy.main(argv)
+        report = json.load(open(tmp_path / 'report.json', encoding='utf-8'))
+    finally:
+        srv.shutdown()
+    return rc, report
+
+
+def _check_by_name(report, name):
+    return next((c for c in report['checks'] if c['check'] == name), None)
+
+
+def _failed_names(report):
+    return {c['check'] for c in report['failures']}
+
+
+def test_repro_from_commit_docs_only_passes(tmp_path):
+    import re
+    repo, commit_a = _checkout_repo(tmp_path, docs_only=True)
+    old_md = _git(repo, 'show', f'{commit_a}:空調對比報告.md').stdout
+    site_dir = _repro_site(tmp_path, commit_a, old_md, _online_csv())
+    rc, report = _run_repro(tmp_path, site_dir, repo)
+    assert rc == 0, report['failures']
+    assert _check_by_name(report, 'pdf.repro_inputs_commit')['pass'] is True
+    assert _check_by_name(report, 'payload.pdf_matches_metadata')['pass'] is True
+    assert 'pdf.repro_code_changed' not in _failed_names(report)
+    assert 'pdf.repro_env_changed' not in _failed_names(report)
+    receipts = report['reproInputs']
+    assert re.fullmatch(r'[0-9a-f]{40}', receipts['commit'])
+    for key in ('mdSha256', 'csvSha256', 'requirementsSha256'):
+        assert re.fullmatch(r'sha256:[0-9a-f]{64}', receipts[key]), key
+    assert set(receipts['codeSha256']) == set(_REPRO_GEN_FILES)
+    for value in receipts['codeSha256'].values():
+        assert re.fullmatch(r'sha256:[0-9a-f]{64}', value)
+    assert receipts['env'] == {'markdown': '3.10.3', 'reportlab': '5.0.0'}
+
+
+def test_repro_from_commit_uses_online_csv_not_local(tmp_path):
+    import hashlib
+    repo, commit_a = _checkout_repo(tmp_path, docs_only=True)
+    old_md = _git(repo, 'show', f'{commit_a}:空調對比報告.md').stdout
+    # 本機 checkout CSV 同線上完全唔同；rebuild 必須用線上經 hash 驗證嘅 bytes
+    local_rows = ['brand,model,ref,year,energy,kwh,kw,cspf,a,b,c,d,e,f,provider']
+    local_rows += [f'Local{i},LOCALMODEL{i},L{i},2019,5,999,9.9,1.0,a,b,c,d,e,f,P{i}'
+                   for i in range(30)]
+    (repo / 'emsd_空調能源標籤.csv').write_text('\n'.join(local_rows) + '\n',
+                                                encoding='utf-8')
+    csv_bytes = _online_csv(rows=4)
+    site_dir = _repro_site(tmp_path, commit_a, old_md, csv_bytes)
+    rc, report = _run_repro(tmp_path, site_dir, repo)
+    assert rc == 0, report['failures']
+    assert _check_by_name(report, 'payload.pdf_matches_metadata')['pass'] is True
+    receipt = _check_by_name(report, 'pdf.repro_inputs_sha256')
+    assert hashlib.sha256(csv_bytes).hexdigest()[:16] in receipt['detail']
+    assert report['reproInputs']['csvSha256'] == \
+        'sha256:' + hashlib.sha256(csv_bytes).hexdigest()
+
+
+def test_repro_from_commit_missing_commit_fails(tmp_path, monkeypatch):
+    repo, commit_a = _checkout_repo(tmp_path, docs_only=True)
+    site_dir = _repro_site(tmp_path, 'b' * 40, _OLD_MD.encode(), _online_csv())
+    import generate_pdf
+    calls = []
+    monkeypatch.setattr(generate_pdf, 'build_pdf',
+                        lambda *a, **k: calls.append(1) or '/dev/null')
+    rc, report = _run_repro(tmp_path, site_dir, repo)
+    assert rc == 1
+    assert 'pdf.repro_inputs_unavailable' in _failed_names(report)
+    assert 'payload.pdf_matches_metadata' not in {c['check'] for c in report['checks']}
+    assert calls == [], '唔可以執行 fetched／歷史 code'
+
+
+def test_repro_from_commit_missing_md_fails(tmp_path):
+    repo, commit_a = _checkout_repo(tmp_path, missing_md=True)
+    site_dir = _repro_site(tmp_path, commit_a, _OLD_MD.encode(), _online_csv())
+    rc, report = _run_repro(tmp_path, site_dir, repo)
+    assert rc == 1
+    assert 'pdf.repro_inputs_unavailable' in _failed_names(report)
+
+
+def test_repro_from_commit_code_drift_fails(tmp_path, monkeypatch):
+    repo, commit_a = _checkout_repo(tmp_path, docs_only=False, code_drift=True)
+    old_md = _git(repo, 'show', f'{commit_a}:空調對比報告.md').stdout
+    site_dir = _repro_site(tmp_path, commit_a, old_md, _online_csv())
+    import generate_pdf
+    calls = []
+    monkeypatch.setattr(generate_pdf, 'build_pdf',
+                        lambda *a, **k: calls.append(1) or '/dev/null')
+    rc, report = _run_repro(tmp_path, site_dir, repo)
+    assert rc == 1
+    assert 'pdf.repro_code_changed' in _failed_names(report)
+    assert calls == [], 'code drift 時唔可以執行任何重建'
+
+
+def test_repro_from_commit_env_drift_fails(tmp_path, monkeypatch):
+    repo, commit_a = _checkout_repo(tmp_path, docs_only=False, env_drift=True)
+    site_dir = _repro_site(tmp_path, commit_a, _OLD_MD.encode(), _online_csv())
+    import generate_pdf
+    calls = []
+    monkeypatch.setattr(generate_pdf, 'build_pdf',
+                        lambda *a, **k: calls.append(1) or '/dev/null')
+    rc, report = _run_repro(tmp_path, site_dir, repo)
+    assert rc == 1
+    assert 'pdf.repro_env_changed' in _failed_names(report)
+    assert calls == []
+
+
+def test_repro_from_commit_wrong_pdf_fails(tmp_path):
+    repo, commit_a = _checkout_repo(tmp_path, docs_only=True)
+    old_md = _git(repo, 'show', f'{commit_a}:空調對比報告.md').stdout
+    site_dir = _repro_site(tmp_path, commit_a, old_md, _online_csv(), corrupt_pdf=True)
+    rc, report = _run_repro(tmp_path, site_dir, repo)
+    assert rc == 1
+    assert 'payload.pdf_matches_metadata' in _failed_names(report)
+
+
+def test_repro_flag_off_unchanged(site):
+    tmp_path, meta = site
+    srv, base = serve(str(tmp_path))
+    try:
+        rc = postdeploy.main(['--expected-metadata', str(tmp_path / 'metadata.json'),
+                              '--manifest', str(tmp_path / 'deploy_payload.json'),
+                              '--base-url', base, '--report',
+                              str(tmp_path / 'off-report.json'),
+                              '--retries', '1', '--no-browser'])
+        report = json.load(open(tmp_path / 'off-report.json', encoding='utf-8'))
+    finally:
+        srv.shutdown()
+    assert rc == 0, report['failures']
+    assert not any(c['check'].startswith('pdf.repro_') for c in report['checks'])
+
+
+def test_repro_origin_master_fallback(tmp_path):
+    """HEAD 唔包含 deployed commit，但 origin/master 包含：用 origin/master 祖先驗證。"""
+    repo = tmp_path / 'checkout'
+    repo.mkdir()
+    assert _git(repo, 'init', '-q').returncode == 0
+    (repo / 'placeholder.txt').write_text('base\n', encoding='utf-8')
+    root = _commit_all(repo, 'base')
+    for rel in (*_REPRO_GEN_FILES, 'requirements.txt'):
+        shutil.copy2(os.path.join(BASE, rel), repo / rel)
+    (repo / '空調對比報告.md').write_text(_OLD_MD, encoding='utf-8')
+    commit_a = _commit_all(repo, 'deployment')
+    _git(repo, 'update-ref', 'refs/remotes/origin/master', commit_a)
+    assert _git(repo, 'checkout', '-q', root).returncode == 0
+    for rel in (*_REPRO_GEN_FILES, 'requirements.txt'):
+        shutil.copy2(os.path.join(BASE, rel), repo / rel)
+    old_md = _git(repo, 'show', f'{commit_a}:空調對比報告.md').stdout
+    site_dir = _repro_site(tmp_path, commit_a, old_md, _online_csv())
+    rc, report = _run_repro(tmp_path, site_dir, repo)
+    assert rc == 0, report['failures']
+    assert 'origin/master' in _check_by_name(report, 'pdf.repro_inputs_commit')['detail']
+
+
+def test_repro_runtime_source_binding_blocks_cached_module(tmp_path, monkeypatch):
+    """history／executing checkout bytes 一致，但 sys.modules 嘅 generator 來自其他 tree：
+    必須 fail closed（pdf.repro_code_changed）並且唔 build。"""
+    import types
+    repo, commit_a = _checkout_repo(tmp_path, docs_only=True)
+    old_md = _git(repo, 'show', f'{commit_a}:空調對比報告.md').stdout
+    site_dir = _repro_site(tmp_path, commit_a, old_md, _online_csv())
+    import generate_pdf
+    calls = []
+    monkeypatch.setattr(generate_pdf, 'build_pdf',
+                        lambda *a, **k: calls.append(1) or '/dev/null')
+    other = tmp_path / 'other-tree' / 'generate_pdf.py'
+    other.parent.mkdir()
+    other.write_text('# other tree\n', encoding='utf-8')
+    fake = types.ModuleType('generate_pdf')
+    fake.__file__ = str(other)
+    monkeypatch.setitem(sys.modules, 'generate_pdf', fake)
+    rc, report = _run_repro(tmp_path, site_dir, repo)
+    assert rc == 1
+    assert 'pdf.repro_code_changed' in _failed_names(report)
+    assert calls == [], 'runtime source 唔一致時唔可以 build'
+
+
+def test_repro_git_reads_are_local_readonly_only(tmp_path, monkeypatch):
+    """證明 --repro-from-commit 只做本地 git 唯讀操作（無 fetch／clone／checkout）。"""
+    repo, commit_a = _checkout_repo(tmp_path, docs_only=True)
+    old_md = _git(repo, 'show', f'{commit_a}:空調對比報告.md').stdout
+    site_dir = _repro_site(tmp_path, commit_a, old_md, _online_csv())
+    seen = []
+    real_run = postdeploy.subprocess.run
+
+    def spy(cmd, *a, **k):
+        if isinstance(cmd, (list, tuple)) and cmd and cmd[0] == 'git':
+            seen.append(list(cmd[3:]))
+        return real_run(cmd, *a, **k)
+
+    monkeypatch.setattr(postdeploy.subprocess, 'run', spy)
+    rc, report = _run_repro(tmp_path, site_dir, repo)
+    assert rc == 0, report['failures']
+    assert seen, '應該有 git 讀取'
+    for argv in seen:
+        assert argv[0] in ('cat-file', 'merge-base', 'show'), argv
+        assert not any(cmd in argv[0] for cmd in ('fetch', 'clone', 'pull', 'checkout'))

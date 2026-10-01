@@ -222,13 +222,17 @@ def core_energy_counts():
     return counts
 
 
-def energy_distribution_markdown():
+def energy_distribution_markdown(csv_path=None):
     """全量能源級別分佈（build-time 動態生成）：1–5 固定次序，0 都顯示。
 
     三欄語意分明：核心 29（本報告精選）／全量 canonical model（按 BRAND|NORM 去重）／
     EMSD registration（逐筆登記）。全部由實際快照計出，避免靜態漂移。
+    `csv_path` 可指定快照來源（部署後重建用線上經 hash 驗證嘅 CSV）；預設 repo CSV。
     """
-    reg, canon = load_energy_distributions()
+    if csv_path is None:
+        reg, canon = load_energy_distributions()
+    else:
+        reg, canon = load_energy_distributions(csv_path)
     core = core_energy_counts()
     tpl = '| {lv} | {c:,} | {m:,} | {r:,} |'
     rows = [
@@ -253,9 +257,12 @@ def energy_distribution_markdown():
     return '\n'.join(rows)
 
 
-def expand_dynamic_sections(md_text):
-    """展開 md 內動態區塊（現時：能源分佈）；生成物唔應該再有 marker"""
-    return md_text.replace(ENERGY_DIST_MARKER, energy_distribution_markdown())
+def expand_dynamic_sections(md_text, csv_path=None):
+    """展開 md 內動態區塊（現時：能源分佈）；生成物唔應該再有 marker。
+
+    `csv_path` 只影響動態區塊嘅資料來源；預設行為（None）完全不變。
+    """
+    return md_text.replace(ENERGY_DIST_MARKER, energy_distribution_markdown(csv_path))
 
 
 def norm_model(s):

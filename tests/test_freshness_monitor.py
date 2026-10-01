@@ -229,3 +229,5 @@ def test_monitor_workflow_contract():
     assert 'scripts/freshness_issue.py' in text
     assert 'if: always()' in text
     assert '--postdeploy-report' in text
+    assert 'fetch-depth: 0' in text, '--repro-from-commit 需要完整歷史讀 deployed commit'
+    assert '--repro-from-commit' in text
