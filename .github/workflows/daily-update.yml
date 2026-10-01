@@ -17,7 +17,8 @@ on:
       rebuild_verified_snapshot:
         description: 'RELEASE REBUILD：重用現有 72h 內 hash-bound EMSD 快照重建 payload（不抓取來源）'
         required: false
-        default: 'false'
+        default: false
+        type: boolean
 
 # 安全：只授予寫內容嘅最低權限（需要 push 已驗證候選包）
 permissions:
@@ -127,9 +128,13 @@ jobs:
 
       # ============ 環境：代碼 + Python + 依賴（含測試） ============
       # push 需要 checkout 憑證；呢個 job 只喺 master schedule／dispatch 執行。
+      # fetch-depth: 0：REBUILD preflight 要驗 metadata.commit 係本地完整物件同 HEAD 祖先；
+      # 預設 fetch-depth 1（shallow）會令舊部署 commit 唔存在，preflight 會 fail-closed。
+      # 唔設 ref（沿用 exact trigger commit），所以唔會移動 HEAD 或 source branch。
       - name: 取出代碼
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: true
 
       - name: 設定 Python

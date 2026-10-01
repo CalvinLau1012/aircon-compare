@@ -580,9 +580,13 @@ def test_daily_rebuild_verified_snapshot_mode_contract():
     wf = _load('daily-update.yml')
     on = wf[True] if True in wf else wf['on']
     inputs = on['workflow_dispatch']['inputs']
-    assert inputs['rebuild_verified_snapshot']['default'] == 'false'
+    assert inputs['rebuild_verified_snapshot']['type'] == 'boolean'
+    assert inputs['rebuild_verified_snapshot']['default'] is False
     assert inputs['force_price_batch']['default'] == 'false'
     steps = _daily_update_steps()
+    # Boolean input 喺 github.event.inputs 仍然係 string form；條件式比較保持不变。
+    assert "github.event.inputs.rebuild_verified_snapshot == 'true'" in str(
+        steps['REBUILD 前置檢查（contradictory force）']['if'])
 
     emsd = steps['抓取 EMSD + 新機偵測']
     official_names = ('官網核實第一批（新機後第 1 日）',
@@ -627,3 +631,77 @@ def test_daily_rebuild_verified_snapshot_mode_contract():
     assert _eval_if(job_if, event='schedule') is True
     assert _eval_if(job_if, event='workflow_dispatch') is True
     assert _eval_if(job_if, event='pull_request') is False
+
+
+def test_daily_update_checkout_full_history_and_no_branch_mutation():
+    wf = _load('daily-update.yml')
+    steps = _update_steps()
+    checkouts = [s for s in steps
+                 if str(s.get('uses', '')).startswith('actions/checkout@')]
+    assert len(checkouts) == 1, 'update job 應該只有一次 checkout'
+    checkout_with = checkouts[0].get('with', {})
+    # REBUILD preflight 要驗 metadata.commit 係本地完整物件同祖先；預設 shallow
+    # （fetch-depth 1）會令舊部署 commit 根本唔存在 → fresh Actions checkout 直接 fail。
+    assert checkout_with.get('fetch-depth') == 0
+    # push 需要憑證；但唔 set ref，沿用 exact trigger commit，唔會移動 HEAD。
+    assert checkout_with.get('persist-credentials') is True
+    assert 'ref' not in checkout_with
+    # 冇任何 step 可以用 git 命令改 worktree／source branch。
+    forbidden = re.compile(
+        r'\bgit\s+(checkout|reset|rebase|pull|switch|branch|clean|stash|restore)\b')
+    for step in steps:
+        run = step.get('run')
+        if isinstance(run, str):
+            assert not forbidden.search(run), \
+                f"{step.get('name')} 有改動 source branch 嘅 git 命令"
+    pushes = [s.get('name') for s in steps
+              if isinstance(s.get('run'), str) and 'git push' in s['run']]
+    assert pushes in ([], ['提交並推送（精確 allowlist）'])
+
+
+def test_daily_rebuild_preflight_uses_exact_head_and_runner_temp_baseline():
+    steps = _daily_update_steps()
+    pre = steps['REBUILD 快照預檢（offline；零 provider）']
+    run = pre['run']
+    assert 'scripts/verify_snapshot_rebuild.py preflight' in run
+    assert '--expected-head "$GITHUB_SHA"' in run
+    assert '--force-price-batch "${{ github.event.inputs.force_price_batch }}"' in run
+    assert '--baseline-out "$RUNNER_TEMP/rebuild-snapshot-baseline.json"' in run
+    assert '--report "$RUNNER_TEMP/rebuild-preflight.json"' in run
+    guard = steps['REBUILD 來源保留守門（offline）']['run']
+    assert 'scripts/verify_snapshot_rebuild.py guard' in guard
+    assert '--baseline "$RUNNER_TEMP/rebuild-snapshot-baseline.json"' in guard
+    assert '--report "$RUNNER_TEMP/rebuild-guard.json"' in guard
+
+
+def test_daily_rebuild_only_master_dispatch_and_pr_job_never_runs_verifier():
+    wf = _load('daily-update.yml')
+    # update job（唯一會執行 rebuild 嘅 job）只限 schedule／master dispatch。
+    job_if = wf['jobs']['update']['if']
+    assert _eval_if(job_if, event='pull_request') is False
+    assert _eval_if(job_if, event='workflow_dispatch',
+                    ref='refs/heads/feature') is False
+    assert _eval_if(job_if, event='workflow_dispatch',
+                    ref='refs/heads/master') is True
+    pr_runs = [s.get('run', '') for s in wf['jobs']['pull-request-gates']['steps']
+               if isinstance(s.get('run'), str)]
+    assert not any('verify_snapshot_rebuild' in r for r in pr_runs)
+    update_runs = [s.get('run', '') for s in wf['jobs']['update']['steps']
+                   if isinstance(s.get('run'), str)]
+    assert any('verify_snapshot_rebuild.py preflight' in r for r in update_runs)
+    assert any('verify_snapshot_rebuild.py guard' in r for r in update_runs)
+
+
+def test_daily_rebuild_biggo_runner_real_inactive_path_no_force_or_smoke():
+    steps = _daily_update_steps()
+    biggo = steps['價錢快照分批更新（BigGo API · coordinator lease；force 亦要 lease）']
+    # rebuild 模式唔可以 skip 呢步（要做真 inactive 判斷 → skip-not-active）。
+    assert 'if' not in biggo
+    run = biggo['run']
+    assert 'scripts/biggo_stage_runner.py' in run
+    assert '--status-out' in run
+    assert '--force' not in run
+    assert '--smoke' not in run
+    # force intent 只可以經 env 交畀 runner；rebuild 矛盾喺 provider 前已 fail-closed。
+    assert biggo['env']['AIRCON_BIGGO_FORCE_STAGE'] == \
+        '${{ github.event.inputs.force_price_batch }}'
