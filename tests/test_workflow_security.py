@@ -535,3 +535,95 @@ def test_daily_emsd_diff_report_env_is_runner_temp_only():
     for key, value in env.items():
         if key.startswith('AIRCON_EMSD_RAW_REMOTE') or key == 'AIRCON_EMSD_RAW_SINK_DIR':
             assert str(value).startswith('${{ secrets.'), f'{key} 只可以經 Secrets 配置'
+
+
+# ---------------------------------------------------------------- verified snapshot rebuild
+
+def _eval_if(cond, *, event='schedule', inputs=None, stage='',
+             ref='refs/heads/master', head_repo='same'):
+    """極簡 GitHub `if` 求值器：只覆蓋本 workflow 用到嘅 token；用來驗證語義，
+    唔係 pretend 完整 GitHub 表達式引擎。"""
+    inputs = inputs or {}
+    expr = str(cond).strip()
+    expr = expr.replace('always()', 'True')
+    expr = expr.replace("github.event_name == 'workflow_dispatch'",
+                        str(event == 'workflow_dispatch'))
+    expr = expr.replace("github.event_name == 'schedule'",
+                        str(event == 'schedule'))
+    expr = expr.replace("github.event_name == 'pull_request'",
+                        str(event == 'pull_request'))
+    expr = expr.replace("github.ref == 'refs/heads/master'",
+                        str(ref == 'refs/heads/master'))
+    expr = expr.replace("github.ref != 'refs/heads/master'",
+                        str(ref != 'refs/heads/master'))
+    expr = expr.replace('github.event.pull_request.head.repo.full_name == github.repository',
+                        str(head_repo == 'same'))
+    for flag in ('true', 'false'):
+        expr = expr.replace(
+            f"github.event.inputs.rebuild_verified_snapshot == '{flag}'",
+            str(inputs.get('rebuild_verified_snapshot') == flag))
+        expr = expr.replace(
+            f"github.event.inputs.rebuild_verified_snapshot != '{flag}'",
+            str(inputs.get('rebuild_verified_snapshot') != flag))
+    expr = expr.replace("steps.stage.outputs.stage == '1'", str(stage == '1'))
+    expr = expr.replace("steps.stage.outputs.stage == '2'", str(stage == '2'))
+    expr = expr.replace('&&', ' and ').replace('||', ' or ')
+    return bool(eval(expr, {'__builtins__': {}}, {}))  # noqa: S307 - 只求值本檔測試字串
+
+
+def _daily_update_steps():
+    wf = _load('daily-update.yml')
+    return {s.get('name'): s for s in wf['jobs']['update']['steps'] if isinstance(s, dict)}
+
+
+def test_daily_rebuild_verified_snapshot_mode_contract():
+    wf = _load('daily-update.yml')
+    on = wf[True] if True in wf else wf['on']
+    inputs = on['workflow_dispatch']['inputs']
+    assert inputs['rebuild_verified_snapshot']['default'] == 'false'
+    assert inputs['force_price_batch']['default'] == 'false'
+    steps = _daily_update_steps()
+
+    emsd = steps['抓取 EMSD + 新機偵測']
+    official_names = ('官網核實第一批（新機後第 1 日）',
+                      '官網核實第二批（新機後第 2 日）',
+                      '投影官網 pending status（D1-B；queue coverage 不足時 UI 顯示待核）',
+                      '準備官網核實 staging（always；只 stage 本 run 檔）',
+                      '上載官網核實 machine receipt（審計；queue 未必已推進）')
+    # schedule（無 input）：所有 acquisition／enrichment step 照跑
+    assert _eval_if(emsd['if'], event='schedule') is True
+    assert _eval_if(steps[official_names[0]]['if'], event='schedule', stage='1') is True
+    # rebuild dispatch：完全唔跑 outbound acquisition／enrichment
+    rebuild = {'rebuild_verified_snapshot': 'true', 'force_price_batch': 'false'}
+    assert _eval_if(emsd['if'], event='workflow_dispatch', inputs=rebuild) is False
+    for name in official_names:
+        assert _eval_if(steps[name]['if'], event='workflow_dispatch', inputs=rebuild,
+                        stage='1') is False, name
+    assert 'REBUILD 前置檢查（contradictory force）' in steps
+    assert _eval_if(steps['REBUILD 前置檢查（contradictory force）']['if'],
+                    event='workflow_dispatch', inputs=rebuild) is True
+    assert _eval_if(steps['REBUILD 快照預檢（offline；零 provider）']['if'],
+                    event='workflow_dispatch', inputs=rebuild) is True
+    assert _eval_if(steps['REBUILD 快照預檢（offline；零 provider）']['if'],
+                    event='schedule') is False
+    assert _eval_if(steps['REBUILD 來源保留守門（offline）']['if'],
+                    event='workflow_dispatch', inputs=rebuild) is True
+    # guard 必須喺 commit/push 之前
+    names = list(steps)
+    assert names.index('REBUILD 來源保留守門（offline）') \
+        < names.index('提交並推送（精確 allowlist）')
+    # BigGo runner 兩個模式都保留；rebuild 加 TEST_MODE defense
+    biggo = steps['價錢快照分批更新（BigGo API · coordinator lease；force 亦要 lease）']
+    assert 'AIRCON_BIGGO_TEST_MODE' in biggo['env']
+    mode_expr = biggo['env']['AIRCON_BIGGO_TEST_MODE']
+    assert "github.event.inputs.rebuild_verified_snapshot == 'true'" in mode_expr
+    assert "'1'" in mode_expr
+    # preflight／guard 引用實際 verifier script
+    text = _text('daily-update.yml')
+    assert 'scripts/verify_snapshot_rebuild.py preflight' in text
+    assert 'scripts/verify_snapshot_rebuild.py guard' in text
+    # update job 仍只限 schedule／master dispatch
+    job_if = wf['jobs']['update']['if']
+    assert _eval_if(job_if, event='schedule') is True
+    assert _eval_if(job_if, event='workflow_dispatch') is True
+    assert _eval_if(job_if, event='pull_request') is False

@@ -14,6 +14,10 @@ on:
         description: '強行一次過跑晒全部型號嘅 BigGo 價錢批次 + 淘汰確認（一次性測試）'
         required: false
         default: 'false'
+      rebuild_verified_snapshot:
+        description: 'RELEASE REBUILD：重用現有 72h 內 hash-bound EMSD 快照重建 payload（不抓取來源）'
+        required: false
+        default: 'false'
 
 # 安全：只授予寫內容嘅最低權限（需要 push 已驗證候選包）
 permissions:
@@ -109,6 +113,18 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
+      # rebuild_verified_snapshot 係 RELEASE REBUILD：重用現有 hash-bound 快照；
+      # 同時 force_price_batch 會矛盾（rebuild 唔可以順便抓新價），喺任何 provider 呼叫前 fail closed。
+      - name: REBUILD 前置檢查（contradictory force）
+        if: >
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.rebuild_verified_snapshot == 'true'
+        run: |
+          if [ "${{ github.event.inputs.force_price_batch }}" = "true" ]; then
+            echo "::error::rebuild_verified_snapshot=true 唔可以同 force_price_batch=true 同時使用"
+            exit 1
+          fi
+
       # ============ 環境：代碼 + Python + 依賴（含測試） ============
       # push 需要 checkout 憑證；呢個 job 只喺 master schedule／dispatch 執行。
       - name: 取出代碼
@@ -147,7 +163,28 @@ jobs:
 
       # ============ 第 1 步：EMSD 官方資料庫 + 新機偵測 ============
       # 失敗即中止：唔可以帶住舊收據／未更新 CSV 去出新 metadata 同上線
+      # REBUILD 模式：完全唔抓來源，使用已驗證嘅現有 hash-bound 快照。
+      - name: REBUILD 快照預檢（offline；零 provider）
+        if: >
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.rebuild_verified_snapshot == 'true'
+        run: |
+          python scripts/verify_snapshot_rebuild.py preflight \
+            --repo . \
+            --metadata metadata.json \
+            --manifest deploy_payload.json \
+            --receipt emsd_receipt.json \
+            --raw-receipt emsd_raw_receipt.json \
+            --csv emsd_空調能源標籤.csv \
+            --price-meta prices_meta.json \
+            --expected-head "$GITHUB_SHA" \
+            --force-price-batch "${{ github.event.inputs.force_price_batch }}" \
+            --baseline-out "$RUNNER_TEMP/rebuild-snapshot-baseline.json" \
+            --report "$RUNNER_TEMP/rebuild-preflight.json"
+          cat "$RUNNER_TEMP/rebuild-preflight.json"
+
       - name: 抓取 EMSD + 新機偵測
+        if: github.event.inputs.rebuild_verified_snapshot != 'true'
         env:
           # D7-A：平台完成私人 raw sink 設定後，將 REQUIRE 設為 1；未設定時行為同以前
           # 一樣（非 require，唔寫 public raw receipt）。require 模式缺配置／上傳失敗
@@ -193,7 +230,7 @@ jobs:
       # 會標明每個檔 staged／excluded；舊 checkout receipt 因為 timestamp 過舊而唔入）。
       # private raw sink 路徑／token／objectId 一律唔喺 staging；亦唔會上載。
       - name: 上載 EMSD 收據與 diff（失敗審計；always）
-        if: always()
+        if: always() && github.event.inputs.rebuild_verified_snapshot != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: emsd-evidence-${{ github.run_id }}
@@ -213,7 +250,9 @@ jobs:
       # pre-step baseline：本 run 寫 official receipt／status 之前先捕捉 presence＋SHA-256；
       # 只有 baseline 之後 content 改變嘅檔才可以 stage，舊 tracked status 唔會冒充本 run。
       - name: 官網核實 pre-step baseline
-        if: steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2'
+        if: >
+          (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2') &&
+          github.event.inputs.rebuild_verified_snapshot != 'true'
         run: |
           mkdir -p "$RUNNER_TEMP/official-evidence" "$RUNNER_TEMP/evidence-baseline"
           python scripts/stage_run_evidence.py \
@@ -221,7 +260,9 @@ jobs:
             "${{ runner.temp }}/aircon-official-receipt.json" official_batch_status.json
 
       - name: 官網核實第一批（新機後第 1 日）
-        if: steps.stage.outputs.stage == '1'
+        if: >
+          steps.stage.outputs.stage == '1' &&
+          github.event.inputs.rebuild_verified_snapshot != 'true'
         id: official_stage1
         env:
           AIRCON_OFFICIAL_RECEIPT: ${{ runner.temp }}/aircon-official-receipt.json
@@ -233,7 +274,9 @@ jobs:
           exit "$rc"
 
       - name: 官網核實第二批（新機後第 2 日）
-        if: steps.stage.outputs.stage == '2'
+        if: >
+          steps.stage.outputs.stage == '2' &&
+          github.event.inputs.rebuild_verified_snapshot != 'true'
         id: official_stage2
         env:
           AIRCON_OFFICIAL_RECEIPT: ${{ runner.temp }}/aircon-official-receipt.json
@@ -245,7 +288,9 @@ jobs:
           exit "$rc"
 
       - name: 投影官網 pending status（D1-B；queue coverage 不足時 UI 顯示待核）
-        if: steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2'
+        if: >
+          (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2') &&
+          github.event.inputs.rebuild_verified_snapshot != 'true'
         run: |
           python scripts/publish_official_status.py \
             --receipt "${{ runner.temp }}/aircon-official-receipt.json" \
@@ -256,7 +301,10 @@ jobs:
       # official_batch_status.json 即使 mtime／generatedAt 貼近 run start，亦會因為 hash 同
       # baseline 相同或 timestamp 早於 run start 而 excluded，唔會假裝本 run 證據。
       - name: 準備官網核實 staging（always；只 stage 本 run 檔）
-        if: always() && (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2')
+        if: >
+          always() &&
+          (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2') &&
+          github.event.inputs.rebuild_verified_snapshot != 'true'
         run: |
           RUN_START="$(cat "$RUNNER_TEMP/emsd-evidence/run-start.utc" 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
           python scripts/stage_run_evidence.py \
@@ -268,7 +316,10 @@ jobs:
             "${{ runner.temp }}/aircon-official-receipt.json" official_batch_status.json
 
       - name: 上載官網核實 machine receipt（審計；queue 未必已推進）
-        if: always() && (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2')
+        if: >
+          always() &&
+          (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2') &&
+          github.event.inputs.rebuild_verified_snapshot != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: official-batch-receipt-${{ github.run_id }}
@@ -289,6 +340,9 @@ jobs:
           # force intent（人手明確一次性）：唔可以直接呼叫 fetch_biggo.py --force-batch；
           # 只可以交由 runner 喺 coordinator lease 之下執行。
           AIRCON_BIGGO_FORCE_STAGE: ${{ github.event.inputs.force_price_batch }}
+          # REBUILD 模式：額外 defense-in-depth，測試模式禁止任何真實 BigGo 網絡入口。
+          # 預檢已要求 price stage inactive／force=false；正常路徑行為不變。
+          AIRCON_BIGGO_TEST_MODE: ${{ github.event.inputs.rebuild_verified_snapshot == 'true' && '1' || '' }}
           # approved design C：共享憑證自動 atomic lease。呢组 secret 未配置時，active
           # 階段只會安全跳過（保留現有快照、零 BigGo 呼叫）；private coordinator 識別
           # 只可以放 Secrets，唔准寫入 repo／Variables／log。
@@ -405,6 +459,33 @@ jobs:
             --artifacts-dir . \
             --report "$RUNNER_TEMP/candidate-postdeploy.json"
           cat "$RUNNER_TEMP/candidate-postdeploy.json"
+
+      # REBUILD 模式：重建之後、commit 之前，確保所有來源／canonical 檔 byte 不變；
+      # 只准 index.html／PDF／metadata.json 三個 generated artifacts 改變。
+      - name: REBUILD 來源保留守門（offline）
+        if: >
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.rebuild_verified_snapshot == 'true'
+        run: |
+          python scripts/verify_snapshot_rebuild.py guard \
+            --repo . \
+            --baseline "$RUNNER_TEMP/rebuild-snapshot-baseline.json" \
+            --report "$RUNNER_TEMP/rebuild-guard.json"
+          cat "$RUNNER_TEMP/rebuild-guard.json"
+
+      - name: 上載 REBUILD 預檢／守門報告（always）
+        if: >
+          always() &&
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.rebuild_verified_snapshot == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: verified-snapshot-rebuild-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/rebuild-preflight.json
+            ${{ runner.temp }}/rebuild-guard.json
+          retention-days: 30
+          if-no-files-found: warn
 
       - name: 提交並推送（精確 allowlist）
         id: commit_push
