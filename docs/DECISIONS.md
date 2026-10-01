@@ -1118,3 +1118,12 @@
     rollout 未執行。
 - **回滾**：revert 返修 commit 會回復 D31 初版嘅七類弱點（fresh checkout fail、baseline
   可繞過、facts 可漂移），唔建議；亦可以單獨 revert 其中一項但保留其餘收緊。
+
+## D32 · 2026-10-01：更新日誌、版本索引及文件現況同步
+
+- **背景／人類要求**：README 與 web 更新日誌落後；參照早期網頁風格整理；版本記錄與所有相關文件更新至最新。
+- **決定**：保留全部歷史，追加現況入口與正式 Release／維護部署索引；網頁延續日期＋分類／內容兩欄，以局部卡片和換行支援手機、深色模式。VERSION 維持 1.2.9。
+- **原因**：舊候選描述不能充當現況，但不可刪改歷史；版本、build、source commit 與 artifact commit 需分清，避免每天重建被誤認新 Release。
+- **後果**：元文件只追加；不改治理 Schema 或 required 功能；使用 D31 verified snapshot rebuild 產生一致 HTML／PDF／metadata，不呼叫來源、不推進 queue。私人線仍暫停。
+- **證據分類**：OBSERVED：PR #22／run 36812197686／36812428581 已完成 E3／E4（STATUS §29）；本次新日誌版面實際部署證據於驗收後追加；UNKNOWN 保持原有 active stage／配額／私人線缺口。
+- **回滾**：若版面影響閱讀，可還原局部 CSS／DOM 分組並再以同一已驗證快照重建；歷史與人類要求仍保留，不能刪除元文件追加記錄。

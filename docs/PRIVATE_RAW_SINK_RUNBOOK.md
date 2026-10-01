@@ -1,5 +1,10 @@
 # 私人 raw sink runbook（D7-A）
 
+## 現行狀態入口（2026-10-01 追加）
+
+D7-A 已選 Private GitHub Release assets，首次 production raw snapshot 與 public receipt 核對已完成（2026-09-23／24 歷史 live 證據見下文）；下方「尚未啟用」是當時記錄。最新雙源 receipt 與重建驗收見 STATUS §29；不公開私人 repo／路徑／憑證。
+
+
 > 狀態：remote adapter 代碼已有 fake HTTP 測試證據，但 **未經人類選定 provider、未建
 > Release、未上傳任何資產、未取得 live 證據**。未完成以下步驟前，唔可以講「remote
 > 保存完成」，公開收據亦只會如實標示 `durableRemote` 狀態。
@@ -67,3 +72,10 @@
 - 第 3 節最後一點提到「今日仍係非 require 模式」屬當時記述：`AIRCON_EMSD_REQUIRE_RAW_SINK`
   嘅實際平台值唔會出現在公開收據（只由 `secrets.*` 讀取），公開文件唔宣稱 require 模式
   已開；要核實請喺 GitHub repo Secrets 頁面直接查看。
+
+## 2026-10-01 雙源與 snapshot rebuild 補充（追加）
+
+- 每輪正常 EMSD acquisition 分別保存 CSV 與 paginated raw bytes，public receipt 只保留 hash／長度與可驗證 binding；不同 writer 使用不同 namespace，不能互相覆蓋。
+- provider-free rebuild 必須驗既有 raw receipt、來源 cardinality／durable bindings 與 dataset hash，保留原取得時間、來源及 snapshot id；不能把重建時間當新 acquisition。
+- 本次 latest basis：daily 36812197686／Pages 36812428581，來源取得時間 `2026-09-30T20:59:20Z`，雙源 receipt 通過；沒有重新抓取資料或再次上載／下載私人 raw asset。
+- 90 日 retention 與不刪成功 run 資產的原要求不变；orphan 資產是否自然清理並未在此輪核對，保持 UNKNOWN。

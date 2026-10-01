@@ -798,6 +798,18 @@ p{margin:8px 0;}
   padding:18px; margin:12px 0; box-shadow:0 1px 4px rgba(10,36,71,.08);}
 
 /* ===== 表格 ===== */
+/* 日期日誌沿用分類／內容表，局部換行不影響比較表橫向捲動。 */
+.changelog{margin-top:40px}
+.changelog-entry{margin:18px 0;padding:18px;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.changelog-entry:first-of-type{border-left:4px solid var(--accent)}
+.changelog-entry h3{margin:0 0 14px;line-height:1.55;color:var(--primary2);overflow-wrap:anywhere}
+.changelog-entry p,.changelog-entry li{line-height:1.7;overflow-wrap:anywhere}
+.changelog .table-scroll{margin:12px 0}
+.changelog table{min-width:0;table-layout:fixed}
+.changelog th{white-space:normal;background:var(--surface-strong);color:var(--text)}
+.changelog th:first-child,.changelog td:first-child{width:112px}
+.changelog td,.changelog th{vertical-align:top;overflow-wrap:anywhere;word-break:normal;line-height:1.65}
+@media(max-width:600px){.changelog-entry{padding:12px}.changelog table{font-size:.86em}.changelog th:first-child,.changelog td:first-child{width:82px}.changelog td,.changelog th{padding:8px}}
 .table-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; margin:12px 0;
   border:1px solid var(--line); border-radius:10px; background:var(--surface);}
 table{width:100%; border-collapse:collapse; font-size:.9em; min-width:600px;}
@@ -1356,6 +1368,30 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // 重置會殘留於 reload 嘅 checkbox（瀏覽器會保留 checked 狀態）
   const fso = document.getElementById('fSelOnly');
   if(fso) fso.checked = false;
+  // 保留每個歷史節點，只為更新日誌新增日期卡片。
+  const journalHeading=[...document.querySelectorAll('.md-content h2')]
+    .find(h=>h.textContent.trim()==='📅 更新日誌');
+  if(journalHeading){
+    const journal=document.createElement('section');
+    journal.className='changelog';
+    journalHeading.parentNode.insertBefore(journal,journalHeading);
+    let node=journalHeading;
+    while(node){
+      const next=node.nextSibling;
+      if(node!==journalHeading && node.nodeType===1 && /^(H1|H2)$/.test(node.tagName)) break;
+      journal.appendChild(node);
+      node=next;
+    }
+    let entry=null;
+    [...journal.childNodes].forEach(child=>{
+      if(child.nodeType===1 && child.tagName==='H3'){
+        entry=document.createElement('article');
+        entry.className='changelog-entry';
+        journal.insertBefore(entry,child);
+      }
+      if(entry) entry.appendChild(child);
+    });
+  }
   document.querySelectorAll('.md-content table').forEach(t=>{
     if(!t.closest('.table-scroll')){
       const w=document.createElement('div');

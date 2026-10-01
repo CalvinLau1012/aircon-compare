@@ -43,3 +43,9 @@
   私人 Release asset 上載同首個 live snapshot 屬 merge 後 Phase D 平台驗收（UNKNOWN）。
 - 公開 Git worktree／index／commit／Pages artifact／普通公開 Actions artifact 不會包含 raw
   HTML／archive；`stage_artifacts.py` 只 allowlist hash receipt。
+
+## 2026-10-01 實施狀態補記（追加）
+
+D7-A 首次 live 已完成；如今正常 acquisition 保存 CSV＋分頁兩源，public hash receipt 與 durable private archive binding 一致。verified rebuild 保留原取得事實，不代表重新下載 raw bytes。
+
+證據與剩餘 UNKNOWN 見 [STATUS §29](../STATUS.md)；原 ADR 決策與歷史文字全部保留。

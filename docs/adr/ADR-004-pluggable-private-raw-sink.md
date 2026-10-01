@@ -48,3 +48,9 @@
 - 標題同狀態欄嘅「live 啟用未批准（UNKNOWN）」屬 2026-09-23 當時記述；平台層 provider
   選擇同 Secret 由人類完成，私人識別唔入公開範圍。
 - `AIRCON_EMSD_REQUIRE_RAW_SINK` 嘅實際平台值唔會在公開收據反映，公開文件不宣稱。
+
+## 2026-10-01 實施狀態補記（追加）
+
+人類已選 Private GitHub Release assets 並完成首次 live 驗收，舊「未批准」是歷史狀態。雙源 raw namespace 與 public receipt binding 已有；本次文件重建不改 Secrets、不重新下載 private asset。
+
+證據與剩餘 UNKNOWN 見 [STATUS §29](../STATUS.md)；原 ADR 決策與歷史文字全部保留。

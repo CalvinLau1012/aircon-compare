@@ -187,3 +187,15 @@
 - **補充（2026-09-24，append）**：pending 期間（md 已改、daily 未跑）任何 master push 都會
   GATE-08 `payload.pdf_matches_metadata` 紅，同改動內容無關：run 35952357474（純文檔追加）、
   35952373427 都係 build／deploy success、GATE-08 failure，hash 同 35951000298 一致。
+
+## 11. 2026-10-01 完成狀態追加（不覆寫舊矩陣）
+
+| 範圍 | 最新可重跑證據 | 界限 |
+| --- | --- | --- |
+| GATE-01..07／15 required／18 bindings | PR #22 exact head `123cd19` trusted CI 全綠；本機 7/7 acceptance，871 passed／1 skipped | Windows symlink skip；本次日誌版面需另跑候選驗收，不混用舊數字。 |
+| GATE-08 | source `b7ca3bc` → artifact `121ca1d`；daily 36812197686、Pages 36812428581 success；獨立 26/26 pass | 原 merge transition run 36812158681 PDF 紅保留為歷史，不冒充成功。 |
+| GATE-09 | v1.2.9 正式 tag／Release 保持 Sep24 歸檔 | 本次维护不新增 tag／Release。 |
+| D1-B／D2-A／D7-A | pending queue 保留、Pages Actions＋同流程 E4、雙源 durable receipt binding 已實現 | 本輪未再次下载 private asset；首輪 live 證據見歷史 STATUS。 |
+| SC／雙 writer／價格安全 | PR #22 fixture／mock 的 fail-closed、重複 stage、worker lifecycle、budget 與身份測試 | active 跨 writer 真實呼叫未驗收；private server 暫停；正式配額 UNKNOWN。 |
+
+REQUIREMENT 與成功標準不变；近期 OBSERVED／UNKNOWN 詳細口徑以 STATUS §29 及最新追加為準。文件整理不自動證明未知的生產能力。

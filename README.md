@@ -1,10 +1,23 @@
 # ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fcalvinlau1012.github.io%2Faircon-compare%2Fmetadata.json&query=%24.version&label=version&prefix=v&color=2ea44f)
 
+## 📌 最新狀態（2026-10-01 核對）
+
+- **正式版本 v1.2.9**；9 月 24 日 Release 已發布，後續維護 PR #19／#20／#22 已部署。最新部署事實見線上 [metadata.json](https://calvinlau1012.github.io/aircon-compare/metadata.json)，不另虛構新版本。
+- 最新核對資料日期 **2026-10-01**，**1,816 筆登記／1,755 個 canonical 型號**；由成功 EMSD receipt 的取得時間轉香港日期。來源為 DATA.GOV.HK 資料目錄、資料由機電工程署提供，並與 EMSD 分頁比對。
+- GitHub daily 設定每日 **00:30 HKT**；Actions 排程可能延遲，並非準點保證。Pages build → deploy → GATE-08 維持同一流程；runner 固定 Ubuntu 24.04，Actions 使用 Node.js 24。
+- BigGo 只在到期且 active 的價格 stage、取得租約及通過預算後使用；本次頁面／文件整理不重新查價。Price.com 抓取已放棄；私人伺服器工作仍暫停，不能當作已正式部署。
+
+<details>
+<summary>2026-09-24 歷史概況（保留原文；最新狀態見上方）</summary>
+
 > 香港市場空調（窗口式 / 分體式 / 流動式；淨冷/冷暖、定頻/變頻）全面對比
 > **能源級別、雪種、年耗電以機電署 EMSD 官方資料庫全量核實**（最新同步快照 2026-09-24：1,834 筆登記／1,773 型號；2026-09-21 及之前詳細統計段落屬歷史快照，以線上 [`metadata.json`](https://calvinlau1012.github.io/aircon-compare/metadata.json) 為準）
 > **220 個型號已直接經品牌官網/官方網店/總代理逐型號核實（2026-08-15 歷史核實數）**
 > 🎨 **Blue Fantasy 藍色幻想 skin**（dsh-web-ui 皮膚；只套皮膚，其他插件不加）
 > 📌 **現況**：線上已發布 **v1.2.9**（當前 live build `B20260924.110.1`、datasetDate 2026-09-24）；Node.js 24 Actions／`ubuntu-24.04` runner／bounded BigGo smoke hotfix 已由 PR #14 合併並完成 production 驗收；PR #15 已將 GATE-08 接入 Pages 同一 workflow 並以 production run 35944781623 證實自動閉環；BigGo 僅在 active 價格批次或明確 force 時使用
+
+
+</details>
 
 ## 🚀 立即使用
 
@@ -362,6 +375,18 @@ python fetch_rasonic.py        # 樂信官方網店價格
 6. 本報告由 AI 輔助製作，關鍵數據已盡量經官方核實，惟仍可能有錯漏
 7. 本報告僅供選購參考，不構成購買建議
 
+## 🧾 版本與部署讀法（2026-10-01 追加）
+
+| 類型 | 最新記錄 | 判讀方式 |
+| --- | --- | --- |
+| 正式版本／Release | v1.2.9，2026-09-24，tag 指向 `f546e2f` | 版本號不因每日資料更新而增加。 |
+| 已部署維護修復 | 2026-09-29：PR #19／#20；2026-10-01：PR #22 | 仍是 v1.2.9；功能與安全改動見上方日誌及 CHANGELOG。 |
+| 每日資料／快照重建 | 10 月 1 日驗證 build `B20261001.128.1`，產物 commit `121ca1d` | 這是本次整理前的核對基準；即時值以 metadata 為準，source commit 與產物 commit 可以不同。 |
+| 歷史候選 | 下方保留各階段「未部署」條目 | 只代表當時狀態；後續完成事實見較新的追加條目。 |
+
+舊統計表各有快照日期，不能當成今日即時數字；未知官方配額、未執行的私人線驗收及既有價錢疑點仍保持 UNKNOWN。
+
+
 ## 🏷️ 版本記錄
 
 | 版本 | 日期 | 重點 |
@@ -384,6 +409,21 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | v0.1.0 | 2026-08-11 | 報告初版（29 型號統合對比） |
 
 ## 📅 更新日誌
+
+### 2026-10-01 — v1.2.9 維護修復已上線・更新日誌整理
+
+| 類別 | 更新內容 |
+| --- | --- |
+| 📦 版本 | 正式 Release 仍為 **v1.2.9（2026-09-24）**；9 月 29 日至 10 月 1 日為其後維護修復，PR #19／#20／#22 已合併及部署，沒有另建新 tag 或版本。 |
+| 🏛️ 官方資料 | DATA.GOV.HK 資料目錄動態解析 EMSD 提供的空調 CSV；CSV 與 EMSD 分頁交叉核對，來源、登記鍵或受治理欄位不一致就保留上一版。已適配實際 29 欄 CSV 與 Supplied 範圍。 |
+| 🔎 官網核實 | 修復 Frostar 網址解析與批次收據；確認的覆蓋缺口保留 queue／舊規格並顯示待核，真正網絡、解析或證據錯誤仍阻斷，不能當成停售。 |
+| 💰 價格安全 | BigGo 批次加入共享租約、可恢復 bundle、呼叫意圖與冪等保護；型號身份比對收緊，新增唯讀疑點審計。此輪未查新價格；既有疑點不等於已修正。Price.com 不恢復爬取。 |
+| 📄 PDF／部署 | PDF 核對綁定 metadata 的來源 commit；已驗證快照可在不抓取來源、不推進價格 queue 下重建 HTML／PDF／metadata，門禁保持 fail-closed。 |
+| 🎨 日誌閱讀 | 延續早期「日期＋分類／內容」格式；最新摘要置頂，網頁各日期分卡片，長文字自動換行並配合手機、深色模式；保留所有歷史條目。 |
+| ✅ 部署證據 | [PR #22](https://github.com/CalvinLau1012/aircon-compare/pull/22)、[快照重建 run 36812197686](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36812197686)、[Pages run 36812428581](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36812428581) 全部成功；獨立線上核對 26 項通過。10 月 1 日核對快照：**1,816 筆登記／1,755 個型號**；即時 build、來源 commit、資料日期及部署時間以頁面 metadata 為準。 |
+
+> 下方「未部署／候選」描述是各條目寫作當日的歷史狀態，不代表目前仍未部署。資料日期不是所有價格或官網規格的重新查核日期。
+
 
 ### 2026-09-29 — GitHub Actions／EMSD CSV 修復（本機候選，未部署；追加）
 
@@ -638,8 +678,12 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | ------ | ------ |
 | 📝 內容 | 報告初版（29 型號對比） |
 
+> 下列尾註為 2026-09-24 歷史記錄，最新完成狀態見頁首及 10 月 1 日日誌。
+
 **更新日期**：2026-09-24 · **版本**：v1.2.9（已發布；頁面／badge 以線上 `metadata.json` 為準；release 後 hotfix 候選見 CHANGELOG `[Unreleased]`）
 
 ### 2026-09-21 文件更新（本機候選，未發布）
 
 網站與文件說明已按同步基準校正；產品版本仍由 metadata 提供。文件導覽見 [docs/README.md](docs/README.md)，實施證據、已知限制與待驗證項目見 [docs/STATUS.md](docs/STATUS.md)。
+
+**本次文件核對日期**：2026-10-01 · 正式版本 v1.2.9 · 維護部署與尚未驗證項目見上方最新索引。

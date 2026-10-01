@@ -3,6 +3,26 @@
 本文件記錄 aircon-compare 的所有顯著變更（Keep a Changelog 風格）。
 版本號遵循 SemVer（`MAJOR.MINOR.PATCH`），唯一手動來源為 `models_data.py` 的 `VERSION`。
 
+## 發布與部署索引（2026-10-01 追加）
+
+| 狀態 | 版本／日期 | 變更與證據 |
+| --- | --- | --- |
+| 正式 Release | [v1.2.9](https://github.com/CalvinLau1012/aircon-compare/releases/tag/v1.2.9)，2026-09-24 | tag `f546e2f`；其後修復不改寫原 Release，也不另造版本。 |
+| 已部署維護修復 | v1.2.9，2026-09-29 | PR #19：官網 pending／receipt、CKAN 動態取址及雙源流程；PR #20：實際 CSV 欄位、Supplied 範圍及 canonical 比對修正。 |
+| 已部署維護修復 | v1.2.9，2026-10-01 | PR #22：BigGo bundle／租約／呼叫意圖與冪等防護、價格身份審計、PDF 版本綁定、verified snapshot rebuild。[PR #22](https://github.com/CalvinLau1012/aircon-compare/pull/22)、[快照重建 run 36812197686](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36812197686)、[Pages run 36812428581](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36812428581)。 |
+| 文件／版面整理 | 2026-10-01 本次變更 | 補 README／網頁日誌及版本索引，日期卡片與兩欄表格適配手機和深色模式；部署證據另按完成時間追加，不以本機修改冒充部署。 |
+
+**歷史保留說明**：下方 `[Unreleased]` 是歷次寫作階段的原始記錄，包含後來已部署的候選；上表及較新的 STATUS 追加段落提供後續結果。尚未執行的私人伺服器、active BigGo stage 跨 writer 接手、配額確認等仍未完成。本次不新增產品版本／tag／Release。
+
+### 2026-10-01 已部署維護修復（追加完成狀態）
+
+- **Added**：可恢復 BigGo stage bundle、write-ahead 呼叫意圖、完成狀態與快照匯入校驗；唯讀可疑價格審計；provider-free verified snapshot rebuild 模式。
+- **Changed**：EMSD 主來源經 CKAN 解析；雙源一致性、receipt 身份與價格型號邊界收緊；PDF 從 metadata 綁定的歷史輸入重建並驗生成器及環境。
+- **Fixed**：Frostar 解析／批次 receipt、實際 CSV 29 欄與 Supplied scope、force cycle 及重複 stage／worker 生命周期邊界。
+- **Evidence**：PR #22 exact head `123cd19` 受信任 PR CI 通過；master source `b7ca3bc` → rebuilt artifact `121ca1d`，daily `36812197686`／Pages `36812428581` success，獨立 GATE-08 26/26 通過。未呼叫資料或價格來源，原有取得事實保持不變。
+- **Limits**：Windows 本機 871 passed／1 skipped（symlink 平台限制）；這是上一輪證據。active 跨 writer BigGo live、私人伺服器、供應商配額仍 UNKNOWN；既有疑點价格未自動改寫。
+
+
 ## [Unreleased]
 
 ### 2026-09-29 GitHub Actions／EMSD CSV 修復候選（未發布、未部署）
