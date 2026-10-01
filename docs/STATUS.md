@@ -1474,3 +1474,12 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
 - 需求以元文件新追加條目為準；補 README／報告／CHANGELOG／文件導覽／ADR／runbook／矩陣的完成狀態，歷史原文保留。
 - HTML_TEMPLATE 加入日誌日期卡片與局部表格換行，保持早期兩欄分類格式、深色主題及所有歷史条目。
 - REQUIREMENT：治理源、15 個 required 功能、metadata schema、正常 daily／價格安全門禁不改。新版本不另造，部署完成證據在完成後追加。
+
+
+### §29.4 日誌候選本機驗收（2026-10-01；E2）
+
+- 代碼／文件候選 `5b458b7`；machine acceptance **7/7 rc=0**，pytest **877 passed／1 skipped**（Windows symlink），18 個 required nodes 全通過；privacy worktree 與 diff check 通過。
+- 新增六組離線 Chromium 檢查：375／768／1280 px × light／dark；24 個歷史日期標題按原序保留、表格全換行、頁面無水平溢出；網絡 route 全阻斷。
+- 明示 `PR-FIXTURE` 隔離 HTML／PDF／metadata 的 localhost HTTP／瀏覽器／PDF 重建驗收全通過；已實際查看淺色桌面及深色手機截圖。
+- 所有原 Markdown 行逐行確認按原序保留；沒有更新產品 VERSION、來源資料、價格快照、queue 或 production 生成物。
+- 新候選尚待 exact-head GitHub CI 及可信重建／Pages E4；不把本機 fixture 宣稱 production 部署。
