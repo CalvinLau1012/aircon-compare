@@ -1326,3 +1326,23 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
     放寬驗證。
   - legacy Price.com 疑點價維持 UNKNOWN；冇 provider 呼叫去證明或否定。
   - 未 merge、未 deploy、未 tag／Release；PR 狀態見 local handoff。
+
+### §27.1 Codex 獨立核對與受信任 PR CI（2026-10-01；E2／E3）
+
+- `f1cc089d04688da73b69ee8905c136ba50ae7cd8` 的本機 acceptance 7/7 gate 日誌
+  SHA-256 已逐一重算一致；日誌確認 pytest **842 passed**、15 required／18 個綁定節點
+  全部通過。兩份 localhost candidate 報告均 `ok=true`，PDF／CSV／payload／metadata
+  與 Chromium 核心路徑通過；CLI historical-input 重建有完整 SHA-256 receipts。
+- 從 GitHub 直接回讀 PR #22 與 exact-head runs：`36805646883` 的
+  `pull-request-gates`、`36805647163` 的 `build` 均 success；`update`／`deploy`／
+  production GATE-08 均 skipped，符合 PR 路徑。
+- 實際 runner 日誌為 **Ubuntu 24.04／CPython 3.12.14**，與本機 Windows／3.12.10
+  分開記錄；Chromium 先於測試安裝。PR 歷史審計 credentialFindings=0；指定的
+  Node.js 20／ubuntu-latest 遷移警告未見命中。
+- 此階段 merge 只保留 master `aa48fa0` 的最新 production bytes；沒有修改應用實作。
+  元文件的新條目把分段安排歸因為用戶限制，已以追加澄清；原文及歷史保留。
+- E3 證據只適用上述 SHA。後續純文檔提交須等新 head 的 CI，再宣稱該 head 通過。
+  本輪尚未正式部署，E4 未執行；PDF code／舊部署 commit 轉換限制仍保留。
+- Codex 另行執行已重新生成候選的 `verify_candidate.py`（localhost HTTP＋Chromium；
+  非 E4）亦 rc=0：完整 metadata、CSV／payload hash、PDF 重建與 bytes、搜尋／篩選／
+  排序／比較／鍵盤／響應式全部通過，無 console error／failed request。
