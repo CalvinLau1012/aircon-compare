@@ -44,3 +44,9 @@
   `generate_html.py` build 時顯示「官網規格待核」，不冒充已核實。
 - 仍必須保留 advance 才可清 queue：pending 路徑不會呼叫 `advance_queue.py`，亦不會部分
   覆寫輸出快照。
+
+## 2026-10-01 實施狀態補記（追加）
+
+D1-B 已部署；PR #19／#20 修復實際 Frostar parser／receipt 及 coverage pending 身份。確認來源覆蓋缺口不 advance、不淘汰、不覆寫舊規格；網絡／parser／receipt 不可信仍 fail-closed。
+
+證據與剩餘 UNKNOWN 見 [STATUS §29](../STATUS.md)；原 ADR 決策與歷史文字全部保留。

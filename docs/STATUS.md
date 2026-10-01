@@ -1448,3 +1448,38 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
   Pages／E4 未執行；72h 窗口到 `2026-10-03T20:59:20Z`。
 - **邊界**：未 merge、未 deploy、未 tag／Release、未改 Secrets／私人 repo；rollout 只喺
   local handoff 記錄，未執行。
+
+## §29 2026-10-01 已部署狀態與文件同步（追加；E3／E4）
+
+### §29.1 完成事實（本次文件整理前已獨立核對）
+
+- **OBSERVED**：PR #22 已 merge，source `b7ca3bc9d7fc725c3244e085cae15b5c1781ae98`；trusted snapshot rebuild run `36812197686` success，artifact commit `121ca1d1351072cc27519aae4bd41f8d5f455fac`；Pages run `36812428581` build／deploy／GATE-08 全綠。§20–28 的未部署描述是當時歷史。
+- **E3**：PR exact head `123cd19b1d439c17225c2277269e3563bff7ec44` 的 runs `36811542357`／`36811542620` success；master provider-free rebuild 成功，guard 保留 acquisition facts 與所有 source inputs，僅 metadata／PDF 產物改動。
+- **E4**：Codex 獨立 `postdeploy_check.py --repro-from-commit --payload-dir .` 真 HTTP／Chromium／PDF 核對 **26/26 通過**；metadata full object、payload／CSV hash、PDF 重建、runtime version／last update／last deploy、搜尋／篩選／排序／比較／responsive 均通過。
+- **部署基準**：v1.2.9；build `B20261001.128.1`；datasetDate `2026-10-01`；1,816 登記／1,755 canonical 型號；metadata source commit `b7ca3bc`；deployTime `2026-10-01T03:51:18Z`（HKT 11:51:18，封包時間）。這不是本次後续重建的即時值。
+- **來源取得事實**：`datasetRetrievedAt=2026-09-30T20:59:20Z`；snapshot `emsd-2026-10-01-4df777cb7294`；datasetHash `sha256:12df3e49b5c08585a319e96f5b7e54a694e3e3cdf78f47ba39a84df777cb7294`。重建不是新一次來源抓取。
+- **失敗保留**：merge push Pages run `36812158681` 的部署後 PDF 核對因舊產物與新生成器 `pdf.repro_code_changed` 紅；其後已驗證重建及 Pages run 修復。不可改稱舊 run 成功或降低門禁。
+
+### §29.2 排程、來源及剩餘界限
+
+- **OBSERVED**：daily active，cron `30 16 * * *`＝每天 00:30 HKT；GitHub 可能延後啟動。runner 固定 Ubuntu 24.04，Actions 已使用 Node.js 24。
+- freshness 每 6 小時，`age > 72h` 才 stale；本快照 72h 窗口到 `2026-10-03T20:59:20Z`，文件重建不延長取得時間。此處不冒稱下一次自然排程已驗收。
+- **UNKNOWN**：下一個 active BigGo stage 的跨 writer 實際租約與匯入、供應商正式配額／重置週期、私人 server production／00:45 timer。私人線工作仍暫停。
+- **OBSERVED**：公開 raw receipt 的 CSV＋分頁來源 hash／長度及 durable binding 通過；本輪未重新下載私人資產，D7 live 首次證據仍見早期紀錄。
+- BigGo／EMSD／品牌來源本次均零呼叫；既有價格疑點未被自動修改，Price.com 不恢復抓取。48h cooldown 是項目策略，不能當成供應商配額週期。
+- Pages 的上游 `DEP0040 punycode` 非阻斷提示仍存在，不能宣稱所有 warning 消失；Node.js 20 與 ubuntu-latest 遷移問題已按固定 runtime／runner 處理。
+
+### §29.3 本次文件與日誌整理
+
+- 需求以元文件新追加條目為準；補 README／報告／CHANGELOG／文件導覽／ADR／runbook／矩陣的完成狀態，歷史原文保留。
+- HTML_TEMPLATE 加入日誌日期卡片與局部表格換行，保持早期兩欄分類格式、深色主題及所有歷史条目。
+- REQUIREMENT：治理源、15 個 required 功能、metadata schema、正常 daily／價格安全門禁不改。新版本不另造，部署完成證據在完成後追加。
+
+
+### §29.4 日誌候選本機驗收（2026-10-01；E2）
+
+- 代碼／文件候選 `5b458b7`；machine acceptance **7/7 rc=0**，pytest **877 passed／1 skipped**（Windows symlink），18 個 required nodes 全通過；privacy worktree 與 diff check 通過。
+- 新增六組離線 Chromium 檢查：375／768／1280 px × light／dark；24 個歷史日期標題按原序保留、表格全換行、頁面無水平溢出；網絡 route 全阻斷。
+- 明示 `PR-FIXTURE` 隔離 HTML／PDF／metadata 的 localhost HTTP／瀏覽器／PDF 重建驗收全通過；已實際查看淺色桌面及深色手機截圖。
+- 所有原 Markdown 行逐行確認按原序保留；沒有更新產品 VERSION、來源資料、價格快照、queue 或 production 生成物。
+- 新候選尚待 exact-head GitHub CI 及可信重建／Pages E4；不把本機 fixture 宣稱 production 部署。

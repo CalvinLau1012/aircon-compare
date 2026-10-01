@@ -68,3 +68,9 @@
 - 上文第 59 行「真正首次 daily dispatch／Pages Actions 部署仍屬平台驗收（E3／E4 UNKNOWN）」
   已由上述 run 完成，狀態由 UNKNOWN 轉 OBSERVED。
 - 相關 md／payload fail-closed 事件同 D24 約定見 `docs/STATUS.md` §17。
+
+## 2026-10-01 實施狀態補記（追加）
+
+Pages Source 已切 Actions；daily→Pages exact artifact dispatch 及同 workflow E4 已 live 通過。PR #22 重建 run 36812197686 → Pages 36812428581 成功；merge 舊 payload 過渡 run 的 PDF 紅不能被說成已通過。
+
+證據與剩餘 UNKNOWN 見 [STATUS §29](../STATUS.md)；原 ADR 決策與歷史文字全部保留。

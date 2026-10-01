@@ -27,3 +27,10 @@ python validate_data.py
 python generate_html.py
 ```
 
+## 2026-10-01 文件／網頁日誌維護補充（追加；D32）
+
+- 現行版本與部署索引見 README／CHANGELOG 最新入口；候選記錄的「未部署」屬歷史，最新事實見 docs/STATUS §29 及後續追加。
+- 報告 md／HTML_TEMPLATE 修改先在隔離目錄生成明示 fixture HTML／PDF／metadata，做手機及深色瀏覽器驗證；不要手改 production metadata 或沿用舊 payload hash。
+- 完成可信 PR CI 後，經 D31 `rebuild_verified_snapshot=true`、`force_price_batch=false` 在 master 重建，再核對 exact source/artifact 的 Pages 與 GATE-08。無須資料來源或 BigGo 呼叫；72h acquisition 年齡不能因重建而延長。
+- 正常 daily 不變：00:30 HKT；價格 stage inactive 應零 token／search。Price.com 抓取仍放棄，私人 server 工作仍暫停。
+- pytest 的 snapshot preflight 正向測試需乾淨 checkout；有使用者未提交修改時，用隔離 worktree，不覆蓋／stage／stash 該修改。新部署不能用上一輪測試數字冒充驗收。
