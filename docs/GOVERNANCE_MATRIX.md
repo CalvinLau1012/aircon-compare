@@ -199,3 +199,8 @@
 | SC／雙 writer／價格安全 | PR #22 fixture／mock 的 fail-closed、重複 stage、worker lifecycle、budget 與身份測試 | active 跨 writer 真實呼叫未驗收；private server 暫停；正式配額 UNKNOWN。 |
 
 REQUIREMENT 與成功標準不变；近期 OBSERVED／UNKNOWN 詳細口徑以 STATUS §29 及最新追加為準。文件整理不自動證明未知的生產能力。
+
+
+## 12. 2026-10-01 日誌部署完成補記（追加）
+
+PR #23 exact head `a8e5444` 的 CI runs `36817375237`／`36817375746` 成功；本機 7/7 acceptance、877 passed／1 Windows symlink skipped、18 required nodes。source `b39ee69` → artifact `3f81480`，daily `36817792681`／Pages `36817991532` success，GATE-08 及独立 26/26 核對通過；日誌 24 個日期、light／dark 手機版驗收通過。BigGo token／search=0，來源 acquisition facts 不變。其他生產 UNKNOWN 与規範要求不变；見 STATUS §29.5。

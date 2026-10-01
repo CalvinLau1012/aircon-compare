@@ -1,5 +1,7 @@
 # 項目文件導覽
 
+> **本轮文件／版面已部署（2026-10-01）**：[PR #23](https://github.com/CalvinLau1012/aircon-compare/pull/23) 已合併；[重建 run 36817792681](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36817792681) 與 [Pages run 36817991532](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36817991532) 均成功。 獨立線上 26/26 pass；最新完成狀態見 STATUS §29.5。元文件標題已採用「對比目的」；下方候選或舊核對基準保留為歷史。
+
 ## 最新閱讀入口（2026-10-01 追加）
 
 **v1.2.9 已正式發布，PR #19／#20／#22 維護修復已部署。** 下方 9 月 23 日介紹與候選表是歷史快照；最新完成事實見 [STATUS §29](STATUS.md)，最新選擇見 DECISIONS D31／D32，正式版本與維護記錄見 CHANGELOG 發布與部署索引。

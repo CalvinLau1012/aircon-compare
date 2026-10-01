@@ -1483,3 +1483,15 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
 - 明示 `PR-FIXTURE` 隔離 HTML／PDF／metadata 的 localhost HTTP／瀏覽器／PDF 重建驗收全通過；已實際查看淺色桌面及深色手機截圖。
 - 所有原 Markdown 行逐行確認按原序保留；沒有更新產品 VERSION、來源資料、價格快照、queue 或 production 生成物。
 - 新候選尚待 exact-head GitHub CI 及可信重建／Pages E4；不把本機 fixture 宣稱 production 部署。
+
+
+### §29.5 日誌／文件本輪正式完成（2026-10-01；E3／E4）
+
+- [PR #23](https://github.com/CalvinLau1012/aircon-compare/pull/23) 已合併；[重建 run 36817792681](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36817792681) 與 [Pages run 36817991532](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36817991532) 均成功。
+- **E3**：最終 PR head `a8e54447a92d00ef3b2e66533e280e2370a07aba`，runs `36817375237`／`36817375746` 全綠。merge source `b39ee692eabec0d1560d88e0a9bce0e42259c6b1`，trusted rebuilt artifact `3f81480f50d74942cdc2cfabcd6c6b968218bd76`；只改 `index.html`／PDF／metadata。
+- **E4**：Pages build／deploy／同 workflow GATE-08 全綠；Codex 獨立真 HTTP／Chromium／PDF 核對 **26/26 PASS**。線上新版日誌 24 個日期條目，最新為 2026-10-01；淺色 1280 px／深色 375 px 均無表格或頁面水平溢出。
+- **部署事實**：version `1.2.9`、build `B20261001.132.1`、workflowRunId `36817792681`、deployTime `2026-10-01T05:03:26Z`（HKT 13:03:26，封包時間）；datasetDate 2026-10-01、1,816 登記／1,755 型號。
+- **保護事實**：rebuild preflight／guard schema v2 均 `ok=true`；10 個 acquisition facts 全保留（包括 `datasetRetrievedAt=2026-09-30T20:59:20Z`）；EMSD／兩批品牌抓取 skipped；BigGo status `skip-not-active`，`requests.token=0`、`requests.search=0`。metadata Schema、VERSION、queue、價格快照未改。
+- **元文件**：人類確認「對比目的」，標題及文內引用已提交；這是明確授權的格式更正，正文、其他歷史和新要求保留。
+- **歷史限制**：merge push run `36817771420` build／deploy 通過但 GATE-08 PDF 紅，後續完整重建已解決；不改寫舊 run。active BigGo 跨 writer、官方配額、私人 server 與自然排程下次成功仍 UNKNOWN，沒有因文件整理冒充完成。
+- 本節為部署後純文件證據追加；報告 MD、生成器與 payload 均不改，不需要再抓來源或重新執行 daily。原 §29.3–29.4 待部署文字保留為候選歷史。

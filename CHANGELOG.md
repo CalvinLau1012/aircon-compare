@@ -3,6 +3,16 @@
 本文件記錄 aircon-compare 的所有顯著變更（Keep a Changelog 風格）。
 版本號遵循 SemVer（`MAJOR.MINOR.PATCH`），唯一手動來源為 `models_data.py` 的 `VERSION`。
 
+### 2026-10-01 文件／日誌版面整理已部署（完成證據追加）
+
+- [PR #23](https://github.com/CalvinLau1012/aircon-compare/pull/23) 已合併；[重建 run 36817792681](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36817792681) 與 [Pages run 36817991532](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36817991532) 均成功。
+- 正式版本 v1.2.9 不變；source `b39ee69`、artifact `3f81480`、build `B20261001.132.1`，生成 HTML／PDF／metadata 一致。README、版本索引、STATUS、決策、ADR、runbook 與治理矩陣已同步。
+- 元文件採用人類標題「對比目的」，同步文內引用；其他歷史文字保留。日誌 24 個日期條目保持原序，最新摘要置頂。
+- 本機 7/7 gates、877 passed／1 Windows symlink skipped、18 required bindings 通過；exact head `a8e5444` 的 GitHub PR gates／build 成功；Pages E4 成功，獨立線上 26/26 pass，淺色桌面與深色手機實看通過。
+- EMSD／品牌 fetch 跳過；BigGo `skip-not-active`，token=0／search=0；10 個 acquisition facts 與來源檔案不變。未 tag／新增 Release／操作私人 server。
+- merge 過渡 Pages run `36817771420` 曾因舊 PDF／新生成器核對失敗；完整重建後的 run `36817991532` 已恢復全綠，舊失敗保留為歷史。
+
+
 ## 發布與部署索引（2026-10-01 追加）
 
 | 狀態 | 版本／日期 | 變更與證據 |

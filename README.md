@@ -1,5 +1,7 @@
 # ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fcalvinlau1012.github.io%2Faircon-compare%2Fmetadata.json&query=%24.version&label=version&prefix=v&color=2ea44f)
 
+> **2026-10-01 本輪完成**：[PR #23](https://github.com/CalvinLau1012/aircon-compare/pull/23) 已合併；[重建 run 36817792681](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36817792681) 與 [Pages run 36817991532](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36817991532) 均成功。 README／網頁更新日誌及版本索引已更新，日誌日期卡片、手機／深色版面已上線；元文件第一節與引用已按人類更正為「對比目的」。獨立線上核對 26/26 pass；build `B20261001.132.1`（封包 13:03 HKT），正式版本仍 v1.2.9。以下核對基準與歷史條目保留。
+
 ## 📌 最新狀態（2026-10-01 核對）
 
 - **正式版本 v1.2.9**；9 月 24 日 Release 已發布，後續維護 PR #19／#20／#22 已部署。最新部署事實見線上 [metadata.json](https://calvinlau1012.github.io/aircon-compare/metadata.json)，不另虛構新版本。

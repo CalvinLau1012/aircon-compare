@@ -1127,3 +1127,8 @@
 - **後果**：元文件只追加；不改治理 Schema 或 required 功能；使用 D31 verified snapshot rebuild 產生一致 HTML／PDF／metadata，不呼叫來源、不推進 queue。私人線仍暫停。
 - **證據分類**：OBSERVED：PR #22／run 36812197686／36812428581 已完成 E3／E4（STATUS §29）；本次新日誌版面實際部署證據於驗收後追加；UNKNOWN 保持原有 active stage／配額／私人線缺口。
 - **回滾**：若版面影響閱讀，可還原局部 CSS／DOM 分組並再以同一已驗證快照重建；歷史與人類要求仍保留，不能刪除元文件追加記錄。
+
+
+### D32 · 2026-10-01 完成證據追加
+
+PR #23 最終 head `a8e5444` 已通過 GitHub CI 並 merge；trusted rebuild `36817792681`、Pages `36817991532` 全綠，独立 E4 26/26 pass。新版日期卡片與 README／版本索引已發布，BigGo token／search 均 0，正式版本維持 v1.2.9。人類指定「對比目的」標題及引用已同步；歷史只按明確授權更正這兩處格式，其他原文保留。詳細 OBSERVED／UNKNOWN 見 STATUS §29.5。
