@@ -1346,3 +1346,52 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
 - Codex 另行執行已重新生成候選的 `verify_candidate.py`（localhost HTTP＋Chromium；
   非 E4）亦 rc=0：完整 metadata、CSV／payload hash、PDF 重建與 bytes、搜尋／篩選／
   排序／比較／鍵盤／響應式全部通過，無 console error／failed request。
+
+### §28. Verified snapshot rebuild 模式（2026-10-01；E2 本地演練；未 dispatch／未部署）
+
+- **背景**：喺有限 provider allowance 下，release 需要「先確認、後發布」路徑：重用
+  現有、hash-bound、72 小時內嘅 EMSD 快照，只重新生成 index／PDF／metadata。Reuse
+  係技術方法，唔係新用戶需求；`需求摘要.md` 要求語義不變。
+- **實作（工作樹 branch `codex/verified-snapshot-rebuild`，base `005e469`；本地 code＋
+  tests commit `e7a8098…`）**：
+  - `scripts/verify_snapshot_rebuild.py`：
+    `preflight`（離線唯讀）驗證完整 metadata Schema／payload manifest 安全（拒
+    symlink／traversal／缺檔）／`releasePayloadHash`／CSV hash／counts
+    （`load_models`／`load_registrations` 對 metadata）／receipt＋raw receipt hash-bound
+    facts／`receipt_facts` 交叉核對（datasetDate／retrievedAt／sourceUrl／snapshotId／
+    datasetHash／rawRecordCount／registrationCount）／72h 時效（未來／格式錯即拒）／
+    `metadata.commit` 係完整 40-hex 且本地 HEAD／origin/master 祖先／乾淨 checkout／
+    price stage inactive 且 force=false；成功先寫 baseline（repo 外）。
+    `guard`（重建後）逐 bytes 比對 baseline 來源檔；只有 index.html／PDF／
+    metadata.json 可變；tracked preserved paths 要乾淨、generated artifacts 要存在
+    （拒 symlink）。報告輸出路徑預設禁止喺 repo 內。
+  - `.github/workflows/daily-update.yml`：`workflow_dispatch` 新增
+    `rebuild_verified_snapshot`（default false）；normal schedule 完全不變。Rebuild
+    dispatch 時 skip EMSD 抓取／staging 上載、官網 queue 推進／enrichment／官方發布；
+    BigGo runner 保留行真 inactive 路徑（另加 `AIRCON_BIGGO_TEST_MODE=1`
+    defense-in-depth，唔跑 smoke／force）；`force_price_batch=true`＋rebuild 矛盾喺
+    任何 provider 呼叫前 fail-closed；預檢喺 build 前、guard 喺 commit 前；報告
+    always 上載（repo 外）。
+- **本地演練（E2；零 provider）**：工作樹喺 Windows Temp（`%LOCALAPPDATA%\Temp\
+  aircon-verified-snapshot-rebuild`；repo 外；絕對路徑見 local handoff）。
+  - `preflight`：rc=0、全部檢查 pass；baseline 記錄 19 個來源檔 hash（全部存在）。
+  - 重建：`generate_html.py`＋`validate_data.py` rc=0；core metadata
+    （`B20261001.99999.1`、`commit=e7a8098…`、datasetDate `2026-10-01`、
+    datasetRetrievedAt `2026-09-30T20:59:20Z`、datasetHash `sha256:12df3e49…` 全部沿用
+    原 receipt，冇偽造新抓取事實）；`validate_metadata.py --core` rc=0；
+    `generate_pdf.py` rc=0；finalize `releasePayloadHash=sha256:99da9110…`；
+    `validate_metadata.py` rc=0；`verify_candidate.py` ok=true（24 checks，含 Chromium
+    search／filter／sort／compare／responsive／console）rc=0。
+  - `guard`：rc=0、6/6 checks pass、`changedAllowed=[]`（實際只 PDF／metadata 變，
+    index bytes 不變）；之後還原生成物，工作樹乾淨。
+  - 全量回歸：`pytest tests/ -q` → **855 passed, 1 skipped**（Windows 唔支援 symlink
+    測試；Linux CI 會執行）；`extract_governance.py`／`feature-check.py`／
+    `validate_metadata.py` 全 rc=0；`git diff --check` rc=0。
+  - Provider 請求：本地 0、線上 0；冇真 BigGo／EMSD／Price.com 呼叫；冇 coordinator
+    mutation／secrets。
+- **分類**：`TARGET_STATE`：新增可選 release 重建路徑；`OBSERVED / E2`：上述本地
+  證據；`UNKNOWN`：實際 `workflow_dispatch` run（E3）、CI BigGo coordinator inactive
+  run、Pages deploy／E4 均未執行；72h 窗口（到 `2026-10-03T20:59:20Z`）過後 preflight
+  會 fail closed，需要先有新 snapshot。
+- **邊界**：未 merge、未 deploy、未 tag／Release、未改生產 payload／metadata／Secrets；
+  rollout 命令只喺 handoff 提供，未執行。

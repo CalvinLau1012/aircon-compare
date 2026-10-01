@@ -367,6 +367,23 @@
   metadata.commit 對應舊 generator bytes，merge 後 `--repro-from-commit` 可能紅到下一次
   正常 daily 全量重生（不得手動部署／放寬驗證）；legacy Price.com 疑點價維持 UNKNOWN。
 
+### 2026-10-01 Verified snapshot rebuild 模式候選（未發布、未部署）
+
+> opt-in 手動 rebuild（`workflow_dispatch` input `rebuild_verified_snapshot`，default
+> false）：重用 72h 內 hash-bound EMSD 快照重建 index／PDF／metadata；normal daily
+> 完全不變。本機 E2 演練；未 dispatch／未 merge／未 deploy；provider 請求 0。
+
+- **Verifier**：新增 `scripts/verify_snapshot_rebuild.py`（`preflight`／`guard`）：
+  metadata Schema／payload 安全／hash／counts／receipt＋raw binding／72h／本地祖先／
+  乾淨 checkout／price stage inactive／force=false；重建後只准 index／PDF／metadata
+  改變，來源 byte 不變；報告禁止寫入 repo。
+- **Workflow**：rebuild 模式 skip EMSD 抓取／官網 staging／queue 推進；BigGo 真
+  inactive 路徑＋`AIRCON_BIGGO_TEST_MODE=1`；force 矛盾 fail-closed；預檢／guard
+  報告 always 上載。
+- **E2**：preflight rc=0；rebuild metadata 沿用原 datasetDate／retrievedAt／hash；
+  `validate_metadata`／`verify_candidate`（24 checks 含 Chromium）／guard 全 rc=0；
+  pytest 855 passed, 1 skipped；未執行 rollout。
+
 ## [1.2.9] - 2026-09-24
 
 > 發布事實（2026-09-24 回讀）：tag `v1.2.9` → commit

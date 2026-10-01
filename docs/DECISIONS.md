@@ -1042,3 +1042,39 @@
     Python／transitive deps／字體／locale。
   - `BOUNDARY`：無 push／deploy／真實 API／私人 repo；未改 `fetch_prices.py`。
 - **回滾**：revert 本階段 commit 即回復舊 current-md 重建行為（連帶回復 D24 假紅窗口）。
+
+## D31 · 2026-10-01：Verified snapshot rebuild（手動 rebuild 模式；append-only）
+
+- **背景**：有限 provider allowance 之下，release 需要可以「先確認、後發布」嘅路徑，
+  而唔可以每次都由實時抓取開始。重用現有 hash-bound EMSD 快照係技術方法，目標仍係
+  確認後發布；唔係新增用戶需求，`需求摘要.md` 要求語義不變。
+- **決策（opt-in；預設完全不變）**：
+  - `daily-update.yml` 加 `workflow_dispatch` input `rebuild_verified_snapshot`
+    （default false）。Normal schedule／master dispatch 行為完全不變；只喺顯式
+    dispatch 時，跳過 EMSD 抓取／staging 上載同官網 queue 推進／enrichment／官方
+    發布；BigGo runner 保留行真 inactive 路徑（另加 `AIRCON_BIGGO_TEST_MODE=1`
+    defense-in-depth），唔跑 smoke／force。
+  - 新增 `scripts/verify_snapshot_rebuild.py`：`preflight` 只讀驗證 metadata Schema／
+    payload 安全／hash／counts／receipt＋raw receipt binding／`receipt_facts`／72h
+    時效／`metadata.commit` 本地祖先／乾淨 checkout／price stage inactive／force=false，
+    並寫 baseline（repo 外）；`guard` 喺重建後核對來源檔 byte 不變（只准
+    index.html／PDF／metadata.json 改變）。
+  - 報告路徑預設禁止喺 repo 內；`force_price_batch=true`＋rebuild 喺任何 provider
+    呼叫前 fail-closed；預檢喺 build 前、guard 喺 commit 前。
+- **原因**：重播已驗證 snapshot（原 retrievedAt／datasetDate／hash 保留）可以確認
+  publish 流程同產物自洽，同時完全避免 provider 依賴同「舊證據當新抓取」嘅混淆；
+  有真源頭（receipt hash-bound、raw receipt、72h window）先准重建。
+- **後果（分類）**：
+  - `REQUIREMENT`：Metadata Schema、required 功能、成功標準、payload／CSV hash、
+    完整 metadata 驗證、GATE 門禁全部不變，冇放寬；normal daily 路徑不變。
+  - `TARGET_STATE`：新增 opt-in release 重建路徑；acquisition 步驟喺呢條路徑
+    reported skipped，唔會 re-label 舊證據為本 run 抓取。
+  - `OBSERVED / E2`：本地演練 preflight／重建／guard 全 rc=0；rebuild metadata 沿用
+    datasetDate `2026-10-01`／retrievedAt `2026-09-30T20:59:20Z`／datasetHash
+    `sha256:12df3e49…`；pytest 855 passed, 1 skipped；治理 gates rc=0（見 §28）。
+  - `UNKNOWN`：E3（實際 dispatch run）／E4（Pages deploy 後）未執行；coordinator
+    inactive run 未喺 CI 觀察；72h 窗口過後 preflight 會 fail closed（需新 snapshot）。
+  - `BOUNDARY`：冇 provider 呼叫、冇 merge／deploy／tag／Release、冇改生產
+    metadata／index／PDF／Secrets／私人 repo；rollout 命令未執行。
+- **回滾**：revert 本階段 commit（verifier＋workflow input）即完全回復舊行為；
+  已生成候選未發布，無需回滾部署。
