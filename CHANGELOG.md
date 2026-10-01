@@ -384,6 +384,25 @@
   `validate_metadata`／`verify_candidate`（24 checks 含 Chromium）／guard 全 rc=0；
   pytest 855 passed, 1 skipped；未執行 rollout。
 
+### 2026-10-01 Verified snapshot rebuild 覆核返修（未發布、未部署）
+
+> Codex 獨立覆核後嘅 fail-closed 收緊；normal daily 完全不變，未 dispatch／未 merge／
+> 未 deploy，provider 請求 0。
+
+- **工作流**：update checkout `fetch-depth: 0`；rebuild input `type: boolean` default
+  false；新增回歸測試驗完整歷史、exact trigger commit、冇 branch-mutating git 命令。
+- **Verifier**：baseline schema v2（head／commit／createdAt／facts／files 嚴格；26 個
+  required inputs 缺一即拒）；失敗 preflight 失效化舊 baseline；guard 嚴格解析
+  `git status -z`，只准三個 generated outputs 改變；regenerated metadata 過完整治理
+  Schema 且 acquisition facts 不變；raw receipt 加 pages cardinality／頁號連續／
+  durable source／privateArchive／dualSource binding。
+- **Tests**：移除 hardcode 歷史 commit；新增 invalid baseline／git 錯誤／tracked／
+  untracked／staged 非 output／delete／rename／missing brand input／raw provenance／
+  failed-preflight 失效化等負向矩陣。
+- **E2**：focused 54 passed, 1 skipped；全量 pytest 871 passed, 1 skipped；acceptance
+  7/7 rc=0（15 項／18 節點）；隔離重建 preflight／build／guard 全 rc=0（facts 沿舊
+  快照）；詳見 docs/STATUS.md §28.1。
+
 ## [1.2.9] - 2026-09-24
 
 > 發布事實（2026-09-24 回讀）：tag `v1.2.9` → commit

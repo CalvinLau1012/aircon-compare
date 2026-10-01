@@ -1395,3 +1395,56 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
   會 fail closed，需要先有新 snapshot。
 - **邊界**：未 merge、未 deploy、未 tag／Release、未改生產 payload／metadata／Secrets；
   rollout 命令只喺 handoff 提供，未執行。
+
+### §28.1 Codex 獨立覆核返修（2026-10-01；E2；同日追加，不改 §28 歷史）
+
+- **背景**：Codex 對 §28 初版提出七類 release blocker：fresh Actions checkout 只有
+  fetch-depth 1 令 `metadata.commit` 祖先不可用（實際 production checkout 會 fail）；
+  guard baseline 只驗 JSON object；失敗 preflight 仍寫 baseline；測試 hardcode 歷史
+  commit；raw receipt cardinality 可繞過；guard 冇驗 regenerated metadata 保留
+  acquisition facts；欠負向測試。
+- **修復（code＋tests commit `4aed1d47845c45f20c55dd58eb9b7498c04a8f8d`）**：
+  1. `daily-update.yml` update checkout 加 `fetch-depth: 0`（唔設 ref，exact trigger
+     commit 不變）；rebuild input 改 `type: boolean`、default false；新增 workflow 回歸
+     測試驗更新 job 完整歷史、冇 branch-mutating git 命令、preflight 用 `$GITHUB_SHA`／
+     RUNNER_TEMP、pull-request-gates 永不執行 verifier。
+  2. baseline schema v2：嚴格驗 `head`／`metadataCommit`／`createdAt`／`facts`／`files`；
+     `files` 必須恰好等於 26 個 required inputs（新增 `pana_official.json`／
+     `midea_official.json`／`空調對比報告.md`／`whale_girl.webp`／
+     `blue_fantasy_art.txt`／governance／`deploy_payload.json` 等），拒空、漏、額外、
+     traversal 同壞 hash。
+  3. `preflight` 只有全部檢查通過先寫 valid baseline；失敗會將同一路徑嘅舊 baseline
+     失效化（只喺 repo 外）並保留結構化失敗報告。
+  4. 測試唔再 hardcode 歷史 commit／日期／counts：預期值全部由真 repo fixture 動態
+     讀出，時間由 `--now` 注入；shallow checkout 有明確 fail 測試。
+  5. raw receipt：pages／perPageRows cardinality、頁號連續唯一、`byteLength`／`sha256`
+     形狀（bool 唔算 int）、`sources` persisted／verified／durableRemote、
+     `privateArchive`、`dualSource` 同 raw sources 互相 archive／hash／length binding。
+  6. `guard`：嚴格 `git status --porcelain -z`，worktree／index 改動只准
+     `index.html`／`空調對比報告.pdf`／`metadata.json`，git 命令失敗即 fail；regenerated
+     metadata 必須過完整治理 Schema 且所有 acquisition facts（datasetDate／
+     datasetDateBasis／datasetRetrievedAt／datasetSourceUrl／datasetSnapshotId／
+     datasetHash／recordCount／rawRecordCount／registrationCount／modelCount）同
+     baseline 一致；commit／build／runId／deployTime／releasePayloadHash 可合法改變。
+  7. 負向矩陣：invalid／traversal／missing baseline、git 錯誤、tracked／untracked／
+     staged 非 output 改動、delete／rename、missing brand input、failed preflight
+     失效化、raw cardinality／provenance mismatch、source timestamp mutation。
+- **E2 證據（code HEAD `4aed1d47…`；docs commit 追加後 code bytes 不變）**：
+  - focused（`tests/test_verify_snapshot_rebuild.py`＋`tests/test_workflow_security.py`）：
+    **54 passed, 1 skipped**（Windows 唔支援 symlink；Linux CI 會執行）。
+  - 全量 `pytest tests/ -q`：**871 passed, 1 skipped**。
+  - `run_acceptance.py` 7/7 gates rc=0（含 FEATURE_CHECK 15 項／18 節點、PYTEST、
+    PRIVACY_WORKTREE、DIFF_CHECK）；privacy index mode 0 命中；history audit
+    credentialFindings=0、selfHostFindings=35（D4-A 已知 residual）。
+  - 隔離重建演練（零 provider）：preflight rc=0（26 files、schema 2）；core→PDF→
+    finalize→validate→`verify_candidate`（24 checks 含 Chromium）→guard rc=0；
+    guard `changed=[metadata.json, 空調對比報告.pdf]`；datasetDate `2026-10-01`／
+    retrievedAt `2026-09-30T20:59:20Z`／datasetHash `sha256:12df3e49…`／counts 全部
+    沿用；之後還原生成物，worktree 乾淨。
+  - 證據檔案（repo 外）：`D:\tmp\aircon-rebuild-rehearsal\run2\`（preflight／baseline／
+    guard／candidate／build.log／evidence.log）、`pytest2\full-a7d.log`、
+    `acceptance.json`＋`acceptance-logs\`、`history-audit.json`。
+- **UNKNOWN**：實際 rebuild `workflow_dispatch`（E3）、CI BigGo coordinator inactive run、
+  Pages／E4 未執行；72h 窗口到 `2026-10-03T20:59:20Z`。
+- **邊界**：未 merge、未 deploy、未 tag／Release、未改 Secrets／私人 repo；rollout 只喺
+  local handoff 記錄，未執行。

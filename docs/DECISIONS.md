@@ -1078,3 +1078,43 @@
     metadata／index／PDF／Secrets／私人 repo；rollout 命令未執行。
 - **回滾**：revert 本階段 commit（verifier＋workflow input）即完全回復舊行為；
   已生成候選未發布，無需回滾部署。
+
+### D31 · 2026-10-01 追加：獨立覆核返修（baseline v2；append-only；不改上文）
+
+- **背景**：Codex 對 D31 初版提出七類 blocker：production checkout 預設 fetch-depth 1
+  令 `metadata.commit` 祖先不可用；guard baseline 只驗「係 JSON object」；失敗 preflight
+  仍可能留下可用 baseline；測試 hardcode 歷史 commit／日期；raw receipt cardinality
+  可被跳過；guard 冇驗 regenerated metadata 保留 acquisition facts；欠負向測試。
+- **決定（只收緊，不降門禁；normal daily 不變）**：
+  1. update job checkout `fetch-depth: 0`，唔設 ref（exact trigger commit 不變）；
+     rebuild input `type: boolean`／default false；新增 workflow 回歸測試。
+  2. baseline schema v2：head／metadataCommit／createdAt／facts／files 嚴格驗證；files
+     必須恰好係 26 個 required preservation inputs（包括 pana／midea official、報告
+     MD、生成器資產、governance、deploy payload manifest）；拒 traversal／漏／額外／
+     壞 hash；required input 缺失即 preflight fail。
+  3. preflight 只有全綠先寫 valid baseline；失敗會將同一路徑舊 baseline 失效化
+     （repo 外），並保留結構化失敗報告。
+  4. guard 嚴格解析 `git status --porcelain -z`：git 失敗即 fail；worktree／index 改動
+     只准三個 generated outputs，拒 delete／rename／copy 同任何其他 dirty／untracked
+     source／code／doc path。
+  5. guard 對 regenerated metadata 行完整治理 Schema 驗證，並要求 10 個 acquisition
+     facts 同 baseline 一致；只放寬 commit／build／workflowRunId／deployTime／
+     releasePayloadHash 呢類本次重建應變嘅欄位。
+  6. raw receipt 驗 pages／perPageRows cardinality、頁號連續唯一、byteLength／sha256
+     形狀、durable sources（paginated＋CSV）、privateArchive、dualSource 互相 binding。
+- **原因**：初版只係 happy path；production fresh checkout、污染 baseline、部分
+  provenance 造假同 metadata facts 漂移都會令「verified snapshot」名不副實。返修令
+  失敗全部向前 fail-closed，且唔靠回歸測試以外嘅人手檢查。
+- **後果（分類）**：
+  - `REQUIREMENT`：Metadata Schema、required 功能、成功標準、payload／CSV hash、
+    GATE 門禁、normal daily 全部不變；冇降級。
+  - `OBSERVED / E2`（code HEAD `4aed1d47845c45f20c55dd58eb9b7498c04a8f8d`）：focused
+    54 passed／1 skipped；全量 pytest 871 passed／1 skipped；acceptance 7/7 rc=0
+    （15 項／18 節點）；privacy index 0；history credentialFindings=0（selfHost 35
+    已知 residual）；隔離重建演練 preflight／build／guard 全 rc=0、facts 不變（見 §28.1）。
+  - `UNKNOWN`：E3（實際 dispatch）／E4 未執行；coordinator inactive run 未觀察；72h
+    窗口到 `2026-10-03T20:59:20Z`。
+  - `BOUNDARY`：冇 provider 呼叫、冇 merge／deploy／tag／Release／Secrets／私人 repo；
+    rollout 未執行。
+- **回滾**：revert 返修 commit 會回復 D31 初版嘅七類弱點（fresh checkout fail、baseline
+  可繞過、facts 可漂移），唔建議；亦可以單獨 revert 其中一項但保留其餘收緊。
