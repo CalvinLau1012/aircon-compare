@@ -1,20 +1,20 @@
 {
   "schemaVersion": "1.0.0",
   "version": "1.2.9",
-  "build": "B20261001.133.1",
-  "commit": "66a281aafc8cf226de12559f4866f5de841eefdd",
-  "deployTime": "2026-10-01T21:21:49Z",
-  "workflowRunId": "36926893281",
+  "build": "B20261002.134.1",
+  "commit": "ebe51a0c702a4bdcfea4312ed268e46ad5a6db11",
+  "deployTime": "2026-10-02T20:58:22Z",
+  "workflowRunId": "37063224563",
   "deploymentType": "release",
-  "datasetDate": "2026-10-02",
+  "datasetDate": "2026-10-03",
   "datasetDateBasis": "retrieval-date-fallback",
-  "datasetRetrievedAt": "2026-10-01T21:18:54Z",
+  "datasetRetrievedAt": "2026-10-02T20:55:28Z",
   "datasetSourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-  "datasetSnapshotId": "emsd-2026-10-02-4df777cb7294",
+  "datasetSnapshotId": "emsd-2026-10-03-4df777cb7294",
   "datasetHash": "sha256:12df3e49b5c08585a319e96f5b7e54a694e3e3cdf78f47ba39a84df777cb7294",
   "recordCount": 1755,
   "rawRecordCount": 1816,
   "registrationCount": 1816,
   "modelCount": 1755,
-  "releasePayloadHash": "sha256:5b1641055b8a71c5a5bc387e15667b515737915ea3ffc7d97ca0760a4587de7a"
+  "releasePayloadHash": "sha256:3d46a16f0f94ddd9326912e4671a90911f4cf1b2591cc1f816048005eac83f79"
 }
