@@ -8,14 +8,24 @@
   "missingModels": [
     "WRK07MIZH1",
     "WRK09MIZH1",
-    "WRK18MIZH1"
+    "WRK18MIZH1",
+    "MC07WVRQW",
+    "MC09WVRQW",
+    "MC07VXH",
+    "MC09VXH",
+    "MC12VXH"
   ],
   "missingCanonicalModels": [
+    "MC07VXH",
+    "MC07WVRQW",
+    "MC09VXH",
+    "MC09WVRQW",
+    "MC12VXH",
     "WRK07MIZH1",
     "WRK09MIZH1",
     "WRK18MIZH1"
   ],
   "coveragePendingReasons": {},
-  "generatedAt": "2026-10-07T21:34:34Z",
+  "generatedAt": "2026-10-08T21:32:06Z",
   "source": "run_official_batch.py"
 }
