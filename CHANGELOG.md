@@ -35,6 +35,31 @@
 
 ## [Unreleased]
 
+### 2026-10-11 GitHub BigGo bounded 手動診斷候選（未發布、未部署）
+
+- **Added**：`scripts/biggo_smoke_diagnostic.py`（預設 `preview`：零 coordinator／零
+  provider，只報 selection＋planned 1 token／1 search／19 ops cap；只有 `--execute` 先做
+  bounded live path）＋ `.github/workflows/biggo-diagnostic.yml`（人手 `workflow_dispatch`
+  only、trusted master only、同 daily production concurrency group、可選
+  `execute_provider` boolean 預設 false）。
+- **Changed**：抽出共享 `biggo_smoke_result.validate_smoke_result()`；
+  `scripts/biggo_stage_runner.py` 保留 `_validate_smoke_result()` 兼容 adapter 並改為
+  delegate，行為不變（合法空結果／no-price 仍係健康，矛盾 dict 仍 invalid）。
+- **Safety**：diagnostic 同 daily 用同一個 coordinator state file／lease；以 deep copy
+  現有 remote state 一次 CAS 寫入同時 acquire lease、記 diagnostic marker、預留 durable
+  upper bound（`requestAttempts` +1 token ＋1 search）。business cycle/stage、snapshot／
+  bundle refs、`callsMayHaveStarted`、status 一律保留；provider 只用 1 次 auth＋1 次
+  search（8 秒 timeout、無 retry）；每個 request phase 前核實 lease；redirect 停用；
+  403／429 用既有 helper 記 factual cooldown；finalize 只 release 今次 lease，唔會清
+  他人 lease；任何 CAS／finalize 歧義都係 explicit uncertain（非零），唔會靜靜當成功。
+- **Accounting**：`requestAttempts` 係 **reserved upper bound**（請求前加、唔會事後再加／
+  減）；實際觀察到嘅 token/search delta 只記錄喺 diagnostic marker `actual` 同報告，兩者
+  分開。失敗 auth 可能用咗 token 但冇 search，reserved search 仍佔共享上限（保守）。
+- **Evidence**（本機 E2）：新 diagnostic／validator 65 passed；affected BigGo／workflow
+  套件 313 passed；完整回歸數字見外部交付 `REPORT.md`（同一 commit 隔離 clone）。
+- **Boundary**：未 push／未 merge／未 deploy／未 dispatch workflow／未呼叫真實 BigGo／
+  EMSD；產品 VERSION、metadata、`index.html`、PDF、價格快照、queue、黑名單不變。
+
 ### 2026-09-29 GitHub Actions／EMSD CSV 修復候選（未發布、未部署）
 
 > 用戶批准嘅 R2/R3 來源與門禁行為修復（scope 限定為已批准計劃）。只係本機候選（E2）：

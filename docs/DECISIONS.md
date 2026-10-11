@@ -1132,3 +1132,27 @@
 ### D32 · 2026-10-01 完成證據追加
 
 PR #23 最終 head `a8e5444` 已通過 GitHub CI 並 merge；trusted rebuild `36817792681`、Pages `36817991532` 全綠，独立 E4 26/26 pass。新版日期卡片與 README／版本索引已發布，BigGo token／search 均 0，正式版本維持 v1.2.9。人類指定「對比目的」標題及引用已同步；歷史只按明確授權更正這兩處格式，其他原文保留。詳細 OBSERVED／UNKNOWN 見 STATUS §29.5。
+
+## D33 · 2026-10-11：Bounded GitHub BigGo 手動診斷（shared lease＋reserved upper bound；append-only）
+
+- **日期**：2026-10-11
+- **狀態**：已實作候選（本機 E2）；未 push／未 merge／未 deploy／未 dispatch；交獨立驗收
+- **背景**：GitHub daily 嘅 BigGo 路徑需要一個可重複、人手觸發、有界嘅連線診斷：每日 runner 嘅 stage bundle 流程過重，而且共享憑證下任何 provider 呼叫都必須經同一個 coordinator lease／budget。使用者要求手動診斷必須重用既有模組（`biggo_candidate.select_candidate`、`fetch_biggo.run_smoke`、`RequestLimiter`、coordinator state／lease），唔可以另建框架或繞過 gate。
+- **選項**：
+  - A：獨立意圖檔＋本機 replay guard（ds87 參考實作）——否決：喺 disposable GitHub runner 上唔夠 durable，而且 ordinary `acquire` 會重建 state、可能清走一些 business 欄位；
+  - B（採用）：同一 coordinator state 上嘅 narrowly scoped CAS reservation：deep copy 現有 remote state，一次寫入同時 acquire lease、加 reserved upper bound（1 token＋1 search）入 `requestAttempts`、記 diagnostic marker；business 欄位原樣保留；唔 set `callsMayHaveStarted`；
+  - C：另開新 cycle／stage 或獨立 counter——否決：會增加新身份／重置 counter，同共享 stage budget 語義衝突。
+- **決策**：採 B。實作：
+  1. `biggo_smoke_result.py` 抽出嚴格結構化 smoke 結果契約；`scripts/biggo_stage_runner._validate_smoke_result()` 保留兼容 adapter 指向共享實作；每日行為不變。
+  2. `scripts/biggo_smoke_diagnostic.py`：預設 preview（零 coordinator／零 provider）；`--execute` preflight 要求 run identity、full provider credentials、本地 active stage/workload、完整 coordinator 配置、remote state 同 cycle/stage 相容；缺 remote state 一律 blocked（唔 bootstrap）；provider quota/window 配置 blocked-unsupported。
+  3. Diagnostic owner 綁 workflow run＋run attempt（`aircon-diag-<runId>-<attempt>`）；實際 provider 階段限制 1 token＋1 search（`RequestLimiter` 1／1、`run_smoke` 8 秒、無 retry）；每個 request phase 前經 abort hook 核實 lease；redirect replay 停用；limiter／abort／opener 用完還原。
+  4. **Reserved vs actual**：`requestAttempts` 係請求前寫入嘅 durable reserved upper bound，唔會事後再加／減；實際 delta 只入 marker `actual` 同報告。crash 後 ordinary same-stage takeover 會保留 attempts，唔會變成免費 retry；同一 stage 之後嘅 diagnostic 因 token 額已預留而 blocked。
+  5. Finalize 只 release 今次 lease（CAS＋bounded CAS 重試），保留 business status／cycle-stage／snapshot／bundle／intent；403／429 用既有 `apply_cooldown`；CAS 衝突耗盡、寫入歧義、cleanup 失敗一律 explicit blocked／uncertain（非零），唔會清他人 lease。
+  6. `.github/workflows/biggo-diagnostic.yml`：人手 `workflow_dispatch` only、trusted master only、`execute_provider` boolean 預設 false、同 daily production concurrency group（cancel-in-progress false）；preview 零 Secrets；execute 才經 env 取現有 Secrets；pinned Actions／ubuntu-24.04／Python 3.12；contents: read；冇 push／deploy／publish／schedule。
+- **原因**：共享憑證下「先 durable 預留、後呼叫」比事後記帳安全；CAS 一次寫入避免半套狀態；reserved upper bound 令 crash／disposable runner 都唔會獲得額外 provider 額度；保留 business 欄位同唔動 `callsMayHaveStarted` 避免污染 stage recovery 語義。
+- **後果（分類）**：
+  - `REQUIREMENT`：Metadata Schema、required 功能、成功標準、fail-closed 門禁、每日 runner 行為、BigGo provider 規則全部不變；診斷只係 additive、人手觸發。
+  - `OBSERVED / E2`：見 `docs/STATUS.md` §30；完整回歸命令／數量喺外部交付報告（同一 commit 隔離 clone）。
+  - `UNKNOWN`：E3 trusted CI、實際 workflow dispatch、真實 provider 呼叫、active stage 同時競爭未執行。
+  - `BOUNDARY`：未 push／merge／deploy／dispatch；未呼叫 BigGo／EMSD；未改 Secrets／metadata／VERSION／價格快照／queue／私人 repo。
+- **回滾**：revert 本階段 commit（共享 validator、diagnostic、workflow、測試、docs）即回復原本；coordinator state schema 無變（只加 optional `diagnosticReservation` 欄位，舊 reader 可以忽略），無資料遷移。

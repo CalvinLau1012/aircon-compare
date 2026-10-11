@@ -1,0 +1,85 @@
+name: BigGo 手動診斷（bounded；preview 預設零流量）
+
+# 只限人手 workflow_dispatch，冇 schedule／push／pull_request；唔會寫價錢、快照、
+# queue、metadata，唔會 push／deploy／發布。執行分支只准 trusted master。
+on:
+  workflow_dispatch:
+    inputs:
+      execute_provider:
+        description: '執行 bounded live probe（最多 1 token + 1 search）；預設 false = 純本地 preview'
+        required: false
+        default: false
+        type: boolean
+
+# 最小權限：只讀 repo；coordinator 憑證只經現有專用 Secret，唔用 GITHUB_TOKEN。
+permissions:
+  contents: read
+
+# 同 daily production 同一 concurrency group：唔會同生產 run 重疊，亦唔會取消
+# 正在進行嘅生產 daily（cancel-in-progress: false）。
+concurrency:
+  group: daily-production
+  cancel-in-progress: false
+
+jobs:
+  diagnostic:
+    # trusted ref 限制：只准 master 手動觸發。
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: 取出代碼（trusted master；唯讀）
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: 設定 Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 安裝依賴
+        run: pip install -r requirements.txt
+
+      # Preview：零 secrets、零 coordinator、零 provider；只讀本地 dataset／stage。
+      - name: 本地 preview（零 coordinator／零 provider）
+        run: |
+          python scripts/biggo_smoke_diagnostic.py \
+            --json-out "$RUNNER_TEMP/biggo-diagnostic-preview.json" \
+            --summary-out "$RUNNER_TEMP/biggo-diagnostic-preview.md"
+
+      # Live probe：只有明確 execute_provider=true 先跑；Secrets 只喺呢步經 env 注入，
+      # 唔會喺 run 命令內插值任何用戶輸入。任何 blocked／probe／uncertain 結果都非零。
+      - name: Bounded live probe（1 token + 1 search；只在 execute_provider=true）
+        if: ${{ inputs.execute_provider }}
+        env:
+          BIGGO_CLIENT_ID: ${{ secrets.BIGGO_CLIENT_ID }}
+          BIGGO_CLIENT_SECRET: ${{ secrets.BIGGO_CLIENT_SECRET }}
+          AIRCON_BIGGO_COORDINATOR_REPO: ${{ secrets.AIRCON_BIGGO_COORDINATOR_REPO }}
+          AIRCON_BIGGO_COORDINATOR_TOKEN: ${{ secrets.AIRCON_BIGGO_COORDINATOR_TOKEN }}
+          AIRCON_BIGGO_COORDINATOR_BRANCH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_BRANCH }}
+          AIRCON_BIGGO_COORDINATOR_STATE_PATH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_STATE_PATH }}
+          AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR: ${{ secrets.AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR }}
+          AIRCON_BIGGO_PROVIDER_QUOTA_LIMIT: ${{ secrets.AIRCON_BIGGO_PROVIDER_QUOTA_LIMIT }}
+          AIRCON_BIGGO_PROVIDER_WINDOW_END: ${{ secrets.AIRCON_BIGGO_PROVIDER_WINDOW_END }}
+        run: |
+          python scripts/biggo_smoke_diagnostic.py --execute \
+            --json-out "$RUNNER_TEMP/biggo-diagnostic-execute.json" \
+            --summary-out "$RUNNER_TEMP/biggo-diagnostic-execute.md"
+
+      # Summary：只 cat 由 CLI sanitized renderer 寫出嘅檔；唔會執行任何輸入字串。
+      - name: 寫入 sanitized summary（always）
+        if: always()
+        run: |
+          {
+            echo "## BigGo manual diagnostic"
+            for f in "$RUNNER_TEMP/biggo-diagnostic-preview.md" \
+                     "$RUNNER_TEMP/biggo-diagnostic-execute.md"; do
+              if [ -f "$f" ]; then cat "$f"; fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY" || true

@@ -1495,3 +1495,25 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
 - **元文件**：人類確認「對比目的」，標題及文內引用已提交；這是明確授權的格式更正，正文、其他歷史和新要求保留。
 - **歷史限制**：merge push run `36817771420` build／deploy 通過但 GATE-08 PDF 紅，後續完整重建已解決；不改寫舊 run。active BigGo 跨 writer、官方配額、私人 server 與自然排程下次成功仍 UNKNOWN，沒有因文件整理冒充完成。
 - 本節為部署後純文件證據追加；報告 MD、生成器與 payload 均不改，不需要再抓來源或重新執行 daily。原 §29.3–29.4 待部署文字保留為候選歷史。
+
+
+## §30 2026-10-11 GitHub BigGo bounded 手動診斷（追加；E2；未部署）
+
+- **新增**：`scripts/biggo_smoke_diagnostic.py`（預設零流量 preview；`--execute` bounded live）、
+  `.github/workflows/biggo-diagnostic.yml`（人手 `workflow_dispatch` only／trusted master only／
+  同 daily production concurrency group／`execute_provider` 預設 false）、`biggo_smoke_result.py`
+  共享嚴格 smoke 契約；`scripts/biggo_stage_runner.py` 保留兼容 `_validate_smoke_result()` adapter。
+- **預留語義**：一次 CAS 寫入 deep copy 現有 remote state：acquire lease＋diagnostic marker＋
+  `requestAttempts` reserved upper bound（+1 token／+1 search）；實際 delta 只記入 marker
+  `actual`，兩者分開。business `callsMayHaveStarted`、cycle/stage、snapshot/bundle refs、status
+  全保留；crash 後 ordinary same-stage takeover 會保留 reserved attempts；同一 stage 之後嘅
+  diagnostic 唔可以再預留。
+- **Fail-closed**：缺 remote state／cycle-stage 唔相容／completed／needs_review／business intent／
+  cooldown／foreign valid lease／budget 不足／未解決 marker／provider quota 配置一律 blocked；
+  CAS 衝突耗盡、寫入歧義、cleanup 失敗為 explicit non-zero uncertain；finalize 唔會清他人 lease。
+- **本機證據（E2）**：新 `test_biggo_smoke_result.py`＋`test_biggo_smoke_diagnostic.py` 65 passed；
+  affected BigGo／coordinator／runner／workflow 套件 313 passed；完整回歸（同一 commit 隔離
+  clone、`--network none` docker、pinned deps image）實數見外部交付 `REPORT.md`。
+- **邊界**：未 push／未 merge／未 deploy／未 dispatch workflow；未呼叫真實 BigGo／EMSD；未改
+  Secrets／`metadata.json`／`models_data.VERSION`／`index.html`／PDF／價格快照／queue／黑名單；
+  E3／E4 仍 UNKNOWN。每日 runner 原有合法空結果／no-price 健康語義不變。

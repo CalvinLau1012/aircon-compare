@@ -53,6 +53,7 @@ import biggo_apply as _apply_mod  # noqa: E402
 from biggo_canonical import canonical_json_bytes, sha256_id  # noqa: E402
 from biggo_limiter import RequestLimiter  # noqa: E402
 import biggo_candidate as candidate_mod  # noqa: E402
+import biggo_smoke_result as _smoke_result_mod  # noqa: E402
 
 PRICE_BATCH_DAYS = _batch_utils.PRICE_BATCH_DAYS
 DEFAULT_HEARTBEAT_INTERVAL = 30.0  # 秒；client.maybe_renew() 內部再按 5 分鐘節流
@@ -176,45 +177,16 @@ def _force_cycle_id(now_fn):
     return 'force-' + stamp.strftime('%Y-%m-%d')
 
 
-_SMOKE_REASONS_OK = ('priced',)
-_SMOKE_REASONS_NO_PRICE = ('no-price',)
-_SMOKE_REASONS_BLOCK = ('auth', 'rate-limit', 'transport', 'invalid-response',
-                        'blocked-test-mode', 'blocked-limit', 'aborted', 'no-candidates',
-                        'smoke-invalid-result')
+# 契約實作已抽去共享模組 `biggo_smoke_result.py`（同手動 diagnostic 共用同一份）。
+# 呢兩個常數同 `_validate_smoke_result` 保留作兼容入口；行為完全不變。
+_SMOKE_REASONS_OK = _smoke_result_mod.SMOKE_REASONS_OK
+_SMOKE_REASONS_NO_PRICE = _smoke_result_mod.SMOKE_REASONS_NO_PRICE
+_SMOKE_REASONS_BLOCK = _smoke_result_mod.SMOKE_REASONS_BLOCK
 
 
 def _validate_smoke_result(raw):
-    """嚴格 smoke 結果契約；矛盾／型別錯／缺欄一律 invalid（needs-review）。"""
-    if isinstance(raw, bool):  # 明確 legacy adapter
-        return raw, ('priced' if raw else 'transport'), {'legacy': True}
-    if not isinstance(raw, dict):
-        return False, 'smoke-invalid-result', {}
-    required = ('reason', 'ok', 'reachable', 'responseValid', 'priceAvailable',
-                'token', 'search')
-    if any(k not in raw for k in required):
-        return False, 'smoke-invalid-result', raw
-    if not isinstance(raw['ok'], bool) or not isinstance(raw['reachable'], bool) \
-            or not isinstance(raw['responseValid'], bool) \
-            or not isinstance(raw['priceAvailable'], bool):
-        return False, 'smoke-invalid-result', raw
-    for k in ('token', 'search'):
-        if isinstance(raw[k], bool) or not isinstance(raw[k], int) or raw[k] < 0:
-            return False, 'smoke-invalid-result', raw
-    if raw['reason'] not in _SMOKE_REASONS_OK + _SMOKE_REASONS_NO_PRICE + _SMOKE_REASONS_BLOCK:
-        return False, 'smoke-invalid-result', raw
-    if raw['reason'] in _SMOKE_REASONS_OK + _SMOKE_REASONS_NO_PRICE:
-        if not (raw['ok'] and raw['reachable'] and raw['responseValid']):
-            return False, 'smoke-invalid-result', raw
-        if raw['reason'] == 'priced' and not raw['priceAvailable']:
-            return False, 'smoke-invalid-result', raw
-        if raw['reason'] == 'no-price' and raw['priceAvailable']:
-            return False, 'smoke-invalid-result', raw
-    else:
-        if raw['ok'] or raw['priceAvailable']:
-            return False, 'smoke-invalid-result', raw
-        if raw['responseValid']:
-            return False, 'smoke-invalid-result', raw
-    return raw['ok'], raw['reason'], raw
+    """兼容 adapter：實際嚴格契約喺共享 `biggo_smoke_result.validate_smoke_result`。"""
+    return _smoke_result_mod.validate_smoke_result(raw)
 
 
 def _record_evidence(client, fetch_mod, delta):
