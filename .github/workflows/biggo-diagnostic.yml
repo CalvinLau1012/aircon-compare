@@ -10,6 +10,11 @@ on:
         required: false
         default: false
         type: boolean
+      check_coordinator:
+        description: '只讀 1 次共享 coordinator state GET（零 token／search／PUT）；預設 false = 純本地 preview'
+        required: false
+        default: false
+        type: boolean
 
 # 最小權限：只讀 repo；coordinator 憑證只經現有專用 Secret，唔用 GITHUB_TOKEN。
 permissions:
@@ -46,12 +51,34 @@ jobs:
       - name: 安裝依賴
         run: pip install -r requirements.txt
 
+      # 矛盾 inputs：喺任何 Secrets／遠端操作之前 fail closed。
+      - name: 拒絕矛盾 inputs（check_coordinator 同 execute_provider）
+        if: ${{ inputs.check_coordinator && inputs.execute_provider }}
+        run: |
+          echo "::error::check_coordinator 同 execute_provider 不可以同時為 true"
+          exit 1
+
       # Preview：零 secrets、零 coordinator、零 provider；只讀本地 dataset／stage。
       - name: 本地 preview（零 coordinator／零 provider）
         run: |
           python scripts/biggo_smoke_diagnostic.py \
             --json-out "$RUNNER_TEMP/biggo-diagnostic-preview.json" \
             --summary-out "$RUNNER_TEMP/biggo-diagnostic-preview.md"
+
+      # Read-only coordinator check：只有明確 check_coordinator=true 先跑；只注入
+      # 現有 coordinator Secrets（唔需要 BigGo clientID／secret），恰好 1 次 GET，
+      # 零 PUT／token／search／provider。
+      - name: Read-only coordinator check（恰好 1 次 GET；只在 check_coordinator=true）
+        if: ${{ inputs.check_coordinator }}
+        env:
+          AIRCON_BIGGO_COORDINATOR_REPO: ${{ secrets.AIRCON_BIGGO_COORDINATOR_REPO }}
+          AIRCON_BIGGO_COORDINATOR_TOKEN: ${{ secrets.AIRCON_BIGGO_COORDINATOR_TOKEN }}
+          AIRCON_BIGGO_COORDINATOR_BRANCH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_BRANCH }}
+          AIRCON_BIGGO_COORDINATOR_STATE_PATH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_STATE_PATH }}
+        run: |
+          python scripts/biggo_smoke_diagnostic.py --check-coordinator \
+            --json-out "$RUNNER_TEMP/biggo-diagnostic-coordinator-check.json" \
+            --summary-out "$RUNNER_TEMP/biggo-diagnostic-coordinator-check.md"
 
       # Live probe：只有明確 execute_provider=true 先跑；Secrets 只喺呢步經 env 注入，
       # 唔會喺 run 命令內插值任何用戶輸入。任何 blocked／probe／uncertain 結果都非零。
@@ -79,6 +106,7 @@ jobs:
           {
             echo "## BigGo manual diagnostic"
             for f in "$RUNNER_TEMP/biggo-diagnostic-preview.md" \
+                     "$RUNNER_TEMP/biggo-diagnostic-coordinator-check.md" \
                      "$RUNNER_TEMP/biggo-diagnostic-execute.md"; do
               if [ -f "$f" ]; then cat "$f"; fi
             done

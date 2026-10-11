@@ -1540,3 +1540,55 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
 - **保留**：lease／reservation（reserved upper bound vs actual）／budget／cooldown／
   no-progress／no-secrets／workflow 邊界全部不變；未 push／未 deploy／未 dispatch；
   E3／E4 仍 UNKNOWN；GitHub daily 維持 disabled、server 00:30 HKT 不變。
+
+
+### §30.2 2026-10-11 只讀 coordinator check（Root96；append-only；E2；未部署）
+
+- **新增（additive）**：`scripts/biggo_smoke_diagnostic.py --check-coordinator`（同
+  `--execute` 互斥；預設仍然係零流量 preview）：完整有效 coordinator 配置後恰好一次
+  `GitHubContentsClient.read_state` GET；唔需要 `GITHUB_RUN_ID`、本地 active stage／
+  workload、active-cycle 相容或 BigGo client 憑證；零 PUT／lease／CAS／bootstrap／
+  snapshot／reservation／provider。`_CappedApi` cap=1，`_NoRedirect` 停 redirect replay，
+  `_harden_transport(disable_proxy=False)` 保留環境 proxy；previous `_opener` 喺
+  all-exit `finally` 原樣還原。
+- **Fail-closed statuses**：缺／partial／malformed config → `blocked-coordinator-config`
+  且零 HTTP；404 → `blocked-coordinator-state-missing`；403 → `blocked-coordinator-forbidden`；
+  429 → `blocked-coordinator-rate-limited`；其他非 200 → `blocked-coordinator-http`；
+  transport → `blocked-coordinator-transport`；malformed Contents／JSON／schema →
+  `blocked-coordinator-invalid-response`。全部 exit 2、恰好 ≤1 GET、零寫入；reason 只係
+  固定 sanitized 字串，唔含 exception message／body／headers。
+- **身份 digest（v1）**：`biggo_coordinator.coordinator_identity_digest()`＝
+  `sha256(json.dumps({AIRCON_BIGGO_COORDINATOR_REPO, AIRCON_BIGGO_COORDINATOR_BRANCH,
+  AIRCON_BIGGO_COORDINATOR_STATE_PATH}, sort_keys=True).encode())`；純函數、唔含 token／
+  secret／snapshot／raw response；同 Root94 canonical audit 表示法一致，Root 可喺 server
+  無 API 計出期望值。`CoordinatorApiError` 另加 additive `status` attribute（唔改 message／
+  既有行為）。
+- **報告語義**：mode `coordinator-check`、status `coordinator-read-ok`、`readOnly=true`、
+  planned／actual token=0／search=0、`coordinatorOps<=1`、`readSuccess` booleans、
+  `notProven`（write permission／token equality／BigGo connectivity／daily stage
+  compatibility）。讀到 state **唔**證明 BigGo healthy／daily-ready；亦唔會改動任何
+  被讀取嘅 lifecycle／owned lease state（read-only bytes 不變）。
+- **Workflow（只有 `.github/workflows/biggo-diagnostic.yml` 加步）**：新增
+  `check_coordinator` boolean（預設 false）、矛盾 inputs reject step（早於任何
+  Secrets／遠端操作）、只讀 step 只注入現有 coordinator repo／token／branch／state-path
+  Secrets（冇 BigGo clientID／secret）、summary 收集加入
+  `biggo-diagnostic-coordinator-check.md`；trusted master gate、preview 零 Secrets、
+  `--execute` step、schedule／push／deploy／publish／concurrency 全部不變。
+- **驗證（E2，`--network none`、`aircon-r25f-ds91-deps:local`、read-only worktree／
+  tmpfs）**：Root external contract file（`desktop-r25f-root93-review/test_review_contract.py`，
+  原檔不變）**3 passed**；affected validator＋diagnostic＋coordinator＋daily runner＋
+  workflow＋adjacent BigGo 套件 **298 passed**；adjacent candidate／limiter **18 passed**；
+  CLI preview／check 實跑（zero HTTP）同 sanitized summary 樣本見外部
+  `evidence/desktop-r25f-ds96/`。新增測試覆蓋：one-GET／zero write／zero provider、
+  config 預設值、foreign lease 原樣可讀、digest 與 token 無關且對 repo／branch／path
+  敏感、403／429／500／timeout／malformed 全部 fail closed、redirect 不 replay、
+  opener 還原、canary 秘密唔出現喺 stdout／stderr／report／summary、CLI 互斥、workflow
+  input／reject／Secrets 注入範圍。
+- **未執行／UNKNOWN（E3／E4）**：新 commit 尚未 push／未更新 PR（c5cdb8e PR24 嘅
+  trusted CI 唔覆蓋本 commit）；GitHub runtime 真實 one-GET check、server 同 GitHub
+  Secret 配置 digest 核對、daily 恢復評估、真實 provider／coordinator 呼叫全部未做。
+  GitHub daily 維持唔啟用；server 00:30 HKT 排程不變。
+- **邊界**：未讀 Secret 明文／未比對 PAT 字串；未改 `metadata.json`／`models_data.VERSION`／
+  `index.html`／PDF／價格快照／queue／黑名單／`prices_meta`／shared coordinator state；
+  未 push／merge／deploy／dispatch／未操作 runtime.env／production container／compose／
+  cron／管理工具。

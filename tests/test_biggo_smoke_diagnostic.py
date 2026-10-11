@@ -8,6 +8,7 @@ state）、共享 lease＋reserved upper bound、CAS 衝突／歧義、replay gu
 sanitized output。全部都只用 in-memory fake Contents client 同 loopback HTTP。
 """
 import base64
+import hashlib
 import http.server
 import json
 import os
@@ -64,6 +65,7 @@ class FakeGitHubApi:
         self.fail_puts = {}
         self.put_exceptions = {}
         self.get_exceptions = {}
+        self.get_statuses = {}
         self.conflict_puts = False
         self.put_attempts = 0
         self.get_attempts = 0
@@ -76,6 +78,8 @@ class FakeGitHubApi:
             self.get_attempts += 1
             if self.get_attempts in self.get_exceptions:
                 raise self.get_exceptions[self.get_attempts]
+            if self.get_attempts in self.get_statuses:
+                return self.get_statuses[self.get_attempts], b''
             if path not in self.files:
                 return 404, b''
             data, sha = self.files[path]
@@ -348,6 +352,314 @@ def test_preview_uses_shared_selector_by_default(monkeypatch):
     assert called['n'] == 1
     assert report['candidate']['model'] == 'M1'
     assert api.calls == []
+
+
+# ---------------------------------------------------------------- coordinator check
+
+CHECK_STATE_PATH = coord.STATE_PATH_DEFAULT
+CHECK_ENV = {
+    'AIRCON_BIGGO_COORDINATOR_REPO': 'owner/coordinator-repo',
+    'AIRCON_BIGGO_COORDINATOR_TOKEN': 'PRIVATE-TOKEN-456',
+}
+CHECK_CONFIG = coord.CoordinatorConfig(
+    'owner/coordinator-repo', 'PRIVATE-TOKEN-456', branch=coord.BRANCH_DEFAULT,
+    state_path=coord.STATE_PATH_DEFAULT, snapshot_dir=coord.SNAPSHOT_DIR_DEFAULT)
+
+
+def _seed_check(api, state, path=CHECK_STATE_PATH):
+    api.files[path] = (coord.canonical_json_bytes(state), 'seed-check')
+    return api
+
+
+def _check_factory(api, cap=diag.MAX_COORDINATOR_CHECK_REQUESTS):
+    def factory(config, now_fn):
+        wrapped = diag._CappedApi(api, cap) if cap is not None else api
+        return coord.GitHubContentsClient(config, api=wrapped)
+    return factory
+
+
+def _run_check(*, state=None, api=None, env=None, now=NOW,
+               contents_factory=None, fetch=None):
+    api = FakeGitHubApi() if api is None else api
+    if state is not None:
+        _seed_check(api, state)
+    fetch = FakeFetch(credentials='none') if fetch is None else fetch
+    merged_env = dict(CHECK_ENV)
+    if env is not None:
+        merged_env.update(env)
+    report = diag.run_diagnostic(
+        check_coordinator=True, env=merged_env, fetch=fetch,
+        batch_mod=FakeBatch(meta={}),  # 本地冇 active stage 都要通過
+        now=lambda: now,
+        contents_factory=contents_factory or _check_factory(api),
+        selector=lambda: (_ for _ in ()).throw(AssertionError('check 唔應該揀 candidate')))
+    return report, api, fetch
+
+
+def test_check_complete_defaults_one_get_zero_write_no_provider_or_local_stage():
+    state = _business_state(leaseOwner='owned-writer', leaseExpiresAt=NOW + 10 ** 6)
+    before = coord.canonical_json_bytes(state)
+    # 冇 GITHUB_RUN_ID；冇 provider 憑證；冇本地 active stage。
+    report, api, fetch = _run_check(state=state)
+    assert report['status'] == 'coordinator-read-ok' and report['exitCode'] == 0
+    assert report['mode'] == 'coordinator-check' and report['readOnly'] is True
+    assert report['reason'] == 'coordinator-state-readable'
+    assert report['planned']['tokenLimit'] == 0
+    assert report['planned']['searchLimit'] == 0
+    assert report['planned']['coordinatorOpsCap'] == 1
+    assert report['actual'] == {'token': 0, 'search': 0}
+    assert report['reservedUpperBound'] is None
+    assert report['providersCalled'] is False
+    assert report['coordinatorOps'] == 1
+    assert report['readSuccess'] == {'stateRead': True, 'statePresent': True,
+                                     'contentsValid': True, 'jsonValid': True,
+                                     'schemaValid': True, 'schemaVersion': 1}
+    assert report['identity']['digest'] == coord.coordinator_identity_digest(CHECK_CONFIG)
+    assert report['identity']['version'] == coord.IDENTITY_DIGEST_VERSION
+    assert api.get_attempts == 1 and api.put_count() == 0
+    assert api.files[CHECK_STATE_PATH][0] == before, 'read 唔可以改 state'
+    assert fetch.smoke_calls == [] and fetch.REQUEST_STATS == {'token': 0, 'search': 0}
+
+
+def test_check_empty_env_values_use_existing_defaults():
+    report, _api, _fetch = _run_check(
+        state=_business_state(),
+        env={'AIRCON_BIGGO_COORDINATOR_BRANCH': '',
+             'AIRCON_BIGGO_COORDINATOR_STATE_PATH': ''})
+    assert report['status'] == 'coordinator-read-ok'
+    assert report['identity']['digest'] == coord.coordinator_identity_digest(CHECK_CONFIG)
+
+
+@pytest.mark.parametrize('overrides', [
+    {'status': 'active', 'leaseOwner': 'owned-writer', 'leaseExpiresAt': NOW + 10 ** 6},
+    {'status': 'completed', 'leaseOwner': None, 'leaseExpiresAt': 0},
+    {'status': 'needs_review', 'leaseOwner': None, 'leaseExpiresAt': 0,
+     'lastReviewReason': 'publish-uncertain'},
+    {'status': 'idle', 'leaseOwner': None, 'leaseExpiresAt': 0},
+])
+def test_check_reads_any_valid_lifecycle_without_modifying_it(overrides):
+    state = _state(**overrides)
+    before = coord.canonical_json_bytes(state)
+    report, api, _fetch = _run_check(state=state)
+    assert report['status'] == 'coordinator-read-ok' and report['exitCode'] == 0
+    assert api.put_count() == 0
+    assert api.files[CHECK_STATE_PATH][0] == before
+
+
+@pytest.mark.parametrize('env', [
+    {'AIRCON_BIGGO_COORDINATOR_REPO': '', 'AIRCON_BIGGO_COORDINATOR_TOKEN': ''},
+    {'AIRCON_BIGGO_COORDINATOR_REPO': 'owner/repo', 'AIRCON_BIGGO_COORDINATOR_TOKEN': ''},
+    {'AIRCON_BIGGO_COORDINATOR_REPO': 'not a repo',
+     'AIRCON_BIGGO_COORDINATOR_TOKEN': 'tok'},
+    {'AIRCON_BIGGO_COORDINATOR_REPO': 'owner/repo',
+     'AIRCON_BIGGO_COORDINATOR_TOKEN': 'tok',
+     'AIRCON_BIGGO_PROVIDER_QUOTA_LIMIT': 'not-an-int'},
+])
+def test_check_incomplete_or_invalid_config_has_zero_http(env):
+    report, api, fetch = _run_check(env=env)
+    assert report['status'] == 'blocked-coordinator-config' and report['exitCode'] == 2
+    assert api.calls == [] and api.get_attempts == 0 and api.put_count() == 0
+    assert fetch.REQUEST_STATS == {'token': 0, 'search': 0}
+
+
+def test_check_missing_state_404_is_one_get_nonzero():
+    report, api, fetch = _run_check()
+    assert report['status'] == 'blocked-coordinator-state-missing'
+    assert report['exitCode'] == 2 and report['coordinatorOps'] == 1
+    assert api.get_attempts == 1 and api.put_count() == 0
+    assert fetch.REQUEST_STATS == {'token': 0, 'search': 0}
+
+
+@pytest.mark.parametrize('http_status,expected', [
+    (403, 'blocked-coordinator-forbidden'),
+    (429, 'blocked-coordinator-rate-limited'),
+    (500, 'blocked-coordinator-http'),
+])
+def test_check_http_status_failures_are_one_get_nonzero(http_status, expected):
+    api = FakeGitHubApi()
+    api.get_statuses = {1: http_status}
+    report, api, fetch = _run_check(state=_business_state(), api=api)
+    assert report['status'] == expected and report['exitCode'] == 2
+    assert report['coordinatorOps'] == 1
+    assert api.get_attempts == 1 and api.put_count() == 0
+    assert fetch.REQUEST_STATS == {'token': 0, 'search': 0}
+
+
+def test_check_transport_error_restores_opener_and_fails_closed():
+    api = FakeGitHubApi()
+    api.get_exceptions = {1: urllib.error.URLError('dns failure')}
+    original_opener = urllib.request._opener
+    sentinel = object()
+    urllib.request._opener = sentinel
+    try:
+        report, api, fetch = _run_check(state=_business_state(), api=api)
+        assert report['status'] == 'blocked-coordinator-transport'
+        assert report['exitCode'] == 2 and report['coordinatorOps'] == 1
+        assert api.put_count() == 0
+        assert urllib.request._opener is sentinel, 'opener 要原樣還原'
+    finally:
+        urllib.request._opener = original_opener
+    assert fetch.REQUEST_STATS == {'token': 0, 'search': 0}
+
+
+def test_check_malformed_contents_envelope_is_invalid_response():
+    api = FakeGitHubApi()
+    api.transform_get = lambda path, data, sha: (b'{bad envelope', sha)
+    report, api, _fetch = _run_check(state=_business_state(), api=api)
+    assert report['status'] == 'blocked-coordinator-invalid-response'
+    assert report['exitCode'] == 2 and api.put_count() == 0 and api.get_attempts == 1
+
+
+def test_check_malformed_state_json_is_invalid_response():
+    api = FakeGitHubApi()
+    _seed_check(api, _business_state())
+    api.files[CHECK_STATE_PATH] = (b'{bad state json', 'seed-check')
+    report, api, _fetch = _run_check(api=api)
+    assert report['status'] == 'blocked-coordinator-invalid-response'
+    assert report['exitCode'] == 2 and api.put_count() == 0 and api.get_attempts == 1
+
+
+def test_check_invalid_state_schema_is_invalid_response():
+    report, api, _fetch = _run_check(state={})
+    assert report['status'] == 'blocked-coordinator-invalid-response'
+    assert report['exitCode'] == 2 and api.put_count() == 0 and api.get_attempts == 1
+
+
+def test_check_digest_matches_root94_canonical_representation():
+    expected = hashlib.sha256(json.dumps({
+        'AIRCON_BIGGO_COORDINATOR_REPO': CHECK_CONFIG.repo,
+        'AIRCON_BIGGO_COORDINATOR_BRANCH': CHECK_CONFIG.branch,
+        'AIRCON_BIGGO_COORDINATOR_STATE_PATH': CHECK_CONFIG.state_path,
+    }, sort_keys=True).encode()).hexdigest()
+    report, _api, _fetch = _run_check(state=_business_state())
+    assert report['identity']['representation'] == 'env-names-json-sort-keys-v1'
+    assert report['identity']['digest'] == expected
+
+
+def test_check_digest_is_token_independent_but_identity_sensitive():
+    base, _api, _fetch = _run_check(
+        state=_business_state(), env={'AIRCON_BIGGO_COORDINATOR_TOKEN': 'token-a'})
+    same, _api2, _fetch2 = _run_check(
+        state=_business_state(), env={'AIRCON_BIGGO_COORDINATOR_TOKEN': 'token-b'})
+    assert base['identity']['digest'] == same['identity']['digest']
+    for key, value in (('AIRCON_BIGGO_COORDINATOR_REPO', 'other/repo'),
+                       ('AIRCON_BIGGO_COORDINATOR_BRANCH', 'dev'),
+                       ('AIRCON_BIGGO_COORDINATOR_STATE_PATH', 'coordinator/other.json')):
+        changed, _api3, _fetch3 = _run_check(state=_business_state(), env={key: value})
+        assert changed['identity']['digest'] != base['identity']['digest'], key
+
+
+def test_check_conflicting_modes_fail_before_traffic():
+    api = FakeGitHubApi()
+    report = diag.run_diagnostic(
+        execute=True, check_coordinator=True, env=dict(ENV_FULL), fetch=FakeFetch(),
+        batch_mod=FakeBatch(), now=lambda: NOW, contents_factory=_contents_factory(api))
+    assert report['status'] == 'blocked-conflicting-modes' and report['exitCode'] == 2
+    assert api.calls == [] and report['coordinatorOps'] == 0
+
+
+def test_check_output_has_no_canary_secrets_private_identity_or_exception():
+    api = FakeGitHubApi()
+    api.get_exceptions = {1: RuntimeError('SECRET-EXCEPTION-CANARY-XYZ')}
+    report, _api, _fetch = _run_check(
+        state=_business_state(), api=api,
+        env={'AIRCON_BIGGO_COORDINATOR_REPO': 'owner/PRIVATE-COORD-REPO',
+             'AIRCON_BIGGO_COORDINATOR_TOKEN': 'PRIVATE-TOKEN-CANARY-XYZ',
+             'AIRCON_BIGGO_COORDINATOR_STATE_PATH': 'coordinator/PRIVATE-PATH.json'})
+    assert report['status'] == 'blocked-coordinator-transport'
+    blob = json.dumps(report, ensure_ascii=False) + diag.render_summary(report)
+    for canary in ('PRIVATE-TOKEN-CANARY-XYZ', 'owner/PRIVATE-COORD-REPO',
+                   'coordinator/PRIVATE-PATH.json', 'SECRET-EXCEPTION-CANARY-XYZ'):
+        assert canary not in blob, canary
+
+
+def test_check_loopback_success_is_single_get_and_restores_opener(loopback, monkeypatch):
+    state = _business_state()
+    body = json.dumps({'content': base64.b64encode(
+        coord.canonical_json_bytes(state)).decode('ascii'), 'sha': 'remote-sha'}).encode()
+    loopback.routes['/contents/coordinator/biggo-state.json'] = \
+        lambda h, p: _respond(h, 200, body)
+    monkeypatch.setattr(coord.GitHubContentsClient, '_contents_url',
+                        lambda self, path: loopback.url('/contents/' + path))
+    original_opener = urllib.request._opener
+    sentinel = object()
+    urllib.request._opener = sentinel
+    try:
+        report = diag.run_diagnostic(
+            check_coordinator=True, env=dict(CHECK_ENV),
+            fetch=FakeFetch(credentials='none'), batch_mod=FakeBatch(meta={}),
+            now=lambda: NOW)
+        assert report['status'] == 'coordinator-read-ok' and report['exitCode'] == 0
+        assert report['coordinatorOps'] == 1
+        assert urllib.request._opener is sentinel, 'opener 要原樣還原'
+    finally:
+        urllib.request._opener = original_opener
+    assert loopback.count('/contents/coordinator/biggo-state.json') == 1
+
+
+def test_check_loopback_redirect_is_not_replayed(loopback, monkeypatch):
+    replayed = {'n': 0}
+    loopback.routes['/contents/coordinator/biggo-state.json'] = \
+        lambda h, p: _respond(h, 302, b'', {'Location': '/replay-check'})
+
+    def replay(handler, path):
+        replayed['n'] += 1
+        _respond(handler, 200, b'{}')
+
+    loopback.routes['/replay-check'] = replay
+    monkeypatch.setattr(coord.GitHubContentsClient, '_contents_url',
+                        lambda self, path: loopback.url('/contents/' + path))
+    report = diag.run_diagnostic(
+        check_coordinator=True, env=dict(CHECK_ENV),
+        fetch=FakeFetch(credentials='none'), batch_mod=FakeBatch(meta={}),
+        now=lambda: NOW)
+    assert replayed['n'] == 0, 'redirect 唔可以被跟隨 replay'
+    assert report['exitCode'] == 2
+    assert report['status'] in ('blocked-coordinator-http', 'blocked-coordinator-transport')
+
+
+def test_main_check_coordinator_cli_wiring(monkeypatch, tmp_path):
+    captured = {}
+
+    def fake_run(**kwargs):
+        captured.update(kwargs)
+        return diag._finish(diag._base_report('coordinator-check'),
+                            'coordinator-read-ok', reason='coordinator-state-readable')
+
+    monkeypatch.setattr(diag, 'run_diagnostic', fake_run)
+    json_out = tmp_path / 'check.json'
+    summary_out = tmp_path / 'check.md'
+    rc = diag.main(['--check-coordinator', '--json-out', str(json_out),
+                    '--summary-out', str(summary_out)])
+    assert rc == 0
+    assert captured == {'execute': False, 'check_coordinator': True}
+    payload = json.loads(json_out.read_text(encoding='utf-8'))
+    assert payload['mode'] == 'coordinator-check'
+    assert 'coordinator-check' in summary_out.read_text(encoding='utf-8')
+
+
+def test_main_check_and_execute_are_mutually_exclusive(capsys):
+    with pytest.raises(SystemExit) as exc:
+        diag.main(['--check-coordinator', '--execute'])
+    assert exc.value.code == 2
+    captured = capsys.readouterr()
+    assert 'PRIVATE-TOKEN' not in captured.out + captured.err
+
+
+def test_check_summary_states_read_only_scope_and_not_proven():
+    report, _api, _fetch = _run_check(state=_business_state())
+    summary = diag.render_summary(report)
+    assert 'coordinator-check' in summary
+    assert 'readOnly: true' in summary
+    assert 'token<=0' in summary and 'search<=0' in summary
+    assert 'coordinatorOps: 1' in summary
+    assert 'coordinatorIdentity' in summary
+    assert report['identity']['digest'] in summary
+    assert 'stateRead=true' in summary and 'schemaValid=true' in summary
+    assert 'does NOT prove' in summary
+    assert 'healthy' not in summary and 'daily-ready' not in summary
+    assert 'notProven: write-permission, token-equality, provider-connectivity, ' \
+           'daily-stage-compatibility' in summary
 
 
 # ---------------------------------------------------------------- execute preflight

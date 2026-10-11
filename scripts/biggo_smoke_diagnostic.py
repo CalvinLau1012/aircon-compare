@@ -30,9 +30,15 @@
 - **無本地副作用**：唔寫 price snapshot、queue、prices_meta、history、blacklist
   或任何 publication；報告只含 allowlisted facts，唔會輸出憑證、raw response
   body、private coordinator 識別或者 exception message。
+- **Read-only coordinator check（`--check-coordinator`）**：同 `--execute` 互斥。完成
+  有效 coordinator 配置後只做**一次** bounded GitHub GET（`read_state`）；零
+  PUT／lease／CAS／bootstrap／snapshot／reservation／provider 呼叫，亦唔需要 run
+  identity、本地 active stage 或 BigGo 憑證。報告只有 sanitized 讀取事實同
+  coordinator identity digest（唔含 raw repo／path／token）；成功唔代表 write
+  權限、token 相等、BigGo 連線或 daily stage 相容。
 
-Exit code：0 = preview／local-skip／healthy；1 = probe failure／uncertain；
-2 = preflight／contract blocked。
+Exit code：0 = preview／local-skip／healthy／coordinator-read-ok；1 = probe failure／uncertain；
+2 = preflight／contract／config／read blocked。
 """
 from __future__ import annotations
 
@@ -63,6 +69,14 @@ from biggo_smoke_result import validate_smoke_result  # noqa: E402
 # Finite coordinator HTTP op cap（讀＋寫＋cleanup 全部計）。實測成功路徑最多約
 # 7 ops；連 CAS 重試最多約 15，19 係保守上限；到 cap 即 fail closed。
 MAX_COORDINATOR_REQUESTS = 19
+MAX_COORDINATOR_CHECK_REQUESTS = 1
+COORDINATOR_CHECK_MODE = 'coordinator-check'
+COORDINATOR_CHECK_OK = 'coordinator-read-ok'
+COORDINATOR_CHECK_PLANNED = {'tokenLimit': 0, 'searchLimit': 0,
+                             'coordinatorOpsCap': MAX_COORDINATOR_CHECK_REQUESTS,
+                             'smokeTimeoutSeconds': 0}
+COORDINATOR_CHECK_NOT_PROVEN = ('write-permission', 'token-equality',
+                                'provider-connectivity', 'daily-stage-compatibility')
 RESERVE_CAS_ATTEMPTS = 3
 FINALIZE_CAS_ATTEMPTS = 2
 DIAGNOSTIC_FIELD = 'diagnosticReservation'
@@ -113,11 +127,16 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def _harden_transport():
-    """Provider 階段前停用 redirect 跟隨同 proxy fallback；回傳舊 opener 供還原。"""
+def _harden_transport(disable_proxy=True):
+    """停用 redirect replay；provider 階段亦停 proxy fallback，回傳舊 opener 供還原。
+
+    `disable_proxy=False` 保留環境／已配置 proxy 行為（read-only coordinator check 用）。
+    """
     previous = getattr(urllib.request, '_opener', None)
-    urllib.request.install_opener(
-        urllib.request.build_opener(_NoRedirect(), urllib.request.ProxyHandler({})))
+    handlers = [_NoRedirect()]
+    if disable_proxy:
+        handlers.append(urllib.request.ProxyHandler({}))
+    urllib.request.install_opener(urllib.request.build_opener(*handlers))
     return previous
 
 
@@ -487,7 +506,8 @@ def _finish(report, status, *, reason=None, exit_code=None, uncertainty=None):
     if uncertainty is not None:
         report['uncertainty'] = uncertainty[:120]
     if exit_code is None:
-        if status in PREVIEW_STATUSES or status in HEALTHY_STATUSES:
+        if status in PREVIEW_STATUSES or status in HEALTHY_STATUSES \
+                or status == COORDINATOR_CHECK_OK:
             exit_code = 0
         elif status in PROBE_FAILURE_STATUSES or status in UNCERTAIN_STATUSES:
             exit_code = 1
@@ -514,14 +534,110 @@ def _run_preview(report, fetch, batch_mod, selector):
     return _finish(report, 'preview', reason='local-preview-no-provider-call')
 
 
-def run_diagnostic(*, execute=False, env=None, fetch=None, batch_mod=None, now=None,
-                   contents_factory=None, selector=None):
+def _production_check_contents(config, now_fn):
+    """Check 模式 client：一個 bounded GET cap；唔會 retry／redirect replay。"""
+    base = coord_mod.GitHubContentsClient(config, now=now_fn)
+    capped = _CappedApi(base._default_api, MAX_COORDINATOR_CHECK_REQUESTS)
+    return coord_mod.GitHubContentsClient(config, now=now_fn, api=capped)
+
+
+def _run_coordinator_check(report, env, now_fn, contents_factory=None):
+    """Read-only coordinator readability check。
+
+    完整有效配置後恰好一次 `read_state` GET；唔碰本地 stage、run identity、provider
+    憑證或任何寫入。失敗全部 fail closed（非零），且只輸出固定 sanitized reason。
+    """
+    report['readOnly'] = True
+    report['planned'] = dict(COORDINATOR_CHECK_PLANNED)
+    cfg_status = coord_mod.config_status(env)
+    if not cfg_status.get('configured'):
+        return _finish(report, 'blocked-coordinator-config',
+                       reason=str(cfg_status.get('reason') or 'coordinator-not-configured'))
+    try:
+        config = coord_mod.CoordinatorConfig.from_env(env)
+    except (coord_mod.CoordinatorConfigError, TypeError, ValueError):
+        return _finish(report, 'blocked-coordinator-config',
+                       reason='coordinator-config-invalid')
+    except Exception:  # noqa: BLE001 - 配置解析任何失敗都 fail closed，零 HTTP
+        return _finish(report, 'blocked-coordinator-config',
+                       reason='coordinator-config-error')
+    if config is None:
+        return _finish(report, 'blocked-coordinator-config',
+                       reason='coordinator-not-configured')
+    report['identity'] = {
+        'version': coord_mod.IDENTITY_DIGEST_VERSION,
+        'representation': coord_mod.IDENTITY_DIGEST_REPRESENTATION,
+        'digest': coord_mod.coordinator_identity_digest(config),
+    }
+    try:
+        if contents_factory is None:
+            contents = _production_check_contents(config, now_fn)
+        else:
+            contents = contents_factory(config, now_fn)
+    except Exception:  # noqa: BLE001 - client 建立失敗即 blocked，冇 HTTP
+        return _finish(report, 'blocked-coordinator-config',
+                       reason='coordinator-client-error')
+    previous_opener = _harden_transport(disable_proxy=False)
+    failure = None
+    state = None
+    try:
+        state, _sha = contents.read_state()
+    except coord_mod.CoordinatorStateError:
+        failure = ('blocked-coordinator-invalid-response', 'coordinator-state-invalid')
+    except coord_mod.CoordinatorApiError as exc:
+        http_status = getattr(exc, 'status', None)
+        if http_status == 403:
+            failure = ('blocked-coordinator-forbidden', 'coordinator-http-403')
+        elif http_status == 429:
+            failure = ('blocked-coordinator-rate-limited', 'coordinator-http-429')
+        elif http_status == 404:
+            failure = ('blocked-coordinator-state-missing', 'coordinator-http-404')
+        elif isinstance(http_status, int) and http_status != 200:
+            failure = ('blocked-coordinator-http', f'coordinator-http-{http_status}')
+        elif http_status == 200:
+            failure = ('blocked-coordinator-invalid-response',
+                       'coordinator-contents-invalid')
+        else:
+            failure = ('blocked-coordinator-read', 'coordinator-read-error')
+    except Exception:  # noqa: BLE001 - transport／未預期例外 fail closed，唔外洩 message
+        failure = ('blocked-coordinator-transport', 'coordinator-transport-error')
+    finally:
+        _restore_transport(previous_opener)
+        report['coordinatorOps'] = _op_count(contents)
+    if failure is not None:
+        return _finish(report, failure[0], reason=failure[1])
+    if state is None:
+        return _finish(report, 'blocked-coordinator-state-missing',
+                       reason='coordinator-state-404')
+    report['readSuccess'] = {
+        'stateRead': True,
+        'statePresent': True,
+        'contentsValid': True,
+        'jsonValid': True,
+        'schemaValid': True,
+        'schemaVersion': _safe_int(state.get('schemaVersion')),
+    }
+    report['notProven'] = list(COORDINATOR_CHECK_NOT_PROVEN)
+    return _finish(report, COORDINATOR_CHECK_OK, reason='coordinator-state-readable')
+
+
+def run_diagnostic(*, execute=False, check_coordinator=False, env=None, fetch=None,
+                   batch_mod=None, now=None, contents_factory=None, selector=None):
     """執行一次 diagnostic；回傳 sanitized report dict（含 `exitCode`）。"""
     env = os.environ if env is None else env
     fetch = fetch_mod if fetch is None else fetch
     batch_mod = batch_mod or _batch_utils
     now_fn = now or time.time
     selector = selector or candidate_mod.select_candidate
+
+    if check_coordinator and execute:
+        report = _base_report('conflicting-modes')
+        return _finish(report, 'blocked-conflicting-modes',
+                       reason='check-coordinator-and-execute-conflict')
+    if check_coordinator:
+        report = _base_report(COORDINATOR_CHECK_MODE)
+        return _run_coordinator_check(report, env, now_fn, contents_factory)
+
     report = _base_report('execute' if execute else 'preview')
 
     if not execute:
@@ -717,6 +833,8 @@ def render_summary(report):
     if report.get('reason'):
         lines.append(f"- reason: `{_safe_label(report.get('reason'))}`")
     lines.append(f"- providersCalled: {str(bool(report.get('providersCalled'))).lower()}")
+    if report.get('readOnly'):
+        lines.append('- readOnly: true')
     candidate = report.get('candidate') or {}
     if candidate.get('model'):
         lines.append(f"- candidate: `{candidate['model']}` / "
@@ -745,6 +863,30 @@ def render_summary(report):
         lines.append(f"- priceAvailable: "
                      f"{str(bool(report['price'].get('available'))).lower()}")
     lines.append(f"- coordinatorOps: {_safe_int(report.get('coordinatorOps'))}")
+    identity = report.get('identity')
+    if isinstance(identity, dict) and identity.get('digest'):
+        lines.append("- coordinatorIdentity: `{}` v{} `{}`".format(
+            _safe_label(identity.get('representation')),
+            _safe_int(identity.get('version')),
+            _safe_label(identity.get('digest'))))
+    read_success = report.get('readSuccess')
+    if isinstance(read_success, dict):
+        lines.append('- readSuccess: stateRead={}, statePresent={}, contentsValid={}, '
+                     'jsonValid={}, schemaValid={}, schemaVersion={}'.format(
+                         str(bool(read_success.get('stateRead'))).lower(),
+                         str(bool(read_success.get('statePresent'))).lower(),
+                         str(bool(read_success.get('contentsValid'))).lower(),
+                         str(bool(read_success.get('jsonValid'))).lower(),
+                         str(bool(read_success.get('schemaValid'))).lower(),
+                         _safe_int(read_success.get('schemaVersion'))))
+    if report.get('mode') == COORDINATOR_CHECK_MODE:
+        lines.append('- note: read-only reachability only; does NOT prove write '
+                     'permission, token equality, BigGo connectivity or daily '
+                     'stage compatibility')
+    if report.get('notProven'):
+        lines.append('- notProven: ' + ', '.join(
+            _safe_label(item) for item in report.get('notProven')
+            if isinstance(item, str)))
     if report.get('uncertainty'):
         lines.append(f"- uncertainty: `{_safe_label(report.get('uncertainty'))}`")
     return '\n'.join(lines) + '\n'
@@ -763,16 +905,24 @@ def main(argv=None):
             stream.reconfigure(encoding='utf-8', errors='replace')
     parser = argparse.ArgumentParser(
         description='Bounded BigGo diagnostic；預設 preview（零 coordinator／零 provider）')
-    parser.add_argument('--execute', action='store_true',
-                        help='執行 bounded live probe（1 token + 1 search）；'
-                             '需要完整憑證／coordinator／run identity')
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument('--execute', action='store_true',
+                            help='執行 bounded live probe（1 token + 1 search）；'
+                                 '需要完整憑證／coordinator／run identity')
+    mode_group.add_argument('--check-coordinator', dest='check_coordinator',
+                            action='store_true',
+                            help='只讀 1 次共享 coordinator state GET；零 token／search／'
+                                 'PUT，唔需要 BigGo 憑證或本地 active stage')
     parser.add_argument('--json-out', default=None, help='寫出 sanitized JSON report')
     parser.add_argument('--summary-out', default=None, help='寫出 readable summary')
     args = parser.parse_args(argv)
+    mode = (COORDINATOR_CHECK_MODE if args.check_coordinator
+            else 'execute' if args.execute else 'preview')
     try:
-        report = run_diagnostic(execute=args.execute)
+        report = run_diagnostic(execute=args.execute,
+                                check_coordinator=args.check_coordinator)
     except Exception:  # noqa: BLE001 - 未預期例外一律 fail closed，唔輸出 exception message
-        report = _base_report('execute' if args.execute else 'preview')
+        report = _base_report(mode)
         report['status'] = 'uncertain-exception'
         report['reason'] = 'unexpected-internal-error'
         report['uncertainty'] = 'exception-left-explicit-uncertain-state'

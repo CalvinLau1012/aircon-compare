@@ -81,6 +81,39 @@
   全部保留；未 push／未 deploy／未 dispatch；未呼叫真實 provider／coordinator；
   `models_data.VERSION`、`metadata.json`、`index.html`、PDF、價格快照、queue 不變。
 
+### 2026-10-11 診斷內建 read-only coordinator check（Root96；未發布、未部署）
+
+- **Added**：`scripts/biggo_smoke_diagnostic.py --check-coordinator`（同 `--execute`
+  互斥；預設仍係零流量 preview）。完整有效 coordinator 配置後恰好一次
+  `GitHubContentsClient.read_state` GET；唔需要 run identity、本地 active stage、
+  active-cycle 相容或 BigGo client 憑證。零 PUT／lease／CAS／bootstrap／snapshot／
+  reservation／provider。
+- **Added**：`biggo_coordinator.coordinator_identity_digest()` v1（表示法
+  `env-names-json-sort-keys-v1`）：只 hash 有效 repo／branch／state path，唔包含
+  token／secret／snapshot／raw response；Root 可喺 server 用同一表示法無 API 計出
+  期望 digest 作核對。報告只出 digest／version，唔出 raw private repo／path。
+- **Changed**：`CoordinatorApiError` 加 additive `status` attribute，用嚟喺 check
+  模式區分 403／429／其他 HTTP status；message 同既有行為不變。
+- **Safety**：缺／partial／malformed config 零 HTTP；404／403／429／非 200／
+  transport／malformed Contents／JSON／schema 全部有獨立非零 status，恰好 ≤1 GET、
+  零寫入；redirect 不 replay，但保留環境 proxy；previous `urllib.request._opener`
+  喺所有退出路徑原樣還原。報告有 `readOnly=true`、token／search 0、
+  `coordinatorOps<=1`、`readSuccess` facts 同 `notProven`；讀到 state 唔代表
+  write permission、token 相等、BigGo 連線或 daily stage 相容。
+- **Workflow（只改現有 `biggo-diagnostic.yml`）**：新增 `check_coordinator` boolean
+  （預設 false）、矛盾 inputs reject step（早於任何 Secrets／遠端操作）、只讀 step
+  只注入現有 coordinator repo／token／branch／state-path Secrets（冇 BigGo clientID／
+  secret），summary 收集加入 check 輸出；trusted master gate、preview 零 Secrets、
+  `--execute` step、schedule／push／deploy／publish／concurrency 全部不變。
+- **Evidence**（本機 E2，`--network none`、pinned deps image、read-only worktree）：
+  Root external 3 contract tests（原檔不變）pass；affected validator＋diagnostic＋
+  coordinator＋daily runner＋workflow＋adjacent BigGo 套件 298 passed；adjacent
+  candidate／limiter 18 passed；詳細命令／日誌見外部 `evidence/desktop-r25f-ds96/`。
+- **Boundary**：未 push 新 commit／未改 PR／未 merge／未 deploy／未 dispatch；未讀
+  Secret 明文；未呼叫真實 BigGo／EMSD／GitHub API；`models_data.VERSION`、
+  `metadata.json`、`index.html`、PDF、價格快照、queue、黑名單、shared coordinator
+  state 不變；E3／E4 仍 UNKNOWN。
+
 ### 2026-09-29 GitHub Actions／EMSD CSV 修復候選（未發布、未部署）
 
 > 用戶批准嘅 R2/R3 來源與門禁行為修復（scope 限定為已批准計劃）。只係本機候選（E2）：

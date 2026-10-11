@@ -1170,3 +1170,28 @@ PR #23 最終 head `a8e5444` 已通過 GitHub CI 並 merge；trusted rebuild `36
   - `UNKNOWN`：E3／E4、真實 provider／coordinator、workflow dispatch 仍未執行。
   - `BOUNDARY`：未 push／merge／deploy／dispatch；未呼叫真實 BigGo／EMSD；未改 Secrets／metadata／VERSION／價格快照／queue／私人 repo；Root93 原始 failed-test 證據（`desktop-r25f-root93-review/`）保留不變。
 - **回滾**：revert 本返修 commit 即回復 Root93 行為（會重新引入兩個缺口）；`allow_legacy_bool` 參數與 `get_abort_check()` 皆 additive，無資料遷移。
+
+## D34 · 2026-10-11：診斷內建 read-only coordinator check（Root96；append-only）
+
+- **日期**：2026-10-11
+- **狀態**：已實作候選（本機 E2）；未 push 新 commit／未改 PR／未 dispatch／未部署；交獨立驗收
+- **背景**：現有 `biggo-diagnostic` 只有純本地 preview（零 Secrets／HTTP）或 `--execute`（BigGo 呼叫＋coordinator CAS reservation）。GitHub daily 恢復前需要嘅只係「共享 coordinator 配置喺 runtime 可讀」呢一項事實；唔應該用會寫入 lease／budget 或呼叫 provider 嘅 `--execute` 代替，亦唔需要讀取 Secret 明文或比對 PAT 字串。Root94 已由 server 端計出 coordinator identity digest，但 GitHub runtime 嘅有效身份仍未現場核對。
+- **選項**：
+  - A：另建新 workflow／獨立 checker service——否決：超出最小切片，會多一套信任邊界；
+  - B（採用）：喺現有 `biggo_smoke_diagnostic.py` 加互斥 `--check-coordinator`，重用 `CoordinatorConfig.from_env` 同 `GitHubContentsClient.read_state`，恰好一次 bounded GET；
+  - C：用 `--execute` 順便核對——否決：會 acquire lease、預留 token／search、可能呼叫 provider，語義係 business readiness 而非 coordinator readability。
+- **決策**：採 B，另加 workflow boolean input 同 read-only step：
+  1. CLI `--check-coordinator` 與 `--execute` argparse 互斥；預設仍然純本地 preview；`run_diagnostic()` 亦自行拒絕兩個 mode 同時 true（zero traffic）。
+  2. Check mode 唔需要 `GITHUB_RUN_ID`、本地 active stage、active-cycle 相容或 BigGo client 憑證；只要求完整有效 coordinator 配置（`AIRCON_BIGGO_COORDINATOR_REPO`＋`TOKEN`；branch／state path 用既有 `main`／`coordinator/biggo-state.json` 預設）。缺／partial／malformed config 一律零 HTTP fail closed。
+  3. 配置有效後恰好一次 `read_state` GET（`_CappedApi` cap=1）；停用 redirect replay（`_NoRedirect`）但保留環境／已配置 proxy（`_harden_transport(disable_proxy=False)`），previous `urllib.request._opener` 喺 all-exit `finally` 原樣還原；零 PUT／lease／CAS／bootstrap／snapshot／reservation／provider。
+  4. 404／403／429／其他非 200／transport／malformed Contents／JSON／schema 全部有獨立非零 status；只輸出固定 sanitized reason，唔含 exception message 或 raw body。
+  5. `biggo_coordinator.coordinator_identity_digest()`（v1，`env-names-json-sort-keys-v1`）：`sha256(json.dumps({AIRCON_BIGGO_COORDINATOR_REPO:repo, AIRCON_BIGGO_COORDINATOR_BRANCH:branch, AIRCON_BIGGO_COORDINATOR_STATE_PATH:state_path}, sort_keys=True).encode())`；純函數、唔含 token／secret／snapshot／raw response；Root 可以喺 server 用同一表示法計出期望 digest 作無 API 核對。`CoordinatorApiError` 加 additive `status` attribute 以區分 HTTP status。
+  6. 報告：mode `coordinator-check`、status `coordinator-read-ok`、`readOnly=true`、planned／actual token=0／search=0、`coordinatorOps<=1`、identity digest／version、`readSuccess` booleans，同 `notProven`（write permission／token equality／BigGo connectivity／daily stage compatibility）；summary 明示呢個讀取唔等於 BigGo healthy 或 daily-ready。
+  7. `.github/workflows/biggo-diagnostic.yml` 只加 `check_coordinator` boolean（預設 false）、矛盾 inputs reject step（喺任何 Secrets／遠端操作之前）、只注入現有 coordinator Secrets 嘅 read-only step（冇 BigGo clientID／secret），同 summary 收集；schedule／push／deploy／publish／concurrency／trusted master gate 全部不變。
+- **原因**：共享互斥嘅前置條件係兩端有效 repo／branch／state path 一致同各自憑證可存取；一個恰好一次 GET 嘅可讀性證據已足夠決定係否進一步評估 daily 恢復，且唔會污染 shared lease／budget。Digest 令 GitHub runtime 同 server 配置可作無秘密核對。
+- **後果（分類）**：
+  - `REQUIREMENT`：`--execute`／preview 行為、strict bool rejection、hook restoration、lease／reservation／budget／cooldown、Metadata Schema、required 功能、成功標準、fail-closed 門禁、daily runner 全部不變；`--check-coordinator` 係 additive、人手觸發。
+  - `OBSERVED / E2`：Root external contract file（`desktop-r25f-root93-review/test_review_contract.py`，原檔不變）3 passed；affected validator／diagnostic／coordinator／daily runner／workflow＋adjacent BigGo 套件 298 passed；adjacent candidate／limiter 18 passed；CLI／workflow／fake HTTP 測試覆蓋 one-GET、zero write／provider、digest、sanitization、redirect 不 replay、opener 還原（證據見 `evidence/desktop-r25f-ds96/`）。
+  - `UNKNOWN`：E3 trusted CI（新 commit 仍未經 Root 上傳／PR CI）、真實 GitHub Actions runtime one-GET check、真實 Secret 配置 digest 核對、E4 部署全部未執行。
+  - `BOUNDARY`：未 push／未改 PR／未 merge／未 deploy／未 dispatch；未呼叫真實 BigGo／EMSD／GitHub API；未讀 Secrets 明文；未改 `metadata.json`／`VERSION`／`index.html`／PDF／價格快照／queue／黑名單／shared coordinator state；未 claim c5cdb8e 嘅 CI 覆蓋新 commit。
+- **回滾**：revert 本階段 commit 即可移除 check mode、workflow input／step 同 digest helper；coordinator state schema、`--execute` 語義與現有資料無變，無遷移。Root94／Root95 已驗收嘅 c5cdb8e 行為不受影響。

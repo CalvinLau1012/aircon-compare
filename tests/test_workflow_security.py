@@ -778,9 +778,41 @@ def test_biggo_diagnostic_pinned_actions_runner_and_sanitized_summary():
     run = summary['run']
     assert 'biggo-diagnostic-preview.md' in run
     assert 'biggo-diagnostic-execute.md' in run
+    assert 'biggo-diagnostic-coordinator-check.md' in run
     assert 'cat' in run
     assert 'python scripts/biggo_smoke_diagnostic.py' in text
     # 現有 daily workflow 完全不變（唔可以加入 diagnostic 或改其 trigger）。
     daily = _text('daily-update.yml')
     assert 'biggo-diagnostic' not in daily
     assert 'biggo_smoke_diagnostic' not in daily
+
+
+def test_biggo_diagnostic_check_coordinator_input_reject_and_readonly_step():
+    wf, steps = _diagnostic_steps()
+    on = wf[True] if True in wf else wf['on']
+    inputs = on['workflow_dispatch']['inputs']
+    assert inputs['check_coordinator']['type'] == 'boolean'
+    assert inputs['check_coordinator']['default'] is False
+    reject = steps['拒絕矛盾 inputs（check_coordinator 同 execute_provider）']
+    reject_if = str(reject['if'])
+    assert 'inputs.check_coordinator' in reject_if
+    assert 'inputs.execute_provider' in reject_if
+    check = steps['Read-only coordinator check（恰好 1 次 GET；只在 check_coordinator=true）']
+    assert 'inputs.check_coordinator' in str(check['if'])
+    env = check['env']
+    assert set(env) == {'AIRCON_BIGGO_COORDINATOR_REPO',
+                        'AIRCON_BIGGO_COORDINATOR_TOKEN',
+                        'AIRCON_BIGGO_COORDINATOR_BRANCH',
+                        'AIRCON_BIGGO_COORDINATOR_STATE_PATH'}
+    for name in ('BIGGO_CLIENT_ID', 'BIGGO_CLIENT_SECRET'):
+        assert name not in env, 'check 模式唔可以注入 provider 憑證'
+    for name, value in env.items():
+        assert value == '${{ secrets.' + name + ' }}', name
+    run = check['run']
+    assert '--check-coordinator' in run
+    assert '${{' not in run, 'run 命令唔可以 shell-interpolate 任何 inputs／secrets 表達式'
+    # Preview 仍然零 secrets；execute 仍然只靠 execute_provider gate。
+    preview = steps['本地 preview（零 coordinator／零 provider）']
+    assert 'env' not in preview and 'secrets.' not in str(preview)
+    execute = steps['Bounded live probe（1 token + 1 search；只在 execute_provider=true）']
+    assert 'inputs.execute_provider' in str(execute['if'])

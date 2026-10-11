@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import re
@@ -48,6 +49,11 @@ RENEW_INTERVAL_SECONDS = 5 * 60
 PROJECT_COOLDOWN_SECONDS = 48 * 3600
 
 STATE_SCHEMA_VERSION = 1
+# Coordinator identity digest：只 hash 有效 repo／branch／state path；唔包含 token、
+# client secret、snapshot、raw response 或任何 credential 材料。v1 表示法同 Root94
+# canonical audit 一致（env 名做 key、sort_keys、default separators）。
+IDENTITY_DIGEST_VERSION = 1
+IDENTITY_DIGEST_REPRESENTATION = 'env-names-json-sort-keys-v1'
 SNAPSHOT_SCHEMA_VERSION = 1
 MANIFEST_SCHEMA_VERSION = 1
 # P0 stage bundle（transaction）schema：新 runner 只用 v2；舊 v1 只可被拒絕自動 apply。
@@ -81,7 +87,11 @@ class CoordinatorStateError(CoordinatorError):
 
 
 class CoordinatorApiError(CoordinatorError):
-    pass
+    """HTTP 層錯誤；`status` 係實際 HTTP status（有回應時）或 None（無回應／本地）。"""
+
+    def __init__(self, message, status=None):
+        super().__init__(message)
+        self.status = status
 
 
 class CASConflict(CoordinatorError):
@@ -533,6 +543,22 @@ class CoordinatorConfig:
         )
 
 
+def coordinator_identity_digest(config):
+    """有效 coordinator 身份（repo／branch／state path）嘅穩定 digest。
+
+    Pure function：只用 config 三個有效欄位，唔讀 env、唔連網、唔含 token／secret／
+    snapshot／raw response。v1 表示法固定為
+    ``sha256(json.dumps({env-name: value}, sort_keys=True).encode())``；Root 可以喺
+    唔發任何 API request 下由現有 server 配置計出同一個 digest 作核對。
+    """
+    payload = {
+        'AIRCON_BIGGO_COORDINATOR_REPO': config.repo,
+        'AIRCON_BIGGO_COORDINATOR_BRANCH': config.branch,
+        'AIRCON_BIGGO_COORDINATOR_STATE_PATH': config.state_path,
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
 def config_status(env=None):
     """回傳唔含秘密嘅配置狀態（俾 workflow 輸出清晰 status，唔會呼叫任何 API）。"""
     env = env if env is not None else os.environ
@@ -583,12 +609,13 @@ class GitHubContentsClient:
         if status == 404:
             return None, None
         if status != 200:
-            raise CoordinatorApiError(f'coordinator GET 失敗（HTTP {status}）')
+            raise CoordinatorApiError(f'coordinator GET 失敗（HTTP {status}）', status=status)
         try:
             doc = json.loads(raw.decode('utf-8'))
             content = base64.b64decode(doc['content'])
         except (ValueError, KeyError, TypeError) as e:
-            raise CoordinatorApiError(f'coordinator GET 回應唔合法：{type(e).__name__}')
+            raise CoordinatorApiError(f'coordinator GET 回應唔合法：{type(e).__name__}',
+                                      status=status)
         return content, doc.get('sha')
 
     def put_file(self, path, data, message, sha=None):

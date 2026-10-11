@@ -324,6 +324,46 @@ def test_config_from_env_requires_no_hardcoded_private_identifiers():
             assert 'api.github.com' in line, f'只准 GitHub API host：{line.strip()}'
 
 
+def test_identity_digest_matches_canonical_json_and_ignores_token():
+    import hashlib
+    a = coord.CoordinatorConfig('owner/coordinator', 'tok-a', branch='main',
+                                state_path='coordinator/biggo-state.json')
+    b = coord.CoordinatorConfig('owner/coordinator', 'tok-b', branch='main',
+                                state_path='coordinator/biggo-state.json')
+    expected = hashlib.sha256(json.dumps({
+        'AIRCON_BIGGO_COORDINATOR_REPO': 'owner/coordinator',
+        'AIRCON_BIGGO_COORDINATOR_BRANCH': 'main',
+        'AIRCON_BIGGO_COORDINATOR_STATE_PATH': 'coordinator/biggo-state.json',
+    }, sort_keys=True).encode()).hexdigest()
+    assert coord.coordinator_identity_digest(a) == expected
+    assert coord.coordinator_identity_digest(b) == expected, 'token 唔可以影響 digest'
+    assert coord.IDENTITY_DIGEST_VERSION == 1
+    assert coord.IDENTITY_DIGEST_REPRESENTATION == 'env-names-json-sort-keys-v1'
+
+
+def test_identity_digest_defaults_from_env_and_changes_per_effective_field():
+    env = {'AIRCON_BIGGO_COORDINATOR_REPO': 'owner/coordinator',
+           'AIRCON_BIGGO_COORDINATOR_TOKEN': 'tok'}
+    cfg = coord.CoordinatorConfig.from_env(env)
+    assert cfg.branch == coord.BRANCH_DEFAULT
+    assert cfg.state_path == coord.STATE_PATH_DEFAULT
+    base = coord.coordinator_identity_digest(cfg)
+    assert base == coord.coordinator_identity_digest(
+        coord.CoordinatorConfig('owner/coordinator', 'tok'))
+    for field, value in (('repo', 'owner/other'), ('branch', 'dev'),
+                         ('state_path', 'coordinator/other.json')):
+        kwargs = {'repo': cfg.repo, 'token': 'tok', 'branch': cfg.branch,
+                  'state_path': cfg.state_path}
+        kwargs[field] = value
+        assert coord.coordinator_identity_digest(
+            coord.CoordinatorConfig(**kwargs)) != base, field
+
+
+def test_api_error_keeps_optional_http_status():
+    assert coord.CoordinatorApiError('x').status is None
+    assert coord.CoordinatorApiError('x', status=403).status == 403
+
+
 def test_retry_after_parses_delta_seconds_and_http_date():
     import email.utils
     now = 1_700_000_000
