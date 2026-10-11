@@ -16,6 +16,7 @@ BigGo 香港格價價錢快照抓取（官方 JSON API）
 """
 import base64
 import json
+import math
 import os
 import random
 import sys
@@ -64,6 +65,12 @@ PROJECT_COOLDOWN_SECONDS = 48 * 3600
 REQUEST_STATS = {'token': 0, 'search': 0}
 # 最近一次 403／429 嘅安全 rate-limit 證據（只 status／Retry-After，無 auth／body）。
 LAST_RATE_LIMIT_EVIDENCE = {}
+# smoke taxonomy：由實際 transport／auth 觀察事實推導（唔靠猜、唔靠固定清單）。
+LAST_SEARCH_REASON = 'ok'
+LAST_SMOKE_REASON = None
+LAST_RESPONSE_RECEIVED = False
+LAST_HTTP_STATUS = None
+LAST_AUTH_FACT = 'unknown'
 BIGGO_TEST_MODE_ENV = 'AIRCON_BIGGO_TEST_MODE'
 
 
@@ -73,6 +80,10 @@ class BigGoTestModeError(RuntimeError):
 
 class BigGoAbortedError(RuntimeError):
     """lease lost／should_abort：唔可以再發新請求。"""
+
+
+class BigGoAuthError(RuntimeError):
+    """憑證配置／token 契約錯誤：唔可以匿名 fallback。"""
 
 
 # 每個 stage 由 runner 注入；同一時間只有一個 limiter（請求前 thread-safe reserve）。
@@ -184,24 +195,44 @@ def _retry_after_seconds(value, now=None):
         return None
 
 
+def _credentials_state():
+    """憑證配置狀態：full／partial／none（唔讀 secrets 內容，只睇存在與空值）。"""
+    cid = bool(os.environ.get('BIGGO_CLIENT_ID', '').strip())
+    csec = bool(os.environ.get('BIGGO_CLIENT_SECRET', '').strip())
+    if cid and csec:
+        return 'full'
+    if cid or csec:
+        return 'partial'
+    return 'none'
+
+
 def _get_access_token(timeout=20):
     """用 BIGGO_CLIENT_ID/SECRET 攞 access_token（免費官方認證；冇配置就 None = 免登入 fallback）
 
     `timeout` 預設 20 秒，同原本批次行為一致；smoke 會傳較短 timeout 令連線測試有界。
     測試模式（AIRCON_BIGGO_TEST_MODE=1）下任何真實呼叫即 BigGoTestModeError。
     token 取得全程 token lock 序列化：cache miss 時只會發一次 auth request。
+    憑證半配置（partial）／token 回應格式錯即 BigGoAuthError，唔會靜默當匿名。
     """
+    global LAST_AUTH_FACT
     cid = os.environ.get('BIGGO_CLIENT_ID', '').strip()
     csec = os.environ.get('BIGGO_CLIENT_SECRET', '').strip()
-    if not cid or not csec:
+    state = _credentials_state()
+    if state == 'none':
+        LAST_AUTH_FACT = 'anonymous'
         return None
+    if state == 'partial':
+        LAST_AUTH_FACT = 'failed'
+        raise BigGoAuthError('credentials-partial')
     _network_guard()
     now = time.time()
-    if _TOKEN['value'] and now < _TOKEN['expires']:
+    if isinstance(_TOKEN['value'], str) and _TOKEN['value'].strip() \
+            and now < _TOKEN['expires']:
         return _TOKEN['value']
     with _TOKEN_LOCK:
         now = time.time()
-        if _TOKEN['value'] and now < _TOKEN['expires']:
+        if isinstance(_TOKEN['value'], str) and _TOKEN['value'].strip() \
+                and now < _TOKEN['expires']:
             return _TOKEN['value']
         _reserve('token')
         cred = base64.b64encode(f'{cid}:{csec}'.encode()).decode()
@@ -213,15 +244,28 @@ def _get_access_token(timeout=20):
         })
         _bump_stats('token')
         try:
-            tok = json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode('utf-8')).get('access_token')
+            body = json.loads(urllib.request.urlopen(req, timeout=timeout)
+                              .read().decode('utf-8', 'ignore'))
         except urllib.error.HTTPError as e:
             if e.code in (403, 429):
                 _record_response_evidence(e.code, (e.headers or {}).get('Retry-After')
                                           if hasattr(e.headers, 'get') else None)
             raise
-        if tok:
-            _TOKEN['value'] = tok
-            _TOKEN['expires'] = now + 55 * 60
+        except (ValueError, UnicodeDecodeError) as e:
+            LAST_AUTH_FACT = 'failed'
+            raise BigGoAuthError('token-response-invalid-json') from e
+        if not isinstance(body, dict):
+            LAST_AUTH_FACT = 'failed'
+            raise BigGoAuthError('token-response-not-object')
+        if body.get('error'):
+            LAST_AUTH_FACT = 'failed'
+            raise BigGoAuthError('token-response-explicit-error')
+        tok = body.get('access_token')
+        if not isinstance(tok, str) or not tok.strip():
+            LAST_AUTH_FACT = 'failed'
+            raise BigGoAuthError('token-missing-or-empty')
+        _TOKEN['value'] = tok
+        _TOKEN['expires'] = now + 55 * 60
         return tok
 
 # 全局冷卻狀態：遇 429 就冷卻 60-120s，期間所有新請求停喺度等（防止批次被限流打死）
@@ -276,9 +320,12 @@ def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=DEFAULT_MAX_ATTEMPTS, 
     - smoke 會傳 max_attempts=1、timeout=8、use_cooldown=False、use_pace=False、
       sleep_on_error=False，維持有界。
     """
+    global LAST_SEARCH_REASON, LAST_RESPONSE_RECEIVED, LAST_HTTP_STATUS, LAST_AUTH_FACT
     LAST_RATE_LIMIT_EVIDENCE.clear()
+    LAST_SEARCH_REASON = 'ok'
     if os.environ.get(BIGGO_TEST_MODE_ENV) == '1':
         LAST_RATE_LIMIT_EVIDENCE.update({'testMode': True})
+        LAST_SEARCH_REASON = 'blocked-test-mode'
         return None, False
     for attempt in range(max(1, int(max_attempts))):
         retry_wait = None
@@ -288,15 +335,36 @@ def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=DEFAULT_MAX_ATTEMPTS, 
             if use_pace:
                 _wait_pace()
             headers = {'User-Agent': UA, **API_HEADERS, 'Accept': 'application/json'}
+            cred_state = _credentials_state()
+            if cred_state == 'partial':
+                LAST_SEARCH_REASON = 'auth'
+                LAST_AUTH_FACT = 'failed'
+                return None, False
             token = _get_access_token(timeout=timeout)
+            if cred_state == 'full' and (not isinstance(token, str) or not token.strip()):
+                LAST_SEARCH_REASON = 'auth'
+                LAST_AUTH_FACT = 'failed'
+                return None, False
+            if cred_state == 'full':
+                LAST_AUTH_FACT = 'verified'
             if token:
                 headers['Authorization'] = f'Bearer {token}'
             _reserve('search')
             req = urllib.request.Request(API_URL.format(q=urllib.parse.quote(model, safe='')), headers=headers)
             _bump_stats('search')
-            data = json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode('utf-8', 'ignore'))
+            resp = urllib.request.urlopen(req, timeout=timeout)
+            LAST_RESPONSE_RECEIVED = True
+            LAST_HTTP_STATUS = getattr(resp, 'status', 200)
+            data = json.loads(resp.read().decode('utf-8', 'ignore'))
             return data, True
         except urllib.error.HTTPError as e:
+            LAST_RESPONSE_RECEIVED = True
+            LAST_HTTP_STATUS = e.code
+            if e.code in (401, 403):
+                LAST_AUTH_FACT = 'failed'
+            LAST_SEARCH_REASON = ('auth' if e.code in (401, 403)
+                                  else 'rate-limit' if e.code == 429
+                                  else 'transport')
             retry_after = None
             try:
                 retry_after = e.headers.get('Retry-After') if e.headers else None
@@ -317,12 +385,25 @@ def _api_search(model, jitter=(0.2, 0.6), *, max_attempts=DEFAULT_MAX_ATTEMPTS, 
         except BigGoTestModeError:
             raise
         except BigGoAbortedError:
+            LAST_SEARCH_REASON = 'aborted'
             print(f'  ⏹️ abort：停止新請求（{model}）；當網絡錯誤，唔會再排隊', flush=True)
             return None, False
         except BigGoLimitExceeded as e:
+            LAST_SEARCH_REASON = 'blocked-limit'
             print(f'  ⛔ {e}（{model}）；當網絡錯誤，唔會當 clean miss', flush=True)
             return None, False
+        except BigGoAuthError:
+            LAST_SEARCH_REASON = 'auth'
+            LAST_AUTH_FACT = 'failed'
+            return None, False
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+            LAST_SEARCH_REASON = 'invalid-response'
+            retry_wait = 3 * (attempt + 1)
+        except (urllib.error.URLError, TimeoutError, OSError):
+            LAST_SEARCH_REASON = 'transport'
+            retry_wait = 3 * (attempt + 1)
         except Exception:
+            LAST_SEARCH_REASON = 'transport'
             retry_wait = 3 * (attempt + 1)
         if retry_wait is not None and sleep_on_error:
             try:
@@ -674,11 +755,16 @@ def run_force_batch(limit=None, *, smoke=True, should_abort=None, exit_on_fail=T
     model_blacklist.json／model_status.json）。效果全部經 `plan_*` 純函數回傳，
     由 runner 在 coordinator CAS completed 之後才 apply。
     """
-    if smoke and not run_smoke():
-        print('❌ 強行批次中止：smoke 唔過（BigGo API 對當前 IP 唔友好）')
-        if exit_on_fail:
-            sys.exit(1)
-        return {'status': 'smoke-failed'}
+    if smoke:
+        smoke_result = run_smoke()
+        # 結構化結果要明示睇 `ok`；dict（包括 failure dict）永遠 truthy，唔可以靠 bool()。
+        smoke_ok = bool(smoke_result.get('ok')) if isinstance(smoke_result, dict) \
+            else bool(smoke_result)
+        if not smoke_ok:
+            print('❌ 強行批次中止：smoke 唔過（BigGo API 對當前 IP 唔友好）')
+            if exit_on_fail:
+                sys.exit(1)
+            return {'status': 'smoke-failed'}
 
     workload = force_workload(limit)
     brand_lookup = load_brand_lookup()
@@ -959,21 +1045,48 @@ SMOKE_CANDIDATES = (
 SMOKE_TIMEOUT = 8
 
 
+def _validate_search_payload(data):
+    """上游 payload schema 驗證（唔以 list 存在／HTTP200 當成功）。
+
+    回 (ok: bool, detail: str)。合法空 list = ok；明示 error、非 dict、list 型別錯、
+    item 型別錯、price NaN/Infinity 等 = invalid-response。
+    """
+    if not isinstance(data, dict):
+        return False, 'payload-not-object'
+    for key in ('error', 'errors', 'errorMessage'):
+        if data.get(key):
+            return False, f'explicit-error:{key}'
+    lst = data.get('list')
+    if not isinstance(lst, list):
+        return False, 'list-missing-or-not-list'
+    for it in lst:
+        if not isinstance(it, dict):
+            return False, 'item-not-object'
+        p = it.get('price')
+        if p is None:
+            continue
+        if isinstance(p, bool):
+            return False, 'price-bool'
+        if isinstance(p, (int, float)):
+            if not math.isfinite(float(p)):
+                return False, 'price-non-finite'
+        elif not isinstance(p, str):
+            return False, 'price-type'
+    return True, 'ok'
+
+
 def _smoke_probe(model):
     """Smoke 探測：回 (status, result)
-      'priced'      → API 正常且有匹配報價
-      'no-price'    → API 正常回覆但呢個型號暫時無匹配報價（唔等於限流）
-      'unreachable' → 網絡／限流／認證等錯誤嘅粗分類
 
-    有界語義：單次 attempt、timeout=SMOKE_TIMEOUT（約 8 秒）、唔等全局冷卻、
-    唔限速等待、唔喺錯誤後 sleep；`_get_access_token`／`_api_search` 原本批次
-    預設（2 attempts、403／429 唔即刻 retry、冷卻、限速）維持 approved C 語義；
-    只有 smoke 傳呢組有界參數。公眾文檔舊「5 次 retry」記述已由 2026-09-28 新條目取代。
-
-    限制（唔虛構）：`_api_search` 目前將 429／403、網絡例外同認證失敗一律回
-    reachable=False，所以呢度唔會細分原因，只如實報 'unreachable'；
-    若日後需要細分，要先改 `_api_search` 嘅錯誤分類契約。
+    r24 重新設計：API 健康（reachable＋responseValid）同型號價格證據分開。
+    'priced' / 'no-price'（合法回應但冇匹配價，API 健康）／
+    'invalid-response' / 'auth' / 'rate-limit' / 'transport'／'blocked-test-mode'。
+    有界：單次 attempt、timeout=SMOKE_TIMEOUT、無 cooldown／retry／多候選。
     """
+    global LAST_SEARCH_REASON, LAST_RESPONSE_RECEIVED, LAST_HTTP_STATUS
+    LAST_SEARCH_REASON = 'transport'
+    LAST_RESPONSE_RECEIVED = False
+    LAST_HTTP_STATUS = None
     data, reachable = _api_search(
         model,
         max_attempts=1,
@@ -983,44 +1096,75 @@ def _smoke_probe(model):
         sleep_on_error=False,
     )
     if not reachable:
-        return 'unreachable', None
+        reason = LAST_SEARCH_REASON
+        if reason not in ('auth', 'rate-limit', 'transport', 'invalid-response',
+                          'blocked-test-mode', 'blocked-limit', 'aborted'):
+            reason = 'transport'
+        return reason, None
+    ok, detail = _validate_search_payload(data)
+    if not ok:
+        LAST_SEARCH_REASON = 'invalid-response'
+        return 'invalid-response', detail
     result = _extract_price(data, model)
     return ('priced', result) if result else ('no-price', None)
 
 
-def run_smoke(candidates=None):
-    """連線煙霧測試：approved design C 規定**最多一個 product-search request**。
+def _response_flags(reason):
+    """由實際 transport 事實推導 reachable／responseValid（唔靠 reason 猜）。"""
+    if reason in ('priced', 'no-price'):
+        return True, True
+    if reason == 'invalid-response':
+        return LAST_RESPONSE_RECEIVED, False
+    if reason in ('auth', 'rate-limit'):
+        return LAST_RESPONSE_RECEIVED, False
+    return False, False
 
-    只探測第一個候選（預設 `SMOKE_CANDIDATES[0]`），單次 attempt、約 8 秒 timeout、
-    唔等冷卻／唔重試：
-    - 'priced'    → True（正常有價）
-    - 'no-price'  → False（API 正常但暫時無匹配報價；唔會試其餘候選，唔濫用額度）
-    - 'unreachable'／例外 → False
-    工作流收到 False 會安全跳過本批（保留快照）；實際呼叫計數由 `REQUEST_STATS` 記錄。
+
+def run_smoke(candidates=None):
+    """結構化 smoke 結果（serializable）；bool 只作 legacy 兼容 adapter。
+
+    合法空 list／合法回應無匹配價 = API 健康（ok=True, priceAvailable=False）；
+    provider 唔可用／非法回應／認証／限流 = ok=False（呼叫方要 needs-review，唔會 blind retry）。
+    最多 1 個 product-search；真實 counters 由 REQUEST_STATS delta 提供。
     """
+    global LAST_SMOKE_REASON
     cands = SMOKE_CANDIDATES if candidates is None else candidates
+    base = {'reason': 'no-candidates', 'ok': False, 'reachable': False,
+            'responseValid': False, 'priceAvailable': False,
+            'token': 0, 'search': 0, 'model': None}
     if not cands:
-        return False
+        LAST_SMOKE_REASON = 'no-candidates'
+        return base
     cand = cands[0]
     model = cand['model'] if isinstance(cand, dict) else str(cand)
+    before = dict(REQUEST_STATS)
     try:
         status, result = _smoke_probe(model)
-    except Exception as e:
-        # 只記錄例外類型，唔輸出 exception 內容（避免任何 credential 落入 log）
-        print(f'  ⚠️ smoke 候選 {model} 例外：{type(e).__name__}'
-              f'（網絡／憑證等，未細分）；立即結束 smoke', flush=True)
-        return False
+    except Exception as e:  # noqa: BLE001
+        status, result = 'transport', None
+        print(f'  ⚠️ smoke 候選 {model} 例外：{type(e).__name__}（transport）', flush=True)
+    after = dict(REQUEST_STATS)
+    delta = {'token': after.get('token', 0) - before.get('token', 0),
+             'search': after.get('search', 0) - before.get('search', 0)}
+    LAST_SMOKE_REASON = status
+    reachable, response_valid = _response_flags(status)
     if status == 'priced':
         print(f'✅ BigGo smoke test 通過：{model} → {result["price"]}'
               f'（{result.get("merchants", 0)} 商戶）', flush=True)
-        return True
+        return {'reason': 'priced', 'ok': True, 'reachable': True, 'responseValid': True,
+                'priceAvailable': True, 'price': result.get('price'),
+                'authFact': LAST_AUTH_FACT, 'model': model, **delta}
     if status == 'no-price':
-        print(f'  ⚠️ smoke 候選 {model}：API 正常但暫時無匹配報價；'
-              f'single-request cap，唔會再試其餘候選', flush=True)
-        return False
-    print(f'  ⚠️ smoke 候選 {model}：unreachable'
-          f'（網絡／限流／認證等，現行錯誤分類未細分）；立即結束 smoke、唔硬碰', flush=True)
-    return False
+        print(f'  ℹ️ smoke 候選 {model}：API 正常回應但冇匹配價（no-price）；'
+              f'API 健康，交由真 staged batch 決定', flush=True)
+        return {'reason': 'no-price', 'ok': True, 'reachable': True, 'responseValid': True,
+                'priceAvailable': False, 'authFact': LAST_AUTH_FACT,
+                'model': model, **delta}
+    print(f'  ⚠️ smoke 候選 {model}：unreachable（r24 分類：{status}）；'
+          f'立即結束 smoke、唔硬碰', flush=True)
+    return {'reason': status, 'ok': False, 'reachable': reachable,
+            'responseValid': response_valid, 'priceAvailable': False,
+            'authFact': LAST_AUTH_FACT, 'model': model, **delta}
 
 
 if __name__ == '__main__':

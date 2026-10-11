@@ -255,7 +255,8 @@ def test_workflow_uses_receipt_and_fails_closed():
     assert 'AIRCON_BIGGO_FORCE_STAGE' in biggo, 'force intent 只可以經 runner 轉發'
     runner_src = open(os.path.join(BASE, 'scripts', 'biggo_stage_runner.py'),
                       encoding='utf-8').read()
-    assert 'fetch_mod.run_smoke()' in runner_src, 'runner 要真正行 bounded smoke'
+    assert 'fetch_mod.run_smoke([candidate])' in runner_src, \
+        'runner 要真正行單一動態候選的 bounded smoke'
     assert 'run_force_batch' in runner_src and 'LeaseHeartbeat' in runner_src
     assert 'exit "$rc"' in biggo or 'exit $rc' in biggo, '真失敗要非零退出，唔可以當成功'
 

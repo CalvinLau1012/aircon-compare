@@ -20,9 +20,11 @@ sys.path.insert(0, os.path.join(BASE, 'scripts'))
 
 import batch_utils  # noqa: E402
 import biggo_apply  # noqa: E402
+import biggo_candidate as candidate_mod  # noqa: E402
 import biggo_canonical  # noqa: E402
 import biggo_coordinator as coord  # noqa: E402
 import biggo_stage_runner as runner  # noqa: E402
+import model_lifecycle  # noqa: E402
 
 ACTIVE_META = {'price_batch_start': '2026-10-01', 'price_batch_idx': 0}
 CONFIGURED_ENV = {
@@ -137,7 +139,12 @@ class FakeFetch:
         self.OUT_PATH = str(tmp_path / 'biggo_prices.json')
         self.REQUEST_STATS = {'token': 0, 'search': 0}
         self.LAST_RATE_LIMIT_EVIDENCE = {}
-        self.smoke_result = True
+        self.LAST_SMOKE_REASON = None
+        self.smoke_result = {
+            'reason': 'no-price', 'ok': True, 'reachable': True,
+            'responseValid': True, 'priceAvailable': False,
+            'token': 1, 'search': 1, 'authFact': 'anonymous', 'model': 'M1'}
+        self.smoke_candidates = []
         self.batch_payload = completed_payload()
         self.smoke_calls = 0
         self.batch_calls = 0
@@ -168,11 +175,13 @@ class FakeFetch:
     def set_abort_check(self, check):
         self.abort_check = check
 
-    def run_smoke(self):
+    def run_smoke(self, candidates=None):
         self.smoke_calls += 1
+        self.smoke_candidates.append(list(candidates or []))
         self.REQUEST_STATS['token'] += 1
         self.REQUEST_STATS['search'] += 1
-        return self.smoke_result
+        return dict(self.smoke_result) if isinstance(self.smoke_result, dict) \
+            else self.smoke_result
 
     def run_price_batch(self, should_abort=None):
         self.batch_calls += 1
@@ -567,9 +576,9 @@ def test_winner_intent_is_persisted_before_smoke(tmp_path):
     observed = {}
 
     class IntentProbe(FakeFetch):
-        def run_smoke(self):
+        def run_smoke(self, candidates=None):
             observed['state'] = api.state()
-            return super().run_smoke()
+            return super().run_smoke(candidates)
 
     api = FakeGitHubApi()
     fetch = IntentProbe(tmp_path)
@@ -892,3 +901,188 @@ def test_blocked_stale_zero_biggo_and_alert(tmp_path):
         record = json.load(f)
     assert record['alert'] is True and record['rerun'] == 'prohibited'
     assert record['reason'] == 'request-older-than-force-cycle'
+
+
+# ---------------------------------------------------------------- dynamic candidate smoke (r25f-ds92)
+
+
+def _patch_candidate_blacklist(monkeypatch, mapping):
+    monkeypatch.setattr(model_lifecycle, 'load_blacklist', lambda: dict(mapping))
+    monkeypatch.setattr(candidate_mod, 'load_blacklist', lambda: dict(mapping))
+
+
+def test_validate_smoke_result_strict_contract():
+    ok, reason, info = runner._validate_smoke_result(True)
+    assert (ok, reason) == (True, 'priced') and info == {'legacy': True}
+    assert runner._validate_smoke_result(False)[:2] == (False, 'transport')
+    assert runner._validate_smoke_result(None)[:2] == (False, 'smoke-invalid-result')
+    base = {'reason': 'no-price', 'ok': True, 'reachable': True,
+            'responseValid': True, 'priceAvailable': False, 'token': 1, 'search': 1}
+    assert runner._validate_smoke_result(dict(base))[:2] == (True, 'no-price')
+    invalid = [
+        {'ok': True},                                              # 缺欄
+        {**base, 'ok': False},                                     # no-price 矛盾
+        {**base, 'reachable': 'yes'},                              # 型別錯
+        {**base, 'token': True},                                   # bool 冒充計數
+        {**base, 'search': -1},                                    # 負數
+        {**base, 'reason': 'mystery'},                             # 未知 reason
+        {**base, 'reason': 'priced', 'priceAvailable': False},     # priced 矛盾
+        {**base, 'reason': 'rate-limit'},                          # block 但 ok True
+        {**base, 'reason': 'rate-limit', 'ok': False,
+         'responseValid': True},                                   # block 但 responseValid
+    ]
+    for raw in invalid:
+        assert runner._validate_smoke_result(raw)[:2] == \
+            (False, 'smoke-invalid-result'), raw
+
+
+def test_winner_smoke_uses_dynamic_candidate_not_static(monkeypatch, tmp_path):
+    _patch_candidate_blacklist(monkeypatch, {})
+    code, out, apply_calls, fetch, api = _run(tmp_path)
+    assert code == 0 and _status(out) == 'completed'
+    assert fetch.smoke_calls == 1
+    used = fetch.smoke_candidates[0]
+    assert len(used) == 1
+    assert used[0]['model'] == 'M1'
+    assert 'no cached-price requirement' in used[0]['reason']
+
+
+def test_smoke_candidate_changes_when_dataset_fixture_changes(monkeypatch, tmp_path):
+    _patch_candidate_blacklist(monkeypatch, {})
+    fetch = FakeFetch(tmp_path)
+    fetch.load_models = lambda: ['ZZZ-9']
+    code, out, apply_calls, fetch, api = _run(tmp_path, fetch=fetch)
+    assert code == 0 and _status(out) == 'completed'
+    assert fetch.smoke_candidates[0][0]['model'] == 'ZZZ-9'
+
+
+def test_blacklisted_first_candidate_is_excluded(monkeypatch, tmp_path):
+    black_key = candidate_mod.canonical_model_key('UNKNOWN', 'M1')
+    _patch_candidate_blacklist(monkeypatch, {black_key: {'reason': 'stub'}})
+    fetch = FakeFetch(tmp_path)
+    code, out, apply_calls, fetch, api = _run(tmp_path, fetch=fetch)
+    assert code == 0 and _status(out) == 'completed'
+    assert fetch.smoke_candidates[0][0]['model'] == 'M2'
+
+
+def test_no_eligible_candidate_skips_with_zero_provider(monkeypatch, tmp_path):
+    _patch_candidate_blacklist(monkeypatch, {})
+    api = FakeGitHubApi()
+    fetch = FakeFetch(tmp_path)
+    fetch.load_models = lambda: []
+    out = []
+    apply_calls = []
+    contents = coord.GitHubContentsClient(CONFIG, api=api)
+
+    def factory(config, owner, now_fn):
+        return coord.CoordinatorClient(contents, owner, now=now_fn)
+
+    code = runner.run_stage(env=CONFIGURED_ENV, batch_mod=FakeBatch(ACTIVE_META),
+                            fetch_mod=fetch, client_factory=factory,
+                            now=lambda: 2_000_000, print_fn=out.append,
+                            apply_fn=lambda *a, **k: {'noop': False},
+                            repo_root=str(tmp_path))
+    assert code == 0 and _status(out) == 'skip-no-eligible-candidate'
+    assert fetch.smoke_calls == 0 and fetch.batch_calls == 0
+    assert fetch.REQUEST_STATS == {'token': 0, 'search': 0}
+    state = api.state()
+    assert state['status'] == 'idle' and state['callsMayHaveStarted'] is False
+    assert state['requestAttempts'] == {'token': 0, 'search': 0}
+
+
+def test_selection_failure_is_blocked_not_success_skip(monkeypatch, tmp_path):
+    def boom(**kwargs):
+        raise RuntimeError('malformed-dataset')
+
+    monkeypatch.setattr(candidate_mod, 'select_candidate', boom)
+    api = FakeGitHubApi()
+    fetch = FakeFetch(tmp_path)
+    out = []
+    contents = coord.GitHubContentsClient(CONFIG, api=api)
+
+    def factory(config, owner, now_fn):
+        return coord.CoordinatorClient(contents, owner, now=now_fn)
+
+    code = runner.run_stage(env=CONFIGURED_ENV, batch_mod=FakeBatch(ACTIVE_META),
+                            fetch_mod=fetch, client_factory=factory,
+                            now=lambda: 2_000_000, print_fn=out.append,
+                            apply_fn=lambda *a, **k: {'noop': False},
+                            repo_root=str(tmp_path))
+    assert code == 2 and _status(out) == 'blocked-candidate-selection'
+    assert fetch.smoke_calls == 0 and fetch.batch_calls == 0
+    state = api.state()
+    assert state['status'] == 'idle' and state['callsMayHaveStarted'] is False
+
+
+def test_unexpected_selection_result_is_blocked_not_success_skip(monkeypatch, tmp_path):
+    monkeypatch.setattr(candidate_mod, 'select_candidate',
+                        lambda **kwargs: (None, {'reason': 'unexpected'}))
+    api = FakeGitHubApi()
+    fetch = FakeFetch(tmp_path)
+    out = []
+    contents = coord.GitHubContentsClient(CONFIG, api=api)
+
+    def factory(config, owner, now_fn):
+        return coord.CoordinatorClient(contents, owner, now=now_fn)
+
+    code = runner.run_stage(env=CONFIGURED_ENV, batch_mod=FakeBatch(ACTIVE_META),
+                            fetch_mod=fetch, client_factory=factory,
+                            now=lambda: 2_000_000, print_fn=out.append,
+                            apply_fn=lambda *a, **k: {'noop': False},
+                            repo_root=str(tmp_path))
+    assert code == 2 and _status(out) == 'blocked-candidate-selection'
+    assert any('unexpected' in line for line in out)
+    assert fetch.smoke_calls == 0 and fetch.batch_calls == 0
+
+
+def test_winner_smoke_legal_no_price_proceeds_to_batch(monkeypatch, tmp_path):
+    """合法 no-price = API 健康：真 runner 應入 batch，唔當 smoke failure。"""
+    _patch_candidate_blacklist(monkeypatch, {})
+    fetch = FakeFetch(tmp_path)  # 預設 smoke_result：no-price ok=True
+    code, out, apply_calls, fetch, api = _run(tmp_path, fetch=fetch)
+    assert code == 0 and _status(out) == 'completed'
+    assert fetch.smoke_calls == 1 and fetch.batch_calls == 1
+    assert len(apply_calls) == 1 and api.state()['status'] == 'completed'
+
+
+def test_winner_smoke_structured_failure_needs_review_with_reason(monkeypatch, tmp_path):
+    _patch_candidate_blacklist(monkeypatch, {})
+    status_path = str(tmp_path / 'biggo-stage-status.json')
+    fetch = FakeFetch(tmp_path)
+    fetch.smoke_result = {
+        'reason': 'rate-limit', 'ok': False, 'reachable': True,
+        'responseValid': False, 'priceAvailable': False, 'token': 1, 'search': 1}
+    code, out, apply_calls, fetch, api = _run(tmp_path, fetch=fetch,
+                                              status_out=status_path)
+    assert code == 0 and _status(out) == 'needs-review'
+    assert fetch.batch_calls == 0 and apply_calls == []
+    remote = api.state()
+    assert remote['lastReviewReason'] == 'smoke-failed'
+    assert remote.get('snapshotHash') is None
+    with open(status_path, encoding='utf-8') as f:
+        record = json.load(f)
+    assert record['alert'] is True and record['rerun'] == 'prohibited'
+    assert record['reason'] == 'smoke-failed'
+    assert record['smokeReason'] == 'rate-limit'
+    assert record['requests'] == {'token': 1, 'search': 1}
+
+
+def test_winner_smoke_malformed_result_rejected(monkeypatch, tmp_path):
+    _patch_candidate_blacklist(monkeypatch, {})
+    fetch = FakeFetch(tmp_path)
+    fetch.smoke_result = {'ok': False}  # 缺必需 flags／reason／計數
+    code, out, apply_calls, fetch, api = _run(tmp_path, fetch=fetch)
+    assert code == 0 and _status(out) == 'needs-review'
+    assert fetch.batch_calls == 0 and apply_calls == []
+    assert api.state()['lastReviewReason'] == 'smoke-failed'
+
+
+def test_winner_smoke_explicit_false_structured_result_needs_review(monkeypatch, tmp_path):
+    _patch_candidate_blacklist(monkeypatch, {})
+    fetch = FakeFetch(tmp_path)
+    fetch.smoke_result = {
+        'reason': 'transport', 'ok': False, 'reachable': False,
+        'responseValid': False, 'priceAvailable': False, 'token': 1, 'search': 0}
+    code, out, apply_calls, fetch, api = _run(tmp_path, fetch=fetch)
+    assert code == 0 and _status(out) == 'needs-review'
+    assert fetch.batch_calls == 0 and apply_calls == []

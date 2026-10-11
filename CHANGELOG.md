@@ -433,6 +433,32 @@
   7/7 rc=0（15 項／18 節點）；隔離重建 preflight／build／guard 全 rc=0（facts 沿舊
   快照）；詳見 docs/STATUS.md §28.1。
 
+### 2026-10-11 GitHub BigGo smoke 動態候選遷移（未發布、未部署；實現切片）
+
+> Root92 有限切片：只喺隔離 GitHub 候選 worktree 實作；未 push／未 merge／未 deploy，
+> 未呼叫 BigGo／EMSD／provider，未改 coordinator／production／GitHub 狀態。治理
+> Registry、Schema、required 功能及 fail-closed 門禁不變。
+
+- **新增共享 selector** `biggo_candidate.select_candidate()`：由當前本地 eligible
+  dataset（canonical model identity＋`filter_active`＋黑名單）確定性揀一個 smoke
+  候選，唔靠 cached price、唔用固定候選清單；空 eligible 係明確 zero-provider skip。
+- **`fetch_biggo.run_smoke()` 結構化**：回 `ok／reason／reachable／responseValid／
+  priceAvailable／token／search／authFact`；合法空 list 或無匹配價 = API 健康
+  （ok=True），auth／rate-limit／transport／invalid-response = ok=False；payload
+  shape 驗證令 malformed 回應唔可以冒充 no-price；`run_force_batch` 內建 smoke
+  consumer 改為明示讀 `ok`，唔靠 dict truthiness。
+- **daily runner 收緊**：`scripts/biggo_stage_runner.py` 喺 intent／真實請求之前注入
+  動態候選，以 `_validate_smoke_result()` 嚴格驗證（缺欄／型別錯／矛盾事實一律
+  invalid→needs-review）；保留 CAS lease、write-ahead intent、cooldown／budget、
+  request caps 及 staged publication 全部原有保護。
+- **E2（本機、離線 container `--network none`）**：candidate／smoke／stage runner
+  focused `93 passed`；其餘 BigGo 回歸 `121 passed`；workflow／receipt／CLI
+  `64 passed`；完整 `pytest tests/` 於自足 clone `910 passed, 1 skipped`。全程零
+  provider 請求。舊「no-price = failure」預期改寫為用戶要求
+  （API 健康唔等於所有型號無價），未移除任何安全測試。
+- **限制**：未經受信任 CI（E3）／部署後驗證（E4）；legacy `SMOKE_CANDIDATES`
+  常數保留作兼容，但每日路徑唔再引用。
+
 ## [1.2.9] - 2026-09-24
 
 > 發布事實（2026-09-24 回讀）：tag `v1.2.9` → commit

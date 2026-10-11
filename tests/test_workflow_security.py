@@ -300,7 +300,12 @@ def test_biggo_stage_runner_local_stage_first_and_no_auto_rerun():
     # 本地階段檢查（inactive → 零 coordinator mutation）必須喺 acquire 之前
     assert src.index("'skip-not-active'") < src.index('client.acquire(')
     # 缺 coordinator 配置 → 安全跳過、零 BigGo 呼叫（保留快照）
-    assert src.index('skip-coordinator-not-configured') < src.index('run_smoke()')
+    assert src.index('skip-coordinator-not-configured') < src.index('fetch_mod.run_smoke(')
+    # 動態候選：selector 要喺 intent／真實請求之前，且唔可以用 legacy 固定清單
+    assert 'candidate_mod.select_candidate(' in src
+    assert 'SMOKE_CANDIDATES' not in src
+    assert src.index('candidate_mod.select_candidate(') \
+        < src.index('mark_calls_may_have_started(')
     # completed idempotent；needs_review 禁止自動重跑
     assert "result == 'completed-idempotent'" in src
     assert "result == 'needs-review'" in src and 'rerun' in src

@@ -13,11 +13,12 @@
      因冇共享 window usage ledger，直接 fail-closed（`blocked-quota-window-unsupported`）
      ── 零 BigGo、零 coordinator mutation、獨立 alert workflow 紅；唔會用 stage-local 80%
      冒充 provider window；
-  5. winner：cooldown／budget → **write-ahead intent**（CAS 持久化
-     `callsMayHaveStarted`，失敗即禁止請求）→ bounded smoke → batch（staged，
-     零本地寫入）→ publish v2 bundle（base/new snapshot＋stage-result＋manifest）→
-     CAS `completed` → 最後才 local apply；任何 publish 後失敗 → needs_review／
-     publish-uncertain，唔 apply；
+  5. winner：cooldown／budget → dynamic smoke candidate（由當前 eligible dataset 揀；
+     空 eligible = zero-provider skip）→ **write-ahead intent**（CAS 持久化
+     `callsMayHaveStarted`，失敗即禁止請求）→ bounded smoke（嚴格結構化結果契約）→
+     batch（staged，零本地寫入）→ publish v2 bundle（base/new snapshot＋stage-result＋
+     manifest）→ CAS `completed` → 最後才 local apply；任何 publish 後失敗 →
+     needs_review／publish-uncertain，唔 apply；
   6. winner-intent（過期 lease 但可能有呼叫）：只可 adopt 完整可驗證 bundle
      （零 BigGo）再 CAS completed；冇完整 bundle → 只可 needs_review；
   7. completed-idempotent：import v2 bundle＋apply；legacy snapshot-only bundle
@@ -51,6 +52,7 @@ import biggo_coordinator as coord_mod  # noqa: E402
 import biggo_apply as _apply_mod  # noqa: E402
 from biggo_canonical import canonical_json_bytes, sha256_id  # noqa: E402
 from biggo_limiter import RequestLimiter  # noqa: E402
+import biggo_candidate as candidate_mod  # noqa: E402
 
 PRICE_BATCH_DAYS = _batch_utils.PRICE_BATCH_DAYS
 DEFAULT_HEARTBEAT_INTERVAL = 30.0  # 秒；client.maybe_renew() 內部再按 5 分鐘節流
@@ -172,6 +174,47 @@ def _force_requested(env, force):
 def _force_cycle_id(now_fn):
     stamp = datetime.datetime.fromtimestamp(int(now_fn()), datetime.timezone.utc)
     return 'force-' + stamp.strftime('%Y-%m-%d')
+
+
+_SMOKE_REASONS_OK = ('priced',)
+_SMOKE_REASONS_NO_PRICE = ('no-price',)
+_SMOKE_REASONS_BLOCK = ('auth', 'rate-limit', 'transport', 'invalid-response',
+                        'blocked-test-mode', 'blocked-limit', 'aborted', 'no-candidates',
+                        'smoke-invalid-result')
+
+
+def _validate_smoke_result(raw):
+    """嚴格 smoke 結果契約；矛盾／型別錯／缺欄一律 invalid（needs-review）。"""
+    if isinstance(raw, bool):  # 明確 legacy adapter
+        return raw, ('priced' if raw else 'transport'), {'legacy': True}
+    if not isinstance(raw, dict):
+        return False, 'smoke-invalid-result', {}
+    required = ('reason', 'ok', 'reachable', 'responseValid', 'priceAvailable',
+                'token', 'search')
+    if any(k not in raw for k in required):
+        return False, 'smoke-invalid-result', raw
+    if not isinstance(raw['ok'], bool) or not isinstance(raw['reachable'], bool) \
+            or not isinstance(raw['responseValid'], bool) \
+            or not isinstance(raw['priceAvailable'], bool):
+        return False, 'smoke-invalid-result', raw
+    for k in ('token', 'search'):
+        if isinstance(raw[k], bool) or not isinstance(raw[k], int) or raw[k] < 0:
+            return False, 'smoke-invalid-result', raw
+    if raw['reason'] not in _SMOKE_REASONS_OK + _SMOKE_REASONS_NO_PRICE + _SMOKE_REASONS_BLOCK:
+        return False, 'smoke-invalid-result', raw
+    if raw['reason'] in _SMOKE_REASONS_OK + _SMOKE_REASONS_NO_PRICE:
+        if not (raw['ok'] and raw['reachable'] and raw['responseValid']):
+            return False, 'smoke-invalid-result', raw
+        if raw['reason'] == 'priced' and not raw['priceAvailable']:
+            return False, 'smoke-invalid-result', raw
+        if raw['reason'] == 'no-price' and raw['priceAvailable']:
+            return False, 'smoke-invalid-result', raw
+    else:
+        if raw['ok'] or raw['priceAvailable']:
+            return False, 'smoke-invalid-result', raw
+        if raw['responseValid']:
+            return False, 'smoke-invalid-result', raw
+    return raw['ok'], raw['reason'], raw
 
 
 def _record_evidence(client, fetch_mod, delta):
@@ -454,6 +497,31 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
                  searchUsed=budget['searchUsed'], effectiveSearchCap=budget['effectiveSearchCap'])
             return 0
 
+        # ---- 4b. dynamic smoke candidate from the current eligible dataset.
+        # 用共享 selector（既有 canonicalization／active eligibility／blacklist），
+        # 唔靠 cached price、亦唔用 fetch_biggo 嘅 legacy 固定候選清單。空 eligible 係本地
+        # skip（零 BigGo、無 API 判決）；selector 失敗係非成功阻斷，唔會映射成 skip。
+        try:
+            candidate, select_info = candidate_mod.select_candidate(
+                models=fetch_mod.load_models())
+        except Exception as e:  # noqa: BLE001 selection failure is non-success
+            client.abort_without_calls(clear_intent=True)
+            emit('blocked-candidate-selection', cycle=cycle_id, stage=stage_no,
+                 error=type(e).__name__)
+            return 2
+        if candidate is None:
+            empty_reason = (select_info or {}).get('reason') \
+                if isinstance(select_info, dict) else None
+            client.abort_without_calls(clear_intent=True)
+            if empty_reason == 'no-active-eligible-model':
+                emit('skip-no-eligible-candidate', cycle=cycle_id,
+                     stage=stage_no, reason=empty_reason)
+                return 0
+            emit('blocked-candidate-selection', cycle=cycle_id, stage=stage_no,
+                 error='unexpected-selection-result',
+                 selectionReason=empty_reason)
+            return 2
+
         # ---- 5. write-ahead intent：失敗即禁止任何 BigGo 請求 ----
         try:
             client.mark_calls_may_have_started()
@@ -480,18 +548,24 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
             smoke_delta = {'token': 0, 'search': 0}
             batch_delta = {'token': 0, 'search': 0}
 
-            # 6a. bounded smoke（最多 1 個 product-search request）
+            # 6a. bounded smoke（最多 1 個 product-search request；只探測動態候選）
             before = _stat(getattr(fetch_mod, 'REQUEST_STATS', {}))
             smoke_ok = False
+            smoke_info = None
             try:
-                smoke_ok = bool(fetch_mod.run_smoke())
+                raw_smoke = fetch_mod.run_smoke([candidate])
+                smoke_ok, _reason, smoke_info = _validate_smoke_result(raw_smoke)
             except Exception as e:  # noqa: BLE001 - smoke 例外一律視為失敗
                 print_fn(f'  ⚠️ smoke 例外：{type(e).__name__}')
+                smoke_ok, smoke_info = False, {
+                    'reason': 'transport', 'ok': False, 'reachable': False,
+                    'responseValid': False, 'priceAvailable': False}
             after = _stat(getattr(fetch_mod, 'REQUEST_STATS', {}))
             smoke_delta = _delta(after, before)
             _record_evidence(client, fetch_mod, smoke_delta)
             record['requests'] = {'token': smoke_delta['token'],
                                   'search': smoke_delta['search']}
+            record['smoke'] = smoke_info
 
             if heartbeat.lost:
                 calls = 'made' if smoke_delta['token'] + smoke_delta['search'] else 'none'
@@ -504,9 +578,12 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
                 return 0
 
             if not smoke_ok:
+                smoke_reason = (smoke_info or {}).get('reason') \
+                    or getattr(fetch_mod, 'LAST_SMOKE_REASON', None)
                 if smoke_delta['token'] + smoke_delta['search'] > 0:
                     _needs_review(client, emit, cycle_id, stage='smoke',
-                                  reason='smoke-failed')
+                                  reason='smoke-failed',
+                                  extra={'smokeReason': smoke_reason} if smoke_reason else None)
                 else:
                     _safe_abort(client, print_fn, emit, cycle_id, stage_no,
                                 reason='skip-smoke-no-calls')
