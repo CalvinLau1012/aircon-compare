@@ -300,7 +300,12 @@ def test_biggo_stage_runner_local_stage_first_and_no_auto_rerun():
     # 本地階段檢查（inactive → 零 coordinator mutation）必須喺 acquire 之前
     assert src.index("'skip-not-active'") < src.index('client.acquire(')
     # 缺 coordinator 配置 → 安全跳過、零 BigGo 呼叫（保留快照）
-    assert src.index('skip-coordinator-not-configured') < src.index('run_smoke()')
+    assert src.index('skip-coordinator-not-configured') < src.index('fetch_mod.run_smoke(')
+    # 動態候選：selector 要喺 intent／真實請求之前，且唔可以用 legacy 固定清單
+    assert 'candidate_mod.select_candidate(' in src
+    assert 'SMOKE_CANDIDATES' not in src
+    assert src.index('candidate_mod.select_candidate(') \
+        < src.index('mark_calls_may_have_started(')
     # completed idempotent；needs_review 禁止自動重跑
     assert "result == 'completed-idempotent'" in src
     assert "result == 'needs-review'" in src and 'rerun' in src
@@ -705,3 +710,109 @@ def test_daily_rebuild_biggo_runner_real_inactive_path_no_force_or_smoke():
     # force intent 只可以經 env 交畀 runner；rebuild 矛盾喺 provider 前已 fail-closed。
     assert biggo['env']['AIRCON_BIGGO_FORCE_STAGE'] == \
         '${{ github.event.inputs.force_price_batch }}'
+
+
+# ---------------------------------------------------------------- biggo-diagnostic
+
+def _diagnostic_steps():
+    wf = _load('biggo-diagnostic.yml')
+    steps = {s.get('name'): s for s in wf['jobs']['diagnostic']['steps']
+             if isinstance(s, dict)}
+    return wf, steps
+
+
+def test_biggo_diagnostic_manual_master_only_no_schedule_or_publish():
+    wf, steps = _diagnostic_steps()
+    on = wf[True] if True in wf else wf['on']
+    assert list(on) == ['workflow_dispatch'], '只可以人手 workflow_dispatch'
+    inputs = on['workflow_dispatch']['inputs']
+    assert inputs['execute_provider']['type'] == 'boolean'
+    assert inputs['execute_provider']['default'] is False
+    assert wf['jobs']['diagnostic']['if'] == "github.ref == 'refs/heads/master'"
+    assert wf['permissions'] == {'contents': 'read'}
+    assert wf['jobs']['diagnostic']['permissions'] == {'contents': 'read'}
+    assert wf['concurrency'] == {'group': 'daily-production', 'cancel-in-progress': False}
+    text = _text('biggo-diagnostic.yml')
+    dumped = yaml.safe_dump(wf, allow_unicode=True)
+    assert 'cron' not in text and 'schedule' not in dumped, '唔可以有自動排程'
+    assert 'git push' not in text
+    assert 'deploy-pages' not in text and 'upload-pages' not in text
+    assert 'environment:' not in text and 'contents: write' not in text
+    for step in steps.values():
+        uses = step.get('uses')
+        if isinstance(uses, str):
+            assert uses in PINNED or uses in LOCAL_REUSABLE, uses
+
+
+def test_biggo_diagnostic_preview_has_no_secrets_and_execute_env_only_secrets():
+    _wf, steps = _diagnostic_steps()
+    preview = steps['本地 preview（零 coordinator／零 provider）']
+    assert 'secrets.' not in str(preview)
+    assert 'env' not in preview, 'preview 唔需要任何 secrets'
+    assert '--execute' not in str(preview.get('run', ''))
+    execute = steps['Bounded live probe（1 token + 1 search；只在 execute_provider=true）']
+    assert 'inputs.execute_provider' in str(execute['if'])
+    env = execute['env']
+    for name in ('BIGGO_CLIENT_ID', 'BIGGO_CLIENT_SECRET',
+                 'AIRCON_BIGGO_COORDINATOR_REPO', 'AIRCON_BIGGO_COORDINATOR_TOKEN',
+                 'AIRCON_BIGGO_COORDINATOR_BRANCH',
+                 'AIRCON_BIGGO_COORDINATOR_STATE_PATH',
+                 'AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR',
+                 'AIRCON_BIGGO_PROVIDER_QUOTA_LIMIT',
+                 'AIRCON_BIGGO_PROVIDER_WINDOW_END'):
+        assert env.get(name) == '${{ secrets.' + name + ' }}', name
+    run = execute['run']
+    assert '--execute' in run
+    assert '${{' not in run, 'run 命令唔可以 shell-interpolate 任何 inputs／secrets 表達式'
+    assert 'github.event.inputs' not in run
+
+
+def test_biggo_diagnostic_pinned_actions_runner_and_sanitized_summary():
+    text = _text('biggo-diagnostic.yml')
+    assert RUNNER_PIN in text
+    assert 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' in text
+    assert 'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97' in text
+    _wf, steps = _diagnostic_steps()
+    summary = steps['寫入 sanitized summary（always）']
+    assert str(summary['if']).startswith('always()')
+    run = summary['run']
+    assert 'biggo-diagnostic-preview.md' in run
+    assert 'biggo-diagnostic-execute.md' in run
+    assert 'biggo-diagnostic-coordinator-check.md' in run
+    assert 'cat' in run
+    assert 'python scripts/biggo_smoke_diagnostic.py' in text
+    # 現有 daily workflow 完全不變（唔可以加入 diagnostic 或改其 trigger）。
+    daily = _text('daily-update.yml')
+    assert 'biggo-diagnostic' not in daily
+    assert 'biggo_smoke_diagnostic' not in daily
+
+
+def test_biggo_diagnostic_check_coordinator_input_reject_and_readonly_step():
+    wf, steps = _diagnostic_steps()
+    on = wf[True] if True in wf else wf['on']
+    inputs = on['workflow_dispatch']['inputs']
+    assert inputs['check_coordinator']['type'] == 'boolean'
+    assert inputs['check_coordinator']['default'] is False
+    reject = steps['拒絕矛盾 inputs（check_coordinator 同 execute_provider）']
+    reject_if = str(reject['if'])
+    assert 'inputs.check_coordinator' in reject_if
+    assert 'inputs.execute_provider' in reject_if
+    check = steps['Read-only coordinator check（恰好 1 次 GET；只在 check_coordinator=true）']
+    assert 'inputs.check_coordinator' in str(check['if'])
+    env = check['env']
+    assert set(env) == {'AIRCON_BIGGO_COORDINATOR_REPO',
+                        'AIRCON_BIGGO_COORDINATOR_TOKEN',
+                        'AIRCON_BIGGO_COORDINATOR_BRANCH',
+                        'AIRCON_BIGGO_COORDINATOR_STATE_PATH'}
+    for name in ('BIGGO_CLIENT_ID', 'BIGGO_CLIENT_SECRET'):
+        assert name not in env, 'check 模式唔可以注入 provider 憑證'
+    for name, value in env.items():
+        assert value == '${{ secrets.' + name + ' }}', name
+    run = check['run']
+    assert '--check-coordinator' in run
+    assert '${{' not in run, 'run 命令唔可以 shell-interpolate 任何 inputs／secrets 表達式'
+    # Preview 仍然零 secrets；execute 仍然只靠 execute_provider gate。
+    preview = steps['本地 preview（零 coordinator／零 provider）']
+    assert 'env' not in preview and 'secrets.' not in str(preview)
+    execute = steps['Bounded live probe（1 token + 1 search；只在 execute_provider=true）']
+    assert 'inputs.execute_provider' in str(execute['if'])

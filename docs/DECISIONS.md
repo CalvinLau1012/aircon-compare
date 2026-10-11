@@ -1132,3 +1132,66 @@
 ### D32 · 2026-10-01 完成證據追加
 
 PR #23 最終 head `a8e5444` 已通過 GitHub CI 並 merge；trusted rebuild `36817792681`、Pages `36817991532` 全綠，独立 E4 26/26 pass。新版日期卡片與 README／版本索引已發布，BigGo token／search 均 0，正式版本維持 v1.2.9。人類指定「對比目的」標題及引用已同步；歷史只按明確授權更正這兩處格式，其他原文保留。詳細 OBSERVED／UNKNOWN 見 STATUS §29.5。
+
+## D33 · 2026-10-11：Bounded GitHub BigGo 手動診斷（shared lease＋reserved upper bound；append-only）
+
+- **日期**：2026-10-11
+- **狀態**：已實作候選（本機 E2）；未 push／未 merge／未 deploy／未 dispatch；交獨立驗收
+- **背景**：GitHub daily 嘅 BigGo 路徑需要一個可重複、人手觸發、有界嘅連線診斷：每日 runner 嘅 stage bundle 流程過重，而且共享憑證下任何 provider 呼叫都必須經同一個 coordinator lease／budget。使用者要求手動診斷必須重用既有模組（`biggo_candidate.select_candidate`、`fetch_biggo.run_smoke`、`RequestLimiter`、coordinator state／lease），唔可以另建框架或繞過 gate。
+- **選項**：
+  - A：獨立意圖檔＋本機 replay guard（ds87 參考實作）——否決：喺 disposable GitHub runner 上唔夠 durable，而且 ordinary `acquire` 會重建 state、可能清走一些 business 欄位；
+  - B（採用）：同一 coordinator state 上嘅 narrowly scoped CAS reservation：deep copy 現有 remote state，一次寫入同時 acquire lease、加 reserved upper bound（1 token＋1 search）入 `requestAttempts`、記 diagnostic marker；business 欄位原樣保留；唔 set `callsMayHaveStarted`；
+  - C：另開新 cycle／stage 或獨立 counter——否決：會增加新身份／重置 counter，同共享 stage budget 語義衝突。
+- **決策**：採 B。實作：
+  1. `biggo_smoke_result.py` 抽出嚴格結構化 smoke 結果契約；`scripts/biggo_stage_runner._validate_smoke_result()` 保留兼容 adapter 指向共享實作；每日行為不變。
+  2. `scripts/biggo_smoke_diagnostic.py`：預設 preview（零 coordinator／零 provider）；`--execute` preflight 要求 run identity、full provider credentials、本地 active stage/workload、完整 coordinator 配置、remote state 同 cycle/stage 相容；缺 remote state 一律 blocked（唔 bootstrap）；provider quota/window 配置 blocked-unsupported。
+  3. Diagnostic owner 綁 workflow run＋run attempt（`aircon-diag-<runId>-<attempt>`）；實際 provider 階段限制 1 token＋1 search（`RequestLimiter` 1／1、`run_smoke` 8 秒、無 retry）；每個 request phase 前經 abort hook 核實 lease；redirect replay 停用；limiter／abort／opener 用完還原。
+  4. **Reserved vs actual**：`requestAttempts` 係請求前寫入嘅 durable reserved upper bound，唔會事後再加／減；實際 delta 只入 marker `actual` 同報告。crash 後 ordinary same-stage takeover 會保留 attempts，唔會變成免費 retry；同一 stage 之後嘅 diagnostic 因 token 額已預留而 blocked。
+  5. Finalize 只 release 今次 lease（CAS＋bounded CAS 重試），保留 business status／cycle-stage／snapshot／bundle／intent；403／429 用既有 `apply_cooldown`；CAS 衝突耗盡、寫入歧義、cleanup 失敗一律 explicit blocked／uncertain（非零），唔會清他人 lease。
+  6. `.github/workflows/biggo-diagnostic.yml`：人手 `workflow_dispatch` only、trusted master only、`execute_provider` boolean 預設 false、同 daily production concurrency group（cancel-in-progress false）；preview 零 Secrets；execute 才經 env 取現有 Secrets；pinned Actions／ubuntu-24.04／Python 3.12；contents: read；冇 push／deploy／publish／schedule。
+- **原因**：共享憑證下「先 durable 預留、後呼叫」比事後記帳安全；CAS 一次寫入避免半套狀態；reserved upper bound 令 crash／disposable runner 都唔會獲得額外 provider 額度；保留 business 欄位同唔動 `callsMayHaveStarted` 避免污染 stage recovery 語義。
+- **後果（分類）**：
+  - `REQUIREMENT`：Metadata Schema、required 功能、成功標準、fail-closed 門禁、每日 runner 行為、BigGo provider 規則全部不變；診斷只係 additive、人手觸發。
+  - `OBSERVED / E2`：見 `docs/STATUS.md` §30；完整回歸命令／數量喺外部交付報告（同一 commit 隔離 clone）。
+  - `UNKNOWN`：E3 trusted CI、實際 workflow dispatch、真實 provider 呼叫、active stage 同時競爭未執行。
+  - `BOUNDARY`：未 push／merge／deploy／dispatch；未呼叫 BigGo／EMSD；未改 Secrets／metadata／VERSION／價格快照／queue／私人 repo。
+- **回滾**：revert 本階段 commit（共享 validator、diagnostic、workflow、測試、docs）即回復原本；coordinator state schema 無變（只加 optional `diagnosticReservation` 欄位，舊 reader 可以忽略），無資料遷移。
+
+### D33 · 2026-10-11 契約返修（append-only；不刪改上文）
+
+- **背景**：Root93（`06b921c`）經 Root 獨立審查未獲接受，external contract file 重現兩個缺口：（1）diagnostic 經 `validate_smoke_result()` 接受 legacy bool，`True` 會變 `healthy-with-price`／exit 0，`False` 變 `transport`；（2）provider 階段無條件把 limiter／abort hook 重設為 `None`，未還原呼叫方原有 hook。
+- **決定（兩個窄修，無新功能／無新框架）**：
+  1. 共享 `biggo_smoke_result.validate_smoke_result()` 加 `allow_legacy_bool` 參數（預設 `True`）。每日 stage runner 兼容 adapter 不變；diagnostic 邊界傳 `allow_legacy_bool=False`，任何非 dict（含 `True`／`False`）都回 `(False, 'smoke-invalid-result', {})`，狀態 `probe-invalid-response`、exit 1。
+  2. `fetch_biggo` 新增 `get_abort_check()`（同現有 `get_request_limiter()` 對稱）；diagnostic provider 階段先捕捉 preexisting limiter／abort，與 previous opener 一併在 `finally` 原樣還原，覆蓋成功、provider 例外及 SystemExit／termination。Fake fetch 以屬性 fallback，保持測試可繞。
+- **原因**：Root93 原設計要求 diagnostic 拒絕非結構化結果、且「Restore any module-global limiter／abort hooks after the call」；本返修只收緊呢兩點，唔動 lease／reservation／budget／cooldown／fail-closed 語義。
+- **後果（分類）**：
+  - `REQUIREMENT`：daily runner bool 兼容、Metadata Schema、required 功能、成功標準、門禁、workflow 行為全部不變。
+  - `OBSERVED / E2`：Root external contract tests（`desktop-r25f-root93-review/test_review_contract.py`，原檔不變）3 passed；focused 205 passed（見 `docs/STATUS.md` §30.1 及外部 ds94 REPORT）。
+  - `UNKNOWN`：E3／E4、真實 provider／coordinator、workflow dispatch 仍未執行。
+  - `BOUNDARY`：未 push／merge／deploy／dispatch；未呼叫真實 BigGo／EMSD；未改 Secrets／metadata／VERSION／價格快照／queue／私人 repo；Root93 原始 failed-test 證據（`desktop-r25f-root93-review/`）保留不變。
+- **回滾**：revert 本返修 commit 即回復 Root93 行為（會重新引入兩個缺口）；`allow_legacy_bool` 參數與 `get_abort_check()` 皆 additive，無資料遷移。
+
+## D34 · 2026-10-11：診斷內建 read-only coordinator check（Root96；append-only）
+
+- **日期**：2026-10-11
+- **狀態**：已實作候選（本機 E2）；未 push 新 commit／未改 PR／未 dispatch／未部署；交獨立驗收
+- **背景**：現有 `biggo-diagnostic` 只有純本地 preview（零 Secrets／HTTP）或 `--execute`（BigGo 呼叫＋coordinator CAS reservation）。GitHub daily 恢復前需要嘅只係「共享 coordinator 配置喺 runtime 可讀」呢一項事實；唔應該用會寫入 lease／budget 或呼叫 provider 嘅 `--execute` 代替，亦唔需要讀取 Secret 明文或比對 PAT 字串。Root94 已由 server 端計出 coordinator identity digest，但 GitHub runtime 嘅有效身份仍未現場核對。
+- **選項**：
+  - A：另建新 workflow／獨立 checker service——否決：超出最小切片，會多一套信任邊界；
+  - B（採用）：喺現有 `biggo_smoke_diagnostic.py` 加互斥 `--check-coordinator`，重用 `CoordinatorConfig.from_env` 同 `GitHubContentsClient.read_state`，恰好一次 bounded GET；
+  - C：用 `--execute` 順便核對——否決：會 acquire lease、預留 token／search、可能呼叫 provider，語義係 business readiness 而非 coordinator readability。
+- **決策**：採 B，另加 workflow boolean input 同 read-only step：
+  1. CLI `--check-coordinator` 與 `--execute` argparse 互斥；預設仍然純本地 preview；`run_diagnostic()` 亦自行拒絕兩個 mode 同時 true（zero traffic）。
+  2. Check mode 唔需要 `GITHUB_RUN_ID`、本地 active stage、active-cycle 相容或 BigGo client 憑證；只要求完整有效 coordinator 配置（`AIRCON_BIGGO_COORDINATOR_REPO`＋`TOKEN`；branch／state path 用既有 `main`／`coordinator/biggo-state.json` 預設）。缺／partial／malformed config 一律零 HTTP fail closed。
+  3. 配置有效後恰好一次 `read_state` GET（`_CappedApi` cap=1）；停用 redirect replay（`_NoRedirect`）但保留環境／已配置 proxy（`_harden_transport(disable_proxy=False)`），previous `urllib.request._opener` 喺 all-exit `finally` 原樣還原；零 PUT／lease／CAS／bootstrap／snapshot／reservation／provider。
+  4. 404／403／429／其他非 200／transport／malformed Contents／JSON／schema 全部有獨立非零 status；只輸出固定 sanitized reason，唔含 exception message 或 raw body。
+  5. `biggo_coordinator.coordinator_identity_digest()`（v1，`env-names-json-sort-keys-v1`）：`sha256(json.dumps({AIRCON_BIGGO_COORDINATOR_REPO:repo, AIRCON_BIGGO_COORDINATOR_BRANCH:branch, AIRCON_BIGGO_COORDINATOR_STATE_PATH:state_path}, sort_keys=True).encode())`；純函數、唔含 token／secret／snapshot／raw response；Root 可以喺 server 用同一表示法計出期望 digest 作無 API 核對。`CoordinatorApiError` 加 additive `status` attribute 以區分 HTTP status。
+  6. 報告：mode `coordinator-check`、status `coordinator-read-ok`、`readOnly=true`、planned／actual token=0／search=0、`coordinatorOps<=1`、identity digest／version、`readSuccess` booleans，同 `notProven`（write permission／token equality／BigGo connectivity／daily stage compatibility）；summary 明示呢個讀取唔等於 BigGo healthy 或 daily-ready。
+  7. `.github/workflows/biggo-diagnostic.yml` 只加 `check_coordinator` boolean（預設 false）、矛盾 inputs reject step（喺任何 Secrets／遠端操作之前）、只注入現有 coordinator Secrets 嘅 read-only step（冇 BigGo clientID／secret），同 summary 收集；schedule／push／deploy／publish／concurrency／trusted master gate 全部不變。
+- **原因**：共享互斥嘅前置條件係兩端有效 repo／branch／state path 一致同各自憑證可存取；一個恰好一次 GET 嘅可讀性證據已足夠決定係否進一步評估 daily 恢復，且唔會污染 shared lease／budget。Digest 令 GitHub runtime 同 server 配置可作無秘密核對。
+- **後果（分類）**：
+  - `REQUIREMENT`：`--execute`／preview 行為、strict bool rejection、hook restoration、lease／reservation／budget／cooldown、Metadata Schema、required 功能、成功標準、fail-closed 門禁、daily runner 全部不變；`--check-coordinator` 係 additive、人手觸發。
+  - `OBSERVED / E2`：Root external contract file（`desktop-r25f-root93-review/test_review_contract.py`，原檔不變）3 passed；affected validator／diagnostic／coordinator／daily runner／workflow＋adjacent BigGo 套件 298 passed；adjacent candidate／limiter 18 passed；CLI／workflow／fake HTTP 測試覆蓋 one-GET、zero write／provider、digest、sanitization、redirect 不 replay、opener 還原（證據見 `evidence/desktop-r25f-ds96/`）。
+  - `UNKNOWN`：E3 trusted CI（新 commit 仍未經 Root 上傳／PR CI）、真實 GitHub Actions runtime one-GET check、真實 Secret 配置 digest 核對、E4 部署全部未執行。
+  - `BOUNDARY`：未 push／未改 PR／未 merge／未 deploy／未 dispatch；未呼叫真實 BigGo／EMSD／GitHub API；未讀 Secrets 明文；未改 `metadata.json`／`VERSION`／`index.html`／PDF／價格快照／queue／黑名單／shared coordinator state；未 claim c5cdb8e 嘅 CI 覆蓋新 commit。
+- **回滾**：revert 本階段 commit 即可移除 check mode、workflow input／step 同 digest helper；coordinator state schema、`--execute` 語義與現有資料無變，無遷移。Root94／Root95 已驗收嘅 c5cdb8e 行為不受影響。

@@ -35,6 +35,85 @@
 
 ## [Unreleased]
 
+### 2026-10-11 GitHub BigGo bounded 手動診斷候選（未發布、未部署）
+
+- **Added**：`scripts/biggo_smoke_diagnostic.py`（預設 `preview`：零 coordinator／零
+  provider，只報 selection＋planned 1 token／1 search／19 ops cap；只有 `--execute` 先做
+  bounded live path）＋ `.github/workflows/biggo-diagnostic.yml`（人手 `workflow_dispatch`
+  only、trusted master only、同 daily production concurrency group、可選
+  `execute_provider` boolean 預設 false）。
+- **Changed**：抽出共享 `biggo_smoke_result.validate_smoke_result()`；
+  `scripts/biggo_stage_runner.py` 保留 `_validate_smoke_result()` 兼容 adapter 並改為
+  delegate，行為不變（合法空結果／no-price 仍係健康，矛盾 dict 仍 invalid）。
+- **Safety**：diagnostic 同 daily 用同一個 coordinator state file／lease；以 deep copy
+  現有 remote state 一次 CAS 寫入同時 acquire lease、記 diagnostic marker、預留 durable
+  upper bound（`requestAttempts` +1 token ＋1 search）。business cycle/stage、snapshot／
+  bundle refs、`callsMayHaveStarted`、status 一律保留；provider 只用 1 次 auth＋1 次
+  search（8 秒 timeout、無 retry）；每個 request phase 前核實 lease；redirect 停用；
+  403／429 用既有 helper 記 factual cooldown；finalize 只 release 今次 lease，唔會清
+  他人 lease；任何 CAS／finalize 歧義都係 explicit uncertain（非零），唔會靜靜當成功。
+- **Accounting**：`requestAttempts` 係 **reserved upper bound**（請求前加、唔會事後再加／
+  減）；實際觀察到嘅 token/search delta 只記錄喺 diagnostic marker `actual` 同報告，兩者
+  分開。失敗 auth 可能用咗 token 但冇 search，reserved search 仍佔共享上限（保守）。
+- **Evidence**（本機 E2）：新 diagnostic／validator 65 passed；affected BigGo／workflow
+  套件 313 passed；完整回歸數字見外部交付 `REPORT.md`（同一 commit 隔離 clone）。
+- **Boundary**：未 push／未 merge／未 deploy／未 dispatch workflow／未呼叫真實 BigGo／
+  EMSD；產品 VERSION、metadata、`index.html`、PDF、價格快照、queue、黑名單不變。
+
+### 2026-10-11 GitHub BigGo bounded 手動診斷契約返修（Root93 review；append-only）
+
+> Root93（`06b921c`）經獨立審查**未獲接受**：兩個契約缺口（legacy bool 被診斷接受、
+> provider 階段把既有 limiter／abort hook 清成 `None`）已由 Root 以 external contract
+> file 重現（3 failed）。本節只追加修正記錄，唔改寫上面 Root93 原文。
+
+- **Defect 1（legacy bool 邊界）**：`validate_smoke_result()` 加 `allow_legacy_bool`
+  參數；diagnostic 以 `allow_legacy_bool=False` 呼叫，任何非 dict（包括 `True`／`False`）
+  一律 `(False, 'smoke-invalid-result', {})` → `probe-invalid-response`、exit 1；每日
+  stage runner 相容 adapter 保持預設，bool adapter 行為完全不變。
+- **Defect 2（hook 還原）**：provider 階段先捕捉診斷前已存在嘅 request limiter／abort
+  hook（新增 `fetch_biggo.get_abort_check()`；fake 以屬性 fallback），連同 previous
+  opener 在 `finally` **原樣還原**；成功、provider 例外、SystemExit／termination 路徑
+  全部覆蓋，唔再清成 `None`，亦保留原本 transport／cap／guard 行為。
+- **Evidence**（本機 E2）：Root external 3 contract tests 於原檔不變下全部 pass；
+  focused validator＋diagnostic＋daily runner＋coordinator＋workflow **205 passed**。
+  Root93 已跑 full suite，本輪兩個窄修不重複 full suite。
+- **邊界保留**：lease／reservation／budget／cooldown／no-progress／no-secrets guards
+  全部保留；未 push／未 deploy／未 dispatch；未呼叫真實 provider／coordinator；
+  `models_data.VERSION`、`metadata.json`、`index.html`、PDF、價格快照、queue 不變。
+
+### 2026-10-11 診斷內建 read-only coordinator check（Root96；未發布、未部署）
+
+- **Added**：`scripts/biggo_smoke_diagnostic.py --check-coordinator`（同 `--execute`
+  互斥；預設仍係零流量 preview）。完整有效 coordinator 配置後恰好一次
+  `GitHubContentsClient.read_state` GET；唔需要 run identity、本地 active stage、
+  active-cycle 相容或 BigGo client 憑證。零 PUT／lease／CAS／bootstrap／snapshot／
+  reservation／provider。
+- **Added**：`biggo_coordinator.coordinator_identity_digest()` v1（表示法
+  `env-names-json-sort-keys-v1`）：只 hash 有效 repo／branch／state path，唔包含
+  token／secret／snapshot／raw response；Root 可喺 server 用同一表示法無 API 計出
+  期望 digest 作核對。報告只出 digest／version，唔出 raw private repo／path。
+- **Changed**：`CoordinatorApiError` 加 additive `status` attribute，用嚟喺 check
+  模式區分 403／429／其他 HTTP status；message 同既有行為不變。
+- **Safety**：缺／partial／malformed config 零 HTTP；404／403／429／非 200／
+  transport／malformed Contents／JSON／schema 全部有獨立非零 status，恰好 ≤1 GET、
+  零寫入；redirect 不 replay，但保留環境 proxy；previous `urllib.request._opener`
+  喺所有退出路徑原樣還原。報告有 `readOnly=true`、token／search 0、
+  `coordinatorOps<=1`、`readSuccess` facts 同 `notProven`；讀到 state 唔代表
+  write permission、token 相等、BigGo 連線或 daily stage 相容。
+- **Workflow（只改現有 `biggo-diagnostic.yml`）**：新增 `check_coordinator` boolean
+  （預設 false）、矛盾 inputs reject step（早於任何 Secrets／遠端操作）、只讀 step
+  只注入現有 coordinator repo／token／branch／state-path Secrets（冇 BigGo clientID／
+  secret），summary 收集加入 check 輸出；trusted master gate、preview 零 Secrets、
+  `--execute` step、schedule／push／deploy／publish／concurrency 全部不變。
+- **Evidence**（本機 E2，`--network none`、pinned deps image、read-only worktree）：
+  Root external 3 contract tests（原檔不變）pass；affected validator＋diagnostic＋
+  coordinator＋daily runner＋workflow＋adjacent BigGo 套件 298 passed；adjacent
+  candidate／limiter 18 passed；詳細命令／日誌見外部 `evidence/desktop-r25f-ds96/`。
+- **Boundary**：未 push 新 commit／未改 PR／未 merge／未 deploy／未 dispatch；未讀
+  Secret 明文；未呼叫真實 BigGo／EMSD／GitHub API；`models_data.VERSION`、
+  `metadata.json`、`index.html`、PDF、價格快照、queue、黑名單、shared coordinator
+  state 不變；E3／E4 仍 UNKNOWN。
+
 ### 2026-09-29 GitHub Actions／EMSD CSV 修復候選（未發布、未部署）
 
 > 用戶批准嘅 R2/R3 來源與門禁行為修復（scope 限定為已批准計劃）。只係本機候選（E2）：
@@ -432,6 +511,32 @@
 - **E2**：focused 54 passed, 1 skipped；全量 pytest 871 passed, 1 skipped；acceptance
   7/7 rc=0（15 項／18 節點）；隔離重建 preflight／build／guard 全 rc=0（facts 沿舊
   快照）；詳見 docs/STATUS.md §28.1。
+
+### 2026-10-11 GitHub BigGo smoke 動態候選遷移（未發布、未部署；實現切片）
+
+> Root92 有限切片：只喺隔離 GitHub 候選 worktree 實作；未 push／未 merge／未 deploy，
+> 未呼叫 BigGo／EMSD／provider，未改 coordinator／production／GitHub 狀態。治理
+> Registry、Schema、required 功能及 fail-closed 門禁不變。
+
+- **新增共享 selector** `biggo_candidate.select_candidate()`：由當前本地 eligible
+  dataset（canonical model identity＋`filter_active`＋黑名單）確定性揀一個 smoke
+  候選，唔靠 cached price、唔用固定候選清單；空 eligible 係明確 zero-provider skip。
+- **`fetch_biggo.run_smoke()` 結構化**：回 `ok／reason／reachable／responseValid／
+  priceAvailable／token／search／authFact`；合法空 list 或無匹配價 = API 健康
+  （ok=True），auth／rate-limit／transport／invalid-response = ok=False；payload
+  shape 驗證令 malformed 回應唔可以冒充 no-price；`run_force_batch` 內建 smoke
+  consumer 改為明示讀 `ok`，唔靠 dict truthiness。
+- **daily runner 收緊**：`scripts/biggo_stage_runner.py` 喺 intent／真實請求之前注入
+  動態候選，以 `_validate_smoke_result()` 嚴格驗證（缺欄／型別錯／矛盾事實一律
+  invalid→needs-review）；保留 CAS lease、write-ahead intent、cooldown／budget、
+  request caps 及 staged publication 全部原有保護。
+- **E2（本機、離線 container `--network none`）**：candidate／smoke／stage runner
+  focused `93 passed`；其餘 BigGo 回歸 `121 passed`；workflow／receipt／CLI
+  `64 passed`；完整 `pytest tests/` 於自足 clone `910 passed, 1 skipped`。全程零
+  provider 請求。舊「no-price = failure」預期改寫為用戶要求
+  （API 健康唔等於所有型號無價），未移除任何安全測試。
+- **限制**：未經受信任 CI（E3）／部署後驗證（E4）；legacy `SMOKE_CANDIDATES`
+  常數保留作兼容，但每日路徑唔再引用。
 
 ## [1.2.9] - 2026-09-24
 

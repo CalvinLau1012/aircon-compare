@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
-"""BigGo smoke 候選與有界連線回歸（無外網；全部 mock）
+"""BigGo smoke 結構化事實與有界連線回歸（無外網；全部 mock）
 
-- 候選集中管理、跨品牌、有本地證據（核心 29／受保護／有快照報價／非黑名單）
-- smoke 有界：approved C 規定最多一個 product-search request、單次 attempt、timeout=8s、
+- `SMOKE_CANDIDATES` 只保留作 legacy／兼容用途；每日路徑由
+  `scripts/biggo_stage_runner.py` 注入 `biggo_candidate.select_candidate()` 動態候選
+- smoke 有界：最多一個 token ＋一個 product-search request、單次 attempt、timeout=8s、
   唔等 60/90s 冷卻、錯誤後唔 sleep
-- 首個候選有價即 True；no-price／unreachable／例外一律 False（唔會試其餘候選）
+- 合法空 list／合法回應無匹配價 = API 健康（ok=True, priceAvailable=False），唔等於
+  「所有型號無價」，亦唔會自己推進批次
+- auth／rate-limit／transport／invalid-response = ok=False（有分類 reason）
+- malformed JSON／payload、矛盾 flags 唔可以冒充 clean no-price
 - 批次／正常查詢路徑：每個 model 最多 2 次 attempt；403／429 唔即刻 retry
 - 例外唔可以洩漏 secret
-- 安全門禁不變：run_smoke False → CI 跳過批次
+- 安全門禁不變：結構化結果 ok=False → runner needs-review／abort，唔會 blind retry
 """
 import json
 import os
@@ -94,7 +98,8 @@ def test_smoke_probe_passes_single_bounded_attempt_params(monkeypatch):
     monkeypatch.setattr(fetch_biggo, '_api_search', _fake_search(calls))
     monkeypatch.setattr(fetch_biggo, '_extract_price',
                         lambda data, model: {'price': '$2,500', 'merchants': 1})
-    assert run_smoke() is True
+    res = run_smoke()
+    assert res['ok'] is True and res['reason'] == 'priced' and res['priceAvailable'] is True
     assert calls == [(SMOKE_CANDIDATES[0]['model'], SMOKE_KWARGS)], (
         'smoke 必須用單次 attempt／8 秒 timeout／無冷卻無限速參數，且首個有價即停')
 
@@ -104,16 +109,20 @@ def test_smoke_first_candidate_success_uses_one_call(monkeypatch):
     monkeypatch.setattr(fetch_biggo, '_api_search', _fake_search(calls))
     monkeypatch.setattr(fetch_biggo, '_extract_price',
                         lambda data, model: {'price': '$2,500', 'merchants': 1})
-    assert run_smoke() is True
+    res = run_smoke()
+    assert res['ok'] is True and res['reason'] == 'priced'
     assert len(calls) == 1, '首個成功後唔應該再探測其餘候選'
     assert calls[0][0] == SMOKE_CANDIDATES[0]['model']
 
 
-def test_smoke_no_price_single_request_does_not_try_other_candidates(monkeypatch, capsys):
+def test_smoke_no_price_single_request_is_healthy_not_failure(monkeypatch, capsys):
     calls = []
     monkeypatch.setattr(fetch_biggo, '_api_search', _fake_search(calls))
     monkeypatch.setattr(fetch_biggo, '_extract_price', lambda data, model: None)
-    assert run_smoke() is False
+    res = run_smoke()
+    assert res['ok'] is True and res['reason'] == 'no-price'
+    assert res['reachable'] is True and res['responseValid'] is True
+    assert res['priceAvailable'] is False
     assert len(calls) == 1, 'approved C：最多一個 product-search request'
     assert calls[0][0] == SMOKE_CANDIDATES[0]['model']
     out = capsys.readouterr().out
@@ -129,12 +138,13 @@ def test_smoke_unreachable_stops_without_trying_other_candidates(monkeypatch, ca
         return None, False
 
     monkeypatch.setattr(fetch_biggo, '_api_search', fake_search)
-    assert run_smoke() is False
+    res = run_smoke()
+    assert res['ok'] is False and res['reason'] == 'transport'
+    assert res['reachable'] is False and res['responseValid'] is False
     assert len(calls) == 1, '第一個 unreachable 要立即結束，唔可以試其餘候選'
     assert calls[0] == (SMOKE_CANDIDATES[0]['model'], SMOKE_KWARGS)
     out = capsys.readouterr().out
-    assert 'unreachable' in out, '要如實報粗分類，唔可以當成個別型號無價'
-    assert '未細分' in out, '要講明現行 _api_search 唔細分網絡／限流／認證'
+    assert 'unreachable' in out and 'r24 分類：transport' in out
 
 
 def test_smoke_exception_stops_without_trying_other_candidates(monkeypatch, capsys):
@@ -145,7 +155,8 @@ def test_smoke_exception_stops_without_trying_other_candidates(monkeypatch, caps
         raise RuntimeError('boom')
 
     monkeypatch.setattr(fetch_biggo, '_api_search', boom)
-    assert run_smoke() is False
+    res = run_smoke()
+    assert res['ok'] is False and res['reason'] == 'transport'
     assert len(calls) == 1, '例外要立即結束，唔可以試其餘候選'
     out = capsys.readouterr().out
     assert 'RuntimeError' in out
@@ -159,7 +170,8 @@ def test_smoke_exception_does_not_leak_secret(monkeypatch, capsys):
         raise RuntimeError(f'boom authorization Basic {secret}')
 
     monkeypatch.setattr(fetch_biggo, '_api_search', boom)
-    assert run_smoke() is False
+    res = run_smoke()
+    assert res['ok'] is False
     captured = capsys.readouterr()
     assert secret not in (captured.out + captured.err), '例外內容唔可以連 secret 一齊輸出'
 
@@ -168,8 +180,57 @@ def test_smoke_accepts_explicit_candidate_list(monkeypatch):
     calls = []
     monkeypatch.setattr(fetch_biggo, '_api_search', _fake_search(calls))
     monkeypatch.setattr(fetch_biggo, '_extract_price', lambda data, model: None)
-    assert run_smoke(['AAA-1', {'model': 'BBB-2', 'brand': 'X', 'reason': 'test'}]) is False
+    res = run_smoke(['AAA-1', {'model': 'BBB-2', 'brand': 'X', 'reason': 'test'}])
+    assert res['ok'] is True and res['reason'] == 'no-price'
     assert [m for m, _ in calls] == ['AAA-1'], 'single-request cap：只探測第一個候選'
+
+
+# ---------------------------------------------------------------- 結構化 taxonomy
+
+
+def test_smoke_probe_categories(monkeypatch):
+    cases = [('auth', None, False), ('rate-limit', None, False),
+             ('invalid-response', {'nope': 1}, True), ('transport', None, False)]
+    for reason, data, reachable in cases:
+        def fake(model, **kw):
+            fetch_biggo.LAST_SEARCH_REASON = reason
+            return data, reachable
+        monkeypatch.setattr(fetch_biggo, '_api_search', fake)
+        status, result = fetch_biggo._smoke_probe('M1')
+        assert status == reason, (reason, status)
+    monkeypatch.setattr(fetch_biggo, '_api_search', lambda m, **k: ({'list': []}, True))
+    assert fetch_biggo._smoke_probe('M1')[0] == 'no-price'
+    monkeypatch.setattr(fetch_biggo, '_api_search', lambda m, **k: ({'list': []}, True))
+    monkeypatch.setattr(fetch_biggo, '_extract_price', lambda data, model: {'price': '$1,000'})
+    assert fetch_biggo._smoke_probe('RA-10RF')[0] == 'priced'
+
+
+def test_run_smoke_structured_health_vs_price(monkeypatch):
+    def rl(m, **k):
+        fetch_biggo.LAST_SEARCH_REASON = 'rate-limit'
+        return None, False
+    monkeypatch.setattr(fetch_biggo, '_api_search', rl)
+    res = fetch_biggo.run_smoke()
+    assert res['ok'] is False and res['reason'] == 'rate-limit'
+    monkeypatch.setattr(fetch_biggo, '_api_search', lambda m, **k: ({'list': []}, True))
+    res = fetch_biggo.run_smoke()
+    assert res['ok'] is True and res['reason'] == 'no-price'
+    assert res['responseValid'] is True and res['priceAvailable'] is False
+    assert fetch_biggo.LAST_SMOKE_REASON == 'no-price'
+
+
+def test_run_smoke_payload_explicit_error_and_nan(monkeypatch):
+    monkeypatch.setattr(fetch_biggo, '_api_search',
+                        lambda m, **k: ({'error': 'authentication failed', 'list': []}, True))
+    res = fetch_biggo.run_smoke()
+    assert res['ok'] is False and res['reason'] == 'invalid-response'
+    monkeypatch.setattr(fetch_biggo, '_api_search',
+                        lambda m, **k: ({'list': [{'title': 'x', 'price': float('nan')}]}, True))
+    assert fetch_biggo.run_smoke()['reason'] == 'invalid-response'
+    monkeypatch.setattr(fetch_biggo, '_api_search',
+                        lambda m, **k: ({'list': [{'title': 'x'}]}, True))
+    monkeypatch.setattr(fetch_biggo, '_extract_price', lambda d, m: None)
+    assert fetch_biggo.run_smoke()['reason'] == 'no-price'
 
 
 # ---------------------------------------------------------------- 有界連線（無 sleep 硬碰）
@@ -333,3 +394,136 @@ def test_batch_tri_state_still_uses_default_search(monkeypatch):
     model, result, ok = fetch_biggo._search_tri_state('RA-10RF')
     assert calls == [{}], '批次路徑必須用預設完整語義（無 smoke kwargs）'
     assert (model, result, ok) == ('RA-10RF', None, True)
+
+
+# ---------------------------------------------------------------- 真 transport 分類（只 mock urlopen）
+
+
+class _Resp:
+    def __init__(self, body=b'{}', status=200):
+        self.body = body
+        self.status = status
+
+    def read(self):
+        return self.body
+
+
+def _http_err(code):
+    return urllib.error.HTTPError('https://api.biggo.com/x', code, 'err', None, None)
+
+
+def test_api_search_http_codes_are_classified(monkeypatch):
+    """401／403 → auth；429 → rate-limit；500 → transport（單次 smoke attempt）。"""
+    monkeypatch.setenv('BIGGO_CLIENT_ID', 'cid')
+    monkeypatch.setenv('BIGGO_CLIENT_SECRET', 'csec')
+    monkeypatch.setattr(fetch_biggo, '_TOKEN', {'value': 'tok', 'expires': 9e9})
+    for code, expected in ((401, 'auth'), (403, 'auth'), (429, 'rate-limit'),
+                           (500, 'transport')):
+        def fake_urlopen(req, timeout=None, code=code):
+            raise _http_err(code)
+
+        monkeypatch.setattr(fetch_biggo.urllib.request, 'urlopen', fake_urlopen)
+        status, result = fetch_biggo._smoke_probe('RA-10RF')
+        assert (status, result) == (expected, None), (code, status)
+        assert fetch_biggo.LAST_RESPONSE_RECEIVED is True
+        assert fetch_biggo.LAST_HTTP_STATUS == code
+
+
+def test_smoke_token_layer_401_is_auth(monkeypatch):
+    monkeypatch.setenv('BIGGO_CLIENT_ID', 'cid')
+    monkeypatch.setenv('BIGGO_CLIENT_SECRET', 'csec')
+    monkeypatch.setattr(fetch_biggo, '_TOKEN', {'value': None, 'expires': 0.0})
+
+    def token_401(timeout=None):
+        raise _http_err(401)
+
+    monkeypatch.setattr(fetch_biggo, '_get_access_token', token_401)
+    monkeypatch.setattr(fetch_biggo.urllib.request, 'urlopen',
+                        lambda *a, **k: (_ for _ in ()).throw(
+                            AssertionError('search 唔應該被呼叫（token 已 401）')))
+    status, _ = fetch_biggo._smoke_probe('RA-10RF')
+    assert status == 'auth'
+
+
+def test_smoke_invalid_json_is_invalid_response(monkeypatch):
+    monkeypatch.delenv('BIGGO_CLIENT_ID', raising=False)
+    monkeypatch.delenv('BIGGO_CLIENT_SECRET', raising=False)
+    monkeypatch.setattr(fetch_biggo, '_TOKEN', {'value': None, 'expires': 0.0})
+    monkeypatch.setattr(fetch_biggo.urllib.request, 'urlopen',
+                        lambda req, timeout=None: _Resp(b'{bad'))
+    status, _ = fetch_biggo._smoke_probe('RA-10RF')
+    assert status == 'invalid-response'
+    assert fetch_biggo.LAST_SEARCH_REASON == 'invalid-response'
+
+
+def test_smoke_payload_shape_and_explicit_error_are_invalid(monkeypatch):
+    for payload in ({'nope': 1}, {'error': 'nope', 'list': []},
+                    {'list': 'not-a-list'}, {'list': [1, 2]},
+                    {'list': [{'price': True}]}):
+        monkeypatch.setattr(fetch_biggo, '_api_search', lambda m, **k: (payload, True))
+        res = fetch_biggo.run_smoke([{'model': 'RA-10RF'}])
+        assert res['ok'] is False and res['reason'] == 'invalid-response', payload
+
+
+def test_smoke_bounded_exactly_one_auth_and_one_search(monkeypatch):
+    """最多一個 token 請求＋一個 product-search；實際 counters 由 REQUEST_STATS delta。"""
+    fetch_biggo.reset_request_stats()
+    monkeypatch.setenv('BIGGO_CLIENT_ID', 'cid')
+    monkeypatch.setenv('BIGGO_CLIENT_SECRET', 'csec')
+    monkeypatch.setattr(fetch_biggo, '_TOKEN', {'value': None, 'expires': 0.0})
+    calls = []
+
+    def fake_urlopen(req, timeout=None):
+        calls.append(req.full_url)
+        if 'auth/v1/token' in req.full_url:
+            return _Resp(b'{"access_token": "tok-123"}')
+        return _Resp(b'{"list": []}')
+
+    monkeypatch.setattr(fetch_biggo.urllib.request, 'urlopen', fake_urlopen)
+    res = fetch_biggo.run_smoke([{'model': 'RA-10RF'}])
+    assert res['ok'] is True and res['reason'] == 'no-price'
+    assert res['token'] == 1 and res['search'] == 1
+    assert len(calls) == 2, calls
+    assert sum('auth/v1/token' in u for u in calls) == 1
+    assert sum('auth/v1/token' not in u for u in calls) == 1
+
+
+def test_smoke_auth_fact_anonymous_without_credentials(monkeypatch):
+    monkeypatch.delenv('BIGGO_CLIENT_ID', raising=False)
+    monkeypatch.delenv('BIGGO_CLIENT_SECRET', raising=False)
+    monkeypatch.setattr(fetch_biggo, '_TOKEN', {'value': None, 'expires': 0.0})
+    monkeypatch.setattr(fetch_biggo.urllib.request, 'urlopen',
+                        lambda req, timeout=None: _Resp(b'{"list": []}'))
+    res = fetch_biggo.run_smoke([{'model': 'RA-10RF'}])
+    assert res['ok'] is True and res['authFact'] == 'anonymous'
+
+
+def test_smoke_partial_credentials_fail_closed_without_search(monkeypatch):
+    monkeypatch.setenv('BIGGO_CLIENT_ID', 'cid')
+    monkeypatch.delenv('BIGGO_CLIENT_SECRET', raising=False)
+    monkeypatch.setattr(fetch_biggo, '_TOKEN', {'value': None, 'expires': 0.0})
+
+    def forbidden(req, timeout=None):
+        raise AssertionError('partial 憑證唔可以發任何 HTTP 請求')
+
+    monkeypatch.setattr(fetch_biggo.urllib.request, 'urlopen', forbidden)
+    res = fetch_biggo.run_smoke([{'model': 'RA-10RF'}])
+    assert res['ok'] is False and res['reason'] == 'auth'
+    assert res['token'] == 0 and res['search'] == 0
+
+
+# ---------------------------------------------------------------- run_smoke consumer audit
+
+
+def test_run_force_batch_failure_dict_does_not_pass_by_truthiness(monkeypatch):
+    monkeypatch.setattr(fetch_biggo, 'run_smoke', lambda: {
+        'reason': 'rate-limit', 'ok': False, 'reachable': False,
+        'responseValid': False, 'priceAvailable': False, 'token': 1, 'search': 0})
+    assert fetch_biggo.run_force_batch(None, smoke=True, exit_on_fail=False) == {
+        'status': 'smoke-failed'}
+
+
+def test_run_force_batch_legacy_bool_false_still_blocks(monkeypatch):
+    monkeypatch.setattr(fetch_biggo, 'run_smoke', lambda: False)
+    assert fetch_biggo.run_force_batch(None, smoke=True, exit_on_fail=False) == {
+        'status': 'smoke-failed'}
