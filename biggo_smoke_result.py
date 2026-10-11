@@ -23,15 +23,20 @@ REQUIRED_FIELDS = ('reason', 'ok', 'reachable', 'responseValid', 'priceAvailable
                    'token', 'search')
 
 
-def validate_smoke_result(raw):
+def validate_smoke_result(raw, *, allow_legacy_bool=True):
     """嚴格 smoke 結果契約；回 ``(ok, reason, info)``。
 
-    - bool 係明確 legacy adapter（True→priced、False→transport）；
+    - bool 係 legacy adapter（True→priced、False→transport），只有
+      ``allow_legacy_bool=True``（每日 runner 兼容）先接受；
+      diagnostic 傳 ``allow_legacy_bool=False``，任何非 dict（含 bool）都當
+      invalid，唔可以借 legacy adapter 通過。
     - 非 dict／缺欄／型別錯／未知 reason／矛盾 flags → ``(False, 'smoke-invalid-result', raw)``；
     - 合法成功：`priced`（priceAvailable=True）或 `no-price`（priceAvailable=False）；
     - block 類一律要求 `ok=False`、`priceAvailable=False`、`responseValid=False`。
     """
-    if isinstance(raw, bool):  # 明確 legacy adapter
+    if isinstance(raw, bool):
+        if not allow_legacy_bool:
+            return False, 'smoke-invalid-result', {}
         return raw, ('priced' if raw else 'transport'), {'legacy': True}
     if not isinstance(raw, dict):
         return False, 'smoke-invalid-result', {}

@@ -1156,3 +1156,17 @@ PR #23 最終 head `a8e5444` 已通過 GitHub CI 並 merge；trusted rebuild `36
   - `UNKNOWN`：E3 trusted CI、實際 workflow dispatch、真實 provider 呼叫、active stage 同時競爭未執行。
   - `BOUNDARY`：未 push／merge／deploy／dispatch；未呼叫 BigGo／EMSD；未改 Secrets／metadata／VERSION／價格快照／queue／私人 repo。
 - **回滾**：revert 本階段 commit（共享 validator、diagnostic、workflow、測試、docs）即回復原本；coordinator state schema 無變（只加 optional `diagnosticReservation` 欄位，舊 reader 可以忽略），無資料遷移。
+
+### D33 · 2026-10-11 契約返修（append-only；不刪改上文）
+
+- **背景**：Root93（`06b921c`）經 Root 獨立審查未獲接受，external contract file 重現兩個缺口：（1）diagnostic 經 `validate_smoke_result()` 接受 legacy bool，`True` 會變 `healthy-with-price`／exit 0，`False` 變 `transport`；（2）provider 階段無條件把 limiter／abort hook 重設為 `None`，未還原呼叫方原有 hook。
+- **決定（兩個窄修，無新功能／無新框架）**：
+  1. 共享 `biggo_smoke_result.validate_smoke_result()` 加 `allow_legacy_bool` 參數（預設 `True`）。每日 stage runner 兼容 adapter 不變；diagnostic 邊界傳 `allow_legacy_bool=False`，任何非 dict（含 `True`／`False`）都回 `(False, 'smoke-invalid-result', {})`，狀態 `probe-invalid-response`、exit 1。
+  2. `fetch_biggo` 新增 `get_abort_check()`（同現有 `get_request_limiter()` 對稱）；diagnostic provider 階段先捕捉 preexisting limiter／abort，與 previous opener 一併在 `finally` 原樣還原，覆蓋成功、provider 例外及 SystemExit／termination。Fake fetch 以屬性 fallback，保持測試可繞。
+- **原因**：Root93 原設計要求 diagnostic 拒絕非結構化結果、且「Restore any module-global limiter／abort hooks after the call」；本返修只收緊呢兩點，唔動 lease／reservation／budget／cooldown／fail-closed 語義。
+- **後果（分類）**：
+  - `REQUIREMENT`：daily runner bool 兼容、Metadata Schema、required 功能、成功標準、門禁、workflow 行為全部不變。
+  - `OBSERVED / E2`：Root external contract tests（`desktop-r25f-root93-review/test_review_contract.py`，原檔不變）3 passed；focused 205 passed（見 `docs/STATUS.md` §30.1 及外部 ds94 REPORT）。
+  - `UNKNOWN`：E3／E4、真實 provider／coordinator、workflow dispatch 仍未執行。
+  - `BOUNDARY`：未 push／merge／deploy／dispatch；未呼叫真實 BigGo／EMSD；未改 Secrets／metadata／VERSION／價格快照／queue／私人 repo；Root93 原始 failed-test 證據（`desktop-r25f-root93-review/`）保留不變。
+- **回滾**：revert 本返修 commit 即回復 Root93 行為（會重新引入兩個缺口）；`allow_legacy_bool` 參數與 `get_abort_check()` 皆 additive，無資料遷移。

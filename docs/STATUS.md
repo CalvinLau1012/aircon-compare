@@ -1517,3 +1517,26 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
 - **邊界**：未 push／未 merge／未 deploy／未 dispatch workflow；未呼叫真實 BigGo／EMSD；未改
   Secrets／`metadata.json`／`models_data.VERSION`／`index.html`／PDF／價格快照／queue／黑名單；
   E3／E4 仍 UNKNOWN。每日 runner 原有合法空結果／no-price 健康語義不變。
+
+
+### §30.1 2026-10-11 契約返修（Root93 review；append-only；E2；未部署）
+
+- **Root 裁決**：Root93 `06b921c` 未獲接受；external contract file
+  （`evidence/desktop-r25f-root93-review/test_review_contract.py`）重現 3 failures：
+  legacy `True` 得 exit 0／`healthy-with-price`、legacy `False` 得 `transport`、
+  preexisting limiter／abort hooks 被清成 `None`。原 failed-test 證據保留不變。
+- **修正 1（strict diagnostic 邊界）**：`biggo_smoke_result.validate_smoke_result()` 加
+  `allow_legacy_bool`（預設 True）；diagnostic 傳 `False`，`True`／`False` 一律
+  `smoke-invalid-result` → `probe-invalid-response`、exit 1、`response.valid=False`。
+  每日 runner 兼容 adapter 及 bool adapter 完全不變。
+- **修正 2（hook 原樣還原）**：`fetch_biggo.get_abort_check()` 與現有
+  `get_request_limiter()` 對稱；diagnostic provider 階段捕捉 preexisting limiter／
+  abort／opener 並在 `finally` 還原，覆蓋成功、provider 例外、SystemExit。Fake fetch
+  以屬性 fallback。原本 transport／cap／guard 行為不變。
+- **驗證（E2，`--network none`、pinned deps image、隔離 clone／read-only worktree）**：
+  Root external 3 contract tests 原檔不變 **3 passed**；focused validator＋diagnostic＋
+  daily runner＋coordinator＋workflow **205 passed**。Root93 已跑 full suite；本次兩個
+  窄修不重複 full suite（無新 regression 跡象）。
+- **保留**：lease／reservation（reserved upper bound vs actual）／budget／cooldown／
+  no-progress／no-secrets／workflow 邊界全部不變；未 push／未 deploy／未 dispatch；
+  E3／E4 仍 UNKNOWN；GitHub daily 維持 disabled、server 00:30 HKT 不變。

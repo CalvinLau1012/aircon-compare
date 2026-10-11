@@ -15,6 +15,7 @@ import sys
 import threading
 import urllib.error
 import urllib.parse
+import urllib.request
 
 import pytest
 
@@ -632,9 +633,30 @@ def test_execute_malformed_structured_result_fails_closed(monkeypatch):
         assert api.state()['requestAttempts'] == {'token': 1, 'search': 1}
 
 
+@pytest.mark.parametrize('raw', [True, False])
+def test_execute_rejects_legacy_bool_results_as_invalid(raw):
+    """Diagnostic 邊界唔接受 legacy bool；每日 runner 兼容路由另測。"""
+    fetch = FakeFetch()
+
+    def run_smoke(candidates=None, _raw=raw, _f=fetch):
+        _f.smoke_calls.append(candidates)
+        _f.REQUEST_STATS.update(token=1, search=1)
+        return _raw
+
+    fetch.run_smoke = run_smoke
+    report, _fetch, api = _run(state=_business_state(), fetch=fetch)
+    assert report['exitCode'] == 1
+    assert report['status'] == 'probe-invalid-response'
+    assert report['reason'] == 'smoke-invalid-result'
+    assert report['response'] == {'valid': False}
+    assert report['actual'] == {'token': 1, 'search': 1}
+    assert api.state()['requestAttempts'] == {'token': 1, 'search': 1}
+    assert _marker(api.state())['reason'] == 'smoke-invalid-result'
+
+
 def test_execute_uses_shared_validator(monkeypatch):
     monkeypatch.setattr(diag, 'validate_smoke_result',
-                        lambda raw: (False, 'smoke-invalid-result', {}))
+                        lambda raw, **kwargs: (False, 'smoke-invalid-result', {}))
     report, _fetch, _api = _run(state=_business_state())
     assert report['status'] == 'probe-invalid-response' and report['exitCode'] == 1
 
@@ -959,6 +981,76 @@ def test_lease_lost_between_phases_forbids_search(loopback):
     assert report['exitCode'] == 1
     assert report['status'] in ('uncertain-lease-lost', 'uncertain-lease-not-confirmed')
     assert api.state()['leaseOwner'] == 'intruder', '唔可以清走 intruder lease'
+
+
+def test_diagnostic_restores_preexisting_hooks_on_real_fetch_success(loopback):
+    loopback.routes['/auth/v1/token'] = lambda h, p: _respond(
+        h, 200, json.dumps({'access_token': 'fixture'}).encode())
+    loopback.fallback = lambda h, p: _respond(h, 200, json.dumps({'list': []}).encode())
+    original_limiter = fetch_biggo.get_request_limiter()
+    original_abort = fetch_biggo.get_abort_check()
+    original_opener = urllib.request._opener
+    sentinel_limiter = object()
+    sentinel_abort = lambda: False
+    fetch_biggo.set_request_limiter(sentinel_limiter)
+    fetch_biggo.set_abort_check(sentinel_abort)
+    try:
+        report, _fetch, _api = _run(state=_business_state(), fetch=fetch_biggo,
+                                    selector=_selector('A1'))
+        assert report['exitCode'] == 0
+        assert fetch_biggo.get_request_limiter() is sentinel_limiter
+        assert fetch_biggo.get_abort_check() is sentinel_abort
+        assert urllib.request._opener is original_opener
+    finally:
+        fetch_biggo.set_request_limiter(original_limiter)
+        fetch_biggo.set_abort_check(original_abort)
+        urllib.request._opener = original_opener
+
+
+def test_diagnostic_restores_preexisting_hooks_on_provider_error(loopback):
+    loopback.routes['/auth/v1/token'] = lambda h, p: _respond(h, 401, b'{}')
+    loopback.fallback = lambda h, p: _respond(h, 200, json.dumps({'list': []}).encode())
+    original_limiter = fetch_biggo.get_request_limiter()
+    original_abort = fetch_biggo.get_abort_check()
+    original_opener = urllib.request._opener
+    sentinel_limiter = object()
+    sentinel_abort = lambda: False
+    fetch_biggo.set_request_limiter(sentinel_limiter)
+    fetch_biggo.set_abort_check(sentinel_abort)
+    try:
+        report, _fetch, _api = _run(state=_business_state(), fetch=fetch_biggo,
+                                    selector=_selector('A1'))
+        assert report['exitCode'] == 1
+        assert fetch_biggo.get_request_limiter() is sentinel_limiter
+        assert fetch_biggo.get_abort_check() is sentinel_abort
+        assert urllib.request._opener is original_opener
+    finally:
+        fetch_biggo.set_request_limiter(original_limiter)
+        fetch_biggo.set_abort_check(original_abort)
+        urllib.request._opener = original_opener
+
+
+def test_diagnostic_restores_hooks_and_opener_on_systemexit():
+    class ExitingFetch(FakeFetch):
+        def run_smoke(self, candidates=None):
+            raise SystemExit('simulated provider-phase termination')
+
+    fetch = ExitingFetch()
+    original_opener = urllib.request._opener
+    sentinel_limiter = object()
+    sentinel_abort = lambda: False
+    sentinel_opener = object()
+    fetch.request_limiter = sentinel_limiter
+    fetch.abort_check = sentinel_abort
+    urllib.request._opener = sentinel_opener
+    try:
+        with pytest.raises(SystemExit):
+            _run(state=_business_state(), fetch=fetch, selector=_selector())
+        assert fetch.request_limiter is sentinel_limiter
+        assert fetch.abort_check is sentinel_abort
+        assert urllib.request._opener is sentinel_opener
+    finally:
+        urllib.request._opener = original_opener
 
 
 # ---------------------------------------------------------------- sanitization / locality

@@ -148,6 +148,22 @@ def _safe_int(value, default=0):
         return default
 
 
+def _preexisting_limiter(fetch):
+    """讀取診斷前已存在嘅 request limiter（getter 優先，fake 用屬性 fallback）。"""
+    getter = getattr(fetch, 'get_request_limiter', None)
+    if callable(getter):
+        return getter()
+    return getattr(fetch, 'request_limiter', None)
+
+
+def _preexisting_abort_check(fetch):
+    """讀取診斷前已存在嘅 abort hook（getter 優先，fake 用屬性 fallback）。"""
+    getter = getattr(fetch, 'get_abort_check', None)
+    if callable(getter):
+        return getter()
+    return getattr(fetch, 'abort_check', None)
+
+
 def _base_report(mode):
     return {
         'schemaVersion': 1,
@@ -608,13 +624,17 @@ def run_diagnostic(*, execute=False, env=None, fetch=None, batch_mod=None, now=N
     report['providerPhaseEntered'] = True
 
     # ---- provider 階段：有界、單次 attempt、每 phase 前核實 lease ----
+    # 保留診斷前已存在嘅 limiter／abort／opener，完成、provider 例外或
+    # SystemExit／termination 都由 finally 原樣還原（唔可以清掉呼叫方 hooks）。
     limiter = RequestLimiter(search_cap=1, token_cap=1)
     abort = _LeaseAbort(contents, owner, cycle_id, stage_no, now_fn)
+    previous_limiter = _preexisting_limiter(fetch)
+    previous_abort = _preexisting_abort_check(fetch)
     previous_opener = _harden_transport()
-    fetch.set_request_limiter(limiter)
-    fetch.set_abort_check(abort.check)
     before = _stat(getattr(fetch, 'REQUEST_STATS', {}))
     try:
+        fetch.set_request_limiter(limiter)
+        fetch.set_abort_check(abort.check)
         with contextlib.redirect_stdout(io.StringIO()):
             raw_smoke = fetch.run_smoke([selection])
     except Exception:  # noqa: BLE001 - 例外只當 provider uncertainty，無 message 外洩
@@ -623,11 +643,13 @@ def run_diagnostic(*, execute=False, env=None, fetch=None, batch_mod=None, now=N
                      'token': 0, 'search': 0}
     finally:
         _restore_transport(previous_opener)
-        fetch.set_request_limiter(None)
-        fetch.set_abort_check(None)
+        fetch.set_request_limiter(previous_limiter)
+        fetch.set_abort_check(previous_abort)
     after = _stat(getattr(fetch, 'REQUEST_STATS', {}))
     delta = _delta(after, before)
-    ok, smoke_reason, smoke_info = validate_smoke_result(raw_smoke)
+    # Diagnostic 邊界唔接受 legacy bool：任何非 dict 結果一律 invalid（非零）。
+    ok, smoke_reason, smoke_info = validate_smoke_result(raw_smoke,
+                                                        allow_legacy_bool=False)
     smoke_info = smoke_info if isinstance(smoke_info, dict) else {}
 
     auth_fact = getattr(fetch, 'LAST_AUTH_FACT', None)

@@ -105,6 +105,11 @@ def get_request_limiter():
     return _REQUEST_LIMITER
 
 
+def get_abort_check():
+    """讀取現有 abort hook（供需要暫時接管並原樣還原嘅呼叫方使用）。"""
+    return _ABORT_CHECK
+
+
 def _reserve(kind):
     """每個真正 outbound 請求前：先查 abort，再向 limiter reserve。"""
     if _ABORT_CHECK is not None and _ABORT_CHECK():

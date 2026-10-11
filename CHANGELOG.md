@@ -60,6 +60,27 @@
 - **Boundary**：未 push／未 merge／未 deploy／未 dispatch workflow／未呼叫真實 BigGo／
   EMSD；產品 VERSION、metadata、`index.html`、PDF、價格快照、queue、黑名單不變。
 
+### 2026-10-11 GitHub BigGo bounded 手動診斷契約返修（Root93 review；append-only）
+
+> Root93（`06b921c`）經獨立審查**未獲接受**：兩個契約缺口（legacy bool 被診斷接受、
+> provider 階段把既有 limiter／abort hook 清成 `None`）已由 Root 以 external contract
+> file 重現（3 failed）。本節只追加修正記錄，唔改寫上面 Root93 原文。
+
+- **Defect 1（legacy bool 邊界）**：`validate_smoke_result()` 加 `allow_legacy_bool`
+  參數；diagnostic 以 `allow_legacy_bool=False` 呼叫，任何非 dict（包括 `True`／`False`）
+  一律 `(False, 'smoke-invalid-result', {})` → `probe-invalid-response`、exit 1；每日
+  stage runner 相容 adapter 保持預設，bool adapter 行為完全不變。
+- **Defect 2（hook 還原）**：provider 階段先捕捉診斷前已存在嘅 request limiter／abort
+  hook（新增 `fetch_biggo.get_abort_check()`；fake 以屬性 fallback），連同 previous
+  opener 在 `finally` **原樣還原**；成功、provider 例外、SystemExit／termination 路徑
+  全部覆蓋，唔再清成 `None`，亦保留原本 transport／cap／guard 行為。
+- **Evidence**（本機 E2）：Root external 3 contract tests 於原檔不變下全部 pass；
+  focused validator＋diagnostic＋daily runner＋coordinator＋workflow **205 passed**。
+  Root93 已跑 full suite，本輪兩個窄修不重複 full suite。
+- **邊界保留**：lease／reservation／budget／cooldown／no-progress／no-secrets guards
+  全部保留；未 push／未 deploy／未 dispatch；未呼叫真實 provider／coordinator；
+  `models_data.VERSION`、`metadata.json`、`index.html`、PDF、價格快照、queue 不變。
+
 ### 2026-09-29 GitHub Actions／EMSD CSV 修復候選（未發布、未部署）
 
 > 用戶批准嘅 R2/R3 來源與門禁行為修復（scope 限定為已批准計劃）。只係本機候選（E2）：

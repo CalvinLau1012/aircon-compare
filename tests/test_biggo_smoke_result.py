@@ -55,6 +55,23 @@ def test_shared_validator_rejects_malformed_and_contradictory():
             (False, 'smoke-invalid-result'), raw
 
 
+def test_strict_option_rejects_legacy_bool_while_daily_default_keeps_compat():
+    for raw in (True, False):
+        strict = shared.validate_smoke_result(raw, allow_legacy_bool=False)
+        assert strict[:2] == (False, 'smoke-invalid-result'), raw
+        assert strict[2] == {}
+    # 每日 runner 兼容路徑不變：bool adapter 照舊。
+    assert shared.validate_smoke_result(True)[:2] == (True, 'priced')
+    assert shared.validate_smoke_result(False)[:2] == (False, 'transport')
+    assert runner._validate_smoke_result(True)[:2] == (True, 'priced')
+    assert runner._validate_smoke_result(False)[:2] == (False, 'transport')
+    # Strict 模式仍然接受合法 dict 契約。
+    assert shared.validate_smoke_result(dict(VALID_NO_PRICE),
+                                        allow_legacy_bool=False)[:2] == (True, 'no-price')
+    assert shared.validate_smoke_result(dict(VALID_PRICED),
+                                        allow_legacy_bool=False)[:2] == (True, 'priced')
+
+
 def test_stage_runner_adapter_delegates_to_shared_module(monkeypatch):
     calls = []
 
