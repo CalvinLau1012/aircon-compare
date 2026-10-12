@@ -2,12 +2,21 @@
 
 > **2026-10-01 本輪完成**：[PR #23](https://github.com/CalvinLau1012/aircon-compare/pull/23) 已合併；[重建 run 36817792681](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36817792681) 與 [Pages run 36817991532](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36817991532) 均成功。 README／網頁更新日誌及版本索引已更新，日誌日期卡片、手機／深色版面已上線；元文件第一節與引用已按人類更正為「對比目的」。獨立線上核對 26/26 pass；build `B20261001.132.1`（封包 13:03 HKT），正式版本仍 v1.2.9。以下核對基準與歷史條目保留。
 
+> **2026-10-12 現況追加**：PR #24 已合併（merge `742404b`）；[Pages run 38185435570](https://github.com/CalvinLau1012/aircon-compare/actions/runs/38185435570) success，GATE-08 37 checks／14 browser。現行不可變 payload 為 v1.2.9／build `B20261010.142.1`，artifact 來源 `7994e7b`（唔係 merge commit，metadata 冇手改）。daily workflow `335052362` 已 active（UTC cron `30 16`＝HKT 00:30；首次恢復後定時完整批次仍待觀察）。BigGo 唯讀 coordinator check [run 38187063148](https://github.com/CalvinLau1012/aircon-compare/actions/runs/38187063148) success（1 GET、token／search 0、身份一致），唔證明寫入權限或 provider 連線。下方 10 月 1 日內容保留為歷史；最新 OBSERVED／UNKNOWN 見 [STATUS §31](docs/STATUS.md)。
+
 ## 📌 最新狀態（2026-10-01 核對）
 
 - **正式版本 v1.2.9**；9 月 24 日 Release 已發布，後續維護 PR #19／#20／#22 已部署。最新部署事實見線上 [metadata.json](https://calvinlau1012.github.io/aircon-compare/metadata.json)，不另虛構新版本。
 - 最新核對資料日期 **2026-10-01**，**1,816 筆登記／1,755 個 canonical 型號**；由成功 EMSD receipt 的取得時間轉香港日期。來源為 DATA.GOV.HK 資料目錄、資料由機電工程署提供，並與 EMSD 分頁比對。
 - GitHub daily 設定每日 **00:30 HKT**；Actions 排程可能延遲，並非準點保證。Pages build → deploy → GATE-08 維持同一流程；runner 固定 Ubuntu 24.04，Actions 使用 Node.js 24。
 - BigGo 只在到期且 active 的價格 stage、取得租約及通過預算後使用；本次頁面／文件整理不重新查價。Price.com 抓取已放棄；私人伺服器工作仍暫停，不能當作已正式部署。
+
+### 2026-10-12 追加現況
+
+- **排程語義**：GitHub Actions schedule 屬**預定觸發**；官方明示高負載時可延遲甚至丟棄（[schedule 事件](https://docs.github.com/en/actions/reference/events-that-trigger-workflows#schedule)、[Troubleshooting workflows](https://docs.github.com/en/actions/how-tos/troubleshoot-workflows)）。00:30 HKT 唔係準時保證；本項目未有延遲量測（UNKNOWN）。唔會因延遲自動補跑或重複查價。
+- **私人部署**：維護者另有**獨立私人部署**，其排程已恢復並在運行；同 GitHub Actions 係獨立排程。共用協調只限 BigGo 價格階段，並非整體主備、亦不保證邊個先執行。公開 repo 只負責 GitHub Actions／Pages 路徑，唔記錄私人環境識別。
+- **BigGo 受控路徑**：daily 只用 `scripts/biggo_stage_runner.py` 一個受控入口；價格 stage inactive 時零 provider／零 coordinator；active 時經共享租約、預算、cooldown、冪等及 write-ahead intent。smoke 候選由當前 eligible dataset 動態揀選（非固定型號清單）。手動診斷預設零流量；唯讀 `--check-coordinator` 同 provider 測試 `--execute` 互斥。合法 `no-price` 唔等於網絡故障。
+- **未驗證（UNKNOWN）**：首次恢復後嘅定時完整 daily 批次、GitHub runtime 真實 provider 連線、寫入權限、供應商配額、跨界 writer 接手。以上唔可以由唯讀診斷或文件整理推論完成。
 
 <details>
 <summary>2026-09-24 歷史概況（保留原文；最新狀態見上方）</summary>
@@ -147,6 +156,7 @@ xychart-beta
 ## 🔄 自動更新（EMSD 偵測 · 分批快照）
 
 - **排程**：GitHub Actions 每日 00:30（香港時間；cron `30 16 * * *`）輕量偵測 EMSD；**GitHub 排程可能延遲**，實際 run 時間以 Actions 記錄為準，並非精準 SLA
+- **排程延遲語義（2026-10-12 追加）**：GitHub 官方文檔明示 schedule event 於高負載時可能延遲，甚至被丟棄；00:30 係預定觸發而唔係準時保證，請以 Actions 實際 run 記錄為準。本項目未有延遲量測數據（UNKNOWN），亦唔會因延遲自動補跑或重複查價。
 - **EMSD 快照**：每次抓取寫入 `emsd_receipt.json`（逐頁行數、總登記數、成功／失敗）；抓不齊或中途失敗**不會覆寫**現有 CSV
 - **新機偵測**：比較 EMSD 官方資料庫新舊型號，新上市型號自動入庫並在網頁「🆕 最近新上市」顯示；官網核實分兩日分批進行，沒有新機就不更新內容
 - **價錢快照（分批）**：**BigGo 官方 JSON API**（`api.biggo.com`，官方免費認證，憑證只放 GitHub Secrets）＋ PricesAPI 核心 29 驗收／後備 ＋ Price.com.hk 舊快照；每月最多一輪、分 7 日分批（2026-09 已完成 7/7）；**價錢為快照，未收錄／無報價標「待查」**，點 🔍 在瀏覽器用 Google 搜最新價
@@ -388,6 +398,8 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 舊統計表各有快照日期，不能當成今日即時數字；未知官方配額、未執行的私人線驗收及既有價錢疑點仍保持 UNKNOWN。
 
+**2026-10-12 追加**：現行不可變 payload 為 v1.2.9／build `B20261010.142.1`／來源 `7994e7b`（[Pages run 38185435570](https://github.com/CalvinLau1012/aircon-compare/actions/runs/38185435570)，GATE-08 37 checks／14 browser）；merge commit `742404b` 同 artifact 來源 commit 唔係同一樣。`metadata.json` 日期唔會因為純文件改動而刷新；報告 md／模板文案改動會由下一次 D31 verified snapshot rebuild 連同 `index.html`＋PDF＋metadata 全量重生，再核對線上一致。daily workflow `335052362` 已 active；首次恢復後定時完整批次仍待觀察。
+
 
 ## 🏷️ 版本記錄
 
@@ -411,6 +423,19 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | v0.1.0 | 2026-08-11 | 報告初版（29 型號統合對比） |
 
 ## 📅 更新日誌
+
+### 2026-10-12 — 文件與網頁說明現況同步（doc-only；未新增產品版本）
+
+| 類別 | 更新內容 |
+| --- | --- |
+| 🗂️ 現況同步 | PR #24 已合併（merge `742404b`）；[Pages run 38185435570](https://github.com/CalvinLau1012/aircon-compare/actions/runs/38185435570) success、GATE-08 37 checks／14 browser。不可變 payload 仍為 v1.2.9／build `B20261010.142.1`／artifact 來源 `7994e7b`（非 merge commit；metadata 冇手改）。 |
+| ⏰ 排程 | GitHub 官方明示 schedule 可延遲甚至丟棄；00:30 HKT 係預定觸發而非準時保證。本項目未有延遲量測；唔會自動補跑或重複查價。daily workflow `335052362` 已 active（UTC `30 16`）。 |
+| 🔍 BigGo | 唯讀 coordinator check run `38187063148` success（恰好 1 GET、token／search 0、identity 與 server 一致）；不證明寫入權限、provider 連線或每日批次完成。daily 仍只經 `scripts/biggo_stage_runner.py` 受控入口。 |
+| 🏠 私人部署 | 維護者獨立私人部署已恢復（排程 00:30 HKT 運行中）；同 GitHub Actions 獨立排程，共用協調只限 BigGo。公開 repo 只泛稱，不記錄私人識別。 |
+| 📝 文件 | README／需求摘要／CHANGELOG／STATUS／DECISIONS／docs 導覽／GOVERNANCE_MATRIX／AGENTS／CONTRIBUTING／raw sink runbook 全部以追加方式同步；歷史文字零刪改。 |
+| 🖥️ 網頁文案 | `空調對比報告.md` 加 2026-10-12 排程口徑與現況追加；`generate_html.py` 四處用戶可見排程文案改為官方語義。來源已改，待可信重建發布（D31／D32）。 |
+
+> 本日誌只追加，不改寫任何歷史條目；「未部署／候選」描述仍是各條目寫作當日狀態。最新 OBSERVED／UNKNOWN 見 [docs/STATUS.md](docs/STATUS.md) §31。
 
 ### 2026-10-01 — v1.2.9 維護修復已上線・更新日誌整理
 
@@ -689,3 +714,5 @@ python fetch_rasonic.py        # 樂信官方網店價格
 網站與文件說明已按同步基準校正；產品版本仍由 metadata 提供。文件導覽見 [docs/README.md](docs/README.md)，實施證據、已知限制與待驗證項目見 [docs/STATUS.md](docs/STATUS.md)。
 
 **本次文件核對日期**：2026-10-01 · 正式版本 v1.2.9 · 維護部署與尚未驗證項目見上方最新索引。
+
+**2026-10-12 追加核對**：以上 10 月 1 日索引屬歷史；最新 merge／Pages／GATE-08／payload／診斷／daily 狀態見頁首 2026-10-12 追加及 [docs/STATUS.md](docs/STATUS.md) §31。文件與網頁文案改動未新增 tag／Release。

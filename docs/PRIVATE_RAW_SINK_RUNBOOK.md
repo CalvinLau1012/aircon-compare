@@ -79,3 +79,8 @@ D7-A 已選 Private GitHub Release assets，首次 production raw snapshot 與 p
 - provider-free rebuild 必須驗既有 raw receipt、來源 cardinality／durable bindings 與 dataset hash，保留原取得時間、來源及 snapshot id；不能把重建時間當新 acquisition。
 - 本次 latest basis：daily 36812197686／Pages 36812428581，來源取得時間 `2026-09-30T20:59:20Z`，雙源 receipt 通過；沒有重新抓取資料或再次上載／下載私人 raw asset。
 - 90 日 retention 與不刪成功 run 資產的原要求不变；orphan 資產是否自然清理並未在此輪核對，保持 UNKNOWN。
+
+## 2026-10-12 現況追加
+
+- 本輪未重新抓取 EMSD、未上載／下載私人 raw asset；latest acquisition facts 同 90 日 retention 契約不變。
+- 最新部署事實（PR #24 merge `742404b`、Pages run `38185435570`、payload v1.2.9／`B20261010.142.1`）見 STATUS §31；私人部署已恢復但公開 repo 只泛稱，raw sink 章節不變。
