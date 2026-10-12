@@ -424,6 +424,16 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 ## 📅 更新日誌
 
+### 2026-10-12 — Root98 精簡 hero 文案／排版（生成器來源候選；未部署）
+
+| 類別 | 更新內容 |
+| --- | --- |
+| 🎨 Hero | 副標縮短為「比較冷氣規格、能效與價格」；標題「香港空調對比報告」及 4 個統計（`statTotal`／`statPrice`／`statSize`＋精選 29）不變。 |
+| 🧾 來源 | Hero 長來源段落改為一行短摘要＋「完整來源及限制 →」`#source` 連結（鍵盤可用、對比 5.38:1 @ 最淺 hero 底色）；完整來源資料及價格快照限制在 footer／來源區保留，並補回「缺價標『待查』」字眼。 |
+| 📐 留白 | Hero 上下留白及統計間距收窄（D32 隔離 fixture 實測 375px：732→466px；1280px：494→386px；無水平溢出）。 |
+| 🔗 動態 | `deployInfo` 及 metadata runtime（資料日期／版本／最後部署）來源不變；比較器、導覽、主題、欄位全部無改。 |
+| 🧪 證據 | 新增 `tests/test_hero_layout.py` 行為回歸（D32 fixture 重生候選 HTML，375／1280、light／dark）；本分支唔提交 `index.html`／PDF／`metadata.json`，待 D31 `rebuild_verified_snapshot=true` 全量重建後發布核對。 |
+
 ### 2026-10-12 — 文件與網頁說明現況同步（doc-only；未新增產品版本）
 
 | 類別 | 更新內容 |

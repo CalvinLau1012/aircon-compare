@@ -43,6 +43,13 @@
 
 ## [Unreleased]
 
+### 2026-10-12 Root98 精簡 GitHub Pages hero（生成器來源候選；未部署）
+
+- **Changed（website copy/layout sources）**：`generate_html.py` hero 副標縮短為「比較冷氣規格、能效與價格」；hero 長來源段落改為短摘要＋`#source` 連結（鍵盤可用、對比 5.38:1）；hero 上下留白／統計間距收窄（375px：732→466px；1280px：494→386px）；footer 補回「缺價標『待查』」。4 個統計 JS id、`deployInfo`、metadata runtime 來源、比較器／導覽／主題不變。
+- **Evidence**：D32 隔離 fixture 重生候選 HTML；375／1280、light／dark 無水平溢出，來源連結可聚焦並以 Enter 跳到 `#source`（新增 `tests/test_hero_layout.py` 行為回歸）。
+- **Safety**：零 BigGo／EMSD／來源抓取、零 Secrets／生產操作；未改 `VERSION`／`metadata.json`／`index.html`／PDF／價格快照；未 push／merge／deploy。
+- **Pending**：本分支唔提交 `index.html`／PDF，待下一次 D31 verified snapshot rebuild 全量重生再核對 Pages／GATE-08。
+
 ### 2026-10-12 文件與網頁說明現況同步（doc-only；未發布新版本）
 
 - **Changed（docs-only）**：README、需求摘要、CHANGELOG、STATUS §31、DECISIONS D35、docs 導覽、GOVERNANCE_MATRIX、AGENTS、CONTRIBUTING、raw sink runbook 以追加方式同步 2026-10-12 現況；全部歷史文字保留。
