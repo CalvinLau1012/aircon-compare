@@ -1644,3 +1644,14 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
 
 - 首次恢復後定時完整 daily 批次；GitHub runtime 真實 provider 連線／寫入權限／供應商配額；active stage 跨 writer 接手；私人環境與 GitHub 邊個先執行。
 - GitHub schedule 延遲分佈；舊價錢疑點是否修正；上述全部唔可以由本節文件整理推論完成。
+
+### §31.7 本輪本地驗證（E2；離線 sandbox；零 provider）
+
+- 環境：`aircon-r25f-ds91-deps:local`（pinned deps）、`--network none`、`c67f2df` 隔離 clone。
+- `python -m pytest tests/ -q`：**1015 passed／1 skipped／1 warning**，rc=0（warning 係已知 duplicate-zip 測試）。
+- `scripts/run_acceptance.py`：**7/7 gates rc=0**（fresh checkout；先前一次 PYTEST 失敗係 fixture 跑完留下 dirty `index.html`，依 AGENTS 2026-10-01 補充需用乾淨 checkout，重跑 clean clone 已全綠）。
+- `feature-check.py --run-tests`：15 required／**18 個 collection 節點全部 passed**，無 skip／xfail／fail。
+- `extract_governance.py`（6 區塊）、`validate_data.py`、`validate_metadata.py`（version 1.2.9／datasetDate 2026-10-11）、`check_public_privacy.py --mode worktree`（0 命中）：全部 rc=0。
+- 網站 fixture（D32）：`generate_html.py` → `make_fixture_release.py`（build `B20261011.PR-FIXTURE`）→ `build_pages_artifact.py` → `verify_candidate.py`；**fixture 同 artifact payload hash 一致**（該次 run `sha256:1ffe8eeb…`；fixture PDF 每次重建可因時間戳不同），候選 24/24 checks 全 pass（含 `payload.pdf_matches_metadata`）；375px dark 及 1280px light 本機 HTTP 瀏覽器檢查：水平溢出 0px、footer 出現「非準時保證」、報告內文出現「2026-10-12 排程口徑」及「高負載時可延遲甚至丟棄」。
+- Markdown append-only 檢查：全部修改 md 原行 multiset 100% 保留；`git diff --check` clean。
+- 邊界：全程零 BigGo／EMSD／官網／GitHub API 呼叫；未改 `VERSION`／`metadata.json`／價格快照／queue／黑名單／runner 行為／cron／治理 Schema；未 commit `index.html`／PDF。E3／E4 仍待 Root PR 與 D31 重建後嘅真實 run。
