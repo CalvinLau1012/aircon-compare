@@ -380,7 +380,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       </div>
     </div>
     <div class="chint">提示：Gree/TOSOT 保養為零售商規格（交叉核實），其餘品牌為官網核實</div>
-<div class="chint" style="border-left-color:#2EA06E">🆕 最近新上市：MECAN MC07WVRQW（1級） · MECAN MC09WVRQW（1級） · MECAN MC07VXH（1級） · MECAN MC09VXH（1級） · MECAN MC12VXH（1級） · 三菱重工 WRK07MIZH1（1級） · 三菱重工 WRK09MIZH1（1級） · 三菱重工 WRK18MIZH1（1級） 等 21 個（新機偵測自 EMSD 官方資料庫，每日 00:30 自動偵測；GitHub 排程可能延遲）</div>
+<div class="chint" style="border-left-color:#2EA06E">🆕 最近新上市：MECAN MC07WVRQW（1級） · MECAN MC09WVRQW（1級） · MECAN MC07VXH（1級） · MECAN MC09VXH（1級） · MECAN MC12VXH（1級） · 三菱重工 WRK07MIZH1（1級） · 三菱重工 WRK09MIZH1（1級） · 三菱重工 WRK18MIZH1（1級） 等 21 個（新機偵測自 EMSD 官方資料庫，每日 00:30 自動偵測；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）</div>
 <div class="chint" style="border-left-color:var(--warn);color:var(--warn)">⚠️ 官網規格待核：EMSD 官方資料已照常更新，但以下型號未有品牌官網目錄覆蓋，核實隊列原樣保留（WRK07MIZH1、WRK09MIZH1、WRK18MIZH1、MC07WVRQW、MC09WVRQW 等 8 個）。狀態見 official_batch_status.json。</div>
     <div class="model-list" id="modelList"></div>
     <div class="more-wrap"><button id="btnMore" onclick="showMore()">顯示更多型號</button></div>
@@ -407,7 +407,9 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <p><strong>最新說明核對：2026-10-01</strong> ｜ 正式版本 <strong>v1.2.9</strong>；PR #19／#20／#22 維護修復已部署。即時資料日期、build、來源 commit 與封包部署時間由頁面 metadata 提供。
 <strong>官方來源</strong>：DATA.GOV.HK 資料目錄；資料由機電工程署提供。CSV 與 EMSD 分頁雙源核對；10 月 1 日核對快照為 <strong>1,816 筆登記／1,755 個型號</strong>，不代表所有價格和規格已在當日重查。
 <strong>自動更新</strong>：GitHub daily 每日預定 <strong>00:30 HKT</strong>，平台可能延遲；價格只按到期 active stage 與租約／預算執行。Price.com 不再爬取，僅保留歷史快照。
-<strong>維護狀態</strong>：本次以已驗證快照整理日誌及重建頁面／PDF，不重新抓資料或查價。最新變更見下方「📅 更新日誌」，驗收與剩餘限制見 <a href="https://github.com/CalvinLau1012/aircon-compare/blob/master/docs/STATUS.md">STATUS</a>。</p>
+<strong>2026-10-12 排程口徑（追加）</strong>：GitHub Actions schedule 屬預定觸發；官方明示高負載時可延遲甚至丟棄，00:30 HKT 並非準時保證，實際時間以 Actions 記錄為準（本項目未有延遲量測；唔會自動補跑或重複查價）。
+<strong>維護狀態</strong>：本次以已驗證快照整理日誌及重建頁面／PDF，不重新抓資料或查價。最新變更見下方「📅 更新日誌」，驗收與剩餘限制見 <a href="https://github.com/CalvinLau1012/aircon-compare/blob/master/docs/STATUS.md">STATUS</a>。
+<strong>2026-10-12 現況追加</strong>：PR #24 已合併（merge <code>742404b</code>）；現行不可變 payload 為 v1.2.9／build <code>B20261010.142.1</code>／artifact 來源 <code>7994e7b</code>（非 merge commit）；Pages run <code>38185435570</code> success，GATE-08 37 checks／14 browser；daily workflow <code>335052362</code> 已 active（首次恢復後定時完整批次待觀察）。</p>
 </blockquote>
 <details>
 <summary>2026-09-22 歷史報告說明（保留原文）</summary>
@@ -2366,6 +2368,37 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <p><strong>2026-09-24 更新（追加；上一段原文保留）</strong>：v1.2.9 已發布並上線，<code>datasetDate</code> 已由成功、hash-bound 嘅 <code>emsd_receipt.json</code> 實際 <code>retrievedAt</code>（UTC）轉 UTC+8 香港日期得出（<code>datasetDateBasis=retrieval-date-fallback</code> 只係 basis 名）；舊無 hash 收據會明確失敗，唔會補假日期。「最後部署」仍為封包時間（HKT），並非 Pages 完成時間。</p>
 </blockquote>
 <h2>📅 更新日誌</h2>
+<h3>2026-10-12 — 文件與網頁說明現況同步（doc-only；未新增版本）</h3>
+<table>
+<thead>
+<tr>
+<th>類別</th>
+<th>更新內容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🗂️ 現況</td>
+<td>PR #24 已合併（merge <code>742404b</code>）；<a href="https://github.com/CalvinLau1012/aircon-compare/actions/runs/38185435570">Pages run 38185435570</a> success，GATE-08 37 checks／14 browser。不可變 payload 仍為 v1.2.9／build <code>B20261010.142.1</code>／artifact 來源 <code>7994e7b</code>；<code>metadata.json</code> 冇手改。</td>
+</tr>
+<tr>
+<td>⏰ 排程</td>
+<td>GitHub 官方明示 schedule 可延遲甚至丟棄；00:30 HKT 係預定觸發而非準時保證。本項目未有延遲量測；唔會自動補跑或重複查價。daily workflow <code>335052362</code> 已 active。</td>
+</tr>
+<tr>
+<td>🔍 BigGo</td>
+<td>唯讀 coordinator check run <code>38187063148</code> success（恰好 1 GET、token／search 0、identity 與 server 一致）；不證明寫入權限、provider 連線或每日批次完成。合法 <code>no-price</code> 唔等於網絡故障。</td>
+</tr>
+<tr>
+<td>🏠 部署</td>
+<td>維護者獨立私人部署已恢復（排程 00:30 HKT 運行中）；同 GitHub Actions 獨立，共用協調只限 BigGo，非整體主備、不保證先後。公開 repo 只泛稱。</td>
+</tr>
+<tr>
+<td>📝 說明</td>
+<td>上方排程口徑及現況追加行已加入；本報告 md 改動會由下一次 D31 verified snapshot rebuild 連同 <code>index.html</code>＋PDF＋metadata 全量重生，再核對 Pages／GATE-08。</td>
+</tr>
+</tbody>
+</table>
 <h3>2026-10-01 — v1.2.9 維護修復已上線・更新日誌整理</h3>
 <table>
 <thead>
@@ -2887,7 +2920,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 
   <span class="ai">🤖 AI 協作 · Codex + DeepSeek</span><br>
   <span class="line">──────</span><br>
-  <span id="footStatus">🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub 排程可能延遲）· 有新機先分批核實更新 · 資料日期暫不可用 · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考</span><br>
+  <span id="footStatus">🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）· 有新機先分批核實更新 · 資料日期暫不可用 · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考</span><br>
   本報告僅供選購參考，不構成購買建議 · 價格及供應隨時變動，請以商戶實時報價為準
 </footer>
 
@@ -3349,7 +3382,7 @@ window.addEventListener('scroll',()=>{
         line += ' · 🔄 每日偵測新機 · 有機先更新';
       }
       if (el) el.textContent = line;
-      if (foot) foot.textContent = '🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub 排程可能延遲）· 有新機先分批核實更新 · '
+      if (foot) foot.textContent = '🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）· 有新機先分批核實更新 · '
         + (ds ? ('資料日期 ' + ds) : '資料日期暫不可用') + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考';
     })
     .catch(() => {
