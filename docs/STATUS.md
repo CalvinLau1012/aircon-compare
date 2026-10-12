@@ -1592,3 +1592,66 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
   `index.html`／PDF／價格快照／queue／黑名單／`prices_meta`／shared coordinator state；
   未 push／merge／deploy／dispatch／未操作 runtime.env／production container／compose／
   cron／管理工具。
+
+
+## §31 2026-10-12 現況同步（PR #24／BigGo 唯讀診斷／daily 恢復；append-only）
+
+> 本節 2026-10-12 追加；§1–§30（含 §30.1／§30.2「GitHub daily 維持 disabled／唔啟用」）
+> 係當時快照，唔再代表今日狀態。以下 OBSERVED 事實來自 Root 交付同 repo 外收據
+> （收據冇搬入公開 repo；本文只記事實，唔記私人識別）。
+> 私人部署只作泛稱，收據內 host／domain／path／私人 repo 標識唔會抄入本文。
+
+### §31.1 已觀察事實（E3／E4）
+
+| 項目 | 事實 |
+| --- | --- |
+| PR #24 | 已合併；merge commit `742404b50aa9a35f02b8221736666eb477c304f3`（`merged-readback.json`）。 |
+| Pages | run [38185435570](https://github.com/CalvinLau1012/aircon-compare/actions/runs/38185435570) success（push，head `742404b`）；GATE-08 `postdeployChecksPassed=37`、`browserChecksPassed=14`（`pages-release-receipt.json`，E4）。 |
+| 不可變 payload | version `1.2.9`、build `B20261010.142.1`、artifact 來源 commit `7994e7b43dd581cd9b72ebfd13f55d53bacf5569`、workflowRunId `38082832788`、datasetDate 2026-10-11；沿用上一個已驗證 payload，metadata **冇**手改去迎合 merge commit。`artifact commit` 唔等於 `merge commit 742404b`，兩者不得混稱。 |
+| BigGo 唯讀診斷 | run [38187063148](https://github.com/CalvinLau1012/aircon-compare/actions/runs/38187063148) success（workflow_dispatch，head `742404b`）；mode `coordinator-check`、status `coordinator-read-ok`、`coordinatorOps=1`、token=0／search=0、`readOnly=true`、`providersCalled=false`、`identityMatchesServer=true`（`diagnostic-accepted.json`）。 |
+| daily 恢復 | workflow id `335052362` 已 active（`daily-enabled.json`，HTTP 204）；cron UTC `30 16 * * *`＝HKT 00:30。啟用動作本身 providerCalls=0（`daily-activation-preflight.json`、`daily-enable-intent.json`）。 |
+| 私人部署 | 獨立私人環境排程 00:30 HKT 且 running（收據：`cronRunning=true`、schedule `30 0 * * *`、timezone `Asia/Hong_Kong`）；公開 repo 只泛稱獨立私人部署，唔記錄 host／domain／path／私人 repo 標識／token 標籤或期限。 |
+
+### §31.2 診斷證明啲乜、唔證明啲乜
+
+- 證明：共享 coordinator state 喺 GitHub runtime 可讀、identity digest 同 server 計出嘅一致、配置可解析。
+- **不證明**（`notProven`）：write-permission、token-equality、provider-connectivity、daily-stage-compatibility；亦唔證明每日批次完成或 BigGo 健康。
+- 第一次診斷 run `38185751458` failure 屬配置修正歷史，唔可以當成功；重跑成功嘅係 `38187063148`。
+- 首次恢復後嘅定時完整 daily 批次**尚未觀察**（截至本節），維持 UNKNOWN；唔會用一次性唯讀成功冒充。
+
+### §31.3 排程語義（GitHub 官方；觸發 ≠ 準時）
+
+- GitHub 官方文檔明示 schedule event 可能因高負載延遲，甚至被丟棄（[Events that trigger workflows — schedule](https://docs.github.com/en/actions/reference/events-that-trigger-workflows#schedule)；[Troubleshooting workflows](https://docs.github.com/en/actions/how-tos/troubleshoot-workflows)）。00:30 HKT 係**預定觸發**，唔係準時保證。
+- 本項目**未有**延遲量測或延遲分佈數據；歷史延遲量屬 UNKNOWN，任何「量化延遲」講法都冇證據。
+- 唔會因 schedule 延遲而自動補跑、重複查價或改 cron；實際 run 時間以 Actions 記錄為準。
+- GitHub Actions 同私人環境排程係**獨立**；共用 coordinator 只協調 BigGo stage，唔係整體主備、亦唔保證邊個先執行。
+
+### §31.4 BigGo 現行行為（2026-10-12 核對代碼）
+
+- 唯一受控 stage 入口：`scripts/biggo_stage_runner.py`（daily 用）；inactive／已完成 → 即回，零 provider、零 coordinator 讀寫。
+- active：經共享 coordinator lease／budget／cooldown／冪等＋write-ahead intent；remote active／idle 未完成或 stage gap 一律唔跨 stage（0 PUT／0 provider）。
+- smoke candidate 由 `biggo_candidate.select_candidate()` 按當前 eligible dataset **動態**揀一個（唔用 `fetch_biggo.SMOKE_CANDIDATES` 固定清單）；空 eligible = zero-provider skip。
+- 手動診斷 `scripts/biggo_smoke_diagnostic.py`：預設 `preview` 零流量；`--check-coordinator` 係唯讀檢查（恰好 ≤1 GET、零 token／search／provider）；`--execute` 係 provider 測試模式（bounded 1 token＋1 search）。check 同 execute 互斥，兩者語義唔可以互換。
+- 合法 `no-price`（API 健康但冇匹配價）唔等於網絡故障；只有 `auth`／`rate-limit`／`transport`／`invalid-response` 等先係 provider／連線問題。
+
+### §31.5 產物、文件與發布語義
+
+- 正常鏈路：daily 產物更新 → 精確 commit → Pages → 線上核對；`metadata.json` 日期唔會因為只改文件而刷新。
+- 純文件（README／需求摘要／CHANGELOG／docs／AGENTS）只 commit 文檔；報告 md／HTML_TEMPLATE 文案改動須經 D31 verified snapshot rebuild（`rebuild_verified_snapshot=true`、`force_price_batch=false`）重生 `index.html`＋PDF＋metadata，再核對 exact source／artifact 嘅 Pages 同 GATE-08。
+- 本輪未新增產品版本／tag／Release；未改 `models_data.VERSION`、`metadata.json`、價格快照、queue、黑名單、runner 行為、cron 或治理 Schema。
+
+### §31.6 剩餘 UNKNOWN
+
+- 首次恢復後定時完整 daily 批次；GitHub runtime 真實 provider 連線／寫入權限／供應商配額；active stage 跨 writer 接手；私人環境與 GitHub 邊個先執行。
+- GitHub schedule 延遲分佈；舊價錢疑點是否修正；上述全部唔可以由本節文件整理推論完成。
+
+### §31.7 本輪本地驗證（E2；離線 sandbox；零 provider）
+
+- 環境：`aircon-r25f-ds91-deps:local`（pinned deps）、`--network none`、`c67f2df` 隔離 clone。
+- `python -m pytest tests/ -q`：**1015 passed／1 skipped／1 warning**，rc=0（warning 係已知 duplicate-zip 測試）。
+- `scripts/run_acceptance.py`：**7/7 gates rc=0**（fresh checkout；先前一次 PYTEST 失敗係 fixture 跑完留下 dirty `index.html`，依 AGENTS 2026-10-01 補充需用乾淨 checkout，重跑 clean clone 已全綠）。
+- `feature-check.py --run-tests`：15 required／**18 個 collection 節點全部 passed**，無 skip／xfail／fail。
+- `extract_governance.py`（6 區塊）、`validate_data.py`、`validate_metadata.py`（version 1.2.9／datasetDate 2026-10-11）、`check_public_privacy.py --mode worktree`（0 命中）：全部 rc=0。
+- 網站 fixture（D32）：`generate_html.py` → `make_fixture_release.py`（build `B20261011.PR-FIXTURE`）→ `build_pages_artifact.py` → `verify_candidate.py`；**fixture 同 artifact payload hash 一致**（該次 run `sha256:1ffe8eeb…`；fixture PDF 每次重建可因時間戳不同），候選 24/24 checks 全 pass（含 `payload.pdf_matches_metadata`）；375px dark 及 1280px light 本機 HTTP 瀏覽器檢查：水平溢出 0px、footer 出現「非準時保證」、報告內文出現「2026-10-12 排程口徑」及「高負載時可延遲甚至丟棄」。
+- Markdown append-only 檢查：全部修改 md 原行 multiset 100% 保留；`git diff --check` clean。
+- 邊界：全程零 BigGo／EMSD／官網／GitHub API 呼叫；未改 `VERSION`／`metadata.json`／價格快照／queue／黑名單／runner 行為／cron／治理 Schema；未 commit `index.html`／PDF。E3／E4 仍待 Root PR 與 D31 重建後嘅真實 run。

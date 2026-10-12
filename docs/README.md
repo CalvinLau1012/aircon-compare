@@ -74,3 +74,23 @@ python -m pytest tests/test_restore_drill.py -q  # 公開 fixture-only 應用＋
 - **文檔政策（2026-09-24 用戶指示）**：文檔只可追加、不可刪除或改寫既有記述；歷史快照保留，
   更新以追加節記錄；需求以 `需求摘要.md`（元文件）為準。見 `docs/DECISIONS.md` D25 同
   `AGENTS.md` 規則 10。
+
+## 2026-10-12 最新入口（追加）
+
+**現行不可變 payload：v1.2.9／build `B20261010.142.1`，artifact 來源 `7994e7b`（非 merge commit）。**
+[PR #24](https://github.com/CalvinLau1012/aircon-compare/pull/24) 已合併（merge `742404b`）；
+[Pages run 38185435570](https://github.com/CalvinLau1012/aircon-compare/actions/runs/38185435570)
+success（GATE-08 37 checks／14 browser）。BigGo 唯讀診斷
+[run 38187063148](https://github.com/CalvinLau1012/aircon-compare/actions/runs/38187063148)
+success（恰好 1 GET、token／search 0、identity 與 server 一致；不證明寫入權限／provider 連線）。
+daily workflow `335052362` 已 active（UTC cron `30 16`＝HKT 00:30 預定觸發）。
+
+- 上方「最新閱讀入口（2026-10-01）」及表中「未 merge／未 E3／E4」字句屬歷史；最新 OBSERVED／UNKNOWN 見
+  [STATUS §31](STATUS.md)，決策背景見 [DECISIONS D35](DECISIONS.md)。
+- **排程語義**：GitHub 官方明示 schedule 可於高負載時延遲甚至丟棄；00:30 HKT 唔係準時保證。
+  本項目未有延遲量測（UNKNOWN）；唔會自動補跑、重複查價或改 cron。
+- **獨立部署**：維護者私人部署已恢復（獨立排程 00:30 HKT 運行中）；同 GitHub Actions 獨立，
+  共用 coordinator 只協調 BigGo stage，非整體主備、不保證先後。公開 repo 只泛稱，不記錄私人識別。
+- **網頁文案**：報告 md／HTML_TEMPLATE 已改為官方 schedule 語義；本分支未提交 `index.html`／PDF，
+  由 D31 verified snapshot rebuild 全量重生後再核對 Pages／GATE-08。
+- ADR／runbook 歷史決策文字全部保留；raw sink 契約與 90 日 retention 不變。

@@ -111,3 +111,13 @@ python model_lifecycle.py         # 顯示停售黑名單
 - 完成可信 PR CI 後，經 D31 `rebuild_verified_snapshot=true`、`force_price_batch=false` 在 master 重建，再核對 exact source/artifact 的 Pages 與 GATE-08。無須資料來源或 BigGo 呼叫；72h acquisition 年齡不能因重建而延長。
 - 正常 daily 不變：00:30 HKT；價格 stage inactive 應零 token／search。Price.com 抓取仍放棄，私人 server 工作仍暫停。
 - pytest 的 snapshot preflight 正向測試需乾淨 checkout；有使用者未提交修改時，用隔離 worktree，不覆蓋／stage／stash 該修改。新部署不能用上一輪測試數字冒充驗收。
+
+## 2026-10-12 現況與操作補充（追加；承 D35）
+
+- **最新狀態入口**：README 頂部 2026-10-12 追加、`docs/STATUS.md` §31、`CHANGELOG.md` 部署索引；2026-10-01 及之前嘅「未部署／暫停／disabled」字句屬歷史。
+- **部署事實**：PR #24 merge `742404b`；不可變 payload v1.2.9／build `B20261010.142.1`／artifact 來源 `7994e7b`；Pages run `38185435570` success、GATE-08 37 checks／14 browser。`artifact commit` 唔等於 merge commit，亦唔可以自行修改 `metadata.json`。
+- **排程語義**：GitHub Actions schedule 係預定觸發；官方明示高負載可延遲甚至丟棄（[events](https://docs.github.com/en/actions/reference/events-that-trigger-workflows#schedule)、[troubleshooting](https://docs.github.com/en/actions/how-tos/troubleshoot-workflows)）。00:30 HKT 唔係準時保證；本項目未有延遲量測（UNKNOWN）。**唔可以**因為延遲而自動補跑、重複查價或改 cron。
+- **daily 現況**：workflow `335052362` active；首次恢復後定時完整批次尚未觀察。GitHub Actions 同維護者私人部署係**獨立排程**；共用 coordinator 只協調 BigGo stage，非整體主備、不保證先後。公開文檔只泛稱私人部署，唔寫 host／domain／path／私人 repo 標識／token 標籤／期限。
+- **BigGo 受控路徑**：daily 只可經 `scripts/biggo_stage_runner.py`；inactive／完成＝零 provider、零 coordinator；active 經 lease／budget／cooldown／冪等＋write-ahead intent；smoke 候選由 `biggo_candidate.select_candidate()` 動態揀（非固定清單）。手動診斷預設零流量；`--check-coordinator`（唯讀，≤1 GET）同 `--execute`（provider 測試）互斥、語義不可互換；合法 `no-price` 唔等於網絡故障。
+- **文件規則不變**：純文件改動只 commit 文檔；報告 md／HTML_TEMPLATE 文案改動先做隔離 fixture 驗證（D32），再由 D31 `rebuild_verified_snapshot=true`、`force_price_batch=false` 全量重生 `index.html`＋PDF＋metadata 並核對 Pages／GATE-08。metadata 日期唔會因文件更新而刷新。
+- **2026-10-12 更正**：上面 2026-10-01 節「私人 server 工作仍暫停」已過期；私人部署已恢復（獨立排程 00:30 HKT 運行中），原文保留作歷史。

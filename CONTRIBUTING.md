@@ -34,3 +34,10 @@ python generate_html.py
 - 完成可信 PR CI 後，經 D31 `rebuild_verified_snapshot=true`、`force_price_batch=false` 在 master 重建，再核對 exact source/artifact 的 Pages 與 GATE-08。無須資料來源或 BigGo 呼叫；72h acquisition 年齡不能因重建而延長。
 - 正常 daily 不變：00:30 HKT；價格 stage inactive 應零 token／search。Price.com 抓取仍放棄，私人 server 工作仍暫停。
 - pytest 的 snapshot preflight 正向測試需乾淨 checkout；有使用者未提交修改時，用隔離 worktree，不覆蓋／stage／stash 該修改。新部署不能用上一輪測試數字冒充驗收。
+
+## 2026-10-12 現況補充（追加；與 AGENTS 規則一致）
+
+- 現行版本／部署索引見 README 頂部 2026-10-12 追加與 `docs/STATUS.md` §31；2026-10-01 節「私人 server 工作仍暫停」已過期，私人部署已恢復（獨立排程 00:30 HKT 運行中）。
+- GitHub Actions schedule 係預定觸發；官方明示高負載可延遲甚至丟棄，00:30 HKT 唔係準時保證；本項目未有延遲量測，唔會自動補跑或重複查價。
+- daily 只可經 `scripts/biggo_stage_runner.py` 受控入口；inactive 零 provider；合法 `no-price` 唔等於網絡故障。手動診斷 `--check-coordinator`（唯讀）同 `--execute`（provider 測試）互斥。
+- 報告 md／HTML_TEMPLATE 文案改動先做隔離 fixture 驗證（D32），再由 D31 `rebuild_verified_snapshot=true`、`force_price_batch=false` 全量重生 `index.html`＋PDF＋metadata；未提交生成物之前唔可以宣稱已發布。

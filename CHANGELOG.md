@@ -24,6 +24,14 @@
 
 **歷史保留說明**：下方 `[Unreleased]` 是歷次寫作階段的原始記錄，包含後來已部署的候選；上表及較新的 STATUS 追加段落提供後續結果。尚未執行的私人伺服器、active BigGo stage 跨 writer 接手、配額確認等仍未完成。本次不新增產品版本／tag／Release。
 
+### 2026-10-12 部署與診斷證據追加（不覆寫舊索引）
+
+- PR #24 已合併（merge `742404b`）；[Pages run 38185435570](https://github.com/CalvinLau1012/aircon-compare/actions/runs/38185435570) success，GATE-08 `postdeployChecksPassed=37`／`browserChecksPassed=14`。
+- 不可變 payload：v1.2.9／build `B20261010.142.1`／artifact 來源 `7994e7b`／workflowRunId `38082832788`／datasetDate 2026-10-11；metadata 冇手改去迎合 merge commit；`artifact commit` 唔等於 merge commit `742404b`。
+- 唯讀診斷 [run 38187063148](https://github.com/CalvinLau1012/aircon-compare/actions/runs/38187063148) success：恰好 1 GET、token／search 0、identity 與 server 一致；不證明寫入權限、provider 連線或每日批次完成。
+- daily workflow `335052362` 已 active；首次恢復後嘅定時完整批次仍未觀察。私人環境排程已恢復並運行，但與 GitHub Actions 獨立；公開 repo 只泛稱，不記錄私人識別。
+- 排程語義：GitHub 官方明示 schedule 可延遲甚至丟棄，00:30 HKT 係預定觸發而非準時保證；本項目未有延遲量測（UNKNOWN），亦唔會自動補跑或重複查價。
+
 ### 2026-10-01 已部署維護修復（追加完成狀態）
 
 - **Added**：可恢復 BigGo stage bundle、write-ahead 呼叫意圖、完成狀態與快照匯入校驗；唯讀可疑價格審計；provider-free verified snapshot rebuild 模式。
@@ -34,6 +42,14 @@
 
 
 ## [Unreleased]
+
+### 2026-10-12 文件與網頁說明現況同步（doc-only；未發布新版本）
+
+- **Changed（docs-only）**：README、需求摘要、CHANGELOG、STATUS §31、DECISIONS D35、docs 導覽、GOVERNANCE_MATRIX、AGENTS、CONTRIBUTING、raw sink runbook 以追加方式同步 2026-10-12 現況；全部歷史文字保留。
+- **Changed（website copy sources）**：`空調對比報告.md` 加 2026-10-12 排程口徑／現況追加；`generate_html.py` 四處用戶可見排程文案改為「預定觸發；高負載可延遲或丟棄，非準時保證」。來源已改；本分支唔提交 `index.html`／PDF，待 D31 verified snapshot rebuild 全量重生。
+- **Evidence**：PR #24 merge `742404b`；Pages run `38185435570`（GATE-08 37／14）；payload v1.2.9／`B20261010.142.1`／`7994e7b`；診斷 run `38187063148`（1 GET、token／search 0、identity 一致）；daily workflow `335052362` active。隔離 fixture HTML／PDF／metadata 驗證報告見交付。
+- **Safety**：零 BigGo／EMSD／官網抓取、零 Secrets、零生產操作；未改 `VERSION`／metadata／價格快照／queue／cron／runner／治理 Schema。
+- **Unknown**：首次恢復後定時完整 daily、provider 連線／寫入權限／配額、延遲分佈。
 
 ### 2026-10-11 GitHub BigGo bounded 手動診斷候選（未發布、未部署）
 

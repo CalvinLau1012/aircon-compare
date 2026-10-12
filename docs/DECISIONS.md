@@ -1195,3 +1195,26 @@ PR #23 最終 head `a8e5444` 已通過 GitHub CI 並 merge；trusted rebuild `36
   - `UNKNOWN`：E3 trusted CI（新 commit 仍未經 Root 上傳／PR CI）、真實 GitHub Actions runtime one-GET check、真實 Secret 配置 digest 核對、E4 部署全部未執行。
   - `BOUNDARY`：未 push／未改 PR／未 merge／未 deploy／未 dispatch；未呼叫真實 BigGo／EMSD／GitHub API；未讀 Secrets 明文；未改 `metadata.json`／`VERSION`／`index.html`／PDF／價格快照／queue／黑名單／shared coordinator state；未 claim c5cdb8e 嘅 CI 覆蓋新 commit。
 - **回滾**：revert 本階段 commit 即可移除 check mode、workflow input／step 同 digest helper；coordinator state schema、`--execute` 語義與現有資料無變，無遷移。Root94／Root95 已驗收嘅 c5cdb8e 行為不受影響。
+
+## D35 · 2026-10-12：文件與網頁說明現況同步；schedule 延遲語義（append-only）
+
+- **日期**：2026-10-12
+- **狀態**：文件候選（doc-only）；網頁文案來源（`空調對比報告.md`、`generate_html.py` HTML_TEMPLATE）已改，隔離 fixture 驗證後交 Root 決定 PR／重建發布
+- **背景**：用戶要求檢查所有相關文件同網頁說明、將過時內容更新到 2026-10-12 現況，並特別指出 GitHub schedule 經常延遲。現行多份文件仍寫「私人 server 工作仍暫停」、「GitHub daily 維持 disabled」；網頁／報告只寫「GitHub 排程可能延遲」，未反映官方明示高負載可延遲甚至丟棄。現有歷史只可追加不可改寫。
+- **選項**：
+  - A：喺每份文件複製完整狀態表——否決：會產生多份會漂移嘅實時狀態，違反單一事實源原則；
+  - B（採用）：集中更新 `docs/STATUS.md` §31 作最新 OBSERVED／UNKNOWN 入口，各文件只加薄追加節＋交叉引用；網頁文案只保留用戶導向用語（排程預定觸發、延遲／丟棄可能、實際以 Actions 記錄為準），唔提私人部署識別；
+  - C：只改 README——否決：未覆蓋元文件、CHANGELOG、STATUS、runbook、AGENTS 等過時指引。
+- **決策**：
+  1. 採取 B；文件全部 append-only（歷史段落零刪改），新狀態標明 2026-10-12 同證據來源。
+  2. 最新事實以 `docs/STATUS.md` §31 為入口；PR 合併事實（`742404b`）、Pages run `38185435570`（GATE-08 37 checks／14 browser）、不可變 payload（v1.2.9／`B20261010.142.1`／來源 `7994e7b`）、唯讀診斷（run `38187063148`、1 GET、token／search 0、identity 一致、notProven 清單）、daily workflow `335052362` active 全部按 Root 收據記錄。
+  3. 排程語義統一為：00:30 HKT 係預定觸發；GitHub 官方明示 schedule 可延遲甚至丟棄；本項目未有延遲量測（UNKNOWN）；唔會自動補跑或重複查價；`generate_html.py` 四處用戶可見排程文案同步改，`空調對比報告.md` 加 2026-10-12 排程口徑追加行。
+  4. 私人部署恢復只以「獨立私人部署／獨立排程」泛稱；公開文檔不得寫 host／domain／path／私人 repo 標識／token 標籤／期限。
+  5. 網頁文案來源修改先喺隔離目錄重生 fixture HTML／PDF／metadata 驗證（D32），本分支唔提交 `index.html`／PDF；發布由合併後 D31 `rebuild_verified_snapshot=true`、`force_price_batch=false` 全量重建再核對 Pages／GATE-08。
+- **原因**：舊文件嘅「暫停／disabled／未部署」字句會誤導當前操作；但歷史證據唔可以刪；單一最新入口＋薄交叉引用可以在唔複製巨大狀態表嘅前提下保持一致。官方 schedule 語義寫清楚可以避免用戶將「00:30 預定」當 SLA。
+- **後果（分類）**：
+  - `REQUIREMENT`：治理 Schema、Metadata Schema、required 功能、成功標準、fail-closed 門禁、runner 行為、cron 時間全部不變；冇新增自動補跑或重複查價。
+  - `OBSERVED / E3–E4`：PR #24 merge `742404b`；Pages run `38185435570` success、GATE-08 37 checks／14 browser；payload v1.2.9／`B20261010.142.1`／`7994e7b`；診斷 run `38187063148` success；daily workflow `335052362` active。全部有 repo 外非秘密收據。
+  - `UNKNOWN`：首次恢復後定時完整 daily 批次；GitHub runtime provider 連線／寫入權限／配額；schedule 延遲分佈；私人與 GitHub 執行次序。
+  - `BOUNDARY`：本輪零 BigGo／EMSD／官網抓取、零 Secrets、零生產操作、唔改排程；私人憑證冇讀；私人證據冇搬入公開 repo。
+- **回滾**：revert 本輪文件 commit 即回復舊說明文字；網頁文案來源 revert 後須再經 D31 重建至令 payload 一致（本分支未提交 `index.html`／PDF，無失配生成物需要回滾）。

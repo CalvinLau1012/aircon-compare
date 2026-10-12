@@ -3,6 +3,8 @@ name: 每日偵測 · 新機分批更新
 on:
   schedule:
     # 香港時間每日 00:30（UTC 16:30）輕量偵測；有新機先觸發分批更新
+    # GitHub schedule 係預定觸發；官方明示高負載可延遲甚至丟棄，並非準時保證（見 docs/STATUS.md §31）；
+    # 唔會因延遲自動補跑、重複查價或者改 cron。
     - cron: '30 16 * * *'
   # PR 只跑唯讀 gates，永不執行 update／deploy（bootstrap：呢個 workflow 已喺 default branch，
   # 令新 Pages workflow 未 merge 前都有 exact-SHA PR checks）

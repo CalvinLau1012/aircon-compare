@@ -460,7 +460,7 @@ def format_status(meta_dict, version):
     date_text = f'📅 資料日期 {dataset_date}' if dataset_date else '📅 資料日期暫不可用'
     deploy_text = f'✅ 最後部署 {deploy_hkt} HKT' if deploy_hkt else '🔄 每日偵測新機 · 有機先更新'
     line1 = f'{date_text} · v{v} · {deploy_text}'
-    line2 = ('🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub 排程可能延遲）· 有新機先分批核實更新 · '
+    line2 = ('🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）· 有新機先分批核實更新 · '
              + (f'資料日期 {dataset_date}' if dataset_date else '資料日期暫不可用')
              + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考')
     return line1, line2
@@ -500,7 +500,7 @@ def new_models_hint():
     more = f' 等 {len(recent)} 個' if len(recent) > len(items) else ''
     return ('<div class="chint" style="border-left-color:#2EA06E">'
             f'🆕 最近新上市：{" · ".join(parts)}{more}'
-            '（新機偵測自 EMSD 官方資料庫，每日 00:30 自動偵測；GitHub 排程可能延遲）</div>')
+            '（新機偵測自 EMSD 官方資料庫，每日 00:30 自動偵測；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）</div>')
 
 
 
@@ -616,7 +616,7 @@ def build_html():
     # 部署資訊由瀏覽器 runtime fetch metadata.json 顯示（治理文檔 §7.2.7）；
     # build 只寫初始骨架；載入失敗顯示「暫不可用」（JS 處理）
     date_status = '📅 資料日期暫不可用 · 部署資訊暫不可用'
-    foot_status = ('🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub 排程可能延遲）· 有新機先分批核實更新 · '
+    foot_status = ('🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）· 有新機先分批核實更新 · '
                    '資料日期暫不可用 · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考')
     new_hint = new_models_hint()
     pending_hint = official_pending_hint()
@@ -1582,7 +1582,7 @@ window.addEventListener('scroll',()=>{
         line += ' · 🔄 每日偵測新機 · 有機先更新';
       }
       if (el) el.textContent = line;
-      if (foot) foot.textContent = '🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub 排程可能延遲）· 有新機先分批核實更新 · '
+      if (foot) foot.textContent = '🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）· 有新機先分批核實更新 · '
         + (ds ? ('資料日期 ' + ds) : '資料日期暫不可用') + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考';
     })
     .catch(() => {

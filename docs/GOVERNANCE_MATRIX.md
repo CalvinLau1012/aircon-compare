@@ -204,3 +204,16 @@ REQUIREMENT 與成功標準不变；近期 OBSERVED／UNKNOWN 詳細口徑以 ST
 ## 12. 2026-10-01 日誌部署完成補記（追加）
 
 PR #23 exact head `a8e5444` 的 CI runs `36817375237`／`36817375746` 成功；本機 7/7 acceptance、877 passed／1 Windows symlink skipped、18 required nodes。source `b39ee69` → artifact `3f81480`，daily `36817792681`／Pages `36817991532` success，GATE-08 及独立 26/26 核對通過；日誌 24 個日期、light／dark 手機版驗收通過。BigGo token／search=0，來源 acquisition facts 不變。其他生產 UNKNOWN 与規範要求不变；見 STATUS §29.5。
+
+## 13. 2026-10-12 現況追加（不覆寫舊矩陣）
+
+| 範圍 | 最新可重跑證據 | 界限 |
+| --- | --- | --- |
+| GATE-07／E4 Pages | PR #24 merge `742404b`；Pages run `38185435570` success（push，head `742404b`） | 部署嘅係已驗證 payload，artifact 來源 `7994e7b`；唔可以講 artifact commit＝merge commit。 |
+| GATE-08 | `postdeployChecksPassed=37`、`browserChecksPassed=14`（`pages-release-receipt.json`） | 一次性核對；唔代表之後每次 daily provider 行為。 |
+| BigGo readiness | 唯讀診斷 run `38187063148` success：1 GET、token／search 0、`identityMatchesServer=true`；notProven = write-permission／token-equality／provider-connectivity／daily-stage-compatibility | 未呼叫 provider；唔證明 BigGo healthy 或 daily-ready。 |
+| daily 恢復 | workflow `335052362` active（UTC `30 16`＝HKT 00:30）；啟用本身零 provider | 首次恢復後定時完整批次未觀察（UNKNOWN）。 |
+| 私人部署 | 獨立私人環境排程 00:30 HKT running（收據事實） | 同 GitHub Actions 獨立；coordinator 只協調 BigGo stage，非整體主備；公開只泛稱。 |
+| 排程語義 | GitHub 官方：schedule 可延遲甚至丟棄；00:30 係預定觸發 | 本項目未有延遲量測；唔會自動補跑或重複查價。 |
+
+REQUIREMENT 與成功標準不變；本輪只追加文件，未改 Schema／功能／cron／runner。詳細見 STATUS §31、DECISIONS D35。

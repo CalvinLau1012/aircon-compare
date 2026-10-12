@@ -2,6 +2,9 @@ name: BigGo 手動診斷（bounded；preview 預設零流量）
 
 # 只限人手 workflow_dispatch，冇 schedule／push／pull_request；唔會寫價錢、快照、
 # queue、metadata，唔會 push／deploy／發布。執行分支只准 trusted master。
+# check_coordinator＝唯讀 readiness check（恰好 ≤1 GET、零 token／search／provider）；
+# execute_provider＝provider 測試模式（bounded 1 token＋1 search）；兩者互斥，
+# preview 係預設零流量。唯讀成功唔證明寫入權限、provider 連線或 daily-ready。
 on:
   workflow_dispatch:
     inputs:
