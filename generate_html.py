@@ -731,7 +731,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
 
 /* ===== Hero 封面 ===== */
 .hero{background:linear-gradient(160deg,#222b4d 0%,#3c4e92 45%,#4a5fa8 100%); color:#fff;
-  text-align:center; padding:64px 20px 92px; position:relative; overflow:hidden;}
+  text-align:center; padding:44px 20px 72px; position:relative; overflow:hidden;}
 /* 吉祥物預設隱藏：只有超大屏（CSS 寬 ≥1600px）先顯示，
    確保任何重疊情況下文字都保持可讀 */
 .hero .mascot{display:none;}
@@ -750,12 +750,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
   animation:float 6s ease-in-out infinite;}
 @keyframes float{0%,100%{transform:translateY(0);} 50%{transform:translateY(-16px);}}
 .hero h1{font-size:2.2em; letter-spacing:1px; margin-bottom:8px;}
-.hero .sub{color:#ffffff; font-size:1.15em; margin-bottom:28px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
-.stats{display:flex; justify-content:center; gap:40px; flex-wrap:wrap; margin-bottom:26px;}
+.hero .sub{color:#ffffff; font-size:1.15em; margin-bottom:18px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
+.stats{display:flex; justify-content:center; gap:28px; flex-wrap:wrap; margin-bottom:18px;}
 .stats .n{font-size:2.1em; font-weight:700; color:#F0D48A; text-shadow:0 1px 3px rgba(15,20,35,.55);}
 .stats .l{font-size:.85em; opacity:.95; text-shadow:0 1px 3px rgba(15,20,35,.6);}
-.hero .src{font-size:.8em; opacity:.98; line-height:1.8; color:#e6ebf7; text-shadow:0 1px 3px rgba(15,20,35,.6);}
-.hero .date{color:#ffffff; font-size:.95em; margin-top:10px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
+.hero .src{font-size:.8em; opacity:.98; line-height:1.6; color:#e6ebf7; text-shadow:0 1px 3px rgba(15,20,35,.6);}
+.hero .src .src-link{color:#FFF1D6; font-weight:600; text-decoration:underline;
+  text-underline-offset:2px; white-space:nowrap; border-radius:3px;}
+.hero .src .src-link:hover{color:#ffffff;}
+.hero .src .src-link:focus-visible{outline:2px solid #F0D48A; outline-offset:2px;}
+.hero .date{color:#ffffff; font-size:.95em; margin-top:8px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
 
 /* ===== 頂部導覽 ===== */
 .topnav{position:sticky; top:0; z-index:100; background:rgba(34,43,77,.97);
@@ -936,10 +940,13 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
     scrollbar-width:none;}
   .topnav .wrap::-webkit-scrollbar{display:none;}
   .topnav a[data-tip]::after{display:none;}
+  .hero{padding:34px 16px 68px;}
   .hero .mascot{display:none;}
   .hero h1{font-size:1.6em;}
-  .hero .sub{font-size:1em;}
-  .stats{display:grid; grid-template-columns:1fr 1fr; gap:14px 20px;}
+  .hero .sub{font-size:1em; margin-bottom:13px;}
+  .hero .src{line-height:1.55;}
+  .hero .date{margin-top:6px;}
+  .stats{display:grid; grid-template-columns:1fr 1fr; gap:9px 16px; margin-bottom:13px;}
   .stats .n{font-size:1.6em;}
   section{margin:28px 0;}
   h2.sec{font-size:1.15em;}
@@ -987,14 +994,14 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
   <span class="bubble" style="right:20%;top:26%;font-size:16px;animation-delay:2.4s;">🫧</span>
   <div class="wrap">
     <h1>香港空調對比報告</h1>
-    <div class="sub">窗口式 · 分體式 · 流動式全面剖析 · 互動比較器</div>
+    <div class="sub">比較冷氣規格、能效與價格</div>
     <div class="stats">
       <div><div class="n" id="statTotal">-</div><div class="l">型號庫</div></div>
       <div><div class="n" id="statPrice">-</div><div class="l">有實價</div></div>
       <div><div class="n" id="statSize">-</div><div class="l">有尺寸</div></div>
       <div><div class="n">29</div><div class="l">精選深度對比</div></div>
     </div>
-    <div class="src">資料來源：機電署 EMSD 能源標籤資料庫（__EMSD_REGISTRATIONS__ 筆登記 · __TOTAL_MODELS__ 型號）· 資料目錄：DATA.GOV.HK（資料由機電工程署提供；dataset hk-emsd-emsd1-meels-listed-models，Room Air Conditioners CSV 每週更新）· 8 品牌官網核實 220 型號（2026-08-15）· 價錢快照：BigGo 官方 JSON API + PricesAPI 核心 29 驗收 + Price.com.hk 舊快照（分批更新；缺價標「待查」；🔍 點擊搜最新價）· LIHKG 連登討論摘錄</div>
+    <div class="src">資料來源：EMSD 官方能源標籤（__EMSD_REGISTRATIONS__ 筆登記 · __TOTAL_MODELS__ 型號）· 8 品牌官網核實 · 價錢快照僅供參考 <a class="src-link" href="#source">完整來源及限制 →</a></div>
     <div class="date" id="deployInfo">__DATE_STATUS__</div>
   </div>
 </header>
@@ -1110,7 +1117,7 @@ __CONTENT__
     <p>· 機電工程署 EMSD 能源標籤資料庫（官方能源/雪種/耗電數據）<br>
       · 資料目錄：DATA.GOV.HK（資料由機電工程署提供；dataset hk-emsd-emsd1-meels-listed-models）<br>
       · 品牌官網及總代理：信興集團、樂信網店、Panasonic、世紀開利、GENERAL 第一電業、HITACHI、COMFEE、美的<br>
-      · 價格快照：BigGo 官方 JSON API（更新至 2026-09-14）+ PricesAPI 核心 29 驗收 + Price.com.hk 2026-08-15 舊快照（分批快照；點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
+      · 價格快照：BigGo 官方 JSON API（更新至 2026-09-14）+ PricesAPI 核心 29 驗收 + Price.com.hk 2026-08-15 舊快照（分批快照；缺價標「待查」；點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
   </div>
 
   <div class="blk">
