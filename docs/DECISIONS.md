@@ -1241,3 +1241,9 @@ PR #23 最終 head `a8e5444` 已通過 GitHub CI 並 merge；trusted rebuild `36
   - `UNKNOWN`：Root 驗收、合併、CI E3、push／PR 皆未執行；閱讀版正文與原治理長期同步機制未定義。
   - `BOUNDARY`：冇 push／merge／deploy；冇呼叫 BigGo／EMSD／任何網絡 provider；冇改 payload、metadata、生成物或私人識別。
 - **回滾**：revert 本階段文件 commit 即回復原本；原治理文件尾導讀與新閱讀版一併移除；無資料或 Schema 遷移。
+
+### D36 技術驗收補充（2026-10-13）
+
+Root 指 Codex 主審角色，並非人類維護者或 Code Owner。候選附錄及閱讀版已更正此稱謂；正式批准權限仍屬人類維護者。原治理基線所有既有內容及六個機器區塊保持原樣。
+
+- 後續 Codex 驗收：完整依賴、零網絡、容器自有 Git 工作樹內，治理提取（六個區塊）通過，治理／工具入口／公開私隱／Schema／功能證據五組測試共 **80 passed**。先前四項環境失敗歷史保留；此為本輪實際結果，尚非受信任 GitHub CI 或部署證據。
