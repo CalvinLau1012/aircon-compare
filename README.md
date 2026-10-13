@@ -726,3 +726,9 @@ python fetch_rasonic.py        # 樂信官方網店價格
 **本次文件核對日期**：2026-10-01 · 正式版本 v1.2.9 · 維護部署與尚未驗證項目見上方最新索引。
 
 **2026-10-12 追加核對**：以上 10 月 1 日索引屬歷史；最新 merge／Pages／GATE-08／payload／診斷／daily 狀態見頁首 2026-10-12 追加及 [docs/STATUS.md](docs/STATUS.md) §31。文件與網頁文案改動未新增 tag／Release。
+
+## 📖 繁體書面語閱讀版（2026-10-13 追加）
+
+- 專案治理另提供 [繁體書面語閱讀版](docs/AIRCON_COMPARE_GOVERNANCE.zh-Hant.md)（2026-10-13 閱讀版）；經使用者審閱，倉庫整合尚待 Root 驗收。
+- [docs/AIRCON_COMPARE_GOVERNANCE.md](docs/AIRCON_COMPARE_GOVERNANCE.md) 仍為唯一機器規範來源，六個規範機器區塊與門禁不變；閱讀版只作正文轉述及相對連結，不建立第二個可編輯規範源。
+- 使用者本次批准只涵蓋文件表述，不代表批准額外 API、排程架構變更或機器規範變更；詳見 [DECISIONS D36](docs/DECISIONS.md)、[CHANGELOG](CHANGELOG.md) 與 [需求摘要](需求摘要.md)。

@@ -1218,3 +1218,26 @@ PR #23 最終 head `a8e5444` 已通過 GitHub CI 並 merge；trusted rebuild `36
   - `UNKNOWN`：首次恢復後定時完整 daily 批次；GitHub runtime provider 連線／寫入權限／配額；schedule 延遲分佈；私人與 GitHub 執行次序。
   - `BOUNDARY`：本輪零 BigGo／EMSD／官網抓取、零 Secrets、零生產操作、唔改排程；私人憑證冇讀；私人證據冇搬入公開 repo。
 - **回滾**：revert 本輪文件 commit 即回復舊說明文字；網頁文案來源 revert 後須再經 D31 重建至令 payload 一致（本分支未提交 `index.html`／PDF，無失配生成物需要回滾）。
+
+## D36 · 2026-10-13：繁體書面語閱讀版整合（append-only）
+
+- **日期**：2026-10-13
+- **狀態**：文件候選（doc-only，本機整合 commit）；經使用者審閱；倉庫整合尚待 Root 驗收；未 push／未 merge／未部署
+- **背景**：使用者已審閱 GPT 修訂稿並答「可」，要求把該稿整理為倉庫內之繁體書面語閱讀版候選。原治理文件與元文件必須嚴格保留既有 bytes／行；不得建立第二個可編輯規範源；不得改動機器區塊、產品 `VERSION`、Schema、生成物或排程。
+- **選項**：
+  - A：把 GPT 稿直接取代原治理文件——否決：會刪改原機器規範來源，違反 append-only 與單一可編輯來源要求；
+  - B（採用）：在新文件 `docs/AIRCON_COMPARE_GOVERNANCE.zh-Hant.md` 保留繁體正文，六個機器區塊不複製，改為指向原治理相應章節之相對連結；原治理文件尾追加導讀；DECISIONS／需求摘要／CHANGELOG／docs 導覽／README 只追加記錄；
+  - C：只保存 GPT 稿為外部附件——否決：未落庫，讀者無法在倉庫內取得繁體閱讀路徑。
+- **決策**：採 B。
+  1. 新閱讀版聲明改為「繁體書面語閱讀版；原治理仍為唯一機器規範來源；本版經使用者審閱，倉庫整合尚待驗收」，採日期版標識「2026-10-13 閱讀版」；不改原機器 `document.version`。
+  2. 六個機器區塊（`AIRCON_AI_CONTEXT_V1`、`AIRCON_FEATURE_REGISTRY_SCHEMA_V1`、`AIRCON_FEATURE_REGISTRY_V1`、`AIRCON_METADATA_SCHEMA_V1`、`AIRCON_SUCCESS_CRITERIA_SCHEMA_V1`、`AIRCON_SUCCESS_CRITERIA_V1`）不複製 `BEGIN`／`END`／JSON，只以相對連結指向原治理 §1.3／§5.1／§7.1／§10；原治理仍為唯一可編輯機器規範來源。
+  3. 閱讀版 §20／§21 定位為既有排程、時間與 BigGo 受控執行要求之語義精確化，不新增批准門檻、不放寬門禁，亦不要求重新批准 00:30 HKT 或既有授權；使用者本次批准只涵蓋文件表述，不等於批准額外 API 或排程架構變更。
+  4. 閱讀版 §22 由「機器區塊原樣保留與完整性驗證」改為引用／編排說明；如與原治理機器規範有真正衝突，須報 Root，不任意覆蓋。
+  5. 原治理文件尾追加非規範導讀，指向閱讀版及差異；原有 bytes／行零刪改。
+- **原因**：公開倉庫需要可讀的繁體書面語版本，但機器規範只可有一個可編輯來源；把機器區塊留在原治理可同時保持 GATE-01 提取、Schema 驗證與投影語義不變。明確批准範圍可避免把「文件表述批准」誤讀為排程或 API 授權。
+- **後果（分類）**：
+  - `REQUIREMENT`：原治理六個機器區塊、Registry、Metadata Schema、成功標準、fail-closed 門禁、產品 `VERSION`、Schema、價格快照、queue、workflow、cron 全部不變。
+  - `OBSERVED / E2`：本機唯讀核對原治理六個機器區塊與 GPT 審閱稿逐位元組相同（閱讀版 §22 表，合計 27,455 bytes）；`scripts/extract_governance.py` exit 0；適用 pytest 子集 `tests/test_governance.py tests/test_ai_entrypoints.py tests/test_public_privacy.py tests/test_schema_validation.py tests/test_feature_check_evidence.py` 76 passed／4 failed，4 個 failure 已在乾淨 HEAD worktree 以同一離線環境重現（2× jsonschema format extras 缺、2× playwright 缺），與本文件改動無關；`check_public_privacy.py --mode worktree` 0 命中；`git diff --check` 0 錯誤。
+  - `UNKNOWN`：Root 驗收、合併、CI E3、push／PR 皆未執行；閱讀版正文與原治理長期同步機制未定義。
+  - `BOUNDARY`：冇 push／merge／deploy；冇呼叫 BigGo／EMSD／任何網絡 provider；冇改 payload、metadata、生成物或私人識別。
+- **回滾**：revert 本階段文件 commit 即回復原本；原治理文件尾導讀與新閱讀版一併移除；無資料或 Schema 遷移。

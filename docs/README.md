@@ -94,3 +94,9 @@ daily workflow `335052362` 已 active（UTC cron `30 16`＝HKT 00:30 預定觸�
 - **網頁文案**：報告 md／HTML_TEMPLATE 已改為官方 schedule 語義；本分支未提交 `index.html`／PDF，
   由 D31 verified snapshot rebuild 全量重生後再核對 Pages／GATE-08。
 - ADR／runbook 歷史決策文字全部保留；raw sink 契約與 90 日 retention 不變。
+
+## 2026-10-13 追加：繁體書面語閱讀版
+
+- 新增 [AIRCON_COMPARE_GOVERNANCE.zh-Hant.md](AIRCON_COMPARE_GOVERNANCE.zh-Hant.md)：2026-10-13 閱讀版，經使用者審閱，倉庫整合尚待 Root 驗收。
+- 原治理 [AIRCON_COMPARE_GOVERNANCE.md](AIRCON_COMPARE_GOVERNANCE.md) 仍為唯一機器規範來源；閱讀版不內嵌機器區塊，只以相對連結指向原治理；原治理文件尾已追加非規範導讀。
+- 使用者本次批准只涵蓋文件表述；詳見 DECISIONS D36、CHANGELOG 2026-10-13 及需求摘要。

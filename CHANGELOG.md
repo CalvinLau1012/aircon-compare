@@ -43,6 +43,15 @@
 
 ## [Unreleased]
 
+### 2026-10-13 繁體書面語閱讀版整合（docs-only；未發布）
+
+- **Added（docs-only）**：`docs/AIRCON_COMPARE_GOVERNANCE.zh-Hant.md`（2026-10-13 閱讀版）：使用者已審閱 GPT 修訂稿；繁體書面語閱讀版；六個規範機器區塊不複製，只以相對連結指向原治理 §1.3／§5.1／§7.1／§10，防止第二個可編輯規範源。
+- **Changed（append-only docs）**：`docs/AIRCON_COMPARE_GOVERNANCE.md` 尾追加非規範導讀；`docs/DECISIONS.md` D36、`需求摘要.md`、`CHANGELOG.md`、`docs/README.md`、`README.md` 追加使用者 2026-10-13 確認及 scope。原治理、元文件既有 bytes／行零刪改。
+- **Scope**：使用者本次批准只涵蓋文件表述；不等於批准額外 API、排程架構變更或機器規範／Schema／門禁變更；00:30 HKT 與既有授權無須重新批准。
+- **Evidence**：原治理六個機器區塊與 GPT 審閱稿逐位元組相同（合計 27,455 bytes；閱讀版 §22 表）；`extract_governance.py` exit 0；適用 pytest 子集 76 passed／4 failed（4 個 failure 已在乾淨 HEAD worktree 同環境重現：playwright／jsonschema format extras 缺）；`check_public_privacy.py --mode worktree` 0 命中；`git diff --check` 0 錯誤。
+- **Safety**：零網絡 provider、零 Secrets、零生產操作；未改 `VERSION`／`metadata.json`／`index.html`／PDF／價格快照／queue／黑名單／workflow／cron；未 push／merge／deploy。
+- **Pending**：Root 驗收；本輪不宣稱已合併或網站已更新。
+
 ### 2026-10-12 Root98 精簡 GitHub Pages hero（生成器來源候選；未部署）
 
 - **Changed（website copy/layout sources）**：`generate_html.py` hero 副標縮短為「比較冷氣規格、能效與價格」；hero 長來源段落改為短摘要＋`#source` 連結（鍵盤可用、對比 5.38:1）；hero 上下留白／統計間距收窄（375px：732→466px；1280px：494→386px）；footer 補回「缺價標『待查』」。4 個統計 JS id、`deployInfo`、metadata runtime 來源、比較器／導覽／主題不變。
