@@ -13,19 +13,33 @@
     "MC09WVRQW",
     "MC07VXH",
     "MC09VXH",
-    "MC12VXH"
+    "MC12VXH",
+    "GEH63ZE/GEH63ZC",
+    "CWV-24CRFN9-AD5",
+    "GWT07ES",
+    "GWT09ES",
+    "MC18VXH",
+    "MC24VXH",
+    "GWT12ES"
   ],
   "missingCanonicalModels": [
+    "CWV24CRFN9AD5",
+    "GEH63ZEGEH63ZC",
+    "GWT07ES",
+    "GWT09ES",
+    "GWT12ES",
     "MC07VXH",
     "MC07WVRQW",
     "MC09VXH",
     "MC09WVRQW",
     "MC12VXH",
+    "MC18VXH",
+    "MC24VXH",
     "WRK07MIZH1",
     "WRK09MIZH1",
     "WRK18MIZH1"
   ],
   "coveragePendingReasons": {},
-  "generatedAt": "2026-10-15T20:05:19Z",
+  "generatedAt": "2026-10-16T19:44:37Z",
   "source": "run_official_batch.py"
 }
