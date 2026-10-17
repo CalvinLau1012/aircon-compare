@@ -88,6 +88,13 @@ def _fixture(tmp_path, name='files'):
         dst = root.joinpath(*rel.split('/'))
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(os.path.join(BASE, *rel.split('/')), dst)
+    # These preflight fixtures represent a rebuild-ready, inactive price stage.
+    # Live repair-release data can legitimately have an active stage; the
+    # production caller passes --allow-degraded-price, while the negative test
+    # below still explicitly creates an active stage.
+    pm = _load(root, 'prices_meta.json')
+    pm.pop('price_batch_start', None)
+    _dump(root, 'prices_meta.json', pm)
     return root
 
 
