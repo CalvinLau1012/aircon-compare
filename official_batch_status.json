@@ -1,6 +1,10 @@
 {
   "schemaVersion": 1,
   "decision": "queue-kept-pending-coverage",
+  "lastSuccessAt": null,
+  "snapshotId": null,
+  "snapshotHash": null,
+  "outputManifest": null,
   "stage": 1,
   "pendingCoverage": true,
   "missingQueueCoverage": true,
@@ -39,7 +43,23 @@
     "WRK09MIZH1",
     "WRK18MIZH1"
   ],
-  "coveragePendingReasons": {},
-  "generatedAt": "2026-10-16T19:44:37Z",
+  "coveragePendingReasons": {
+    "CWV-24CRFN9-AD5": "target-not-in-configured-comfee-list",
+    "GEH63ZE/GEH63ZC": "brand-source-not-configured",
+    "GWT07ES": "brand-source-not-configured",
+    "GWT09ES": "brand-source-not-configured",
+    "GWT12ES": "brand-source-not-configured",
+    "MC07VXH": "brand-source-not-configured",
+    "MC07WVRQW": "brand-source-not-configured",
+    "MC09VXH": "brand-source-not-configured",
+    "MC09WVRQW": "brand-source-not-configured",
+    "MC12VXH": "brand-source-not-configured",
+    "MC18VXH": "brand-source-not-configured",
+    "MC24VXH": "brand-source-not-configured",
+    "WRK07MIZH1": "brand-source-not-configured",
+    "WRK09MIZH1": "brand-source-not-configured",
+    "WRK18MIZH1": "brand-source-not-configured"
+  },
+  "generatedAt": "2026-10-17T18:49:51Z",
   "source": "run_official_batch.py"
 }
