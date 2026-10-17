@@ -477,3 +477,60 @@ def test_verify_deploy_request_binds_master_ancestor_and_source_run(tmp_path):
     with pytest.raises(mod.VerifyError, match='祖先'):
         mod.verify('push', second, 'owner/repo', cwd=str(tmp_path))
     _git(tmp_path, 'update-ref', 'refs/remotes/origin/master', second)
+
+
+def _git_run(repo, *args):
+    return subprocess.run(['git', '-C', str(repo), *args], check=True,
+                          capture_output=True, text=True)
+
+
+def _source_repo(tmp_path):
+    repo = tmp_path / 'src'
+    repo.mkdir()
+    _git_run(repo, 'init', '-q')
+    _git_run(repo, 'config', 'user.email', 't@example.invalid')
+    _git_run(repo, 'config', 'user.name', 't')
+    for rel in ('generate_pdf.py', 'generate_html.py', 'crawl_utils.py',
+                'models_data.py', 'requirements.txt', '空調對比報告.md'):
+        (repo / rel).write_text(rel + '\n', encoding='utf-8')
+    (repo / 'metadata.json').write_text(json.dumps({'commit': '0' * 40}), encoding='utf-8')
+    _git_run(repo, 'add', '-A')
+    _git_run(repo, 'commit', '-qm', 'base')
+    base = _git_run(repo, 'rev-parse', 'HEAD').stdout.strip()
+    (repo / 'metadata.json').write_text(json.dumps({'commit': base}), encoding='utf-8')
+    _git_run(repo, 'add', 'metadata.json')
+    _git_run(repo, 'commit', '-qm', 'artifact')
+    return repo, base
+
+
+def test_generated_source_guard_blocks_pure_generator_push(tmp_path):
+    repo, base = _source_repo(tmp_path)
+    script = os.path.join(BASE, 'scripts', 'check_generated_source_binding.py')
+    # artifact commit: generator bytes equal metadata.commit -> pass
+    assert subprocess.run([sys.executable, script, '--repo', str(repo)]).returncode == 0
+    # pure code push changes generator -> pre-deploy guard must fail
+    (repo / 'generate_pdf.py').write_text('changed\n', encoding='utf-8')
+    _git_run(repo, 'add', 'generate_pdf.py')
+    _git_run(repo, 'commit', '-qm', 'pure code change')
+    assert subprocess.run([sys.executable, script, '--repo', str(repo)]).returncode == 1
+    # docs-only change cannot make stale generator output deployable
+    (repo / 'README.md').write_text('docs\n', encoding='utf-8')
+    _git_run(repo, 'add', 'README.md')
+    _git_run(repo, 'commit', '-qm', 'docs only')
+    assert subprocess.run([sys.executable, script, '--repo', str(repo)]).returncode == 1
+    # a rebuild records the current code commit in metadata -> pass
+    current = _git_run(repo, 'rev-parse', 'HEAD').stdout.strip()
+    (repo / 'metadata.json').write_text(json.dumps({'commit': current}), encoding='utf-8')
+    _git_run(repo, 'add', 'metadata.json')
+    _git_run(repo, 'commit', '-qm', 'rebuild artifacts')
+    assert subprocess.run([sys.executable, script, '--repo', str(repo)]).returncode == 0
+
+
+def test_generated_source_guard_requires_full_commit_and_inputs(tmp_path):
+    repo, base = _source_repo(tmp_path)
+    script = os.path.join(BASE, 'scripts', 'check_generated_source_binding.py')
+    (repo / 'metadata.json').write_text(json.dumps({'commit': 'not-a-full-sha'}), encoding='utf-8')
+    assert subprocess.run([sys.executable, script, '--repo', str(repo)]).returncode == 1
+    (repo / 'metadata.json').write_text(json.dumps({'commit': base}), encoding='utf-8')
+    (repo / '空調對比報告.md').unlink()
+    assert subprocess.run([sys.executable, script, '--repo', str(repo)]).returncode == 1

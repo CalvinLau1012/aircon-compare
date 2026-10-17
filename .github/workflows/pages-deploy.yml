@@ -118,6 +118,10 @@ jobs:
       - name: 安裝 Chromium（瀏覽器 gates）
         run: playwright install chromium --with-deps
 
+      - name: 部署前 generated source 綁定（純程式 push 不可發布舊 PDF/HTML）
+        if: steps.target.outputs.mode == 'production'
+        run: python scripts/check_generated_source_binding.py --repo . --metadata metadata.json
+
       - name: 完整本機 gates（7 gates）
         run: |
           python scripts/run_acceptance.py \
