@@ -139,22 +139,55 @@ def test_daily_workflow_has_precommit_candidate_gate_after_generation():
     assert 'source_status.py' in open(p, encoding='utf-8').read()
 
 
-def test_health_summary_validates_binding_and_unconfigured_skip(tmp_path):
+def test_health_summary_validates_binding_and_unconfigured_unknown(tmp_path):
     import check_health_summary
+    dep = {'success': True, 'deployedAt': '2026-10-17T03:30:00Z',
+           'build': 'B1', 'releasePayloadHash': 'sha256:' + 'c' * 64,
+           'liveHashes': {'index.html': 'sha256:' + 'd' * 64,
+                          '空調對比報告.pdf': 'sha256:' + 'e' * 64,
+                          'emsd_空調能源標籤.csv': shm_hash('a'),
+                          'metadata.json': 'sha256:' + 'f' * 64},
+           'receiptId': 'r1'}
     s = source_status.build_status(
-        metadata={'datasetDate': '2026-10-17', 'datasetHash': 'sha256:' + 'a' * 64},
+        metadata={'build': 'B1', 'releasePayloadHash': 'sha256:' + 'c' * 64,
+                  'datasetDate': '2026-10-17', 'datasetHash': 'sha256:' + 'a' * 64},
         emsd_receipt=_receipt(),
+        prices_meta={'appliedAt': '2026-10-16T16:00:00Z',
+                     'appliedSnapshotHash': 'sha256:' + 'b' * 64},
+        biggo_status={'status': 'completed', 'cycle': '2026-10-10:3/7', 'stage': 3,
+                      'snapshotHash': 'sha256:' + 'b' * 64},
         official_status={'decision': 'advanced', 'generatedAt': '2026-10-16T19:44:37Z'},
-        deployment_receipt={'success': True, 'deployedAt': '2026-10-17T03:30:00Z',
-                            'receiptId': 'r1'})
+        deployment_receipt=dep,
+        now=dt.datetime(2026, 10, 17, 4, 0, tzinfo=dt.timezone.utc).timestamp())
     r = check_health_summary.evaluate(s, now=dt.datetime(2026, 10, 17, 4, 0,
                                                          tzinfo=dt.timezone.utc))
     assert r['ok'] is True, r
+    # Root counterexample: valid dates but a blocked source must not be healthy.
+    blocked = json.loads(json.dumps(s))
+    blocked['biggo']['status'] = 'blocked'
+    blocked['biggo']['safeReason'] = 'needs-review'
+    assert check_health_summary.evaluate(blocked)['ok'] is False
+    assert any('biggo:blocked' in f for f in
+               check_health_summary.evaluate(blocked)['failures'])
     bad = json.loads(json.dumps(s)); bad['emsd']['snapshotHash'] = None
     assert check_health_summary.evaluate(bad)['ok'] is False
+    # A deployment receipt for a different build/payload must not be accepted.
+    old_dep = dict(dep, build='OLD', releasePayloadHash='sha256:' + '0' * 64)
+    old = source_status.build_status(
+        metadata={'build': 'B1', 'releasePayloadHash': 'sha256:' + 'c' * 64,
+                  'datasetDate': '2026-10-17', 'datasetHash': 'sha256:' + 'a' * 64},
+        emsd_receipt=_receipt(), official_status={'decision': 'advanced',
+                                                  'generatedAt': '2026-10-16T19:44:37Z'},
+        deployment_receipt=old_dep)
+    assert old['publish']['deployedAt'] is None
     report = tmp_path / 'health.json'
-    assert check_health_summary.main(['--report', str(report)]) == 0
-    assert json.load(open(report))['skipped'] is True
+    assert check_health_summary.main(['--report', str(report)]) == 1
+    saved = json.load(open(report))
+    assert saved['ok'] is None and saved['status'] == 'unknown' and saved['skipped'] is True
+
+
+def shm_hash(ch):
+    return 'sha256:' + ch * 64
 
 
 def test_postdeploy_source_status_binding_rejects_package_as_deploy():
@@ -168,3 +201,17 @@ def test_postdeploy_source_status_binding_rejects_package_as_deploy():
     assert postdeploy_check.source_status_errors(meta) == []
     meta['sourceStatus']['publish']['deployedAt'] = '2026-10-17T03:30:00Z'
     assert any('deploymentReceipt' in e for e in postdeploy_check.source_status_errors(meta))
+
+
+def test_official_failed_attempt_does_not_become_successful_acquisition():
+    s = source_status.build_status(
+        metadata={'datasetHash': 'sha256:' + 'a' * 64},
+        official_status={'decision': 'queue-kept-fail-closed',
+                         'generatedAt': '2026-10-17T03:00:00Z',
+                         'lastSuccessAt': '2026-10-10T01:00:00Z',
+                         'snapshotId': 'official-old',
+                         'snapshotHash': 'sha256:' + 'b' * 64})
+    assert s['official']['status'] == 'degraded'
+    assert s['official']['lastAttemptAt'] == '2026-10-17T03:00:00Z'
+    assert s['official']['lastAcquiredAt'] == '2026-10-10T01:00:00Z'
+    assert s['official']['snapshotHash'] == 'sha256:' + 'b' * 64

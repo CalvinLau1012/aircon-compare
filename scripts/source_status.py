@@ -134,9 +134,33 @@ def validate_status(status):
     return errors
 
 
+def deployment_matches(metadata, receipt):
+    """True only when a deployment receipt is bound to this exact release."""
+    if not isinstance(receipt, dict) or receipt.get('success') is not True:
+        return False
+    if not _valid_ts(receipt.get('deployedAt')):
+        return False
+    metadata = metadata if isinstance(metadata, dict) else {}
+    if receipt.get('build') and metadata.get('build') and receipt['build'] != metadata['build']:
+        return False
+    if receipt.get('releasePayloadHash') and metadata.get('releasePayloadHash') \
+            and receipt['releasePayloadHash'] != metadata['releasePayloadHash']:
+        return False
+    live = receipt.get('liveHashes')
+    required = {'index.html', '空調對比報告.pdf', 'emsd_空調能源標籤.csv', 'metadata.json'}
+    if not isinstance(live, dict) or not required <= set(live):
+        return False
+    if not isinstance(receipt.get('receiptId'), str) or not receipt['receiptId']:
+        return False
+    for v in live.values():
+        if not (isinstance(v, str) and SHA_RE.match(v)):
+            return False
+    return True
+
+
 def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
                  biggo_status=None, official_status=None, deployment_receipt=None,
-                 now=None):
+                 biggo_snapshot_hash=None, now=None):
     """Build a sanitised receipt from local facts.  Pure and side-effect free."""
     metadata = metadata if isinstance(metadata, dict) else {}
     receipt = emsd_receipt if isinstance(emsd_receipt, dict) else {}
@@ -144,10 +168,8 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
     biggo = biggo_status if isinstance(biggo_status, dict) else {}
     official = official_status if isinstance(official_status, dict) else {}
     deployed_at = None
-    if isinstance(deployment_receipt, dict) and deployment_receipt.get('success') is True:
-        ts = deployment_receipt.get('deployedAt')
-        if _valid_ts(ts):
-            deployed_at = ts
+    if deployment_matches(metadata, deployment_receipt):
+        deployed_at = deployment_receipt.get('deployedAt')
 
     emsd_success = receipt.get('success') is True and receipt.get('aborted') is False \
         and not receipt.get('error')
@@ -200,8 +222,8 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
     # A failed/pending bundle's snapshotHash is NOT the snapshot currently
     # served.  Prefer the locally applied snapshot hash; only use the bundle
     # hash when the status is a successful completed apply.
-    actual_snapshot = prices_meta.get('appliedSnapshotHash')
-    if bstatus_ui == 'ok' and biggo.get('snapshotHash'):
+    actual_snapshot = biggo_snapshot_hash or prices_meta.get('appliedSnapshotHash')
+    if not biggo_snapshot_hash and bstatus_ui == 'ok' and biggo.get('snapshotHash'):
         actual_snapshot = biggo.get('snapshotHash')
     biggo_block = _source_block(
         bstatus_ui,
@@ -223,14 +245,19 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
         ostatus, oreason = 'degraded', 'sources-degraded'
     else:
         ostatus, oreason = 'unknown', 'legacy-unknown'
+    official_ok = decision == 'advanced'
     official_block = _source_block(
         ostatus,
         last_attempt_at=official.get('generatedAt'),
-        last_acquired_at=official.get('generatedAt'),
+        # A failed/pending attempt is NOT a successful acquisition.  Preserve
+        # the last verified snapshot time/hash only; never copy the failed
+        # attempt's generatedAt into lastAcquiredAt.
+        last_acquired_at=(official.get('generatedAt') if official_ok
+                          else official.get('lastSuccessAt')),
         last_applied_at=deployed_at,
         last_applied_date=(deployed_at[:10] if deployed_at else None),
-        snapshot_id=None,
-        snapshot_hash=None,
+        snapshot_id=official.get('snapshotId'),
+        snapshot_hash=official.get('snapshotHash'),
         safe_reason=oreason,
     )
     publish = {
@@ -342,18 +369,27 @@ def main(argv=None):
     b.add_argument('--biggo-status')
     b.add_argument('--official-status')
     b.add_argument('--deployment-receipt')
+    b.add_argument('--biggo-snapshot-file')
     b.add_argument('--out', required=True)
     b.add_argument('--history-dir')
     v = sub.add_parser('validate')
     v.add_argument('path')
     args = ap.parse_args(argv)
     if args.cmd == 'build':
+        snap_hash = None
+        if args.biggo_snapshot_file:
+            try:
+                from biggo_canonical import sha256_json
+                snap_hash = sha256_json(_load_json(args.biggo_snapshot_file))
+            except (OSError, ValueError):
+                snap_hash = None
         status = build_status(metadata=_load_json(args.metadata),
                               emsd_receipt=_load_json(args.emsd_receipt),
                               prices_meta=_load_json(args.prices_meta),
                               biggo_status=_load_json(args.biggo_status),
                               official_status=_load_json(args.official_status),
-                              deployment_receipt=_load_json(args.deployment_receipt))
+                              deployment_receipt=_load_json(args.deployment_receipt),
+                              biggo_snapshot_hash=snap_hash)
         write_receipt(args.out, status, history_dir=args.history_dir)
         print(f'✅ source status：{args.out}')
         return 0

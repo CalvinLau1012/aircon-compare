@@ -37,10 +37,29 @@ def evaluate(status, *, now=None, max_age_hours=48):
     failures = []
     emsd = status.get('emsd') or {}
     official = status.get('official') or {}
-    if not emsd.get('snapshotHash'):
-        failures.append('emsd:snapshotHash-missing')
-    if official.get('status') in ('blocked', 'unknown'):
-        failures.append('official:' + str(official.get('safeReason')))
+    for name in ('emsd', 'biggo', 'official'):
+        block = status.get(name) or {}
+        st = block.get('status')
+        if st != 'ok':
+            failures.append(f'{name}:{st}:{block.get("safeReason")}')
+        if not block.get('snapshotHash') and name in ('emsd', 'biggo'):
+            failures.append(f'{name}:snapshotHash-missing')
+    gen = status.get('generatedAt')
+    try:
+        gen_dt = dt.datetime.fromisoformat(str(gen).replace('Z', '+00:00')) if gen else None
+    except ValueError:
+        gen_dt = None
+    if gen_dt is None:
+        failures.append('status:generatedAt-missing-or-invalid')
+    elif gen_dt > now + dt.timedelta(minutes=5):
+        failures.append('status:generatedAt-future')
+    elif (now - gen_dt).total_seconds() > max_age_hours * 3600:
+        failures.append('status:generatedAt-stale')
+    pub = status.get('publish') or {}
+    if not pub.get('deployedAt') or not pub.get('deploymentReceipt'):
+        failures.append('publish:no-verified-deployment-receipt')
+    if pub.get('deployedAt') and not pub.get('deploymentReceipt'):
+        failures.append('publish:deployedAt-without-receipt')
     for name in ('emsd', 'biggo', 'official'):
         block = status.get(name) or {}
         ts = block.get('lastAppliedAt') or block.get('lastAcquiredAt')
@@ -55,9 +74,6 @@ def evaluate(status, *, now=None, max_age_hours=48):
             failures.append(f'{name}:timestamp-future')
         if (now - when).total_seconds() > max_age_hours * 3600:
             failures.append(f'{name}:age>{max_age_hours}h')
-    pub = status.get('publish') or {}
-    if pub.get('deployedAt') and not pub.get('deploymentReceipt'):
-        failures.append('publish:deployedAt-without-receipt')
     return {'ok': not failures, 'failures': failures[:20],
             'checkedAt': now.strftime('%Y-%m-%dT%H:%M:%SZ')}
 
@@ -69,10 +85,12 @@ def main(argv=None):
     ap.add_argument('--report', required=True)
     ap.add_argument('--max-age-hours', type=float, default=48)
     args = ap.parse_args(argv)
-    report = {'schemaVersion': 1, 'configured': bool(args.url or args.file)}
+    report = {'schemaVersion': 1, 'configured': bool(args.url or args.file),
+              'status': 'unknown'}
     if not args.url and not args.file:
-        report.update({'ok': True, 'skipped': True,
-                       'reason': 'health-summary-not-configured'})
+        report.update({'ok': None, 'skipped': True,
+                       'reason': 'health-summary-not-wired',
+                       'requiredAction': 'configure AIRCON_HEALTH_SUMMARY_URL secret'})
     else:
         try:
             status = _load(args.url, args.file)
@@ -92,7 +110,7 @@ def main(argv=None):
         return 1
     print(f"health summary: configured={report['configured']} ok={report.get('ok')} "
           f"failures={report.get('failures', [])}")
-    return 0 if report.get('ok') else 1
+    return 0 if report.get('ok') is True else 1
 
 
 if __name__ == '__main__':

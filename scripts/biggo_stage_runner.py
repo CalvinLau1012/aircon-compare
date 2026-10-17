@@ -229,17 +229,54 @@ def _load_repair_receipt(env, repo_root, bundle_hash):
     return None
 
 
-def _invoke_apply(apply_fn, bundle, *, repo_root, now, repair):
-    """Call apply_fn with repair only when its signature supports it."""
+def _invoke_apply(apply_fn, bundle, *, repo_root, now, repair, lock_held=False):
+    """Call apply_fn with only the optional kwargs its signature supports."""
     try:
         params = inspect.signature(apply_fn).parameters
-        supports = ('repair' in params or
-                    any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()))
+        has_var_kw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
+        kwargs = {}
+        if 'repair' in params or has_var_kw:
+            kwargs['repair'] = repair
+        if 'lock_held' in params or has_var_kw:
+            kwargs['lock_held'] = lock_held
     except (TypeError, ValueError):
-        supports = False
-    if supports:
-        return apply_fn(bundle, repo_root=repo_root, now=now, repair=repair)
-    return apply_fn(bundle, repo_root=repo_root, now=now)
+        kwargs = {}
+    return apply_fn(bundle, repo_root=repo_root, now=now, **kwargs)
+
+
+def _verify_local_prestate(stage_result, base_snapshot, repo_root):
+    """Before publishing/CAS, prove the local source of truth is unchanged.
+
+    Reads the actual files (not the in-memory batch result), checks the
+    published preState hashes, and re-applies effects to prove the exact
+    postState hash.  Any drift returns an error and prevents publication.
+    """
+    try:
+        import biggo_canonical as _canon
+        snapshot = _apply_mod._read_json(os.path.join(repo_root, 'biggo_prices.json'), {})
+        tracking = _apply_mod._read_json(os.path.join(repo_root, 'model_status.json'), None)
+        wrapper = _apply_mod._read_json(os.path.join(repo_root, 'model_blacklist.json'), None)
+    except _apply_mod.ApplyError as e:
+        return str(e)
+    if tracking is None or not isinstance(wrapper, dict):
+        return 'local tracking/blacklist missing'
+    blacklist = wrapper.get('models')
+    if not isinstance(tracking, dict) or not isinstance(blacklist, dict):
+        return 'local tracking/blacklist shape invalid'
+    if _canon.sha256_json(snapshot) != _canon.sha256_json(base_snapshot):
+        return 'biggo_prices.json changed after base snapshot'
+    pre = stage_result.get('preState') or {}
+    post = stage_result.get('postState') or {}
+    if _canon.sha256_json(tracking) != pre.get('trackingHash'):
+        return 'model_status.json no longer matches preState'
+    if _canon.sha256_json(blacklist) != pre.get('blacklistHash'):
+        return 'model_blacklist.json no longer matches preState'
+    effects = stage_result.get('effects') or {}
+    if _canon.sha256_json(_apply_mod._apply_tracking(tracking, effects)) != post.get('trackingHash'):
+        return 'tracking effects do not reproduce postState'
+    if _canon.sha256_json(_apply_mod._apply_blacklist(blacklist, effects)) != post.get('blacklistHash'):
+        return 'blacklist effects do not reproduce postState'
+    return None
 
 
 def _needs_review(client, emit, cycle_id, *, stage, reason, lease_lost=False,
@@ -558,6 +595,7 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
         limiter = RequestLimiter(search_cap=1 + 2 * queued, token_cap=1)
 
         # ---- 6. winner：heartbeat ＋ 全程網絡工作（finally 保證停止）----
+        local_lock = None
         heartbeat = LeaseHeartbeat(client, interval=heartbeat_interval, now_fn=now_fn)
         heartbeat.start()
         fetch_mod.set_request_limiter(limiter)
@@ -676,6 +714,22 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
             stage_result = _build_stage_result(
                 cycle_id=cycle_id, stage_no=stage_no, mode=mode, client=client,
                 now_fn=now_fn, staged=batch_result)
+            try:
+                local_lock = _apply_mod._OperationLock(repo_root)
+                local_lock.__enter__()
+            except _apply_mod.ApplyError as e:
+                _needs_review(client, emit, cycle_id, stage='prepublish-lock',
+                              reason='local-writer-lock-busy',
+                              lease_lost=heartbeat.lost, extra={'error': str(e)[:120]})
+                return 0
+            guard_error = _verify_local_prestate(
+                stage_result, batch_result['baseSnapshot'], repo_root)
+            if guard_error:
+                _needs_review(client, emit, cycle_id, stage='prepublish-guard',
+                              reason='local-prestate-drift-before-publish',
+                              lease_lost=heartbeat.lost,
+                              extra={'guard': guard_error[:160]})
+                return 0
             manifest_fields = {
                 'cycleId': cycle_id,
                 'stage': stage_no,
@@ -726,20 +780,25 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
                     env, repo_root, bundle['bundleHash'])
                 apply_report = _invoke_apply(
                     apply_fn, bundle, repo_root=repo_root, now=now_fn(),
-                    repair=selected_repair)
+                    repair=selected_repair, lock_held=True)
             except _apply_mod.ApplyError as e:
                 emit('completed-apply-failed', cycle=cycle_id, stage=stage_no,
                      error=type(e).__name__, published=True,
-                     snapshotHash=published['newSnapshotHash'][:16])
+                     snapshotHash=published['newSnapshotHash'])
                 return 0
             emit('completed', cycle=cycle_id, stage=stage_no,
                  localApply='noop' if apply_report.get('noop') else 'applied',
-                 published=True, snapshotHash=published['newSnapshotHash'][:16],
-                 bundleHash=published['bundleHash'][:16],
+                 published=True, snapshotHash=published['newSnapshotHash'],
+                 bundleHash=published['bundleHash'],
                  requests={'token': record['requests']['token'],
                            'search': record['requests']['search']})
             return 0
         finally:
+            if local_lock is not None:
+                try:
+                    local_lock.__exit__(None, None, None)
+                except Exception:
+                    pass
             heartbeat.stop()
             fetch_mod.set_request_limiter(None)
             fetch_mod.set_abort_check(None)
@@ -779,11 +838,11 @@ def _import_and_apply(client, emit, apply_fn, repo_root, now_fn, cycle_id, stage
     except _apply_mod.ApplyError as e:
         emit('completed-apply-failed', cycle=cycle_id, stage=stage_no,
              error=type(e).__name__, imported=True,
-             snapshotHash=bundle['newSnapshotHash'][:16])
+             snapshotHash=bundle['newSnapshotHash'])
         return 0
     emit(final_status, cycle=cycle_id, stage=stage_no,
          localApply='noop' if report.get('noop') else 'applied', imported=True,
-         snapshotHash=bundle['newSnapshotHash'][:16])
+         snapshotHash=bundle['newSnapshotHash'])
     return 0
 
 
@@ -836,11 +895,11 @@ def _recover_intent(client, emit, apply_fn, repo_root, now_fn, cycle_id, stage_n
     except _apply_mod.ApplyError as e:
         emit('completed-apply-failed', cycle=cycle_id, stage=stage_no,
              error=type(e).__name__, recovered=True,
-             snapshotHash=bundle['newSnapshotHash'][:16])
+             snapshotHash=bundle['newSnapshotHash'])
         return 0
     emit('completed-recovered', cycle=cycle_id, stage=stage_no,
          localApply='noop' if report.get('noop') else 'applied', imported=True,
-         snapshotHash=bundle['newSnapshotHash'][:16])
+         snapshotHash=bundle['newSnapshotHash'])
     return 0
 
 

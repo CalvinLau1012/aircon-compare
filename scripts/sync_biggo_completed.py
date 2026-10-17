@@ -65,6 +65,8 @@ def main(argv=None):
     ap.add_argument('--apply', action='store_true')
     ap.add_argument('--repair', default=os.environ.get('AIRCON_BIGGO_REPAIR_RECEIPT'))
     ap.add_argument('--report', default=None)
+    ap.add_argument('--degraded-exit-zero', action='store_true',
+                    help='missing history/stage gap is reported as degraded but does not block publish')
     args = ap.parse_args(argv)
     apply = bool(args.apply)
     cfg = coord.CoordinatorConfig.from_env()
@@ -94,8 +96,10 @@ def main(argv=None):
         if args.report:
             with open(args.report, 'w', encoding='utf-8') as f:
                 json.dump(report, f, ensure_ascii=False, indent=2)
-        return 1 if plan['reason'] in ('missing-local-history', 'missing-intermediate-stage',
-                                       'cycle-mismatch', 'local-stage-invalid') else 0
+        if plan['reason'] in ('missing-local-history', 'missing-intermediate-stage',
+                              'cycle-mismatch', 'local-stage-invalid'):
+            return 0 if args.degraded_exit_zero else 1
+        return 0
     client = coord.CoordinatorClient(contents, owner='read-only-sync', now=lambda: 0)
     client.state = state
     try:
@@ -119,7 +123,7 @@ def main(argv=None):
             result = biggo_apply.apply_bundle(bundle, repo_root=BASE, repair=repair)
         except biggo_apply.ApplyError as e:
             print(f'❌ local apply 失敗（零 coordinator write）：{e}', file=sys.stderr)
-            return 2
+            return 3
         report['applied'] = True
         report['result'] = result
         print(f"sync applied: noop={result.get('noop')} bundle={bundle['bundleHash']}")

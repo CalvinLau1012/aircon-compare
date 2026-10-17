@@ -31,7 +31,7 @@ RUNTIME_STATE = {
     'metadata.json', 'new_models.json', 'update_queue.json',
     'official_specs.json', 'shew_official.json', 'rasonic_official.json',
     'carrier_official.json', 'general_official.json', 'specs.json',
-    'official_batch_status.json',
+    'official_batch_status.json', 'biggo_completed_sync.json',
     'biggo_prices.json', 'prices.json', 'prices_meta.json', 'gemini_prices.json',
     'model_blacklist.json', 'model_status.json',
 }

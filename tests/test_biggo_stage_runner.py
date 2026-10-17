@@ -209,6 +209,18 @@ def _run(tmp_path, *, api=None, meta=ACTIVE_META, env=None, fetch=None, now=2_00
          client_hook=None, apply_fn=None, status_out=None, heartbeat_interval=None):
     api = api or FakeGitHubApi()
     fetch = fetch or FakeFetch(tmp_path)
+    # Seed the actual local four-file state used by the pre-publish guard.
+    payload = getattr(fetch, 'batch_payload', completed_payload())
+    if not (tmp_path / 'biggo_prices.json').exists():
+        (tmp_path / 'biggo_prices.json').write_text(
+            json.dumps(payload.get('baseSnapshot', {}), ensure_ascii=False), encoding='utf-8')
+    if not (tmp_path / 'model_status.json').exists():
+        (tmp_path / 'model_status.json').write_text('{}', encoding='utf-8')
+    if not (tmp_path / 'model_blacklist.json').exists():
+        (tmp_path / 'model_blacklist.json').write_text(
+            json.dumps({'version': 1, 'models': {}}), encoding='utf-8')
+    if not (tmp_path / 'prices_meta.json').exists():
+        (tmp_path / 'prices_meta.json').write_text(json.dumps(meta), encoding='utf-8')
     out = []
     apply_calls = []
     contents = coord.GitHubContentsClient(CONFIG, api=api)
@@ -476,6 +488,24 @@ def test_completed_idempotent_legacy_bundle_manual(tmp_path):
 
 
 # ---------------------------------------------------------------- winner path / faults
+
+
+def test_winner_local_prestate_drift_blocks_publish_and_apply(tmp_path):
+    class DriftFetch(FakeFetch):
+        def run_price_batch(self, **kwargs):
+            result = super().run_price_batch(**kwargs)
+            # Simulate a local writer changing tracking during acquisition.
+            (tmp_path / 'model_status.json').write_text(
+                json.dumps({'OTHER|KEY': {'misses': 9}}), encoding='utf-8')
+            return result
+
+    fetch = DriftFetch(tmp_path)
+    code, out, apply_calls, fetch, api = _run(tmp_path, fetch=fetch)
+    assert code == 0 and _status(out) == 'needs-review'
+    assert apply_calls == []
+    assert api.state()['status'] == 'needs_review'
+    assert api.state()['lastReviewReason'] == 'local-prestate-drift-before-publish'
+    assert api.put_count() >= 1
 
 
 def test_winner_publishes_then_commits_then_applies(tmp_path):

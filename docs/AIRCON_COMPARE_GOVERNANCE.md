@@ -1873,7 +1873,7 @@ aircon-compare/
 
 ## 附錄 C. 2026-10-17 使用者批准：工作流修復、部分失敗政策與證據更正（追加；非歷史改寫）
 
-> 本附錄只追加。原有正文、機器區塊（除 §7.1 已按向後兼容方式新增 optional `sourceStatus` 欄位）、Registry、成功標準及歷史記錄一律保留。本輪沒有正式 merge／deploy／恢復寫入／改排程／對外通知。
+> 本附錄只追加。原有正文及 §7.1 機器區塊 bytes 完全不變；新增 optional `sourceStatus` 只存在尾部明確版本 extension，Registry、成功標準及歷史記錄一律保留。本輪沒有正式 merge／deploy／恢復寫入／改排程／對外通知。
 
 ### C.1 使用者授權與範圍
 
@@ -2228,3 +2228,14 @@ aircon-compare/
 }
 ```
 <!-- AIRCON:SCHEMA_EXTENSION:METADATA_SCHEMA_V1_1:END -->
+
+
+---
+
+## 附錄 E. 2026-10-17 追加更正：原 schema bytes、封裝 vs 實際部署、official 狀態（只追加）
+
+- **原 §7.1 `AIRCON_METADATA_SCHEMA_V1` bytes 保持不變**：本輪已由 baseline 恢復並逐 byte 核對；`sourceStatus` 只存在尾部 `AIRCON:SCHEMA_EXTENSION:METADATA_SCHEMA_V1_1`，extractor 以 `metadata_schema()` 按 `blockId`＋`supersedes` 明確選取，canonical 六區塊仍為六個。附錄 C 如有「§7.1 新增欄位」措辭，以本節為準更正。
+- **`deployTime` 語義**：`metadata.deployTime` 係最終部署包封裝時間（packaged time），不可當作實際線上套用成功事實。`sourceStatus.publish.packagedAt` 對應封裝時間；`publish.deployedAt`／`deploymentReceipt` 只可由實際成功、綁定 same build／releasePayloadHash／四個 live hash 的 deployment receipt 產生。UI 在沒有實際 deployment receipt 時顯示「最後封裝」，不冒充「最後部署」。
+- **official 來源**：`official.lastAttemptAt` 只記最新嘗試；失敗／pending 不可把該嘗試時間當成功 `lastAcquiredAt`。失敗時只保留上一個已驗證 snapshot 時間／hash；無歷史則保持 null／unknown。
+- **BigGo snapshot bindings**：`sourceStatus.biggo.snapshotHash` 只可使用完整 SHA-256（目前實際沿用快照或完整 appliedSnapshotHash），不可使用 status artifact 的短碼或 failed pending bundle hash；舊 `last_run` 日期不可自動當可信 apply timestamp。
+- **Candidate hygiene**：公開候選不包含本機 generated repair artifacts／source-status-history／測試私鑰；TLS fixture 在 pytest runtime 生成，完整 history credential audit 目標 0 findings。正式 live deployment／merge 仍待 Root。

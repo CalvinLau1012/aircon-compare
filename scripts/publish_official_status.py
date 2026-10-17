@@ -5,6 +5,7 @@
 只寫入無絕對路徑／無 secrets 嘅欄位；decision 必須係已知值。寫入原子。
 """
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -46,9 +47,30 @@ def main(argv=None):
     pending_reasons = receipt.get('coveragePendingReasons')
     if not isinstance(pending_reasons, dict):
         pending_reasons = {}
+    previous = {}
+    try:
+        with open(args.out, encoding='utf-8') as f:
+            previous = json.load(f)
+    except (OSError, ValueError):
+        previous = {}
+    output_hashes = sorted(
+        str(o.get('hash')) for o in (receipt.get('outputs') or [])
+        if isinstance(o, dict) and str(o.get('hash', '')).startswith('sha256:'))
+    snapshot_hash = 'sha256:' + hashlib.sha256(
+        json.dumps(output_hashes, sort_keys=True).encode('utf-8')).hexdigest()
+    if decision == 'advanced':
+        last_success = receipt.get('finishedAt') or receipt.get('startedAt')
+        snapshot_id = 'official-' + str(receipt.get('stage')) + '-' + snapshot_hash[-12:]
+    else:
+        last_success = previous.get('lastSuccessAt')
+        snapshot_id = previous.get('snapshotId')
+        snapshot_hash = previous.get('snapshotHash')
     status = {
         'schemaVersion': 1,
         'decision': decision,
+        'lastSuccessAt': last_success,
+        'snapshotId': snapshot_id,
+        'snapshotHash': snapshot_hash,
         'stage': receipt.get('stage'),
         # pendingCoverage 係 OR：queue model 未有覆蓋 或 script 確認 coverage pending
         'pendingCoverage': decision == 'queue-kept-pending-coverage',

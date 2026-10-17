@@ -18,6 +18,7 @@
 """
 from __future__ import annotations
 
+import contextlib
 import copy
 import datetime as _dt
 import errno
@@ -475,7 +476,7 @@ def apply_repair(bundle, repair, *, repo_root):
         return {'tracking': 'applied', 'noop': False, 'repairId': repair.get('repairId')}
 
 
-def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, repair=None):
+def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, repair=None, lock_held=False):
     """套用已驗證 bundle 到 repo_root 的四個本地檔。
 
     先做全檔 preflight（任何一個 file 係唔明 image 就零寫入 fail-closed），
@@ -492,7 +493,8 @@ def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, repair=None):
     blacklist_path = os.path.join(root, BLACKLIST)
     meta_path = os.path.join(root, META)
 
-    with _OperationLock(root):
+    lock_ctx = contextlib.nullcontext() if lock_held else _OperationLock(root)
+    with lock_ctx:
         journal = _read_journal(root)
         if journal is not None and journal.get('bundleHash') != bundle['bundleHash']:
             raise ApplyError('存在另一個未完成 bundle 的 apply journal（衝突；零寫入）')
