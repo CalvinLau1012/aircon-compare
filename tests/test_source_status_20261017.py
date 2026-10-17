@@ -215,3 +215,15 @@ def test_official_failed_attempt_does_not_become_successful_acquisition():
     assert s['official']['lastAttemptAt'] == '2026-10-17T03:00:00Z'
     assert s['official']['lastAcquiredAt'] == '2026-10-10T01:00:00Z'
     assert s['official']['snapshotHash'] == 'sha256:' + 'b' * 64
+
+
+def test_daily_has_completed_receive_phase_without_manual_confirm():
+    p = os.path.join(BASE, '.github', 'workflows', 'daily-update.yml')
+    text = open(p, encoding='utf-8').read()
+    assert 'sync_biggo_completed.py --apply --degraded-exit-zero' in text
+    assert 'biggo_completed_sync.json' in text
+    assert 'confirm_no_provider' not in text
+    assert not os.path.exists(os.path.join(BASE, '.github', 'workflows',
+                                           'biggo-completed-sync.yml'))
+    allow = open(os.path.join(BASE, 'scripts', 'stage_artifacts.py'), encoding='utf-8').read()
+    assert 'biggo_completed_sync.json' in allow
