@@ -59,6 +59,7 @@ def main(argv=None):
     ap.add_argument('--metadata-url', required=True)
     ap.add_argument('--repo', required=True, help='owner/name')
     ap.add_argument('--postdeploy-report', default=None)
+    ap.add_argument('--health-report', default=None)
     ap.add_argument('--report', required=True)
     ap.add_argument('--label', default=LABEL)
     args = ap.parse_args(argv)
@@ -69,6 +70,18 @@ def main(argv=None):
     result = None
     post_ok = True
     deployment = None
+    health_ok = True
+    if args.health_report:
+        try:
+            health = json.load(open(args.health_report, encoding='utf-8'))
+            health_ok = health.get('ok') is True
+            if not health_ok:
+                post_ok = False
+        except (OSError, ValueError) as e:
+            health_ok = False
+            post_ok = False
+            result = {'ok': False, 'stale': False, 'ageSeconds': None,
+                      'reason': f'health_report_invalid:{type(e).__name__}'}
     if args.postdeploy_report:
         if not os.path.isfile(args.postdeploy_report):
             post_ok = False
@@ -97,6 +110,7 @@ def main(argv=None):
         else:
             result = evaluate(meta, deployment=deployment)
     result['postdeployOk'] = post_ok
+    result['healthSummaryOk'] = health_ok
     try:
         existing = find_open_issue(token, args.repo, args.label)
     except RuntimeError as e:

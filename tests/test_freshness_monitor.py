@@ -123,7 +123,7 @@ def test_cli_writes_report_and_exit_codes(tmp_path):
 
 
 def _run_issue_main(tmp_path, monkeypatch, metadata=None, postdeploy=None, fail_fetch=False,
-                    api=None, token=TOKEN_FORBIDDEN):
+                    api=None, token=TOKEN_FORBIDDEN, health=None):
     calls = []
 
     def default_api(tok, method, path, data=None):
@@ -145,6 +145,8 @@ def _run_issue_main(tmp_path, monkeypatch, metadata=None, postdeploy=None, fail_
             '--repo', 'owner/repo', '--report', str(tmp_path / 'issue-report.json')]
     if postdeploy is not None:
         args += ['--postdeploy-report', str(postdeploy)]
+    if health is not None:
+        args += ['--health-report', str(health)]
     rc = freshness_issue.main(args)
     report_path = tmp_path / 'issue-report.json'
     report = json.load(open(report_path, encoding='utf-8')) if report_path.exists() else None
@@ -260,3 +262,15 @@ def test_stale_and_deployment_mismatch_are_separate_facts():
     assert both['stale'] is True and both['deploymentMismatch'] is True
     assert 'stale_over_72h' in freshness.classify(both)
     assert 'deployment_mismatch' in freshness.classify(both)
+
+
+def test_health_unknown_keeps_monitor_alert(tmp_path, monkeypatch):
+    health = tmp_path / 'health.json'
+    health.write_text(json.dumps({'ok': None, 'status': 'unknown',
+                                  'configured': False,
+                                  'reason': 'health-summary-not-wired'}),
+                      encoding='utf-8')
+    rc, calls, report = _run_issue_main(tmp_path, monkeypatch, health=health)
+    assert rc == 1
+    assert report['action'] == 'create'
+    assert report['check']['healthSummaryOk'] is False

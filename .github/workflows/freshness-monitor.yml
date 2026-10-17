@@ -63,4 +63,5 @@ jobs:
             --metadata-url 'https://calvinlau1012.github.io/aircon-compare/metadata.json' \
             --repo "$GITHUB_REPOSITORY" \
             --postdeploy-report "$RUNNER_TEMP/postdeploy.json" \
+            --health-report "$RUNNER_TEMP/source-health-summary.json" \
             --report "$RUNNER_TEMP/freshness-monitor.json"
