@@ -2948,7 +2948,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
     <p>· 機電工程署 EMSD 能源標籤資料庫（官方能源/雪種/耗電數據）<br>
       · 資料目錄：DATA.GOV.HK（資料由機電工程署提供；dataset hk-emsd-emsd1-meels-listed-models）<br>
       · 品牌官網及總代理：信興集團、樂信網店、Panasonic、世紀開利、GENERAL 第一電業、HITACHI、COMFEE、美的<br>
-      · 價格快照：BigGo 官方 JSON API（更新至 2026-09-14）+ PricesAPI 核心 29 驗收 + Price.com.hk 2026-08-15 舊快照（分批快照；缺價標「待查」；點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
+      · 價格快照：BigGo 官方 JSON API（分批快照；實際更新日期見頁面狀態） + PricesAPI 核心 29 驗收 + Price.com.hk 舊快照（缺價標「待查」；點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
   </div>
 
   <div class="blk">
@@ -3410,18 +3410,27 @@ window.addEventListener('scroll',()=>{
       if (ver && m.version) ver.textContent = 'v' + m.version;
       const ds = m.datasetDate;
       const dt = m.deployTime;
+      const sb = (m.sourceStatus && m.sourceStatus.biggo) || {};
+      const bw = sb.lastAppliedDate || (sb.lastAppliedAt ? String(sb.lastAppliedAt).slice(0,10) : '');
+      let biggoText = 'BigGo 更新時間未知';
+      if (sb.status === 'ok' && bw) biggoText = 'BigGo 最近成功更新 ' + bw + '（分批快照）';
+      else if (sb.status === 'degraded') biggoText = 'BigGo 價格沿用先前已驗證快照' + (bw ? ('（' + bw + '）') : '') + ' · ⚠️ 價格來源降級';
+      else if (sb.status === 'blocked') biggoText = 'BigGo 價格來源受阻 · 沿用先前已驗證快照';
+      else if (sb.status === 'pending') biggoText = 'BigGo 本輪待更新 · 沿用先前已驗證快照';
+      else if (bw) biggoText = 'BigGo 更新時間 ' + bw + '（分批快照）';
       let line = (ds ? ('📅 資料日期 ' + ds) : '📅 資料日期暫不可用');
       if (m.version) line += ' · v' + m.version;
       if (dt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(dt)) {
         const hkt = new Date(new Date(dt).getTime() + 8*3600*1000);
         const p = hkt.toISOString().slice(0,16).replace('T',' ');
-        line += ' · ✅ 最後部署 ' + p + ' HKT';
+        line += ' · 📦 最後部署 ' + p + ' HKT';
       } else {
         line += ' · 🔄 每日偵測新機 · 有機先更新';
       }
       if (el) el.textContent = line;
       if (foot) foot.textContent = '🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）· 有新機先分批核實更新 · '
-        + (ds ? ('資料日期 ' + ds) : '資料日期暫不可用') + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考';
+        + (ds ? ('資料日期 ' + ds) : '資料日期暫不可用') + ' · ' + biggoText
+        + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考';
     })
     .catch(() => {
       if (el) el.textContent = '📅 資料日期暫不可用 · 部署資訊暫不可用';

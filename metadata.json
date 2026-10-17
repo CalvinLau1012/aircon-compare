@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0.0",
   "version": "1.2.9",
-  "build": "B20261016.153.1",
-  "commit": "4e5dab1d60869da3f75351df9c19a5cf706cdf46",
-  "deployTime": "2026-10-16T19:44:40Z",
-  "workflowRunId": "38956292140",
+  "build": "B20261017.155.1",
+  "commit": "504b7713c1de0555ef5b93875cda307a39b2c4c3",
+  "deployTime": "2026-10-17T09:02:39Z",
+  "workflowRunId": "39019433760",
   "deploymentType": "release",
   "datasetDate": "2026-10-17",
   "datasetDateBasis": "retrieval-date-fallback",
@@ -16,5 +16,47 @@
   "rawRecordCount": 1782,
   "registrationCount": 1782,
   "modelCount": 1721,
-  "releasePayloadHash": "sha256:f3ba65ac9888e1c933ff7fe549bc79589817d61cdffaa14da07d45ea2d550fea"
+  "sourceStatus": {
+    "biggo": {
+      "lastAcquiredAt": null,
+      "lastAppliedAt": null,
+      "lastAppliedDate": null,
+      "lastAttemptAt": "2026-10-17T09:02:37Z",
+      "safeReason": "completed-sync-missing-history",
+      "snapshotHash": "sha256:3382e2202566910d622d21a75d4de2ed13394274693cd1f1387ce7276a705187",
+      "snapshotId": null,
+      "status": "degraded"
+    },
+    "emsd": {
+      "lastAcquiredAt": "2026-10-16T19:42:02Z",
+      "lastAppliedAt": null,
+      "lastAppliedDate": null,
+      "lastAttemptAt": "2026-10-16T19:42:02Z",
+      "safeReason": "acquired",
+      "snapshotHash": "sha256:dcbe0ca2d4e9e25f7f62b6fcff54afd40d280cb7679e77a660b67e132c45ed00",
+      "snapshotId": "emsd-2026-10-17-7e132c45ed00",
+      "status": "ok"
+    },
+    "generatedAt": "2026-10-17T09:02:38Z",
+    "official": {
+      "lastAcquiredAt": null,
+      "lastAppliedAt": null,
+      "lastAppliedDate": null,
+      "lastAttemptAt": "2026-10-16T19:44:37Z",
+      "safeReason": "sources-degraded",
+      "snapshotHash": null,
+      "snapshotId": null,
+      "status": "degraded"
+    },
+    "publish": {
+      "build": "B20261017.155.1",
+      "commit": "504b7713c1de0555ef5b93875cda307a39b2c4c3",
+      "deployedAt": null,
+      "deploymentReceipt": null,
+      "packagedAt": "2026-10-17T09:02:39Z",
+      "releasePayloadHash": null
+    },
+    "schemaVersion": 1
+  },
+  "releasePayloadHash": "sha256:72be98405205951c913721474da5c5e50fd2bfec4efd94df51248825048b69f6"
 }
