@@ -331,9 +331,12 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
         bstatus_ui, breason = ('pending' if prices_meta.get('price_batch_start')
                                else 'unknown', 'no-fetch-needed')
     elif bstatus in ('needs-review', 'blocked-incomplete', 'blocked-needs-review',
-                     'blocked-stale', 'blocked-quota-window-unsupported'):
+                     'blocked-stale', 'blocked-quota-window-unsupported',
+                     'blocked-diagnostic-pending'):
         bstatus_ui, breason = 'blocked', ('needs-review' if 'review' in str(bstatus)
-                                          else 'quota-or-lease-blocked')
+                                          else ('completed-sync-unavailable'
+                                                if bstatus == 'blocked-diagnostic-pending'
+                                                else 'quota-or-lease-blocked'))
     elif not bstatus:
         if prices_meta.get('last_run'):
             # A dated snapshot is a real fact, but without a current BigGo
@@ -377,7 +380,7 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
         'completed-apply-failed', 'needs-review', 'blocked-incomplete',
         'blocked-needs-review', 'blocked-stale', 'blocked-quota-window-unsupported',
         'completed-sync-missing-history', 'completed-sync-unavailable',
-        'completed-sync-invalid',
+        'completed-sync-invalid', 'blocked-diagnostic-pending',
     }
     sync_failure = isinstance(completed_sync, dict) and completed_sync.get('ok') is not True
     base_failure = (bstatus_ui == 'blocked' or biggo.get('alert') is True

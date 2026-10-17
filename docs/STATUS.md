@@ -1668,3 +1668,8 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
 ### 2026-10-17T13:47Z · final identity correction
 
 The final docs-inclusive audit candidate is public `d17b06f98c32c516dd34880be8a1dd4ebeda3b38` (1108/7) and private `8bdc778af3e026003aa3f1bee2139cdd66dd49e2` (1163/7). The earlier `f1837a5…`/`b38354e…` identities are superseded; both remain in history. Grant proposal is not installed; no live operation.
+
+
+### 2026-10-17T14:05Z · Root counterexample corrections (append-only)
+
+Root's six blocking counterexamples were reproduced against this isolated candidate and are now covered: workflow inputs are env-only with strict sha256 grant-id validation; explicit run identity is mandatory; every business CAS reread revalidates cycle/stage/cooldown/quota/window; configured quota/window blocks; ledger finalization uses the same read payload+SHA and preserves concurrent rows; per-row actual<=reserved validation; pending diagnostic status is an alert and blocks baseline green. No live push/deploy/dispatch/coordinator write/grant install/provider call was performed. Exact-head acceptance evidence is external to the tracked tree.

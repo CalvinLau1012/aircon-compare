@@ -33,6 +33,7 @@ OWNER_PREFIX = 'aircon-test-grant-'
 CAS_ATTEMPTS = 3
 DIAGNOSTIC_FIELD = coord_mod.DIAGNOSTIC_FIELD
 RUN_RE = re.compile(r'^[A-Za-z0-9._-]{1,80}$')
+GRANT_RE = re.compile(r'^sha256:[0-9a-f]{64}$')
 
 
 class ProbeBlocked(RuntimeError):
@@ -108,41 +109,74 @@ def _read_ledger(contents):
     return path, ledger, sha
 
 
-def _write_ledger(contents, path, ledger, sha):
+def _quota_configured(contents, state):
+    cfg = getattr(contents, 'config', None)
+    return (getattr(cfg, 'provider_quota_limit', None) is not None
+            or getattr(cfg, 'provider_window_end', None) is not None
+            or (isinstance(state, dict)
+                and (state.get('providerQuotaLimit') is not None
+                     or state.get('providerWindowEnd') is not None)))
+
+
+def _ledger_cas(contents, path, transform):
+    """Read ledger payload+SHA once, transform, CAS write; preserve other rows."""
     for _ in range(CAS_ATTEMPTS):
         try:
-            current, current_sha = contents.get_file(path)
-            if current is None:
-                return None, 'blocked-grant-missing'
-            try:
-                current_ledger = json.loads(current.decode('utf-8'))
-                grant.validate_ledger(current_ledger)
-            except Exception:
-                return None, 'blocked-grant-invalid'
-            if current_sha != sha:
-                return None, 'blocked-grant-cas'
-            contents.put_file(path, grant.canonical_ledger_bytes(ledger),
-                              'diagnostic: test grant reservation', sha=sha)
-            return True, None
-        except coord_mod.CASConflict:
-            return None, 'blocked-grant-cas'
+            raw, sha = contents.get_file(path)
         except Exception:
-            return None, 'uncertain-grant-write'
-    return None, 'blocked-grant-cas'
-
+            return None, 'uncertain-ledger-read'
+        if raw is None:
+            return None, 'blocked-grant-missing'
+        try:
+            ledger = json.loads(raw.decode('utf-8'))
+            grant.validate_ledger(ledger)
+        except Exception:
+            return None, 'blocked-grant-invalid'
+        try:
+            new_ledger = transform(copy.deepcopy(ledger))
+            grant.validate_ledger(new_ledger)
+        except grant.GrantError:
+            return None, 'blocked-grant-transform'
+        # Detect a concurrent ledger update before the PUT, then recompute from
+        # the fresh payload/SHA.  The final write never combines old rows with a
+        # new SHA.
+        try:
+            raw2, sha2 = contents.get_file(path)
+        except Exception:
+            return None, 'uncertain-ledger-read'
+        if raw2 != raw or sha2 != sha:
+            continue
+        try:
+            contents.put_file(path, grant.canonical_ledger_bytes(new_ledger),
+                              'diagnostic: test grant update', sha=sha)
+            return new_ledger, None
+        except coord_mod.CASConflict:
+            continue
+        except Exception:
+            return None, 'uncertain-ledger-write'
+    return None, 'blocked-ledger-cas'
 
 def _abort_check(contents, owner, cycle_id, stage, grant_id, attempt_id, now_fn):
     def check():
         try:
             state, _ = contents.read_state()
+            now = int(now_fn())
             if state is None or state.get('leaseOwner') != owner \
                     or state.get('cycleId') != cycle_id \
                     or state.get('stage') != stage \
                     or state.get('status') != 'idle' \
-                    or _int(state.get('leaseExpiresAt')) <= int(now_fn()):
+                    or state.get('callsMayHaveStarted') \
+                    or state.get('intentAt') is not None \
+                    or _int(state.get('leaseExpiresAt')) <= now \
+                    or _int(state.get('cooldownUntil')) > now \
+                    or _quota_configured(contents, state):
                 return True
             marker = state.get(DIAGNOSTIC_FIELD)
             if not isinstance(marker, dict) or marker.get('attemptId') != attempt_id \
+                    or marker.get('owner') != owner \
+                    or marker.get('cycleId') != cycle_id \
+                    or marker.get('stage') != stage \
+                    or marker.get('grantId') != grant_id \
                     or marker.get('state') not in ('reserved', 'running'):
                 return True
             path, ledger, _sha = _read_ledger(contents)
@@ -154,32 +188,38 @@ def _abort_check(contents, owner, cycle_id, stage, grant_id, attempt_id, now_fn)
             return True
     return check
 
-
-def _reserve_business(contents, state, sha, owner, cycle_id, stage, marker, now):
-    """CAS lease + pending marker; status and every business field stay intact."""
+def _reserve_business(contents, owner, cycle_id, stage, marker, now_fn):
+    """CAS lease + pending marker; every reread revalidates all prerequisites."""
     for _ in range(CAS_ATTEMPTS):
         current, current_sha = contents.read_state()
+        now = int(now_fn())
         if current is None:
             raise ProbeBlocked('blocked-remote-state-missing', 'remote-state-missing')
+        if current.get('cycleId') != cycle_id or current.get('stage') != stage:
+            raise ProbeBlocked('blocked-business-state-changed', 'cycle-stage-changed')
         if current.get('status') != 'idle':
             raise ProbeBlocked('blocked-remote-inactive', 'remote-not-idle')
         if current.get('callsMayHaveStarted') or current.get('intentAt') is not None:
             raise ProbeBlocked('blocked-business-intent', 'business-intent')
+        if _int(current.get('cooldownUntil')) > now:
+            raise ProbeBlocked('blocked-cooldown', 'cooldown-active')
+        if _quota_configured(contents, current):
+            raise ProbeBlocked('blocked-quota-window-unsupported',
+                               'quota-window-accounting-unsupported')
         old = current.get(DIAGNOSTIC_FIELD)
         if old is not None and (not isinstance(old, dict)
                                 or old.get('state') != 'completed'):
             raise ProbeBlocked('blocked-diagnostic-pending', 'unresolved-marker')
         lease_owner = current.get('leaseOwner')
-        if lease_owner is not None and _int(current.get('leaseExpiresAt')) > int(now):
+        if lease_owner is not None and _int(current.get('leaseExpiresAt')) > now:
             raise ProbeBlocked('blocked-foreign-lease', 'foreign-lease')
         candidate = copy.deepcopy(current)
         candidate['leaseOwner'] = owner
-        candidate['leaseAcquiredAt'] = int(now)
-        candidate['leaseRenewedAt'] = int(now)
-        candidate['leaseExpiresAt'] = int(now) + coord_mod.LEASE_SECONDS
-        candidate['updatedAt'] = int(now)
+        candidate['leaseAcquiredAt'] = now
+        candidate['leaseRenewedAt'] = now
+        candidate['leaseExpiresAt'] = now + coord_mod.LEASE_SECONDS
+        candidate['updatedAt'] = now
         candidate[DIAGNOSTIC_FIELD] = copy.deepcopy(marker)
-        # Explicitly do not touch status/cycle/stage/intent/refs/requestAttempts.
         try:
             contents.write_state(candidate, current_sha)
             return candidate
@@ -191,7 +231,6 @@ def _reserve_business(contents, state, sha, owner, cycle_id, stage, marker, now)
             raise ProbeBlocked('uncertain-reservation', 'business-reservation-ambiguous')
     raise ProbeBlocked('blocked-reservation-conflict', 'business-cas-exhausted')
 
-
 def _finish_business(contents, owner, cycle_id, stage, base_state, marker,
                      now, release=True):
     for _ in range(CAS_ATTEMPTS):
@@ -201,6 +240,11 @@ def _finish_business(contents, owner, cycle_id, stage, base_state, marker,
             return 'uncertain-cleanup'
         if current is None or current.get('leaseOwner') != owner \
                 or current.get('cycleId') != cycle_id or current.get('stage') != stage:
+            return 'uncertain-lease-lost'
+        current_marker = current.get(DIAGNOSTIC_FIELD)
+        if not isinstance(current_marker, dict) \
+                or current_marker.get('attemptId') != marker.get('attemptId') \
+                or current_marker.get('owner') != owner:
             return 'uncertain-lease-lost'
         final = copy.deepcopy(current)
         final[DIAGNOSTIC_FIELD] = copy.deepcopy(marker)
@@ -236,12 +280,21 @@ def run_probe(*, env=None, contents, fetch=None, now=None, selector=None,
               'reservedUpperBound': dict(grant.RESERVED), 'reservation': None,
               'coordinatorOps': 0, 'uncertainty': None}
 
-    if not isinstance(grant_id, str) or not grant_id.startswith('sha256:'):
+    if not isinstance(grant_id, str) or not GRANT_RE.fullmatch(grant_id):
         return _finish(report, 'blocked-grant-id', 'grant-id-invalid', 2)
+    run_id = str(env.get('GITHUB_RUN_ID') or '')
+    run_attempt = str(env.get('GITHUB_RUN_ATTEMPT') or '')
+    if not run_id or not run_attempt or not RUN_RE.fullmatch(run_id) \
+            or not RUN_RE.fullmatch(run_attempt):
+        return _finish(report, 'blocked-run-identity', 'missing-run-identity', 2)
+    attempt_id = f'{run_id}-{run_attempt}'
     if str(env.get('AIRCON_BIGGO_TEST_MODE') or '') == '1':
         return _finish(report, 'blocked-test-mode', 'test-mode-forbids-network', 2)
     if _credentials(fetch) != 'full':
         return _finish(report, 'blocked-credentials', 'provider-credentials', 2)
+    if _quota_configured(contents, None):
+        return _finish(report, 'blocked-quota-window-unsupported',
+                       'quota-window-accounting-unsupported', 2)
     try:
         selection, info = selector()
     except Exception:
@@ -287,11 +340,6 @@ def run_probe(*, env=None, contents, fetch=None, now=None, selector=None,
 
     cycle_id = state.get('cycleId')
     stage = state.get('stage')
-    run_id = str(env.get('GITHUB_RUN_ID') or 'local')
-    run_attempt = str(env.get('GITHUB_RUN_ATTEMPT') or '1')
-    attempt_id = f'{run_id}-{run_attempt}'
-    if not RUN_RE.match(attempt_id):
-        return _finish(report, 'blocked-run-identity', 'invalid-attempt-id', 2)
     if any(r.get('attemptId') == attempt_id for r in ledger['reservations']):
         return _finish(report, 'blocked-attempt-replay', 'attempt-already-reserved', 2)
     owner = OWNER_PREFIX + attempt_id
@@ -299,24 +347,22 @@ def run_probe(*, env=None, contents, fetch=None, now=None, selector=None,
     marker['grantId'] = grant_id
 
     try:
-        reserved_state = _reserve_business(contents, state, state_sha, owner,
-                                           cycle_id, stage, marker, now_fn())
+        reserved_state = _reserve_business(contents, owner, cycle_id, stage,
+                                           marker, now_fn)
     except ProbeBlocked as e:
         code = 1 if e.status.startswith('uncertain') else 2
         return _finish(report, e.status, e.reason, code)
     report['reservation'] = {'state': 'reserved', 'attemptId': attempt_id}
     # Reserve the ledger only after the business lease+marker exists.
     try:
-        new_ledger = grant.reserve_attempt(ledger, attempt_id=attempt_id,
-                                           host='manual', reserved_at=now_fn())
-    except grant.GrantError:
-        _finish_business(contents, owner, cycle_id, stage, reserved_state,
-                         dict(marker, state='uncertain', reason='grant-reserve-rejected'),
-                         now_fn())
-        return _finish(report, 'blocked-grant-reserve', 'grant-reserve-rejected', 2)
-    ok, error = _write_ledger(contents, path, new_ledger, sha)
-    if not ok:
-        if error and error.startswith('uncertain'):
+        new_ledger, error = _ledger_cas(
+            contents, path,
+            lambda current: grant.reserve_attempt(current, attempt_id=attempt_id,
+                                                  host='manual', reserved_at=now_fn()))
+    except Exception:
+        new_ledger, error = None, 'uncertain-grant-reserve'
+    if error:
+        if error.startswith('uncertain'):
             _finish_business(contents, owner, cycle_id, stage, reserved_state,
                              dict(marker, state='uncertain', reason=error), now_fn(),
                              release=False)
@@ -357,22 +403,19 @@ def run_probe(*, env=None, contents, fetch=None, now=None, selector=None,
     evidence = getattr(fetch, 'LAST_RATE_LIMIT_EVIDENCE', None) or {}
     http_status = evidence.get('status') if isinstance(evidence.get('status'), int) else None
     retry_after = evidence.get('retryAfter')
-    # Record actual, including failures; concurrency resolution is bounded.
+    # Record actual in the same read payload+SHA transform; never use a stale
+    # payload with a newer SHA (that would drop a concurrent reservation).
+    ledger_path = grant.fixed_ledger_path(contents.config)
     try:
-        final_ledger = grant.finish_attempt(ledger if False else _read_ledger(contents)[1],
-                                            attempt_id=attempt_id, actual=actual,
-                                            http_status=http_status, reason=reason,
-                                            retry_after=retry_after)
+        final_ledger, error = _ledger_cas(
+            contents, ledger_path,
+            lambda current: grant.finish_attempt(
+                current, attempt_id=attempt_id, actual=actual,
+                http_status=http_status, reason=reason,
+                retry_after=retry_after))
     except Exception:
-        _finish_business(contents, owner, cycle_id, stage, reserved_state,
-                         dict(marker, state='uncertain', reason='ledger-finish'),
-                         now_fn(), release=False)
-        return _finish(report, 'uncertain-grant-finalize', 'ledger-finalize',
-                       1, uncertainty='provider-outcome-not-finalized')
-    ledger_path, current_ledger, current_sha = _read_ledger(contents)
-    # A completion is a fresh CAS on the ledger that already contains our reservation.
-    ok, error = _write_ledger(contents, ledger_path, final_ledger, current_sha)
-    if not ok:
+        final_ledger, error = None, 'uncertain-grant-finalize'
+    if error:
         # Provider already ran.  Any inability to persist the actual outcome is
         # uncertainty, never a clean blocked/success result.  Keep the lease and
         # pending marker so no normal writer can take over.

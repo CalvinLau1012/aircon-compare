@@ -546,3 +546,15 @@ def test_verified_baseline_allows_missing_provider_status_but_not_failure():
         completed_sync={'ok': False, 'reason': 'apply-error'})
     assert failed['biggo']['status'] == 'degraded'
     assert failed['biggo']['safeReason'] != 'baseline-accepted'
+
+
+def test_pending_diagnostic_marker_blocks_baseline_green_and_is_alert():
+    import biggo_stage_runner
+    assert 'blocked-diagnostic-pending' in biggo_stage_runner.ALERT_STATUSES
+    meta, report = _baseline_meta()
+    s = _build(meta, report, snapshot=meta['appliedSnapshotHash'],
+               biggo={'status': 'blocked-diagnostic-pending',
+                      'cycle': '2026-10-10:3/7', 'stage': 3})
+    assert s['biggo']['status'] == 'blocked'
+    assert s['biggo']['safeReason'] != 'baseline-accepted'
+    assert source_status.validate_status(s) == []

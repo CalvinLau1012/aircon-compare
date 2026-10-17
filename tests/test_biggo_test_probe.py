@@ -375,6 +375,8 @@ def test_lease_abort_accepts_own_idle_lease_but_rejects_loss():
                            'leaseExpiresAt': 200,
                            coord.DIAGNOSTIC_FIELD: {
                                'state': 'reserved', 'attemptId': '40000000001-1',
+                               'owner': 'aircon-test-grant-40000000001-1',
+                               'cycleId': '2026-10-10:4/7', 'stage': 4,
                                'grantId': auth['grantId']}})
     contents.write_state(contents.state, contents.get_file(contents.config.state_path)[1])
     reserved = grant.reserve_attempt(ledger, attempt_id='40000000001-1',
@@ -387,3 +389,12 @@ def test_lease_abort_accepts_own_idle_lease_but_rejects_loss():
     contents.state['leaseOwner'] = 'other'
     contents.write_state(contents.state, contents.get_file(contents.config.state_path)[1])
     assert check() is True
+
+
+def test_missing_run_identity_blocks_before_any_provider_or_ledger_write():
+    contents = FakeContents(); _path, _l, auth = _ledger(contents)
+    f = FakeFetch(); puts = contents.puts
+    r = probe.run_probe(env={}, contents=contents, fetch=f,
+                        selector=_selection, grant_id=auth['grantId'])
+    assert r['status'] == 'blocked-run-identity' and len(f.calls) == 0
+    assert contents.puts == puts

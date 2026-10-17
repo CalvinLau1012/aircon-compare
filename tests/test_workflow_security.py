@@ -843,13 +843,17 @@ def test_diagnostic_test_grant_is_manual_and_fixed_id_only():
     assert inputs['execute_test_grant']['type'] == 'boolean'
     assert inputs['grant_id']['default'] == ''
     assert 'python scripts/biggo_test_probe.py' in text
-    assert '--grant-id "${{ inputs.grant_id }}"' in text
+    assert '--grant-id "${{ inputs.grant_id }}"' not in text
+    assert '--grant-id "$GRANT_ID"' in text
+    assert 'GRANT_ID: ${{ inputs.grant_id }}' in text
     assert 'AIRCON_BIGGO_TEST_GRANT_PATH' not in text
     assert 'grants/' not in text
     step = next(s for s in yaml.safe_load(text)['jobs']['diagnostic']['steps']
                 if s.get('name', '').startswith('Authorized test-grant'))
     assert step['if'] == '${{ inputs.execute_test_grant }}'
     assert 'biggo_test_probe.py' in step['run']
+    assert 'AIRCON_BIGGO_PROVIDER_QUOTA_LIMIT' in step['env']
+    assert 'AIRCON_BIGGO_PROVIDER_WINDOW_END' in step['env']
 
 
 def test_daily_repair_and_rebuild_both_true_rejected_before_checkout():

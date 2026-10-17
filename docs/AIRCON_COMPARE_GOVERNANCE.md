@@ -2293,3 +2293,8 @@ aircon-compare/
 - 服務仍為既有版本／容器運行；四檔 live 指標、部署收據及外部 HTTPS 回應一致，未見混合版本或 Docker healthcheck 通過的聲稱（未配置 healthcheck）。
 - 現有 BigGo acquisition／applied 時間、stage3 canonical post hashes、updater 00:30 HKT、monitor */15、來源 unhealthy facts（BigGo 年齡、official unknown、私人 official queue legacy stage）均如實保留；未有新一輪正常窗口觀察。
 - 外部主域以 Python CLI 遇到 Cloudflare 1010，origin／DDNS 嚴格 HTTPS 正常；不是 Docker outage，沒有改 Cloudflare 設定。私有具體身份／路徑留本地報告，公開只泛稱 CLI 操作者。
+
+
+## 2026-10-17T14:05Z · Root counterexample correction (append-only)
+
+Workflow input is environment-only; strict grant-id and explicit run identity are validated before any coordinator GET/CAS/provider. Business CAS rereads and every provider-phase guard revalidate cycle/stage, cooldown, configured/state quota-window, intent/status/lease and marker ownership. Ledger finalize uses one read payload+SHA, preserves concurrent rows and validates per-row bounds. `blocked-diagnostic-pending` is an alert and cannot be turned baseline-green. This remains an isolated candidate; no live/grant/provider operation.

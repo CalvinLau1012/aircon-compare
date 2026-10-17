@@ -1274,3 +1274,8 @@ Root 指 Codex 主審角色，並非人類維護者或 Code Owner。候選附錄
 - 使用者澄清：Pi 只負責隔離程式實作、離線測試、候選與可檢閱的命令／發布包；實際伺服器 Docker、已授權正式操作及獨立驗收由具權限的 CLI 操作者執行。
 - Pi 不可讀取／借用工程管理憑證、不可 sudo、不可嘗試提權或繞過權限；取得 CLI 權限不是本輪要處理的阻塞。公開文字只泛稱「CLI 操作者」，不記私人主機／網域／路徑／repo／owner／token。
 - 本輪維持零 live push／deploy／dispatch／coordinator write／provider call；不與 Root 的 Docker 檢查並行操作正式容器或正式資料。此更正不停止原修復範圍。
+
+
+## 2026-10-17T14:05Z · Root counterexample correction (append-only)
+
+Workflow input is environment-only; strict grant-id and explicit run identity are validated before any coordinator GET/CAS/provider. Business CAS rereads and every provider-phase guard revalidate cycle/stage, cooldown, configured/state quota-window, intent/status/lease and marker ownership. Ledger finalize uses one read payload+SHA, preserves concurrent rows and validates per-row bounds. `blocked-diagnostic-pending` is an alert and cannot be turned baseline-green. This remains an isolated candidate; no live/grant/provider operation.

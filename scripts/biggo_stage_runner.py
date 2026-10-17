@@ -63,7 +63,8 @@ DEFAULT_HEARTBEAT_INTERVAL = 30.0  # 秒；client.maybe_renew() 內部再按 5 �
 ALERT_STATUSES = frozenset({
     'needs-review', 'blocked-intent-persist', 'completed-apply-failed',
     'completed-legacy-manual', 'completed-bundle-unavailable',
-    'blocked-incomplete', 'blocked-quota-window-unsupported', 'blocked-stage-gap',
+    'blocked-incomplete', 'blocked-diagnostic-pending',
+    'blocked-quota-window-unsupported', 'blocked-stage-gap',
     'blocked-force-cycle-incomplete', 'blocked-stale',
 })
 

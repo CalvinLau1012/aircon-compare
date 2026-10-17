@@ -123,11 +123,14 @@ jobs:
           AIRCON_BIGGO_COORDINATOR_BRANCH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_BRANCH }}
           AIRCON_BIGGO_COORDINATOR_STATE_PATH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_STATE_PATH }}
           AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR: ${{ secrets.AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR }}
+          AIRCON_BIGGO_PROVIDER_QUOTA_LIMIT: ${{ secrets.AIRCON_BIGGO_PROVIDER_QUOTA_LIMIT }}
+          AIRCON_BIGGO_PROVIDER_WINDOW_END: ${{ secrets.AIRCON_BIGGO_PROVIDER_WINDOW_END }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+          GRANT_ID: ${{ inputs.grant_id }}
         run: |
           python scripts/biggo_test_probe.py \
-            --grant-id "${{ inputs.grant_id }}" \
+            --grant-id "$GRANT_ID" \
             --json-out "$RUNNER_TEMP/biggo-diagnostic-test-grant.json"
 
       # Summary：只 cat 由 CLI sanitized renderer 寫出嘅檔；唔會執行任何輸入字串。

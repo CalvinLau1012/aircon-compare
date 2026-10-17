@@ -113,8 +113,11 @@ def _reservation_view(row):
     for label, value in (('reserved', reserved), ('actual', actual)):
         if not isinstance(value, dict):
             raise GrantError(f'{label} invalid')
-        _int(value.get('token'))
-        _int(value.get('search'))
+        for kind in ('token', 'search'):
+            _int(value.get(kind))
+    for kind in ('token', 'search'):
+        if _int(actual.get(kind)) > _int(reserved.get(kind)):
+            raise GrantError(f'actual.{kind} exceeds reserved')
     if reserved != RESERVED:
         raise GrantError('each diagnostic reservation must be exactly 1 token + 1 search')
     if row.get('state') not in STATES:
