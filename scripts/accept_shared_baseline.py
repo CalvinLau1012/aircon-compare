@@ -150,6 +150,21 @@ def _date_analysis(github_price, target_price):
     return {'counts': counts, 'rows': rows}
 
 
+def _server_only(github_pre, target):
+    out = {}
+    for n in DATA:
+        old = github_pre[n]
+        new = target[n]
+        old = _black(old) if n == 'model_blacklist.json' else old
+        new = _black(new) if n == 'model_blacklist.json' else new
+        out[n] = [{'key': k, 'newValue': new[k],
+                   'newHash': 'sha256:' + hashlib.sha256(
+                       json.dumps(new[k], ensure_ascii=False, sort_keys=True).encode()).hexdigest(),
+                   'reason': 'adopted from verified shared post-state'}
+                  for k in sorted(set(new) - set(old))]
+    return out
+
+
 def _expected(bundle_dir, repair_path, source_pre, source_post, github_pre,
               adopted_at):
     bundle = repair_mod.load_bundle(os.path.abspath(bundle_dir))
@@ -250,6 +265,7 @@ def _expected(bundle_dir, repair_path, source_pre, source_post, github_pre,
         },
         'archive': {'prefix': ARCHIVE_PREFIX, 'oldFiles': github_hash},
         'publicOnly': _public_only(gh, expected),
+        'serverOnly': _server_only(gh, expected),
         'activePost': expected_hash,
         'distinction': 'local accepted shared baseline; not a replay of GitHub stage1/2/3',
     }
@@ -277,6 +293,7 @@ def _expected(bundle_dir, repair_path, source_pre, source_post, github_pre,
         'targetFiles': target_hash,
         'target': target,
         'publicOnly': acceptance['publicOnly'],
+        'serverOnly': acceptance['serverOnly'],
         'dateAnalysis': _date_analysis(gh['biggo_prices.json'], expected['biggo_prices.json']),
         'archive': acceptance['archive'],
         'distinction': acceptance['distinction'],
