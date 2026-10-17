@@ -95,6 +95,113 @@ def _source_block(status='unknown', *, last_attempt_at=None, last_acquired_at=No
     return block
 
 
+def _is_sha(value):
+    return isinstance(value, str) and bool(SHA_RE.match(value))
+
+
+def _baseline_info(prices_meta):
+    """Validate baseline provenance without ever using it as a success witness.
+
+    A baseline is a local provenance record.  It becomes UI-visible only when
+    the current meta still identifies that exact accepted bundle/stage and a
+    separately verified receiver report proves the local post-image.  A
+    malformed/old/historical baseline is not, by itself, an error either.
+    """
+    baseline = prices_meta.get('baselineAcceptance') if isinstance(prices_meta, dict) else None
+    if not isinstance(baseline, dict) or baseline.get('kind') != 'accepted-shared-baseline-v1':
+        return None
+    source = baseline.get('source')
+    current = False
+    meta_cycle = prices_meta.get('last_applied_cycle')
+    meta_stage = prices_meta.get('price_batch_idx')
+    meta_bundle = prices_meta.get('appliedBundleHash')
+    meta_snapshot = prices_meta.get('appliedSnapshotHash')
+    snapshot_id = prices_meta.get('appliedSnapshotId')
+    if isinstance(source, dict):
+        current = (meta_bundle == source.get('bundleHash')
+                   and meta_cycle == source.get('cycleId')
+                   and meta_stage == source.get('stage'))
+    if str(snapshot_id or '').startswith('biggo-baseline-'):
+        current = True
+    if not current:
+        return {'current': False, 'valid': False, 'baseline': baseline,
+                'source': source if isinstance(source, dict) else {}}
+    valid = False
+    if isinstance(source, dict):
+        aid = baseline.get('acceptanceId')
+        if _is_sha(aid):
+            body = {k: v for k, v in baseline.items() if k != 'acceptanceId'}
+            want = 'sha256:' + hashlib.sha256(
+                json.dumps(body, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+            source_ok = (
+                _is_sha(source.get('bundleHash'))
+                and _is_sha(source.get('newSnapshotHash'))
+                and isinstance(source.get('cycleId'), str)
+                and bool(source.get('cycleId'))
+                and isinstance(source.get('stage'), int)
+                and not isinstance(source.get('stage'), bool)
+                and _valid_ts(source.get('acquiredAt'))
+                and source.get('acquiredAt') is not None
+            )
+            expected_id = ('biggo-baseline-' + str(source.get('cycleId'))
+                           + '-stage' + str(source.get('stage')) + '-'
+                           + str(source.get('newSnapshotHash'))[-12:])
+            active = baseline.get('activePost')
+            active_ok = (isinstance(active, dict)
+                         and _is_sha(active.get('biggo_prices.json'))
+                         and _is_sha(active.get('model_status.json'))
+                         and _is_sha(active.get('model_blacklist.json')))
+            meta_ok = (meta_bundle == source.get('bundleHash')
+                       and meta_cycle == source.get('cycleId')
+                       and meta_stage == source.get('stage')
+                       and meta_snapshot == source.get('newSnapshotHash')
+                       and snapshot_id == expected_id
+                       and active.get('biggo_prices.json') == source.get('newSnapshotHash')
+                       if active_ok else False)
+            valid = (aid == want and source_ok and active_ok and meta_ok)
+    return {'current': True, 'valid': valid, 'baseline': baseline,
+            'source': source if isinstance(source, dict) else {}}
+
+
+def _verified_receiver(report, *, baseline=None, actual_snapshot=None,
+                       prices_meta=None):
+    """Return verified post facts only for a matching current receiver report."""
+    if not isinstance(report, dict) or report.get('ok') is not True             or report.get('postStateVerified') is not True:
+        return None
+    verified = report.get('verifiedPost')
+    if not isinstance(verified, dict):
+        return None
+    meta = prices_meta if isinstance(prices_meta, dict) else {}
+    if report.get('cycleId') != meta.get('last_applied_cycle'):
+        return None
+    if report.get('stage') != meta.get('price_batch_idx'):
+        return None
+    if report.get('bundleHash') != meta.get('appliedBundleHash'):
+        return None
+    if actual_snapshot != meta.get('appliedSnapshotHash'):
+        return None
+    if verified.get('biggo_prices.json') != actual_snapshot:
+        return None
+    if not _is_sha(verified.get('model_status.json'))             or not _is_sha(verified.get('model_blacklist.json')):
+        return None
+    if baseline is not None:
+        source = baseline.get('source') if isinstance(baseline, dict) else {}
+        if not isinstance(source, dict):
+            return None
+        if report.get('reason') != 'already-applied':
+            return None
+        if verified.get('baselineAcceptanceId') != baseline.get('acceptanceId'):
+            return None
+        active = baseline.get('activePost') or {}
+        if verified.get('model_status.json') != active.get('model_status.json'):
+            return None
+        if verified.get('model_blacklist.json') != active.get('model_blacklist.json'):
+            return None
+        if verified.get('biggo_prices.json') != source.get('newSnapshotHash'):
+            return None
+    return verified
+
+
 def validate_status(status):
     """Return a list of human-readable errors; empty means valid."""
     errors = []
@@ -253,11 +360,6 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
             bstatus_ui, breason = 'degraded', 'completed-sync-unavailable'
         else:
             bstatus_ui, breason = 'degraded', 'completed-sync-invalid'
-    baseline = prices_meta.get('baselineAcceptance')
-    if isinstance(baseline, dict) and baseline.get('kind') == 'accepted-shared-baseline-v1'             and isinstance(baseline.get('acceptanceId'), str) and baseline.get('acceptanceId'):
-        # This is an explicit acceptance of a verified shared snapshot, not a
-        # replay of historical GitHub stages.  Keep the distinction visible.
-        bstatus_ui, breason = 'ok', 'baseline-accepted'
     applied_at = prices_meta.get('appliedAt') if _valid_ts(prices_meta.get('appliedAt')) else None
     # A failed/pending bundle's snapshotHash is NOT the snapshot currently
     # served.  Prefer the locally applied snapshot hash; only use the bundle
@@ -265,10 +367,43 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
     actual_snapshot = biggo_snapshot_hash or prices_meta.get('appliedSnapshotHash')
     if not biggo_snapshot_hash and bstatus_ui == 'ok' and biggo.get('snapshotHash'):
         actual_snapshot = biggo.get('snapshotHash')
+    baseline_info = _baseline_info(prices_meta)
+    baseline_verified = False
+    base_failure = bstatus_ui in ('degraded', 'blocked') or biggo.get('alert') is True
+    receiver = None
+    if not base_failure:
+        receiver = _verified_receiver(
+            completed_sync,
+            baseline=(baseline_info['baseline'] if baseline_info and baseline_info.get('current') and baseline_info.get('valid') else None),
+            actual_snapshot=actual_snapshot,
+            prices_meta=prices_meta)
+        if baseline_info and baseline_info.get('current'):
+            if not baseline_info.get('valid'):
+                bstatus_ui, breason = 'degraded', 'receipt-invalid'
+            elif biggo_snapshot_hash is None                     or biggo_snapshot_hash != baseline_info['source'].get('newSnapshotHash'):
+                bstatus_ui, breason = 'degraded', 'completed-sync-invalid'
+            elif receiver is not None:
+                bstatus_ui, breason = 'ok', 'baseline-accepted'
+                baseline_verified = True
+            else:
+                bstatus_ui, breason = 'degraded', 'completed-sync-unavailable'
+        elif receiver is not None:
+            # A current normal stage (including a verified stage4) is a real
+            # receiver success, even when the provider stage itself is now
+            # inactive/skipped.
+            bstatus_ui, breason = 'ok', 'applied'
+    baseline_current = bool(baseline_info and baseline_info.get('current'))
+    acquired_at = None
+    if baseline_verified:
+        acquired_at = baseline_info['source'].get('acquiredAt')
+    else:
+        acquired_at = biggo.get('acquiredAt') or biggo.get('generatedAt')
+        if not acquired_at and receiver:
+            acquired_at = receiver.get('acquiredAt')
     biggo_block = _source_block(
         bstatus_ui,
         last_attempt_at=biggo.get('at'),
-        last_acquired_at=biggo.get('acquiredAt') or biggo.get('generatedAt'),
+        last_acquired_at=acquired_at,
         last_applied_at=applied_at,
         last_applied_date=(applied_at[:10] if applied_at else None),
         snapshot_id=biggo.get('snapshotId') or prices_meta.get('appliedSnapshotId') or None,

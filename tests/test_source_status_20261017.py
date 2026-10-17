@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Source status: truthful dates, degraded price, schema compatibility, UI."""
 import datetime as dt
+import hashlib
 import importlib.util
 import json
 import os
@@ -419,26 +420,110 @@ def test_biggo_applied_full_timestamp_and_snapshot_identity_from_meta():
     assert source_status.validate_status(s) == []
 
 
-def test_accepted_shared_baseline_is_explicit_and_not_missing_history():
+def _baseline_meta(stage=3, adopt='2026-10-17T18:30:00Z'):
+    cycle = '2026-10-10:3/7'
+    snap = 'sha256:' + ('b' if stage == 3 else 'd') * 64
+    bundle = 'sha256:' + ('e' if stage == 3 else 'f') * 64
+    tracking = 'sha256:' + '1' * 64
+    blacklist = 'sha256:' + '2' * 64
+    source = {'bundleHash': bundle, 'cycleId': cycle, 'stage': stage,
+              'newSnapshotHash': snap, 'acquiredAt': '2026-10-11T16:37:28Z',
+              'repairId': 'sha256:' + '3' * 64}
+    active = {'biggo_prices.json': snap, 'model_status.json': tracking,
+              'model_blacklist.json': blacklist}
+    acceptance = {'schemaVersion': 1, 'kind': 'accepted-shared-baseline-v1',
+                  'adoptedAt': adopt, 'source': source, 'activePost': active}
+    acceptance['acceptanceId'] = 'sha256:' + hashlib.sha256(
+        json.dumps({k: v for k, v in acceptance.items() if k != 'acceptanceId'},
+                   ensure_ascii=False, sort_keys=True).encode()).hexdigest()
     meta = {'last_run': '2026-10-12', 'price_batch_start': '2026-10-10',
-            'price_batch_idx': 3, 'appliedAt': '2026-10-17T18:30:00Z',
-            'appliedSnapshotHash': 'sha256:' + 'b' * 64,
-            'appliedSnapshotId': 'biggo-baseline-2026-10-10:3/7-stage3-bbbbbbbbbbbb',
-            'baselineAcceptance': {'schemaVersion': 1,
-                                   'kind': 'accepted-shared-baseline-v1',
-                                   'acceptanceId': 'sha256:' + 'c' * 64,
-                                   'adoptedAt': '2026-10-17T18:30:00Z'}}
-    s = source_status.build_status(
+            'price_batch_idx': stage, 'appliedAt': adopt,
+            'appliedBundleHash': bundle, 'last_applied_cycle': cycle,
+            'appliedSnapshotHash': snap,
+            'appliedSnapshotId': ('biggo-baseline-' + cycle + '-stage' + str(stage)
+                                  + '-' + snap[-12:]),
+            'baselineAcceptance': acceptance}
+    report = {'ok': True, 'postStateVerified': True, 'reason': 'already-applied',
+              'cycleId': cycle, 'stage': stage, 'bundleHash': bundle,
+              'verifiedPost': {**active, 'bundleHash': bundle, 'cycleId': cycle,
+                               'stage': stage, 'snapshotHash': snap,
+                               'baselineAcceptanceId': acceptance['acceptanceId'],
+                               'acquiredAt': '2026-10-11T16:37:28Z'}}
+    return meta, report
+
+
+def _build(meta, report, *, snapshot=None, biggo=None):
+    return source_status.build_status(
         metadata={'datasetDate': '2026-10-17', 'datasetHash': 'sha256:' + 'a' * 64,
                   'deployTime': '2026-10-17T18:31:00Z'},
         emsd_receipt=_receipt(), prices_meta=meta,
-        biggo_status={'status': 'completed-sync-missing-history',
-                      'cycle': '2026-10-10:3/7', 'stage': 3,
-                      'snapshotHash': 'sha256:' + 'b' * 64},
-        completed_sync={'ok': False, 'reason': 'missing-local-history',
-                        'plan': {'ok': False, 'reason': 'missing-local-history'}})
+        biggo_status=biggo or {'status': 'skip-not-active', 'cycle': '2026-10-10:3/7',
+                               'stage': 3},
+        biggo_snapshot_hash=snapshot,
+        completed_sync=report)
+
+
+def test_accepted_shared_baseline_is_explicit_and_not_missing_history():
+    meta, report = _baseline_meta()
+    s = _build(meta, report, snapshot=meta['appliedSnapshotHash'])
     assert s['biggo']['status'] == 'ok'
     assert s['biggo']['safeReason'] == 'baseline-accepted'
+    assert s['biggo']['lastAcquiredAt'] == '2026-10-11T16:37:28Z'
     assert s['biggo']['lastAppliedAt'] == '2026-10-17T18:30:00Z'
     assert s['biggo']['snapshotId'].startswith('biggo-baseline-')
+    assert source_status.validate_status(s) == []
+
+
+def test_baseline_never_masks_current_failure_alert_or_missing_history():
+    meta, report = _baseline_meta()
+    failed = _build(meta, {'ok': False, 'reason': 'apply-error'},
+                    snapshot=meta['appliedSnapshotHash'],
+                    biggo={'status': 'completed-apply-failed', 'alert': True,
+                           'cycle': '2026-10-10:3/7', 'stage': 3})
+    assert failed['biggo']['status'] == 'degraded'
+    assert failed['biggo']['safeReason'] != 'baseline-accepted'
+    missing = _build(meta, {'ok': False, 'reason': 'missing-local-history',
+                            'plan': {'ok': False, 'reason': 'missing-local-history'}},
+                     snapshot=meta['appliedSnapshotHash'])
+    assert missing['biggo']['status'] == 'degraded'
+    assert missing['biggo']['safeReason'] == 'completed-sync-missing-history'
+
+
+def test_baseline_requires_actual_hash_receipt_and_unmodified_identity():
+    meta, report = _baseline_meta()
+    mismatch = _build(meta, report, snapshot='sha256:' + '0' * 64)
+    assert mismatch['biggo']['status'] == 'degraded'
+    assert mismatch['biggo']['safeReason'] != 'baseline-accepted'
+    missing = _build(meta, None, snapshot=meta['appliedSnapshotHash'])
+    assert missing['biggo']['status'] == 'degraded'
+    bad = dict(meta)
+    bad['baselineAcceptance'] = dict(meta['baselineAcceptance'],
+                                     acceptanceId='sha256:' + '9' * 64)
+    invalid = _build(bad, report, snapshot=meta['appliedSnapshotHash'])
+    assert invalid['biggo']['status'] == 'degraded'
+    assert invalid['biggo']['safeReason'] == 'receipt-invalid'
+
+
+def test_stage4_success_is_normal_applied_not_baseline_acceptance():
+    meta, _ = _baseline_meta()
+    stage4 = dict(meta)
+    stage4.update({'price_batch_idx': 4, 'last_applied_cycle': '2026-10-10:4/7',
+                   'appliedBundleHash': 'sha256:' + 'f' * 64,
+                   'appliedSnapshotHash': 'sha256:' + 'd' * 64,
+                   'appliedSnapshotId': 'biggo-2026-10-10:4/7-stage4-dddddddddddd',
+                   'appliedAt': '2026-10-18T00:40:00Z'})
+    # Historical baseline fields remain, but must not label the stage4 result.
+    report = {'ok': True, 'postStateVerified': True, 'reason': 'applied',
+              'cycleId': '2026-10-10:4/7', 'stage': 4,
+              'bundleHash': stage4['appliedBundleHash'],
+              'verifiedPost': {'biggo_prices.json': stage4['appliedSnapshotHash'],
+                               'model_status.json': 'sha256:' + '4' * 64,
+                               'model_blacklist.json': 'sha256:' + '5' * 64,
+                               'acquiredAt': '2026-10-17T16:37:28Z'}}
+    s = _build(stage4, report, snapshot=stage4['appliedSnapshotHash'])
+    assert s['biggo']['status'] == 'ok'
+    assert s['biggo']['safeReason'] == 'applied'
+    assert s['biggo']['lastAppliedAt'] == '2026-10-18T00:40:00Z'
+    assert s['biggo']['lastAcquiredAt'] == '2026-10-17T16:37:28Z'
+    assert s['biggo']['lastAppliedDate'] == '2026-10-18'
     assert source_status.validate_status(s) == []

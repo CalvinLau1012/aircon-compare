@@ -224,6 +224,8 @@ def _expected(bundle_dir, repair_path, source_pre, source_post, github_pre,
     cycle = bundle['manifest']['cycleId']
     date = cycle.split(':', 1)[0]
     stage = bundle['manifest']['stage']
+    acquired_at = _utc(bundle['manifest'].get('publishedAt'),
+                       'manifest publishedAt / source acquiredAt')
     meta = copy.deepcopy(post_meta)
     # Replace any historical apply fact with an explicit local adoption fact.
     meta.update({
@@ -256,6 +258,7 @@ def _expected(bundle_dir, repair_path, source_pre, source_post, github_pre,
             'baseSnapshotHash': bundle['baseSnapshotHash'],
             'newSnapshotHash': bundle['newSnapshotHash'],
             'stageResultHash': bundle['stageResultHash'],
+            'acquiredAt': acquired_at,
             'sourceEvidence': source_evidence,
             'sourcePre': _file_hashes(source_pre),
             'sourcePost': expected_hash,

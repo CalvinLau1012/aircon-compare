@@ -65,6 +65,159 @@ def plan_sync(meta, state):
     return {'ok': True, 'reason': 'ready', 'stage': stage}
 
 
+def _read_obj(path, label):
+    try:
+        with open(path, encoding='utf-8') as f:
+            value = json.load(f)
+    except (OSError, ValueError) as e:
+        raise SyncError(f'{label} 讀取／解析失敗') from e
+    if not isinstance(value, dict):
+        raise SyncError(f'{label} 必須係 object')
+    return value
+
+
+def _local_post(root):
+    price = _read_obj(os.path.join(root, 'biggo_prices.json'), 'biggo_prices.json')
+    tracking = _read_obj(os.path.join(root, 'model_status.json'), 'model_status.json')
+    wrapper = _read_obj(os.path.join(root, 'model_blacklist.json'), 'model_blacklist.json')
+    models = wrapper.get('models')
+    if not isinstance(models, dict):
+        raise SyncError('model_blacklist.json 缺 models object')
+    return {
+        'biggo_prices.json': biggo_apply._canonical_hash(price),
+        'model_status.json': biggo_apply._canonical_hash(tracking),
+        'model_blacklist.json': biggo_apply._canonical_hash(models),
+    }
+
+
+def _acceptance_valid(baseline):
+    if not isinstance(baseline, dict)             or baseline.get('kind') != 'accepted-shared-baseline-v1':
+        return False
+    source = baseline.get('source')
+    if not isinstance(source, dict):
+        return False
+    aid = baseline.get('acceptanceId')
+    if not isinstance(aid, str) or not aid.startswith('sha256:'):
+        return False
+    body = {k: v for k, v in baseline.items() if k != 'acceptanceId'}
+    want = 'sha256:' + hashlib.sha256(
+        json.dumps(body, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+    active = baseline.get('activePost')
+    if not isinstance(active, dict):
+        return False
+    return (aid == want
+            and isinstance(source.get('cycleId'), str) and bool(source.get('cycleId'))
+            and isinstance(source.get('stage'), int) and not isinstance(source.get('stage'), bool)
+            and isinstance(source.get('bundleHash'), str)
+            and isinstance(source.get('newSnapshotHash'), str)
+            and isinstance(source.get('acquiredAt'), str)
+            and source.get('acquiredAt', '').endswith('Z')
+            and active.get('biggo_prices.json') == source.get('newSnapshotHash')
+            and isinstance(active.get('model_status.json'), str)
+            and isinstance(active.get('model_blacklist.json'), str))
+
+
+def _baseline_current(meta, bundle):
+    baseline = meta.get('baselineAcceptance')
+    if not isinstance(baseline, dict)             or baseline.get('kind') != 'accepted-shared-baseline-v1':
+        return None
+    source = baseline.get('source') if isinstance(baseline.get('source'), dict) else {}
+    manifest = bundle['manifest']
+    current = (meta.get('appliedBundleHash') == source.get('bundleHash')
+               and meta.get('last_applied_cycle') == source.get('cycleId')
+               and meta.get('price_batch_idx') == source.get('stage'))
+    if str(meta.get('appliedSnapshotId') or '').startswith('biggo-baseline-'):
+        current = True
+    if not current:
+        return None
+    if not _acceptance_valid(baseline):
+        raise SyncError('baseline acceptance receipt/identity invalid')
+    if (source.get('bundleHash') != bundle['bundleHash']
+            or source.get('cycleId') != manifest.get('cycleId')
+            or source.get('stage') != manifest.get('stage')
+            or source.get('newSnapshotHash') != bundle['newSnapshotHash']):
+        raise SyncError('baseline acceptance does not bind the current bundle')
+    if source.get('acquiredAt') != manifest.get('publishedAt'):
+        raise SyncError('baseline acquiredAt does not match verified bundle publication')
+    expected_id = ('biggo-baseline-' + str(source['cycleId']) + '-stage'
+                   + str(source['stage']) + '-' + str(source['newSnapshotHash'])[-12:])
+    if meta.get('appliedSnapshotId') != expected_id:
+        raise SyncError('baseline appliedSnapshotId invalid')
+    return baseline
+
+
+def verify_local_post(bundle, meta, root, repair=None):
+    """Verify a local no-op/post state against the immutable shared bundle.
+
+    This is deliberately a hash comparison against the already-verified
+    bundle.postState/snapshot plus meta identity.  It does not replay the old
+    buggy stage3 effects and never writes local or coordinator state.
+    """
+    try:
+        biggo_apply._validate_bundle(bundle)
+        stage_result, _repair_meta = biggo_apply.merge_repair_effects(bundle, repair)
+    except (biggo_apply.ApplyError, ValueError) as e:
+        raise SyncError(f'bundle/repair invalid: {e}') from e
+    manifest = bundle['manifest']
+    actual = _local_post(root)
+    expected = {
+        'biggo_prices.json': bundle['newSnapshotHash'],
+        'model_status.json': stage_result['postState']['trackingHash'],
+        'model_blacklist.json': stage_result['postState']['blacklistHash'],
+    }
+    if actual != expected:
+        raise SyncError('local post-image does not match verified bundle postState')
+    identity = {
+        'appliedBundleHash': bundle['bundleHash'],
+        'last_applied_cycle': manifest.get('cycleId'),
+        'price_batch_idx': manifest.get('stage'),
+        'appliedSnapshotHash': bundle['newSnapshotHash'],
+        'appliedSnapshotId': ('biggo-' + str(manifest.get('cycleId')) + '-stage'
+                              + str(manifest.get('stage')) + '-'
+                              + str(bundle['newSnapshotHash'])[-12:]),
+    }
+    for key, want in identity.items():
+        if key == 'appliedSnapshotId':
+            # Baseline deliberately uses its own explicit id; normal stages do
+            # not.  The baseline branch below validates its own id.
+            continue
+        if meta.get(key) != want:
+            raise SyncError(f'prices_meta {key} does not match verified bundle')
+    baseline = _baseline_current(meta, bundle)
+    if baseline is not None:
+        source = baseline['source']
+        active = baseline['activePost']
+        if (meta.get('appliedSnapshotHash') != source.get('newSnapshotHash')
+                or meta.get('last_applied_cycle') != source.get('cycleId')
+                or meta.get('price_batch_idx') != source.get('stage')):
+            raise SyncError('baseline meta identity mismatch')
+        for name in ('model_status.json', 'model_blacklist.json'):
+            if active.get(name) != actual[name]:
+                raise SyncError(f'baseline activePost mismatch: {name}')
+        if active.get('biggo_prices.json') != actual['biggo_prices.json']:
+            raise SyncError('baseline activePost mismatch: biggo_prices.json')
+        baseline_id = baseline.get('acceptanceId')
+    else:
+        if meta.get('appliedSnapshotId') != identity['appliedSnapshotId']:
+            raise SyncError('prices_meta appliedSnapshotId does not match verified bundle')
+        baseline_id = None
+    acquired_at = (baseline['source'].get('acquiredAt') if baseline is not None
+                   else manifest.get('publishedAt'))
+    return {
+        'biggo_prices.json': actual['biggo_prices.json'],
+        'model_status.json': actual['model_status.json'],
+        'model_blacklist.json': actual['model_blacklist.json'],
+        'bundleHash': bundle['bundleHash'],
+        'stageResultHash': bundle['stageResultHash'],
+        'cycleId': manifest.get('cycleId'),
+        'stage': manifest.get('stage'),
+        'snapshotHash': bundle['newSnapshotHash'],
+        'acquiredAt': acquired_at,
+        'baselineAcceptanceId': baseline_id,
+        'repairId': (repair or {}).get('repairId'),
+    }
+
+
 def _write_report(path, report):
     if not path:
         return None
@@ -136,13 +289,23 @@ def main(argv=None):
         return finish(1, 'local-meta-invalid')
     plan = plan_sync(meta, state)
     report['plan'] = plan
-    if not plan['ok']:
+    noop_candidate = plan.get('reason') == 'already-applied'
+    if not plan['ok'] and not noop_candidate:
         reason = plan['reason']
         print(f"sync skipped: {reason}（零 BigGo／零 lease／零 coordinator write）")
+        # A local meta that claims an applied bundle while the repository no
+        # longer coherently matches that stage is corruption, not a benign
+        # missing-history degradation.  It must block daily even with
+        # --degraded-exit-zero.  A truly fresh/inactive repo keeps the legacy
+        # degraded behaviour below.
+        if meta.get('appliedBundleHash') and reason in (
+                'stage-not-ahead', 'cycle-mismatch', 'local-stage-invalid'):
+            return finish(3, 'local-integrity-error', ok=False,
+                          postStateVerified=False, error=reason)
         if reason in ('missing-local-history', 'missing-intermediate-stage',
                       'cycle-mismatch', 'local-stage-invalid', 'stage-not-ahead'):
             return finish(0 if args.degraded_exit_zero else 1, reason)
-        if reason in ('already-applied', 'remote-not-completed'):
+        if reason in ('remote-not-completed',):
             return finish(0, reason)
         return finish(2, reason)
     client = coord.CoordinatorClient(contents, owner='read-only-sync', now=lambda: 0)
@@ -163,15 +326,56 @@ def main(argv=None):
             print(f'❌ repair receipt 讀取失敗：{e}', file=sys.stderr)
             return finish(2, 'repair-invalid')
     report['bundleHash'] = bundle['bundleHash']
+    report['stageResultHash'] = bundle['stageResultHash']
+    report['newSnapshotHash'] = bundle['newSnapshotHash']
+    # The repair secret is intentionally retained across stages.  It is only
+    # applicable to the exact bundle it names; a stale repair must not block a
+    # later normal stage.
+    repair_binding = None
+    if repair is not None:
+        if repair.get('originalBundleHash') == bundle['bundleHash'] \
+                and repair.get('originalStageResultHash') == bundle['stageResultHash']:
+            repair_binding = repair
+        else:
+            baseline = report.get('baselineAcceptanceId')
+            meta_baseline = meta.get('baselineAcceptance') or {}
+            source = meta_baseline.get('source') if isinstance(meta_baseline, dict) else {}
+            baseline_current = (isinstance(source, dict)
+                                and source.get('bundleHash') == bundle['bundleHash']
+                                and meta.get('appliedBundleHash') == bundle['bundleHash'])
+            if baseline_current:
+                print('❌ baseline repair does not bind current bundle', file=sys.stderr)
+                return finish(2, 'repair-invalid')
+            report['repairIgnored'] = 'does-not-bind-this-bundle'
     if not apply:
         print(f"sync dry-run ready: bundle={bundle['bundleHash']} stage={state['stage']}")
         return finish(0, 'dry-run-ready', ok=True)
+    if noop_candidate:
+        try:
+            verified = verify_local_post(bundle, meta, BASE, repair=repair_binding)
+        except (SyncError, biggo_apply.ApplyError) as e:
+            print(f'❌ local post-state integrity failure（零資料寫入）：{e}', file=sys.stderr)
+            return finish(3, 'local-integrity-error', ok=False,
+                          postStateVerified=False, error=type(e).__name__)
+        report.update({'postStateVerified': True, 'verifiedPost': verified,
+                       'applied': False, 'noop': True})
+        print(f"sync already-applied verified: bundle={bundle['bundleHash']}")
+        return finish(0, 'already-applied', ok=True)
     try:
-        result = biggo_apply.apply_bundle(bundle, repo_root=BASE, repair=repair)
+        result = biggo_apply.apply_bundle(bundle, repo_root=BASE, repair=repair_binding)
     except biggo_apply.ApplyError as e:
         print(f'❌ local apply 失敗（零 coordinator write）：{e}', file=sys.stderr)
         return finish(3, 'apply-error', error=type(e).__name__)
+    try:
+        meta_after = batch_utils.load_meta(os.path.join(BASE, 'prices_meta.json'))
+        verified = verify_local_post(bundle, meta_after, BASE, repair=repair_binding)
+    except (SyncError, biggo_apply.ApplyError, batch_utils.MetaError) as e:
+        print(f'❌ post-apply local integrity failure：{e}', file=sys.stderr)
+        return finish(3, 'local-integrity-error', ok=False,
+                      postStateVerified=False, error=type(e).__name__)
     report['applied'] = True
+    report['postStateVerified'] = True
+    report['verifiedPost'] = verified
     report['result'] = result
     print(f"sync applied: noop={result.get('noop')} bundle={bundle['bundleHash']}")
     return finish(0, 'applied', ok=True)
