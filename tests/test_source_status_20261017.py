@@ -336,3 +336,31 @@ def test_source_status_has_no_duplicate_dict_literal_keys():
             keys = [k.value for k in node.keys
                     if isinstance(k, ast.Constant) and isinstance(k.value, str)]
             assert len(keys) == len(set(keys)), f'duplicate literal keys: {keys}'
+
+
+def test_completed_sync_missing_history_degrades_biggo_even_if_provider_ok():
+    s = source_status.build_status(
+        metadata=_meta_for_deploy(),
+        biggo_status={'status': 'completed', 'cycle': '2026-10-10:3/7', 'stage': 3,
+                      'snapshotHash': 'sha256:' + 'b' * 64},
+        biggo_snapshot_hash='sha256:' + 'b' * 64,
+        completed_sync={'ok': False, 'reason': 'missing-local-history',
+                        'plan': {'ok': False, 'reason': 'missing-local-history'}},
+        now=dt.datetime(2026, 10, 17, 4, 0, tzinfo=dt.timezone.utc).timestamp())
+    assert s['biggo']['status'] == 'degraded'
+    assert s['biggo']['safeReason'] == 'completed-sync-missing-history'
+    assert s['biggo']['snapshotHash'] == 'sha256:' + 'b' * 64
+    import check_health_summary
+    assert check_health_summary.evaluate(
+        s, now=dt.datetime(2026, 10, 17, 4, 0, tzinfo=dt.timezone.utc))['ok'] is False
+
+
+def test_completed_sync_success_does_not_degrade():
+    s = source_status.build_status(
+        metadata=_meta_for_deploy(),
+        biggo_status={'status': 'completed', 'cycle': '2026-10-10:3/7', 'stage': 3,
+                      'snapshotHash': 'sha256:' + 'b' * 64},
+        biggo_snapshot_hash='sha256:' + 'b' * 64,
+        completed_sync={'ok': True, 'reason': 'applied', 'applied': True},
+        now=dt.datetime(2026, 10, 17, 4, 0, tzinfo=dt.timezone.utc).timestamp())
+    assert s['biggo']['status'] == 'ok'

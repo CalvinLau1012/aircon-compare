@@ -739,3 +739,10 @@ python fetch_rasonic.py        # 樂信官方網店價格
 - 新增明確版本化 extension `AIRCON_METADATA_SCHEMA_V1_1`（optional `sourceStatus`，包含 EMSD／BigGo／official／publish 分開事實）；extractor 只按 `metadata_schema()` 的 `blockId`／`supersedes` 明確讀取，不會默默取最後區塊，六個 canonical 區塊不變。
 - `sourceStatus.publish.packagedAt` 是封包時間；只有實際成功 deployment receipt 才可寫 `deployedAt`。舊資料缺值維持 unknown，不偽造日期。
 - 來源部分失敗政策：有效 EMSD 可繼續發布；官網／價格故障保留已驗證舊快照並告警；混合／損毀／未知阻斷；延遲不自動補跑。
+
+## 2026-10-17 v3 追加：真實入口與健康 fail-closed
+
+- `run-update.sh` 對 official integrity/交易失敗阻斷；只允許有有效 receipt 的安全 source failure 繼續，projection failure 不會保留舊健康當成功。
+- Official advanced 需版本化 outputManifest（指定名稱＋full bytes hash）；coverage pending 保留完整舊快照，不混合新舊。
+- Private monitor 對 corrupt/pending/unknown/degraded/blocked、bad generatedAt、manifest/receipt mismatch 全部 unhealthy；另有獨立 read-only health wrapper／候選 cron，未安裝。
+- Completed receive 已移到 GitHub provider stage 前，所有出口寫 durable report，missing history 經 source status/monitor 可見。

@@ -34,6 +34,7 @@ if BASE not in sys.path:
 
 from queue_utils import load_queue, QueueError  # noqa: E402
 from crawl_utils import norm_model, COVERAGE_PENDING_REASONS  # noqa: E402
+from biggo_canonical import canonical_json_bytes, sha256_id  # noqa: E402
 
 STAGES = {
     1: {
@@ -123,6 +124,30 @@ def _sha256_file_direct(path):
         for chunk in iter(lambda: f.read(1 << 20), b''):
             h.update(chunk)
     return h.hexdigest()
+
+
+def _normalize_sha256(value):
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    if value.startswith('sha256:') and len(value) == 71:
+        return value if all(c in '0123456789abcdef' for c in value[7:]) else None
+    if len(value) == 64 and all(c in '0123456789abcdef' for c in value):
+        return 'sha256:' + value
+    return None
+
+
+def _output_manifest(root, stage, outputs):
+    """Versioned manifest binding exact output names and complete bytes hashes."""
+    files = {}
+    for rel in outputs:
+        path = os.path.join(root, rel)
+        if os.path.islink(path) or not os.path.isfile(path):
+            raise ValueError(f'output 唔係 regular file：{rel}')
+        files[rel] = {'sha256': 'sha256:' + _sha256_file_direct(path),
+                      'size': os.path.getsize(path)}
+    body = {'schemaVersion': 1, 'stage': stage, 'files': files}
+    return {**body, 'manifestHash': sha256_id(canonical_json_bytes(body))}
 
 
 def _atomic_write_json(path, data):
@@ -542,10 +567,14 @@ def main(argv=None):
             if not ok:
                 failures.append(f'{rel}：{reason}')
 
-        # Only verified, coherent staged outputs are promoted.  Any hard
-        # failure leaves the original four files byte-identical.
+        missing_coverage = [m for m in target_models if norm_model(m) not in covers_norm]
+        script_pending_norm = set(coverage_pending_norm)
+        coverage_pending = bool(missing_coverage or script_pending_norm)
+        # Coverage pending cannot safely advertise a new official snapshot:
+        # preserve the previous complete output set, even if staged outputs are
+        # individually valid.  This keeps snapshotHash and actual bytes aligned.
         promoted = False
-        if not failures:
+        if not failures and not coverage_pending:
             try:
                 _promoted, before, after = _promote_outputs(
                     BASE, staging_repo, plan['outputs'])
@@ -564,16 +593,31 @@ def main(argv=None):
             for entry in staged_outputs:
                 entry['hash'] = entry.get('originalHash')
                 entry['promoted'] = False
+                # Verification below must compare the actual current bytes.
+                for se in receipt['scripts']:
+                    if se.get('output') == entry['output']:
+                        se['outputHashAfter'] = entry['hash']
         receipt['outputs'] = staged_outputs
         receipt['staging'] = {'used': True, 'promoted': promoted}
+        if promoted:
+            try:
+                manifest = _output_manifest(BASE, stage, plan['outputs'])
+            except (OSError, ValueError) as e:
+                failures.append(f'output manifest 失敗：{e}')
+                integrity_failure = True
+            else:
+                receipt['outputManifest'] = manifest
+                # Re-read every file and prove the manifest identity after promotion.
+                recheck = _output_manifest(BASE, stage, plan['outputs'])
+                if recheck != manifest:
+                    failures.append('output manifest 寫入後 bytes 不一致')
+                    integrity_failure = True
 
         queue_hash_after = _sha256_file(queue_path)
         receipt['queueHashAfter'] = queue_hash_after
         if queue_hash_after != queue_hash_before:
             failures.append('queue 喺批次執行期間被改動；拒絕推進')
             integrity_failure = True
-        missing_coverage = [m for m in target_models if norm_model(m) not in covers_norm]
-        script_pending_norm = set(coverage_pending_norm)
         # 兩個獨立事實：queue model 冇任何覆蓋；script 確認嘅 target coverage pending。
         # 任何一項非空都必須保留 queue（queue-kept-pending-coverage），包括 script pending
         # target 已經被另一個 script／舊快照覆蓋嘅情況（D1-B／D27）。

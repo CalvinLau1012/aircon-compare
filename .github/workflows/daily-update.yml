@@ -251,6 +251,32 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
+      # 獨立 receive phase：只 GET 已驗證 completed bundle，零 lease／provider／CAS write。
+      # 唔會改動 inactive run_stage 的零網絡 invariant；缺 history 只 alert，不猜 baseline。
+      - name: 接收 shared BigGo completed bundle（read-only GET；獨立 receive）
+        id: completed_sync
+        env:
+          AIRCON_BIGGO_COORDINATOR_REPO: ${{ secrets.AIRCON_BIGGO_COORDINATOR_REPO }}
+          AIRCON_BIGGO_COORDINATOR_TOKEN: ${{ secrets.AIRCON_BIGGO_COORDINATOR_TOKEN }}
+          AIRCON_BIGGO_COORDINATOR_BRANCH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_BRANCH }}
+          AIRCON_BIGGO_COORDINATOR_STATE_PATH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_STATE_PATH }}
+          AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR: ${{ secrets.AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR }}
+          AIRCON_BIGGO_REPAIR_RECEIPT: ${{ secrets.AIRCON_BIGGO_REPAIR_RECEIPT }}
+        run: |
+          set +e
+          python scripts/sync_biggo_completed.py --apply --degraded-exit-zero \
+            --report "$RUNNER_TEMP/biggo_completed_sync.json"
+          rc=$?
+          set -e
+          cp "$RUNNER_TEMP/biggo_completed_sync.json" biggo_completed_sync.json 2>/dev/null || true
+          if [ "$rc" -eq 3 ]; then
+            echo "::error::completed sync local apply 失敗；為避免部分資料發布，阻斷"
+            exit 1
+          fi
+          if [ "$rc" -ne 0 ]; then
+            echo "::warning::completed sync 未能取得／驗證（report 見 artifact）；保留現有已驗證資料"
+          fi
+
       - name: 讀取更新階段（共用 queue 契約；錯誤即失敗，冇 stage-0 fallback）
         id: stage
         run: |
@@ -409,37 +435,11 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
-      # 獨立 receive phase：只 GET 已驗證 completed bundle，零 lease／provider／CAS write。
-      # 唔會改動 inactive run_stage 的零網絡 invariant；缺 history 只 alert，不猜 baseline。
-      - name: 接收 shared BigGo completed bundle（read-only GET；獨立 receive）
-        id: completed_sync
-        env:
-          AIRCON_BIGGO_COORDINATOR_REPO: ${{ secrets.AIRCON_BIGGO_COORDINATOR_REPO }}
-          AIRCON_BIGGO_COORDINATOR_TOKEN: ${{ secrets.AIRCON_BIGGO_COORDINATOR_TOKEN }}
-          AIRCON_BIGGO_COORDINATOR_BRANCH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_BRANCH }}
-          AIRCON_BIGGO_COORDINATOR_STATE_PATH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_STATE_PATH }}
-          AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR: ${{ secrets.AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR }}
-          AIRCON_BIGGO_REPAIR_RECEIPT: ${{ secrets.AIRCON_BIGGO_REPAIR_RECEIPT }}
-        run: |
-          set +e
-          python scripts/sync_biggo_completed.py --apply --degraded-exit-zero \
-            --report "$RUNNER_TEMP/biggo_completed_sync.json"
-          rc=$?
-          set -e
-          cp "$RUNNER_TEMP/biggo_completed_sync.json" biggo_completed_sync.json 2>/dev/null || true
-          if [ "$rc" -eq 3 ]; then
-            echo "::error::completed sync local apply 失敗；為避免部分資料發布，阻斷"
-            exit 1
-          fi
-          if [ "$rc" -ne 0 ]; then
-            echo "::warning::completed sync 未能取得／驗證（report 見 artifact）；保留現有已驗證資料"
-          fi
-
       # 來源狀態獨立於發布成功：EMSD/BigGo/price 失敗會令 UI 顯示 degraded／blocked，
       # 但唔會阻止已驗證 EMSD 資料繼續發布。無事實時保持 UNKNOWN，不用今日日期補。
       - name: 建立 versioned source status receipt（sanitised）
         run: |
-          python scripts/source_status.py build             --emsd-receipt emsd_receipt.json             --prices-meta prices_meta.json             --biggo-status "$RUNNER_TEMP/biggo-stage-status.json"             --official-status official_batch_status.json             --biggo-snapshot-file biggo_prices.json             --out "$RUNNER_TEMP/source_status.json"             --history-dir "$RUNNER_TEMP/source-status-history"
+          python scripts/source_status.py build             --emsd-receipt emsd_receipt.json             --prices-meta prices_meta.json             --biggo-status "$RUNNER_TEMP/biggo-stage-status.json"             --official-status official_batch_status.json             --biggo-snapshot-file biggo_prices.json             --completed-sync-report biggo_completed_sync.json             --out "$RUNNER_TEMP/source_status.json"             --history-dir "$RUNNER_TEMP/source-status-history"
           python scripts/source_status.py validate "$RUNNER_TEMP/source_status.json"
 
       # ============ 第 4 步：安全閘門 + 生成網頁/PDF + 部署元數據 + 上線 ============

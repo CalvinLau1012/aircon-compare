@@ -35,7 +35,9 @@ SAFE_REASONS = {
     'price-apply-failed', 'needs-review', 'quota-or-lease-blocked',
     'receipt-missing', 'receipt-invalid', 'metadata-missing',
     'official-snapshot-untrusted', 'official-success-unverified',
-    'official-no-verified-snapshot',
+    'official-no-verified-snapshot', 'completed-sync-missing-history',
+    'completed-sync-unavailable', 'completed-sync-invalid',
+    'completed-sync-remote-not-completed',
 }
 SHA_RE = re.compile(r'^sha256:[0-9a-f]{64}$')
 UTC_RE = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$')
@@ -175,7 +177,7 @@ def deployment_matches(metadata, receipt):
 
 def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
                  biggo_status=None, official_status=None, deployment_receipt=None,
-                 biggo_snapshot_hash=None, now=None):
+                 biggo_snapshot_hash=None, completed_sync=None, now=None):
     """Build a sanitised receipt from local facts.  Pure and side-effect free."""
     metadata = metadata if isinstance(metadata, dict) else {}
     receipt = emsd_receipt if isinstance(emsd_receipt, dict) else {}
@@ -233,6 +235,23 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
             bstatus_ui, breason = 'unknown', 'legacy-unknown'
     else:
         bstatus_ui, breason = 'degraded', 'price-snapshot-preserved'
+    # A failed/incoherent completed receive must be visible even when the
+    # provider stage itself is inactive/skipped.  Snapshot bytes are preserved.
+    if isinstance(completed_sync, dict) and completed_sync.get('ok') is not True:
+        sync_reason = str(completed_sync.get('reason') or (completed_sync.get('plan') or {}).get('reason') or 'unknown')
+        if sync_reason == 'already-applied':
+            pass
+        elif sync_reason == 'remote-not-completed':
+            bstatus_ui, breason = 'pending', 'completed-sync-remote-not-completed'
+        elif sync_reason in ('missing-local-history', 'missing-intermediate-stage',
+                             'cycle-mismatch', 'local-stage-invalid', 'stage-not-ahead'):
+            bstatus_ui, breason = 'degraded', 'completed-sync-missing-history'
+        elif sync_reason in ('coordinator-not-configured', 'coordinator-read-error',
+                             'remote-state-missing', 'bundle-import-error',
+                             'repair-invalid'):
+            bstatus_ui, breason = 'degraded', 'completed-sync-unavailable'
+        else:
+            bstatus_ui, breason = 'degraded', 'completed-sync-invalid'
     applied_at = prices_meta.get('appliedAt') if _valid_ts(prices_meta.get('appliedAt')) else None
     # A failed/pending bundle's snapshotHash is NOT the snapshot currently
     # served.  Prefer the locally applied snapshot hash; only use the bundle
@@ -420,6 +439,7 @@ def main(argv=None):
     b.add_argument('--official-status')
     b.add_argument('--deployment-receipt')
     b.add_argument('--biggo-snapshot-file')
+    b.add_argument('--completed-sync-report')
     b.add_argument('--out', required=True)
     b.add_argument('--history-dir')
     v = sub.add_parser('validate')
@@ -439,7 +459,8 @@ def main(argv=None):
                               biggo_status=_load_json(args.biggo_status),
                               official_status=_load_json(args.official_status),
                               deployment_receipt=_load_json(args.deployment_receipt),
-                              biggo_snapshot_hash=snap_hash)
+                              biggo_snapshot_hash=snap_hash,
+                              completed_sync=_load_json(args.completed_sync_report))
         write_receipt(args.out, status, history_dir=args.history_dir)
         print(f'✅ source status：{args.out}')
         return 0

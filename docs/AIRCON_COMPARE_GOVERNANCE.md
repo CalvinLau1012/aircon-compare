@@ -2252,3 +2252,16 @@ aircon-compare/
 - **Health summary**：所有 `status=ok` 的 emsd／biggo／official 都必須有 full snapshotHash；未配置 `AIRCON_HEALTH_SUMMARY_URL` 係 UNKNOWN 且非零退出，不是 PASS。Private monitor 同步對 ok-without-hash fail-closed。
 - **清理**：`build_status` return dict 改為明確逐 key 賦值，沒有重複 `emsd` key；`check_health_summary` docstring 已改成 UNKNOWN／非零，不再錯誤聲稱退出 0。
 - **新候選**：public head `943b57a250050b41a03d9d8221bbcfd940b8edd5`，private head `f71b03dda4d1608eb46197b5f57b6a22be09f46e`；v2 image `aircon-repair-20261017-v2:local` = `sha256:a0a5d9706e727f2f33f70fcbc8348cf9e7e502b6e75a30a186cf50049c62c571`。Public candidate acceptance 1059 tests、private 1110 tests，全部 0 fail/error/skip；證據在 `evidence/workflow-repair-20261017/acceptance-correction-v2/` 及 `final-runtime-v2/`。健康 URL、live merge/deploy/repair/next schedule 仍 pending。
+
+---
+
+## 附錄 G. 2026-10-17 追加：第三輪真實入口返修（supersede v2 A/D/E 過度聲稱）
+
+> 本節只追加。v2 中「run-update 已正確處理所有非零來源錯誤」、「completed receive 已完整可見」、「official 成功可無 manifest」及「private monitor 已 fail-closed」的措辭由本節更正。沒有 live 服務／資料／coordinator／排程／remote 改動。
+
+- **run-update 錯誤傳遞**：官網 batch 的非零 integrity／交易回傳立即阻斷，不再只標 degraded 後繼續 publish；只有 `--degraded-exit-zero` 下已驗證的 safe source failure（有效 receipt：decision 為 queue-kept-*、failureClass=source、safeToContinue=true）可以繼續。投影失敗時：safe source failure 會寫獨立 degraded sidecar 並繼續；advanced／invalid receipt 投影失敗立即阻斷。completed receive 使用 guarded exit capture；local apply/integrity rc3 阻斷，GET／個別不可用保留舊快照但留可見告警。以上以真實 `run-update.sh` 入口 stub 故障注入測試，確認 publish／pointer 未被呼叫或安全繼續。
+- **Official snapshot 身份**：`run_official_batch` advanced 成功只在所有指定 outputs 已 promote，並產生版本化 `outputManifest`（精確 output 名稱、size、完整 `sha256:` bytes hash、manifestHash）。`publish_official_status` 拒絕空 outputs、缺檔／短 hash／錯 hash／額外或錯 stage output／未 promote／未驗證 receipt；只有 manifest 可簽出 official snapshotHash。Coverage pending 不再 promote 部分輸出，保留完整舊快照與 queue，避免 snapshotHash 與實際 bytes 不一致。成功時間只來自實際 promote receipt 的 finishedAt；失敗／pending 只保留可證實的上一成功收據，網站 deployment clock 不用作來源 apply 時間。
+- **Private monitor**：corrupt `biggo_prices.json`、pending／unknown（包括有 hash）、degraded／blocked、缺 full hash 的 ok、generatedAt 缺失／損毀／過期／未來、來源成功時間未來、deployment receipt 不綁本版、official manifest bytes 不符，全部明確 unhealthy；corrupt deployment receipt／metadata 亦寫有效 unhealthy report／dedup，不會 traceback 後保留舊綠燈。
+- **Completed receive**：GitHub daily 的 receive 已移到 provider stage 之前；private full run-update 亦在網絡抓取前。`sync_biggo_completed.py` 所有出口（未配置、GET 失敗、state 缺、history gap、驗證／import、already-applied、remote-not-completed、apply）都原子寫版本化 report，失敗不沿用上次成功 report；missing history／unavailable 經 source_status 的 BigGo degraded 及 monitor/CI 可見。
+- **獨立健康入口**：新增 private read-only `aircon-health-monitor.sh` wrapper 與候選 `/etc/cron.d/aircon-health`（*/15），只讀 source status／metadata／deployment receipt／web root，不執行 run-update、sync_code、fetch、provider、queue 或 publish；候選檔未安裝。Read-only 核實現有 live updater cron 為 `30 0 * * *` HKT（不是 run-update header 的 03:30）；候選 health cron 與 updater 分離，正式啟用待 Root。
+- **身份**：此 v3 候選的最終 commit／image／test 數字見 repo 外 `evidence/workflow-repair-20261017/v3/`、handoff 及 status matrix；本文件不重複固定可變 hash。Health URL、live merge/deploy/repair、next schedule observation 仍 pending，不可稱全方案或 live 完成。

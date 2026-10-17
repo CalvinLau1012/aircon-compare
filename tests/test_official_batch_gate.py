@@ -921,17 +921,24 @@ def test_isolated_staging_promotes_only_verified_outputs(tmp_path, monkeypatch):
     receipt = json.load(open(repo / 'receipt.json', encoding='utf-8'))
     assert receipt['staging']['used'] is True
     assert receipt['staging']['promoted'] is True
+    manifest = receipt['outputManifest']
+    assert manifest['schemaVersion'] == 1 and manifest['stage'] == 1
+    assert set(manifest['files']) == {'fake_official.json'}
+    assert receipt['outputs'][0]['promoted'] is True
+    assert manifest['files']['fake_official.json']['sha256'].startswith('sha256:')
 
 
-def test_coverage_pending_promotes_verified_output_but_keeps_queue(tmp_path, monkeypatch):
+def test_coverage_pending_preserves_old_complete_snapshot_and_queue(tmp_path, monkeypatch):
     repo, out = _setup_wrapper(tmp_path, monkeypatch, 'coverage_pending')
+    old = out.read_bytes()
     assert _run_wrapper(repo) == 0
-    assert json.load(open(out, encoding='utf-8'))['M1']['size'] == '100x200x300'
+    assert out.read_bytes() == old, 'coverage pending 必須保留完整舊快照，唔可以混合新舊'
     q = json.load(open(repo / 'update_queue.json', encoding='utf-8'))
     assert q == {'stage': 1, 'models': ['M1']}
     receipt = json.load(open(repo / 'receipt.json', encoding='utf-8'))
     assert receipt['decision'] == 'queue-kept-pending-coverage'
-    assert receipt['staging']['promoted'] is True
+    assert receipt['staging']['promoted'] is False
+    assert 'outputManifest' not in receipt
 
 
 def test_promotion_failure_rolls_back_original_outputs(tmp_path, monkeypatch):
