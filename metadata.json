@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0.0",
   "version": "1.2.9",
-  "build": "B20261017.155.1",
-  "commit": "504b7713c1de0555ef5b93875cda307a39b2c4c3",
-  "deployTime": "2026-10-17T09:02:39Z",
-  "workflowRunId": "39019433760",
+  "build": "B20261017.157.1",
+  "commit": "9ee9cb5361587f37d76c73a0af3f0a6f1c067578",
+  "deployTime": "2026-10-17T11:51:20Z",
+  "workflowRunId": "39030119489",
   "deploymentType": "release",
   "datasetDate": "2026-10-17",
   "datasetDateBasis": "retrieval-date-fallback",
@@ -18,13 +18,15 @@
   "modelCount": 1721,
   "sourceStatus": {
     "biggo": {
+      "cycleId": "2026-10-10:4/7",
       "lastAcquiredAt": null,
-      "lastAppliedAt": null,
-      "lastAppliedDate": null,
-      "lastAttemptAt": "2026-10-17T09:02:37Z",
-      "safeReason": "completed-sync-missing-history",
-      "snapshotHash": "sha256:3382e2202566910d622d21a75d4de2ed13394274693cd1f1387ce7276a705187",
-      "snapshotId": null,
+      "lastAppliedAt": "2026-10-17T11:37:53Z",
+      "lastAppliedDate": "2026-10-17",
+      "lastAttemptAt": "2026-10-17T11:51:18Z",
+      "safeReason": "completed-sync-unavailable",
+      "snapshotHash": "sha256:043f44b417c76a9c584c4d1c77848022dc2caa4321177add6f3609e12ac30482",
+      "snapshotId": "biggo-baseline-2026-10-10:3/7-stage3-09e12ac30482",
+      "stage": 4,
       "status": "degraded"
     },
     "emsd": {
@@ -37,7 +39,7 @@
       "snapshotId": "emsd-2026-10-17-7e132c45ed00",
       "status": "ok"
     },
-    "generatedAt": "2026-10-17T09:02:38Z",
+    "generatedAt": "2026-10-17T11:51:20Z",
     "official": {
       "lastAcquiredAt": null,
       "lastAppliedAt": null,
@@ -49,14 +51,14 @@
       "status": "degraded"
     },
     "publish": {
-      "build": "B20261017.155.1",
-      "commit": "504b7713c1de0555ef5b93875cda307a39b2c4c3",
+      "build": "B20261017.157.1",
+      "commit": "9ee9cb5361587f37d76c73a0af3f0a6f1c067578",
       "deployedAt": null,
       "deploymentReceipt": null,
-      "packagedAt": "2026-10-17T09:02:39Z",
+      "packagedAt": "2026-10-17T11:51:20Z",
       "releasePayloadHash": null
     },
     "schemaVersion": 1
   },
-  "releasePayloadHash": "sha256:72be98405205951c913721474da5c5e50fd2bfec4efd94df51248825048b69f6"
+  "releasePayloadHash": "sha256:71cbb5cf0d011267c5ba27ccdde6dba6f82c4d2a49d824df462b82477d0baf44"
 }
