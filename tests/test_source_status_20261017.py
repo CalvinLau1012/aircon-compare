@@ -391,3 +391,11 @@ def test_completed_receive_step_precedes_provider_stage_in_daily():
     i_recv = text.index('接收 shared BigGo completed bundle')
     i_provider = text.index('價錢快照分批更新（BigGo API')
     assert i_recv < i_provider, 'completed receive 必須在 provider stage 前'
+
+
+def test_completed_sync_report_stays_out_of_worktree_and_health_not_cross_build_bound():
+    daily = open(os.path.join(BASE, '.github', 'workflows', 'daily-update.yml'), encoding='utf-8').read()
+    assert 'cp "$RUNNER_TEMP/biggo_completed_sync.json" biggo_completed_sync.json' not in daily
+    assert '--completed-sync-report "$RUNNER_TEMP/biggo_completed_sync.json"' in daily
+    fresh = open(os.path.join(BASE, '.github', 'workflows', 'freshness-monitor.yml'), encoding='utf-8').read()
+    assert '--metadata metadata.json' not in fresh, 'public build metadata is not the private site build identity'

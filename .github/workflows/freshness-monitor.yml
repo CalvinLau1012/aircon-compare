@@ -54,7 +54,7 @@ jobs:
         run: |
           python scripts/check_health_summary.py \
             --report "$RUNNER_TEMP/source-health-summary.json" \
-            --max-age-hours 48 --metadata metadata.json
+            --max-age-hours 48
 
       - name: 72h freshness＋監控告警（無論上一步結果都要處理）
         if: always()
