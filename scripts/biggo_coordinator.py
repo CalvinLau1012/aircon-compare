@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import hashlib
 import json
 import os
@@ -49,6 +50,8 @@ RENEW_INTERVAL_SECONDS = 5 * 60
 PROJECT_COOLDOWN_SECONDS = 48 * 3600
 
 STATE_SCHEMA_VERSION = 1
+DIAGNOSTIC_FIELD = 'diagnosticReservation'
+UNRESOLVED_DIAGNOSTIC_STATES = frozenset({'reserved', 'running', 'provider', 'uncertain'})
 # Coordinator identity digest：只 hash 有效 repo／branch／state path；唔包含 token、
 # client secret、snapshot、raw response 或任何 credential 材料。v1 表示法同 Root94
 # canonical audit 一致（env 名做 key、sort_keys、default separators）。
@@ -705,6 +708,11 @@ class CoordinatorClient:
         if preserve_intent:
             taken['callsMayHaveStarted'] = bool(previous.get('callsMayHaveStarted'))
             taken['intentAt'] = previous.get('intentAt')
+        # Diagnostic audit is not a normal business field.  Never make a
+        # pending/uncertain marker disappear through takeover.  A completed
+        # marker is preserved as audit only.
+        if DIAGNOSTIC_FIELD in previous:
+            taken[DIAGNOSTIC_FIELD] = copy.deepcopy(previous[DIAGNOSTIC_FIELD])
         return taken
 
     def _guard_regression(self, requested, remote):
@@ -776,6 +784,12 @@ class CoordinatorClient:
                     continue
             same_cycle = state['cycleId'] == cycle_id and state['stage'] == stage
             status = state['status']
+            marker = state.get(DIAGNOSTIC_FIELD)
+            if marker is not None:
+                if not isinstance(marker, dict) or marker.get('state') != 'completed':
+                    self.state, self._sha = state, sha
+                    return {'result': 'blocked-diagnostic-pending', 'state': state,
+                            'reason': 'unresolved-diagnostic-marker'}
             if status == 'completed' and same_cycle:
                 self.state, self._sha = state, sha
                 return {'result': 'completed-idempotent', 'state': state}
@@ -783,9 +797,10 @@ class CoordinatorClient:
                 self.state, self._sha = state, sha
                 return {'result': 'needs-review' if same_cycle else 'blocked-needs-review',
                         'state': state}
-            # 任何 active stage 被其他 owner 有效 lease 持有 → lost（0 PUT；唔算 alert）。
-            lease_active = (status == 'active' and state['leaseOwner'] is not None
-                            and state['leaseExpiresAt'] > self._now_int())
+            # 任何 status 下未過期 foreign lease 都有效；idle 亦不可被 normal
+            # writer 忽略 lease 直接接管。CAS 衝突會重讀並再查。
+            lease_active = (state.get('leaseOwner') is not None
+                            and int(state.get("leaseExpiresAt") or 0) > self._now_int())
             if lease_active and state['leaseOwner'] != self.owner:
                 self.state, self._sha = state, sha
                 return {'result': 'lost', 'state': state}

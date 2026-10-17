@@ -488,6 +488,13 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
                  remoteCycle=state.get('cycleId'), remoteStage=state.get('stage'),
                  remoteStatus=state.get('status'))
             return 0
+        if result == 'blocked-diagnostic-pending':
+            emit('blocked-diagnostic-pending', cycle=cycle_id, stage=stage_no,
+                 rerun='prohibited',
+                 reason=acquired.get('reason') or 'unresolved-diagnostic-marker',
+                 remoteCycle=state.get('cycleId'), remoteStage=state.get('stage'),
+                 remoteStatus=state.get('status'))
+            return 0
         if result == 'blocked-stage-gap':
             emit('blocked-stage-gap', cycle=cycle_id, stage=stage_no,
                  rerun='prohibited',

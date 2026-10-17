@@ -117,6 +117,26 @@ def _acceptance_valid(baseline):
             and isinstance(active.get('model_blacklist.json'), str))
 
 
+def _baseline_source(meta):
+    """Return a currently-adopted baseline source identity, without assuming
+    that an eventual stage4 is complete.  Used only for a read-only idle-state
+    fallback; full validation happens against the imported stage3 bundle."""
+    baseline = meta.get('baselineAcceptance')
+    if not isinstance(baseline, dict) \
+            or baseline.get('kind') != 'accepted-shared-baseline-v1':
+        return None
+    source = baseline.get('source')
+    if not isinstance(source, dict):
+        return None
+    if (meta.get('appliedBundleHash') != source.get('bundleHash')
+            or meta.get('last_applied_cycle') != source.get('cycleId')
+            or meta.get('price_batch_idx') != source.get('stage')):
+        return None
+    if not str(meta.get('appliedSnapshotId') or '').startswith('biggo-baseline-'):
+        return None
+    return source
+
+
 def _baseline_current(meta, bundle):
     baseline = meta.get('baselineAcceptance')
     if not isinstance(baseline, dict)             or baseline.get('kind') != 'accepted-shared-baseline-v1':
@@ -292,6 +312,57 @@ def main(argv=None):
     noop_candidate = plan.get('reason') == 'already-applied'
     if not plan['ok'] and not noop_candidate:
         reason = plan['reason']
+        # A completed baseline remains the last verified local post even if a
+        # later stage is merely idle (for example a repair-release run that
+        # skipped the provider step).  Verify the actual accepted stage3 bundle
+        # read-only; never claim the idle stage4 was completed.
+        baseline_source = _baseline_source(meta)
+        if reason == 'remote-not-completed' and state.get('status') == 'idle' \
+                and baseline_source is not None:
+            try:
+                client = coord.CoordinatorClient(contents, owner='read-only-sync',
+                                                 now=lambda: 0)
+                client.state = None
+                bundle = client.import_bundle(baseline_source['cycleId'],
+                                              baseline_source['stage'])
+            except coord.LegacyBundleError:
+                return finish(2, 'legacy-bundle-manual')
+            except coord.CoordinatorError as e:
+                print(f'❌ baseline idle fallback bundle 匯入失敗（零寫入）：{type(e).__name__}',
+                      file=sys.stderr)
+                return finish(2, 'bundle-import-error')
+            repair_fallback = None
+            if args.repair:
+                try:
+                    with open(args.repair, encoding='utf-8') as f:
+                        candidate_repair = json.load(f)
+                except (OSError, ValueError):
+                    return finish(2, 'repair-invalid')
+                if candidate_repair.get('originalBundleHash') == bundle['bundleHash'] \
+                        and candidate_repair.get('originalStageResultHash') == bundle['stageResultHash']:
+                    repair_fallback = candidate_repair
+                else:
+                    return finish(2, 'repair-invalid')
+            try:
+                verified = verify_local_post(bundle, meta, BASE, repair=repair_fallback)
+            except (SyncError, biggo_apply.ApplyError) as e:
+                print(f'❌ baseline idle fallback integrity failure（零寫入）：{e}',
+                      file=sys.stderr)
+                return finish(3, 'local-integrity-error', ok=False,
+                              postStateVerified=False, error=type(e).__name__)
+            report['remoteState'] = {'status': state.get('status'),
+                                     'cycleId': state.get('cycleId'),
+                                     'stage': state.get('stage')}
+            report['baselineFallback'] = 'idle-remote; verified accepted stage3'
+            report['cycleId'] = baseline_source['cycleId']
+            report['stage'] = baseline_source['stage']
+            report['bundleHash'] = bundle['bundleHash']
+            report['stageResultHash'] = bundle['stageResultHash']
+            report['newSnapshotHash'] = bundle['newSnapshotHash']
+            report.update({'postStateVerified': True, 'verifiedPost': verified,
+                           'applied': False, 'noop': True})
+            print(f"sync baseline idle fallback verified: bundle={bundle['bundleHash']}")
+            return finish(0, 'already-applied', ok=True)
         print(f"sync skipped: {reason}（零 BigGo／零 lease／零 coordinator write）")
         # A local meta that claims an applied bundle while the repository no
         # longer coherently matches that stage is corruption, not a benign

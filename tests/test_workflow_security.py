@@ -706,8 +706,20 @@ def test_daily_rebuild_only_master_dispatch_and_pr_job_never_runs_verifier():
 def test_daily_rebuild_biggo_runner_real_inactive_path_no_force_or_smoke():
     steps = _daily_update_steps()
     biggo = steps['價錢快照分批更新（BigGo API · coordinator lease；force 亦要 lease）']
-    # rebuild 模式唔可以 skip 呢步（要做真 inactive 判斷 → skip-not-active）。
-    assert 'if' not in biggo
+    # Both rebuild and repair release are zero-provider paths.  Normal
+    # schedule/missing/false inputs still use the coordinated runner.
+    assert _eval_if(biggo['if'], event='schedule') is True
+    assert _eval_if(biggo['if'], event='workflow_dispatch') is True
+    assert _eval_if(biggo['if'], event='workflow_dispatch',
+                    inputs={'repair_release': 'false',
+                            'rebuild_verified_snapshot': 'false'}) is True
+    assert _eval_if(biggo['if'], event='workflow_dispatch',
+                    inputs={'repair_release': 'true'}) is False
+    assert _eval_if(biggo['if'], event='workflow_dispatch',
+                    inputs={'rebuild_verified_snapshot': 'true'}) is False
+    assert _eval_if(biggo['if'], event='workflow_dispatch',
+                    inputs={'repair_release': 'true',
+                            'rebuild_verified_snapshot': 'true'}) is False
     run = biggo['run']
     assert 'scripts/biggo_stage_runner.py' in run
     assert '--status-out' in run
@@ -799,7 +811,7 @@ def test_biggo_diagnostic_check_coordinator_input_reject_and_readonly_step():
     inputs = on['workflow_dispatch']['inputs']
     assert inputs['check_coordinator']['type'] == 'boolean'
     assert inputs['check_coordinator']['default'] is False
-    reject = steps['拒絕矛盾 inputs（check_coordinator 同 execute_provider）']
+    reject = steps['拒絕矛盾 inputs（preview／check／execute／test grant）']
     reject_if = str(reject['if'])
     assert 'inputs.check_coordinator' in reject_if
     assert 'inputs.execute_provider' in reject_if
@@ -822,3 +834,37 @@ def test_biggo_diagnostic_check_coordinator_input_reject_and_readonly_step():
     assert 'env' not in preview and 'secrets.' not in str(preview)
     execute = steps['Bounded live probe（1 token + 1 search；只在 execute_provider=true）']
     assert 'inputs.execute_provider' in str(execute['if'])
+
+
+def test_diagnostic_test_grant_is_manual_and_fixed_id_only():
+    text = _text('biggo-diagnostic.yml')
+    on = yaml.safe_load(text).get(True) or yaml.safe_load(text)['on']
+    inputs = on['workflow_dispatch']['inputs']
+    assert inputs['execute_test_grant']['type'] == 'boolean'
+    assert inputs['grant_id']['default'] == ''
+    assert 'python scripts/biggo_test_probe.py' in text
+    assert '--grant-id "${{ inputs.grant_id }}"' in text
+    assert 'AIRCON_BIGGO_TEST_GRANT_PATH' not in text
+    assert 'grants/' not in text
+    step = next(s for s in yaml.safe_load(text)['jobs']['diagnostic']['steps']
+                if s.get('name', '').startswith('Authorized test-grant'))
+    assert step['if'] == '${{ inputs.execute_test_grant }}'
+    assert 'biggo_test_probe.py' in step['run']
+
+
+def test_daily_repair_and_rebuild_both_true_rejected_before_checkout():
+    steps = _daily_update_steps()
+    name = 'REBUILD 互斥模式檢查（repair + rebuild）'
+    assert name in steps
+    names = list(steps)
+    assert names.index(name) < names.index('取出代碼')
+    step = steps[name]
+    assert _eval_if(step['if'], event='workflow_dispatch',
+                    inputs={'repair_release': 'true',
+                            'rebuild_verified_snapshot': 'true'}) is True
+    assert _eval_if(step['if'], event='workflow_dispatch',
+                    inputs={'repair_release': 'true',
+                            'rebuild_verified_snapshot': 'false'}) is False
+    assert _eval_if(step['if'], event='workflow_dispatch',
+                    inputs={'repair_release': 'false',
+                            'rebuild_verified_snapshot': 'true'}) is False

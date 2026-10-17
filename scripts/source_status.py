@@ -369,7 +369,19 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
         actual_snapshot = biggo.get('snapshotHash')
     baseline_info = _baseline_info(prices_meta)
     baseline_verified = False
-    base_failure = bstatus_ui in ('degraded', 'blocked') or biggo.get('alert') is True
+    # A missing/inactive provider status (including a normal repair-release run
+    # with no provider step) is not a current failure.  Actual apply/receive
+    # failures, blocked states, alerts and failed sync receipts remain hard
+    # precedence and can never be hidden by baseline provenance.
+    failure_statuses = {
+        'completed-apply-failed', 'needs-review', 'blocked-incomplete',
+        'blocked-needs-review', 'blocked-stale', 'blocked-quota-window-unsupported',
+        'completed-sync-missing-history', 'completed-sync-unavailable',
+        'completed-sync-invalid',
+    }
+    sync_failure = isinstance(completed_sync, dict) and completed_sync.get('ok') is not True
+    base_failure = (bstatus_ui == 'blocked' or biggo.get('alert') is True
+                    or bstatus in failure_statuses or sync_failure)
     receiver = None
     if not base_failure:
         receiver = _verified_receiver(

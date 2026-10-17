@@ -2278,3 +2278,18 @@ aircon-compare/
 - **Completed receive**：GitHub daily receive 已置於 provider stage 前；sync 所有出口寫版本化 atomic report；missing history 經 sourceStatus BigGo degraded 與 summary/monitor 可見。無 coordinator 寫入、無猜 baseline。
 - **驗證**：actual runner receipt→publisher→sourceStatus→monitor summary→public client 正向 green；corrupt price/CSV/official、缺 manifest、錯 hash/stage、損毀 receipt/metadata 均轉 unhealthy summary，public CLI fail；獨立 wrapper 與 public client 同一離線鏈。V4 最終 identity 見 repo 外 `evidence/workflow-repair-20261017/v4/`。
 - **Pending**：health URL、live merge/deploy/private cutover/live repair/schedule activation/next 00:30 observation。不稱全方案或 live 完成。
+
+
+## 2026-10-17T13:00Z · CLI 操作者職責更正（append-only）
+
+- 使用者澄清：Pi 只負責隔離程式實作、離線測試、候選與可檢閱的命令／發布包；實際伺服器 Docker、已授權正式操作及獨立驗收由具權限的 CLI 操作者執行。
+- Pi 不可讀取／借用工程管理憑證、不可 sudo、不可嘗試提權或繞過權限；取得 CLI 權限不是本輪要處理的阻塞。公開文字只泛稱「CLI 操作者」，不記私人主機／網域／路徑／repo／owner／token。
+- 本輪維持零 live push／deploy／dispatch／coordinator write／provider call；不與 Root 的 Docker 檢查並行操作正式容器或正式資料。此更正不停止原修復範圍。
+
+
+## 2026-10-17T13:10Z · CLI 操作者 Docker 只讀檢查摘要（去識別化，append-only）
+
+- 具權限 CLI 操作者已完成正式服務只讀檢查；Pi 沒有執行該檢查，也沒有重啟、切換、重載、改資料或 provider call。
+- 服務仍為既有版本／容器運行；四檔 live 指標、部署收據及外部 HTTPS 回應一致，未見混合版本或 Docker healthcheck 通過的聲稱（未配置 healthcheck）。
+- 現有 BigGo acquisition／applied 時間、stage3 canonical post hashes、updater 00:30 HKT、monitor */15、來源 unhealthy facts（BigGo 年齡、official unknown、私人 official queue legacy stage）均如實保留；未有新一輪正常窗口觀察。
+- 外部主域以 Python CLI 遇到 Cloudflare 1010，origin／DDNS 嚴格 HTTPS 正常；不是 Docker outage，沒有改 Cloudflare 設定。私有具體身份／路徑留本地報告，公開只泛稱 CLI 操作者。

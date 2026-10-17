@@ -18,6 +18,15 @@ on:
         required: false
         default: false
         type: boolean
+      execute_test_grant:
+        description: '使用中央已授權五請求 test grant 的 manual probe（只可引用既有 grantId）'
+        required: false
+        default: false
+        type: boolean
+      grant_id:
+        description: '既有中央 test grant identity；不可由此建立或重置 grant'
+        required: false
+        default: ''
 
 # 最小權限：只讀 repo；coordinator 憑證只經現有專用 Secret，唔用 GITHUB_TOKEN。
 permissions:
@@ -55,10 +64,10 @@ jobs:
         run: pip install -r requirements.txt
 
       # 矛盾 inputs：喺任何 Secrets／遠端操作之前 fail closed。
-      - name: 拒絕矛盾 inputs（check_coordinator 同 execute_provider）
-        if: ${{ inputs.check_coordinator && inputs.execute_provider }}
+      - name: 拒絕矛盾 inputs（preview／check／execute／test grant）
+        if: ${{ (inputs.check_coordinator && inputs.execute_provider) || (inputs.check_coordinator && inputs.execute_test_grant) || (inputs.execute_provider && inputs.execute_test_grant) }}
         run: |
-          echo "::error::check_coordinator 同 execute_provider 不可以同時為 true"
+          echo "::error::check_coordinator、execute_provider、execute_test_grant 只可選一個"
           exit 1
 
       # Preview：零 secrets、零 coordinator、零 provider；只讀本地 dataset／stage。
@@ -102,6 +111,25 @@ jobs:
             --json-out "$RUNNER_TEMP/biggo-diagnostic-execute.json" \
             --summary-out "$RUNNER_TEMP/biggo-diagnostic-execute.md"
 
+      # Central human-authorized test grant：只引用既有 grantId；此步取代
+      # 舊 execute_provider 的 stage-budget 路徑，不碰 production counters。
+      - name: Authorized test-grant probe（明確 grantId；最多 1 auth + 1 search）
+        if: ${{ inputs.execute_test_grant }}
+        env:
+          BIGGO_CLIENT_ID: ${{ secrets.BIGGO_CLIENT_ID }}
+          BIGGO_CLIENT_SECRET: ${{ secrets.BIGGO_CLIENT_SECRET }}
+          AIRCON_BIGGO_COORDINATOR_REPO: ${{ secrets.AIRCON_BIGGO_COORDINATOR_REPO }}
+          AIRCON_BIGGO_COORDINATOR_TOKEN: ${{ secrets.AIRCON_BIGGO_COORDINATOR_TOKEN }}
+          AIRCON_BIGGO_COORDINATOR_BRANCH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_BRANCH }}
+          AIRCON_BIGGO_COORDINATOR_STATE_PATH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_STATE_PATH }}
+          AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR: ${{ secrets.AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          python scripts/biggo_test_probe.py \
+            --grant-id "${{ inputs.grant_id }}" \
+            --json-out "$RUNNER_TEMP/biggo-diagnostic-test-grant.json"
+
       # Summary：只 cat 由 CLI sanitized renderer 寫出嘅檔；唔會執行任何輸入字串。
       - name: 寫入 sanitized summary（always）
         if: always()
@@ -110,7 +138,8 @@ jobs:
             echo "## BigGo manual diagnostic"
             for f in "$RUNNER_TEMP/biggo-diagnostic-preview.md" \
                      "$RUNNER_TEMP/biggo-diagnostic-coordinator-check.md" \
-                     "$RUNNER_TEMP/biggo-diagnostic-execute.md"; do
+                     "$RUNNER_TEMP/biggo-diagnostic-execute.md" \
+                     "$RUNNER_TEMP/biggo-diagnostic-test-grant.json"; do
               if [ -f "$f" ]; then cat "$f"; fi
             done
           } >> "$GITHUB_STEP_SUMMARY" || true

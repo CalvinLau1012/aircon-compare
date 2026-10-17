@@ -527,3 +527,22 @@ def test_stage4_success_is_normal_applied_not_baseline_acceptance():
     assert s['biggo']['lastAcquiredAt'] == '2026-10-17T16:37:28Z'
     assert s['biggo']['lastAppliedDate'] == '2026-10-18'
     assert source_status.validate_status(s) == []
+
+
+def test_verified_baseline_allows_missing_provider_status_but_not_failure():
+    meta, report = _baseline_meta()
+    s = source_status.build_status(
+        metadata={'datasetDate': '2026-10-17', 'datasetHash': 'sha256:' + 'a' * 64},
+        emsd_receipt=_receipt(), prices_meta=meta,
+        biggo_snapshot_hash=meta['appliedSnapshotHash'],
+        completed_sync=report)
+    assert s['biggo']['status'] == 'ok'
+    assert s['biggo']['safeReason'] == 'baseline-accepted'
+    failed = source_status.build_status(
+        metadata={'datasetDate': '2026-10-17', 'datasetHash': 'sha256:' + 'a' * 64},
+        emsd_receipt=_receipt(), prices_meta=meta,
+        biggo_status={'status': 'completed-apply-failed', 'alert': True},
+        biggo_snapshot_hash=meta['appliedSnapshotHash'],
+        completed_sync={'ok': False, 'reason': 'apply-error'})
+    assert failed['biggo']['status'] == 'degraded'
+    assert failed['biggo']['safeReason'] != 'baseline-accepted'

@@ -251,3 +251,32 @@ def test_wrong_cycle_or_recomputed_bad_acceptance_is_not_a_green_noop(tmp_path, 
     p2.write_text(json.dumps(m2), encoding='utf-8')
     rc2, report2 = _run_sync(d2, monkeypatch, bundle)
     assert rc2 == 3 and report2['reason'] == 'local-integrity-error'
+
+
+def test_idle_later_stage_verifies_adopted_baseline_read_only(tmp_path, monkeypatch):
+    bundle = _bundle(); _write_fixture(tmp_path, bundle, baseline=True)
+    before = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in tmp_path.iterdir()
+              if p.is_file()}
+    class Contents:
+        def __init__(self, *a, **k): pass
+        def read_state(self):
+            return {'status': 'idle', 'cycleId': '2026-10-10:4/7', 'stage': 4}, 'sha'
+    class Client:
+        def __init__(self, *a, **k): self.state = None
+        def import_bundle(self, cycle, stage):
+            assert (cycle, stage) == ('2026-10-10:3/7', 3)
+            return bundle
+    monkeypatch.setattr(sc.coord.CoordinatorConfig, 'from_env', staticmethod(lambda: object()))
+    monkeypatch.setattr(sc.coord, 'GitHubContentsClient', Contents)
+    monkeypatch.setattr(sc.coord, 'CoordinatorClient', Client)
+    monkeypatch.setattr(sc, 'BASE', str(tmp_path))
+    report = tmp_path / 'sync.json'
+    rc = sc.main(['--apply', '--report', str(report)])
+    d = json.loads(report.read_text())
+    assert rc == 0 and d['ok'] is True and d['applied'] is False
+    assert d['reason'] == 'already-applied' and d['postStateVerified'] is True
+    assert d['verifiedPost']['baselineAcceptanceId'].startswith('sha256:')
+    assert d['baselineFallback'].startswith('idle-remote')
+    after = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in tmp_path.iterdir()
+             if p.is_file() and p.name != 'sync.json'}
+    assert after == {k: v for k, v in before.items() if k != 'sync.json'}

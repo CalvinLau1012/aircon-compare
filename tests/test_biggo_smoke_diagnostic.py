@@ -1008,14 +1008,19 @@ def test_crash_after_reservation_preserves_upper_bound_for_same_stage_takeover()
     assert reserved['requestAttempts'] == {'token': 1, 'search': 1}
     assert _marker(reserved)['state'] == 'reserved'
     assert reserved['leaseOwner'] == 'aircon-diag-777-1'
-    # 普通 same-stage takeover（lease 過期）：preserve attempts，唔會 reset 成 0。
+    # 未解決 diagnostic marker 即使 lease 過期都必須阻擋普通 takeover；
+    # 不可以用「未發請求」為由清 pending 或忽略已預留上限。
+    puts_before = api.put_count()
     business = coord.CoordinatorClient(
         coord.GitHubContentsClient(CONFIG, api=api), 'business-x',
         now=lambda: NOW + coord.LEASE_SECONDS + 1)
     acquired = business.acquire('2026-10-01:1/7', 1)
-    assert acquired['result'] == 'winner'
-    assert acquired['state']['requestAttempts'] == {'token': 1, 'search': 1}
-    assert acquired['state']['callsMayHaveStarted'] is False
+    assert acquired['result'] == 'blocked-diagnostic-pending'
+    assert api.put_count() == puts_before
+    after = api.state()
+    assert after['requestAttempts'] == {'token': 1, 'search': 1}
+    assert _marker(after)['state'] == 'reserved'
+    assert after['leaseOwner'] == 'aircon-diag-777-1'
 
 
 def test_simultaneous_reservations_only_one_wins_other_sees_foreign_lease():

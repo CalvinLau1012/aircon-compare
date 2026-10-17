@@ -121,6 +121,16 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
+      # 任何 repair+rebuild 同時 true 的歧義在 Secrets／remote 之前拒絕。
+      - name: REBUILD 互斥模式檢查（repair + rebuild）
+        if: >
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.rebuild_verified_snapshot == 'true' &&
+          github.event.inputs.repair_release == 'true'
+        run: |
+          echo "::error::repair_release 與 rebuild_verified_snapshot 不可同時為 true"
+          exit 1
+
       # rebuild_verified_snapshot 係 RELEASE REBUILD：重用現有 hash-bound 快照；
       # 同時 force_price_batch 會矛盾（rebuild 唔可以順便抓新價），喺任何 provider 呼叫前 fail closed。
       - name: REBUILD 前置檢查（contradictory force）
@@ -372,6 +382,12 @@ jobs:
       # cooldown／budget／idempotency／needs_review／publication 檢查。
       - name: 價錢快照分批更新（BigGo API · coordinator lease；force 亦要 lease）
         id: biggo_stage
+        # REPAIR RELEASE 係零 provider／零 lease：baseline/data 已驗證，唔可以
+        # 經 stage runner 建立下一個 coordinator stage。REBUILD 仍需保留真
+        # inactive 判斷路徑（test mode 下零網絡）。
+        if: >
+          github.event.inputs.rebuild_verified_snapshot != 'true' &&
+          github.event.inputs.repair_release != 'true'
         env:
           BIGGO_CLIENT_ID: ${{ secrets.BIGGO_CLIENT_ID }}
           BIGGO_CLIENT_SECRET: ${{ secrets.BIGGO_CLIENT_SECRET }}
