@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0.0",
   "version": "1.2.9",
-  "build": "B20261017.157.1",
-  "commit": "9ee9cb5361587f37d76c73a0af3f0a6f1c067578",
-  "deployTime": "2026-10-17T11:51:20Z",
-  "workflowRunId": "39030119489",
+  "build": "B20261017.158.1",
+  "commit": "e93ae349b51bc36ae103089a54b504165e951852",
+  "deployTime": "2026-10-17T14:24:07Z",
+  "workflowRunId": "39040380653",
   "deploymentType": "release",
   "datasetDate": "2026-10-17",
   "datasetDateBasis": "retrieval-date-fallback",
@@ -18,15 +18,13 @@
   "modelCount": 1721,
   "sourceStatus": {
     "biggo": {
-      "cycleId": "2026-10-10:4/7",
       "lastAcquiredAt": null,
       "lastAppliedAt": "2026-10-17T11:37:53Z",
       "lastAppliedDate": "2026-10-17",
-      "lastAttemptAt": "2026-10-17T11:51:18Z",
+      "lastAttemptAt": null,
       "safeReason": "completed-sync-unavailable",
       "snapshotHash": "sha256:043f44b417c76a9c584c4d1c77848022dc2caa4321177add6f3609e12ac30482",
       "snapshotId": "biggo-baseline-2026-10-10:3/7-stage3-09e12ac30482",
-      "stage": 4,
       "status": "degraded"
     },
     "emsd": {
@@ -39,7 +37,7 @@
       "snapshotId": "emsd-2026-10-17-7e132c45ed00",
       "status": "ok"
     },
-    "generatedAt": "2026-10-17T11:51:20Z",
+    "generatedAt": "2026-10-17T14:24:06Z",
     "official": {
       "lastAcquiredAt": null,
       "lastAppliedAt": null,
@@ -51,14 +49,14 @@
       "status": "degraded"
     },
     "publish": {
-      "build": "B20261017.157.1",
-      "commit": "9ee9cb5361587f37d76c73a0af3f0a6f1c067578",
+      "build": "B20261017.158.1",
+      "commit": "e93ae349b51bc36ae103089a54b504165e951852",
       "deployedAt": null,
       "deploymentReceipt": null,
-      "packagedAt": "2026-10-17T11:51:20Z",
+      "packagedAt": "2026-10-17T14:24:07Z",
       "releasePayloadHash": null
     },
     "schemaVersion": 1
   },
-  "releasePayloadHash": "sha256:71cbb5cf0d011267c5ba27ccdde6dba6f82c4d2a49d824df462b82477d0baf44"
+  "releasePayloadHash": "sha256:8971ff82ebbed56cb8c41ddd3b498a0d2eead17d5d1e7975db2e4f7fdedb2c27"
 }
