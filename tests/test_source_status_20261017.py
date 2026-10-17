@@ -325,3 +325,14 @@ def test_official_ok_requires_full_hash_id_and_explicit_apply_fact():
                                     deployment_receipt=_valid_deployment())
     assert s2['official']['status'] == 'degraded'
     assert s2['official']['lastAppliedAt'] is None
+
+
+def test_source_status_has_no_duplicate_dict_literal_keys():
+    import ast
+    path = os.path.join(BASE, 'scripts', 'source_status.py')
+    tree = ast.parse(open(path, encoding='utf-8').read())
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Dict):
+            keys = [k.value for k in node.keys
+                    if isinstance(k, ast.Constant) and isinstance(k.value, str)]
+            assert len(keys) == len(set(keys)), f'duplicate literal keys: {keys}'
