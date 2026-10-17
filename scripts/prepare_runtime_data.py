@@ -26,6 +26,8 @@ import subprocess
 import sys
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE not in sys.path:
+    sys.path.insert(0, BASE)
 BLACKLIST = os.path.join(BASE, 'model_blacklist.json')
 STATUS = os.path.join(BASE, 'model_status.json')
 MIGRATOR = os.path.join(BASE, 'scripts', 'migrate_blacklist_keys.py')
