@@ -48,6 +48,34 @@ STAGES = {
 }
 RECEIPT_MARKER = 'AIRCON_FETCH_RECEIPT '
 
+# Machine-readable routing for queue entries that have no matching stage/source
+# target.  This is diagnostic only: it never removes a queue entry and never
+# turns missing coverage into a cover.  Keep the evidence tied to the actual
+# source scripts rather than asserting that a model does not exist.
+ROUTE_RULES = (
+    ('MITSUBISHIHEAVY', r'^(?:WRK07MIZH1|WRK09MIZH1|WRK18MIZH1)$',
+     None, None, 'brand-source-not-configured'),
+    ('MECAN', r'^(?:MC07WVRQW|MC09WVRQW|MC07VXH|MC09VXH|MC12VXH|MC18VXH|MC24VXH)$',
+     None, None, 'brand-source-not-configured'),
+    ('GREE', r'^(?:GEH63ZE/GEH63ZC|GWT07ES|GWT09ES|GWT12ES)$',
+     None, None, 'brand-source-not-configured'),
+    ('COMFEE', r'^CWV-24CRFN9-AD5$', 1, 'fetch_official.py',
+     'target-not-in-configured-comfee-list'),
+)
+
+
+def route_for_model(model):
+    """Return the configured official-source route, or an explicit gap reason."""
+    import re
+    text = str(model)
+    for brand, pattern, stage, source, reason in ROUTE_RULES:
+        if re.match(pattern, text):
+            return {'brand': brand, 'stage': stage, 'source': source,
+                    'reason': reason,
+                    'supported': bool(source and reason is None)}
+    return {'brand': None, 'stage': None, 'source': None,
+            'reason': 'source-route-not-configured', 'supported': False}
+
 
 def queue_stage():
     """讀實際 queue stage（共用 queue_utils 契約；錯誤即 raise）。"""
@@ -627,6 +655,16 @@ def main(argv=None):
         receipt['missingModels'] = list(missing_coverage)
         receipt['missingCanonicalModels'] = sorted({norm_model(m) for m in missing_coverage})
         receipt['coveragePendingFromScripts'] = sorted(script_pending_norm)
+        missing_reasons = {}
+        route_map = {}
+        for m in missing_coverage:
+            route = route_for_model(m)
+            route_map[m] = route
+            # A script's explicit failure/coverage reason wins; routing only
+            # explains otherwise-unexplained queue gaps.
+            coverage_pending_reasons.setdefault(
+                m, route['reason'] or 'stage-source-did-not-cover-target')
+        receipt['sourceRouting'] = route_map
         receipt['coveragePendingReasons'] = dict(sorted(coverage_pending_reasons.items()))
         if not failures:
             verify_errors = verify_receipt_outputs(receipt)

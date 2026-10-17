@@ -1005,3 +1005,17 @@ def test_promotion_failure_is_integrity_even_with_degraded_flag(tmp_path, monkey
     assert rc == 1
     receipt = json.load(open(repo / 'r.json', encoding='utf-8'))
     assert receipt['failureClass'] == 'integrity'
+
+
+def test_queue_route_diagnostics_are_explicit_and_do_not_claim_absence():
+    models = ['WRK07MIZH1', 'WRK09MIZH1', 'WRK18MIZH1', 'MC07WVRQW', 'MC09WVRQW',
+              'MC07VXH', 'MC09VXH', 'MC12VXH', 'GEH63ZE/GEH63ZC',
+              'CWV-24CRFN9-AD5', 'GWT07ES', 'GWT09ES', 'MC18VXH', 'MC24VXH', 'GWT12ES']
+    routes = {m: rob.route_for_model(m) for m in models}
+    assert routes['WRK07MIZH1']['reason'] == 'brand-source-not-configured'
+    assert routes['MC07WVRQW']['reason'] == 'brand-source-not-configured'
+    assert routes['GWT07ES']['reason'] == 'brand-source-not-configured'
+    assert routes['CWV-24CRFN9-AD5']['stage'] == 1
+    assert routes['CWV-24CRFN9-AD5']['source'] == 'fetch_official.py'
+    assert routes['CWV-24CRFN9-AD5']['reason'] == 'target-not-in-configured-comfee-list'
+    assert all(r['supported'] is False for r in routes.values())
