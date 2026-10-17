@@ -2239,3 +2239,16 @@ aircon-compare/
 - **official 來源**：`official.lastAttemptAt` 只記最新嘗試；失敗／pending 不可把該嘗試時間當成功 `lastAcquiredAt`。失敗時只保留上一個已驗證 snapshot 時間／hash；無歷史則保持 null／unknown。
 - **BigGo snapshot bindings**：`sourceStatus.biggo.snapshotHash` 只可使用完整 SHA-256（目前實際沿用快照或完整 appliedSnapshotHash），不可使用 status artifact 的短碼或 failed pending bundle hash；舊 `last_run` 日期不可自動當可信 apply timestamp。
 - **Candidate hygiene**：公開候選不包含本機 generated repair artifacts／source-status-history／測試私鑰；TLS fixture 在 pytest runtime 生成，完整 history credential audit 目標 0 findings。正式 live deployment／merge 仍待 Root。
+
+---
+
+## 附錄 F. 2026-10-17 追加：Root 第二輪反例修正（明確 supersede 先前 A／D／F3 過度聲稱）
+
+> 本節只追加，保留先前所有文字作歷史。先前「deployment receipt 只驗 success/time」、「official advanced 即 ok」、「official unknown 可繼承網站 deployedAt」及相關健康摘要聲稱，已由本節明確更正及取代。
+
+- **Deployment identity 必須 fail-closed**：`source_status.deployment_matches()` 要求 `metadata.build`、`metadata.releasePayloadHash`、`receipt.build`、`receipt.releasePayloadHash` 全部存在、非空、完全相同；亦要求 `receiptId`、`deployedAt`、以及**恰好四個**指定檔案的 full `sha256:` liveHashes。缺少 build／payload、錯 build／payload、缺檔、短 hash、舊收據一律 false；post-deploy monitor 另逐檔核對實際 web root。
+- **Official 成功狀態必須有可信 snapshot**：`decision=advanced` 只有在 `snapshotHash` 為 full SHA-256、有可信成功時間、且有 snapshot identity（如 snapshotId）時才可 `ok`；否則 `degraded`／`unknown` 並帶安全 reason，令健康監控可見。缺 hash 的 advanced 不再回報健康。
+- **Attempt vs success vs apply**：`lastAttemptAt` 只記最新嘗試；失敗／pending 只保留上一個成功 `lastSuccessAt`／snapshot hash；`lastAppliedAt` 只可在該 official snapshot 有明確成功 apply fact 且 hash 對得上時使用。網站 deployment receipt 不再自動填入 unknown／degraded official 的 `lastAppliedAt`。
+- **Health summary**：所有 `status=ok` 的 emsd／biggo／official 都必須有 full snapshotHash；未配置 `AIRCON_HEALTH_SUMMARY_URL` 係 UNKNOWN 且非零退出，不是 PASS。Private monitor 同步對 ok-without-hash fail-closed。
+- **清理**：`build_status` return dict 改為明確逐 key 賦值，沒有重複 `emsd` key；`check_health_summary` docstring 已改成 UNKNOWN／非零，不再錯誤聲稱退出 0。
+- **新候選**：public head `943b57a250050b41a03d9d8221bbcfd940b8edd5`，private head `f71b03dda4d1608eb46197b5f57b6a22be09f46e`；v2 image `aircon-repair-20261017-v2:local` = `sha256:a0a5d9706e727f2f33f70fcbc8348cf9e7e502b6e75a30a186cf50049c62c571`。Public candidate acceptance 1059 tests、private 1110 tests，全部 0 fail/error/skip；證據在 `evidence/workflow-repair-20261017/acceptance-correction-v2/` 及 `final-runtime-v2/`。健康 URL、live merge/deploy/repair/next schedule 仍 pending。
