@@ -534,3 +534,26 @@ def test_generated_source_guard_requires_full_commit_and_inputs(tmp_path):
     (repo / 'metadata.json').write_text(json.dumps({'commit': base}), encoding='utf-8')
     (repo / '空調對比報告.md').unlink()
     assert subprocess.run([sys.executable, script, '--repo', str(repo)]).returncode == 1
+
+
+def test_generated_source_guard_blocks_data_change_without_metadata_rebuild(tmp_path):
+    repo, base = _source_repo(tmp_path)
+    # Add actual data files and metadata.sourceStatus binding to the artifact commit.
+    prices = {'M1': {'price': '$1', 'updated': '2026-10-01'}}
+    csv = 'brand,model\nA,M1\n'.encode()
+    (repo / 'biggo_prices.json').write_text(json.dumps(prices), encoding='utf-8')
+    (repo / 'emsd_空調能源標籤.csv').write_bytes(csv)
+    meta = json.load(open(repo / 'metadata.json'))
+    sys.path.insert(0, BASE)
+    from biggo_canonical import sha256_json
+    import hashlib
+    meta['sourceStatus'] = {'biggo': {'snapshotHash': sha256_json(prices)},
+                            'emsd': {'snapshotHash': 'sha256:' + hashlib.sha256(csv).hexdigest()}}
+    (repo / 'metadata.json').write_text(json.dumps(meta), encoding='utf-8')
+    _git_run(repo, 'add', '-A'); _git_run(repo, 'commit', '-qm', 'metadata binding')
+    script = os.path.join(BASE, 'scripts', 'check_generated_source_binding.py')
+    assert subprocess.run([sys.executable, script, '--repo', str(repo)]).returncode == 0
+    # Baseline/data adoption changes active bytes without regenerating metadata.
+    prices['M1']['price'] = '$2'
+    (repo / 'biggo_prices.json').write_text(json.dumps(prices), encoding='utf-8')
+    assert subprocess.run([sys.executable, script, '--repo', str(repo)]).returncode == 1
