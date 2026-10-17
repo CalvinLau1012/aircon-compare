@@ -55,7 +55,11 @@ def plan_sync(meta, state):
     if stage > local_idx + 1:
         return {'ok': False, 'reason': 'missing-intermediate-stage', 'stage': stage,
                 'localStage': local_idx}
-    if stage <= local_idx and not meta.get('appliedBundleHash'):
+    if stage <= local_idx:
+        # A completed bundle at or behind the local stage is not a new
+        # transition.  The same-cycle already-applied case was handled above;
+        # every other equal/older stage must fail closed, including a remote
+        # stage3 after local stage4.
         return {'ok': False, 'reason': 'stage-not-ahead', 'stage': stage,
                 'localStage': local_idx}
     return {'ok': True, 'reason': 'ready', 'stage': stage}

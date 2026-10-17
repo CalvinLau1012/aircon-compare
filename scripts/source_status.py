@@ -38,6 +38,7 @@ SAFE_REASONS = {
     'official-no-verified-snapshot', 'completed-sync-missing-history',
     'completed-sync-unavailable', 'completed-sync-invalid',
     'completed-sync-remote-not-completed',
+    'baseline-accepted',
 }
 SHA_RE = re.compile(r'^sha256:[0-9a-f]{64}$')
 UTC_RE = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$')
@@ -252,6 +253,11 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
             bstatus_ui, breason = 'degraded', 'completed-sync-unavailable'
         else:
             bstatus_ui, breason = 'degraded', 'completed-sync-invalid'
+    baseline = prices_meta.get('baselineAcceptance')
+    if isinstance(baseline, dict) and baseline.get('kind') == 'accepted-shared-baseline-v1'             and isinstance(baseline.get('acceptanceId'), str) and baseline.get('acceptanceId'):
+        # This is an explicit acceptance of a verified shared snapshot, not a
+        # replay of historical GitHub stages.  Keep the distinction visible.
+        bstatus_ui, breason = 'ok', 'baseline-accepted'
     applied_at = prices_meta.get('appliedAt') if _valid_ts(prices_meta.get('appliedAt')) else None
     # A failed/pending bundle's snapshotHash is NOT the snapshot currently
     # served.  Prefer the locally applied snapshot hash; only use the bundle

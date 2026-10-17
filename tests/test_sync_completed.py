@@ -44,3 +44,11 @@ def test_all_exit_paths_write_atomic_report_and_do_not_keep_old_success(tmp_path
     assert d['ok'] is False and d['reason'] == 'coordinator-not-configured'
     assert d['receiptId'].startswith('sha256:')
     assert p.read_text(encoding='utf-8') != '{"ok": true, "reason": "old-success"}'
+
+
+def test_remote_old_stage_after_newer_local_stage_is_rejected():
+    meta = {'price_batch_start': '2026-10-10', 'price_batch_idx': 4,
+            'appliedBundleHash': 'sha256:' + 'a' * 64,
+            'last_applied_cycle': '2026-10-10:4/7'}
+    out = sc.plan_sync(meta, {'status': 'completed', 'cycleId': '2026-10-10:3/7', 'stage': 3})
+    assert out['ok'] is False and out['reason'] == 'stage-not-ahead'

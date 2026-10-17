@@ -417,3 +417,28 @@ def test_biggo_applied_full_timestamp_and_snapshot_identity_from_meta():
     assert s['biggo']['lastAppliedDate'] == '2026-10-17'
     assert s['biggo']['snapshotId'] == 'biggo-2026-10-10:3/7-stage3-bbbbbbbbbbbb'
     assert source_status.validate_status(s) == []
+
+
+def test_accepted_shared_baseline_is_explicit_and_not_missing_history():
+    meta = {'last_run': '2026-10-12', 'price_batch_start': '2026-10-10',
+            'price_batch_idx': 3, 'appliedAt': '2026-10-17T18:30:00Z',
+            'appliedSnapshotHash': 'sha256:' + 'b' * 64,
+            'appliedSnapshotId': 'biggo-baseline-2026-10-10:3/7-stage3-bbbbbbbbbbbb',
+            'baselineAcceptance': {'schemaVersion': 1,
+                                   'kind': 'accepted-shared-baseline-v1',
+                                   'acceptanceId': 'sha256:' + 'c' * 64,
+                                   'adoptedAt': '2026-10-17T18:30:00Z'}}
+    s = source_status.build_status(
+        metadata={'datasetDate': '2026-10-17', 'datasetHash': 'sha256:' + 'a' * 64,
+                  'deployTime': '2026-10-17T18:31:00Z'},
+        emsd_receipt=_receipt(), prices_meta=meta,
+        biggo_status={'status': 'completed-sync-missing-history',
+                      'cycle': '2026-10-10:3/7', 'stage': 3,
+                      'snapshotHash': 'sha256:' + 'b' * 64},
+        completed_sync={'ok': False, 'reason': 'missing-local-history',
+                        'plan': {'ok': False, 'reason': 'missing-local-history'}})
+    assert s['biggo']['status'] == 'ok'
+    assert s['biggo']['safeReason'] == 'baseline-accepted'
+    assert s['biggo']['lastAppliedAt'] == '2026-10-17T18:30:00Z'
+    assert s['biggo']['snapshotId'].startswith('biggo-baseline-')
+    assert source_status.validate_status(s) == []
