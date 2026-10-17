@@ -3,9 +3,10 @@
 """Validate a sanitised source-health summary (private endpoint or file).
 
 GitHub never needs a private host/path in the repo: the endpoint is supplied by
-a repository secret.  If unconfigured, this entrypoint records that fact and
-exits 0 (no fabricated health).  If configured, it validates the versioned
-receipt, EMSD snapshot binding, official presence, and optional age.
+a repository secret.  If unconfigured, this entrypoint records an UNKNOWN/not-wired
+report and exits non-zero: absence of a health endpoint is not a PASS.  If
+configured, it validates the versioned receipt, full snapshot hashes, official
+status, actual deployment binding, and age.
 """
 import argparse
 import datetime as dt
@@ -42,8 +43,10 @@ def evaluate(status, *, now=None, max_age_hours=48):
         st = block.get('status')
         if st != 'ok':
             failures.append(f'{name}:{st}:{block.get("safeReason")}')
-        if not block.get('snapshotHash') and name in ('emsd', 'biggo'):
-            failures.append(f'{name}:snapshotHash-missing')
+        if st == 'ok':
+            h = block.get('snapshotHash')
+            if not (isinstance(h, str) and source_status.SHA_RE.match(h)):
+                failures.append(f'{name}:ok-without-full-snapshotHash')
     gen = status.get('generatedAt')
     try:
         gen_dt = dt.datetime.fromisoformat(str(gen).replace('Z', '+00:00')) if gen else None

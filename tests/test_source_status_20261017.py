@@ -156,7 +156,10 @@ def test_health_summary_validates_binding_and_unconfigured_unknown(tmp_path):
                      'appliedSnapshotHash': 'sha256:' + 'b' * 64},
         biggo_status={'status': 'completed', 'cycle': '2026-10-10:3/7', 'stage': 3,
                       'snapshotHash': 'sha256:' + 'b' * 64},
-        official_status={'decision': 'advanced', 'generatedAt': '2026-10-16T19:44:37Z'},
+        official_status={'decision': 'advanced', 'generatedAt': '2026-10-16T19:44:37Z',
+                         'lastSuccessAt': '2026-10-16T19:44:37Z',
+                         'snapshotId': 'official-1',
+                         'snapshotHash': 'sha256:' + 'b' * 64},
         deployment_receipt=dep,
         now=dt.datetime(2026, 10, 17, 4, 0, tzinfo=dt.timezone.utc).timestamp())
     r = check_health_summary.evaluate(s, now=dt.datetime(2026, 10, 17, 4, 0,
@@ -227,3 +230,98 @@ def test_daily_has_completed_receive_phase_without_manual_confirm():
                                            'biggo-completed-sync.yml'))
     allow = open(os.path.join(BASE, 'scripts', 'stage_artifacts.py'), encoding='utf-8').read()
     assert 'biggo_completed_sync.json' in allow
+
+
+def _valid_deployment():
+    return {'success': True, 'deployedAt': '2026-10-17T03:30:00Z',
+            'build': 'B1', 'releasePayloadHash': 'sha256:' + 'c' * 64,
+            'receiptId': 'r1',
+            'liveHashes': {'index.html': 'sha256:' + '1' * 64,
+                           '空調對比報告.pdf': 'sha256:' + '2' * 64,
+                           'emsd_空調能源標籤.csv': 'sha256:' + '3' * 64,
+                           'metadata.json': 'sha256:' + '4' * 64}}
+
+
+def _meta_for_deploy():
+    return {'build': 'B1', 'releasePayloadHash': 'sha256:' + 'c' * 64,
+            'datasetDate': '2026-10-17', 'datasetHash': 'sha256:' + 'a' * 64}
+
+
+def test_deployment_matches_requires_build_payload_receipt_and_all4_hashes():
+    meta = _meta_for_deploy()
+    assert source_status.deployment_matches(meta, _valid_deployment()) is True
+    variants = []
+    for field in ('build', 'releasePayloadHash'):
+        r = _valid_deployment(); r.pop(field); variants.append(r)
+        r = _valid_deployment(); r[field] = 'OLD-' + r[field]; variants.append(r)
+    r = _valid_deployment(); r['liveHashes']['index.html'] = 'sha256:' + '1' * 12
+    variants.append(r)
+    r = _valid_deployment(); r['liveHashes'].pop('metadata.json'); variants.append(r)
+    r = _valid_deployment(); r['liveHashes']['extra.txt'] = 'sha256:' + '5' * 64
+    variants.append(r)
+    r = _valid_deployment(); r.pop('receiptId'); variants.append(r)
+    for r in variants:
+        assert source_status.deployment_matches(meta, r) is False, r
+    old_meta = dict(meta, build='B2')
+    assert source_status.deployment_matches(old_meta, _valid_deployment()) is False
+
+
+def test_official_advanced_missing_full_hash_cannot_be_ok_or_healthy(tmp_path):
+    import check_health_summary
+    s = source_status.build_status(
+        metadata=_meta_for_deploy(),
+        emsd_receipt=_receipt(),
+        prices_meta={'appliedAt': '2026-10-16T16:00:00Z',
+                     'appliedSnapshotHash': 'sha256:' + 'b' * 64},
+        biggo_status={'status': 'completed', 'cycle': '2026-10-10:3/7', 'stage': 3,
+                      'snapshotHash': 'sha256:' + 'b' * 64},
+        official_status={'decision': 'advanced',
+                         'generatedAt': '2026-10-16T19:44:37Z',
+                         'lastSuccessAt': '2026-10-16T19:44:37Z',
+                         'snapshotId': 'official-1',
+                         'snapshotHash': None},
+        deployment_receipt=_valid_deployment(),
+        biggo_snapshot_hash='sha256:' + 'b' * 64,
+        now=dt.datetime(2026, 10, 17, 4, 0, tzinfo=dt.timezone.utc).timestamp())
+    assert s['official']['status'] == 'degraded'
+    assert s['official']['safeReason'] == 'official-snapshot-untrusted'
+    assert s['official']['lastAcquiredAt'] is None
+    r = check_health_summary.evaluate(s, now=dt.datetime(2026, 10, 17, 4, 0,
+                                                         tzinfo=dt.timezone.utc))
+    assert r['ok'] is False
+    assert any('official:degraded' in f for f in r['failures'])
+
+
+def test_official_failed_unknown_never_uses_site_deployment_time():
+    s = source_status.build_status(
+        metadata=_meta_for_deploy(),
+        emsd_receipt=_receipt(),
+        official_status={'decision': 'queue-kept-fail-closed',
+                         'generatedAt': '2026-10-17T03:00:00Z',
+                         'lastSuccessAt': '2026-10-10T01:00:00Z',
+                         'snapshotId': 'official-old',
+                         'snapshotHash': 'sha256:' + 'b' * 64},
+        deployment_receipt=_valid_deployment())
+    assert s['official']['status'] == 'degraded'
+    assert s['official']['lastAppliedAt'] is None
+    assert s['official']['lastAppliedDate'] is None
+    assert s['official']['lastAcquiredAt'] == '2026-10-10T01:00:00Z'
+    assert s['official']['snapshotHash'] == 'sha256:' + 'b' * 64
+
+
+def test_official_ok_requires_full_hash_id_and_explicit_apply_fact():
+    base = {'decision': 'advanced', 'generatedAt': '2026-10-16T19:44:37Z',
+            'lastSuccessAt': '2026-10-16T19:44:37Z',
+            'snapshotId': 'official-1', 'snapshotHash': 'sha256:' + 'b' * 64,
+            'lastAppliedAt': '2026-10-16T20:00:00Z',
+            'appliedSnapshotHash': 'sha256:' + 'b' * 64}
+    s = source_status.build_status(metadata=_meta_for_deploy(),
+                                  official_status=base,
+                                  deployment_receipt=_valid_deployment())
+    assert s['official']['status'] == 'ok'
+    assert s['official']['lastAppliedAt'] == '2026-10-16T20:00:00Z'
+    no_id = dict(base); no_id.pop('snapshotId')
+    s2 = source_status.build_status(metadata=_meta_for_deploy(), official_status=no_id,
+                                    deployment_receipt=_valid_deployment())
+    assert s2['official']['status'] == 'degraded'
+    assert s2['official']['lastAppliedAt'] is None

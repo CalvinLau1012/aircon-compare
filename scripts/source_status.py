@@ -34,6 +34,8 @@ SAFE_REASONS = {
     'awaiting-source', 'sources-degraded', 'price-snapshot-preserved',
     'price-apply-failed', 'needs-review', 'quota-or-lease-blocked',
     'receipt-missing', 'receipt-invalid', 'metadata-missing',
+    'official-snapshot-untrusted', 'official-success-unverified',
+    'official-no-verified-snapshot',
 }
 SHA_RE = re.compile(r'^sha256:[0-9a-f]{64}$')
 UTC_RE = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$')
@@ -139,22 +141,31 @@ def validate_status(status):
 
 
 def deployment_matches(metadata, receipt):
-    """True only when a deployment receipt is bound to this exact release."""
+    """True only when a deployment receipt is bound to this exact release.
+
+    All four identity facts are mandatory and must be equal.  An old receipt
+    that merely has correctly shaped liveHashes is NOT proof for a new build.
+    """
     if not isinstance(receipt, dict) or receipt.get('success') is not True:
         return False
     if not _valid_ts(receipt.get('deployedAt')):
         return False
     metadata = metadata if isinstance(metadata, dict) else {}
-    if receipt.get('build') and metadata.get('build') and receipt['build'] != metadata['build']:
+    meta_build = metadata.get('build')
+    meta_payload = metadata.get('releasePayloadHash')
+    rec_build = receipt.get('build')
+    rec_payload = receipt.get('releasePayloadHash')
+    for value in (meta_build, meta_payload, rec_build, rec_payload):
+        if not isinstance(value, str) or not value.strip():
+            return False
+    if rec_build != meta_build or rec_payload != meta_payload:
         return False
-    if receipt.get('releasePayloadHash') and metadata.get('releasePayloadHash') \
-            and receipt['releasePayloadHash'] != metadata['releasePayloadHash']:
+    rec_id = receipt.get('receiptId')
+    if not isinstance(rec_id, str) or not rec_id.strip():
         return False
     live = receipt.get('liveHashes')
     required = {'index.html', '空調對比報告.pdf', 'emsd_空調能源標籤.csv', 'metadata.json'}
-    if not isinstance(live, dict) or not required <= set(live):
-        return False
-    if not isinstance(receipt.get('receiptId'), str) or not receipt['receiptId']:
+    if not isinstance(live, dict) or set(live) != required:
         return False
     for v in live.values():
         if not (isinstance(v, str) and SHA_RE.match(v)):
@@ -241,27 +252,60 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
         extra={'cycleId': cycle, 'stage': stage} if cycle is not None or stage is not None else None,
     )
     decision = official.get('decision')
+    now_dt = _dt.datetime.fromtimestamp(now if now is not None else time.time(),
+                                        _dt.timezone.utc)
+    def _trusted_ts(value):
+        if not _valid_ts(value):
+            return None
+        try:
+            dt = _dt.datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+        except ValueError:
+            return None
+        if dt > now_dt + _dt.timedelta(minutes=5):
+            return None
+        return value
+    attempt_at = _trusted_ts(official.get('generatedAt'))
+    last_success = _trusted_ts(official.get('lastSuccessAt'))
+    current_success = last_success or (attempt_at if decision == 'advanced' else None)
+    snap_hash = official.get('snapshotHash')
+    snap_id = official.get('snapshotId')
+    hash_ok = isinstance(snap_hash, str) and bool(SHA_RE.match(snap_hash))
+    id_ok = isinstance(snap_id, str) and bool(snap_id.strip())
+    success_time_ok = current_success is not None
     if decision == 'advanced':
-        ostatus, oreason = 'ok', 'applied'
+        if hash_ok and id_ok and success_time_ok:
+            ostatus, oreason = 'ok', 'applied'
+        else:
+            ostatus = 'degraded'
+            oreason = ('official-snapshot-untrusted' if not hash_ok or not id_ok
+                       else 'official-success-unverified')
     elif decision == 'queue-kept-pending-coverage':
         ostatus, oreason = 'degraded', 'sources-degraded'
     elif decision == 'queue-kept-fail-closed':
         ostatus, oreason = 'degraded', 'sources-degraded'
     else:
         ostatus, oreason = 'unknown', 'legacy-unknown'
-    official_ok = decision == 'advanced'
+    # Failed/pending attempts may keep a previously verified snapshot; never
+    # use this deployment's deployedAt as an official apply fact.
+    selected_hash = snap_hash if hash_ok else None
+    selected_id = snap_id if id_ok else None
+    official_applied = official.get('lastAppliedAt')
+    applied_hash = official.get('appliedSnapshotHash')
+    official_applied = (_trusted_ts(official_applied)
+                        if selected_hash and applied_hash == selected_hash
+                        and (ostatus == 'ok' or decision != 'advanced') else None)
+    if decision == 'advanced':
+        official_acquired = current_success if ostatus == 'ok' else None
+    else:
+        official_acquired = last_success
     official_block = _source_block(
         ostatus,
-        last_attempt_at=official.get('generatedAt'),
-        # A failed/pending attempt is NOT a successful acquisition.  Preserve
-        # the last verified snapshot time/hash only; never copy the failed
-        # attempt's generatedAt into lastAcquiredAt.
-        last_acquired_at=(official.get('generatedAt') if official_ok
-                          else official.get('lastSuccessAt')),
-        last_applied_at=deployed_at,
-        last_applied_date=(deployed_at[:10] if deployed_at else None),
-        snapshot_id=official.get('snapshotId'),
-        snapshot_hash=official.get('snapshotHash'),
+        last_attempt_at=attempt_at,
+        last_acquired_at=official_acquired,
+        last_applied_at=official_applied,
+        last_applied_date=(official_applied[:10] if official_applied else None),
+        snapshot_id=selected_id,
+        snapshot_hash=selected_hash,
         safe_reason=oreason,
     )
     publish = {
@@ -273,15 +317,17 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
                               if isinstance(deployment_receipt, dict) else None),
         'releasePayloadHash': metadata.get('releasePayloadHash'),
     }
-    return {
+    out = {
         'schemaVersion': SCHEMA_VERSION,
         'generatedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ',
                                      time.gmtime(now if now is not None else time.time())),
-        'emsd': emsd_block,
-        'biggo': biggo_block,
-        'official': official_block,
-        'publish': publish,
     }
+    # Explicit assignments (not a literal with any chance of duplicate keys).
+    out['emsd'] = emsd_block
+    out['biggo'] = biggo_block
+    out['official'] = official_block
+    out['publish'] = publish
+    return out
 
 
 def finalize_status(status, metadata):
