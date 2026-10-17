@@ -23,6 +23,10 @@ import re
 import sys
 import time
 
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE not in sys.path:
+    sys.path.insert(0, BASE)
+
 SCHEMA_VERSION = 1
 STATUSES = ('ok', 'pending', 'degraded', 'blocked', 'unknown')
 SAFE_REASONS = {
