@@ -162,12 +162,14 @@ def main(argv=None):
         subprocess.run(['git', 'config', 'user.email', 'candidate-acceptance@invalid'],
                        cwd=candidate, check=True)
         subprocess.run(['git', 'add', '-A'], cwd=candidate, check=True)
-        subprocess.run(['git', 'commit', '-q', '-m', 'isolated candidate snapshot'],
-                       cwd=candidate, check=True, env={
-                           **os.environ,
-                           'GIT_AUTHOR_DATE': '2026-01-01T00:00:00Z',
-                           'GIT_COMMITTER_DATE': '2026-01-01T00:00:00Z',
-                       })
+        staged = subprocess.run(['git', 'diff', '--cached', '--quiet'], cwd=candidate)
+        if staged.returncode != 0:
+            subprocess.run(['git', 'commit', '-q', '-m', 'isolated candidate snapshot'],
+                           cwd=candidate, check=True, env={
+                               **os.environ,
+                               'GIT_AUTHOR_DATE': '2026-01-01T00:00:00Z',
+                               'GIT_COMMITTER_DATE': '2026-01-01T00:00:00Z',
+                           })
         try:
             with open(os.path.join(repo, 'metadata.json'), encoding='utf-8') as f:
                 meta = json.load(f)
