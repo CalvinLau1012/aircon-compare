@@ -162,18 +162,37 @@ def test_health_summary_validates_binding_and_unconfigured_unknown(tmp_path):
                          'snapshotHash': 'sha256:' + 'b' * 64},
         deployment_receipt=dep,
         now=dt.datetime(2026, 10, 17, 4, 0, tzinfo=dt.timezone.utc).timestamp())
-    r = check_health_summary.evaluate(s, now=dt.datetime(2026, 10, 17, 4, 0,
-                                                         tzinfo=dt.timezone.utc))
+    summary = {
+        'schemaVersion': 1, 'kind': 'aircon-source-health-summary',
+        'checkedAt': '2026-10-17T04:00:00Z', 'ok': True, 'status': 'healthy',
+        'failures': [], 'sourceStatusHash': 'sha256:' + '1' * 64,
+        'sourceStatusGeneratedAt': s['generatedAt'],
+        'build': s['publish']['build'], 'releasePayloadHash': s['publish']['releasePayloadHash'],
+        'deploymentReceipt': s['publish']['deploymentReceipt'],
+        'emsdSnapshotHash': s['emsd']['snapshotHash'],
+        'biggoSnapshotHash': s['biggo']['snapshotHash'],
+        'officialSnapshotHash': s['official']['snapshotHash'],
+        'officialManifestHash': s['official']['snapshotHash'],
+        'sources': {n: {'status': s[n]['status'], 'snapshotHash': s[n]['snapshotHash']}
+                    for n in ('emsd', 'biggo', 'official')},
+    }
+    r = check_health_summary.evaluate(summary, now=dt.datetime(2026, 10, 17, 4, 0,
+                                                               tzinfo=dt.timezone.utc))
     assert r['ok'] is True, r
-    # Root counterexample: valid dates but a blocked source must not be healthy.
-    blocked = json.loads(json.dumps(s))
-    blocked['biggo']['status'] = 'blocked'
-    blocked['biggo']['safeReason'] = 'needs-review'
+    # Raw source status without health-check evidence is not PASS.
+    raw = check_health_summary.evaluate(s)
+    assert raw['ok'] is None and raw['status'] == 'unknown'
+    # Blocked source in summary must be unhealthy.
+    blocked = json.loads(json.dumps(summary)); blocked['sources']['biggo']['status'] = 'blocked'
     assert check_health_summary.evaluate(blocked)['ok'] is False
-    assert any('biggo:blocked' in f for f in
-               check_health_summary.evaluate(blocked)['failures'])
-    bad = json.loads(json.dumps(s)); bad['emsd']['snapshotHash'] = None
+    bad = json.loads(json.dumps(summary)); bad['emsdSnapshotHash'] = None
     assert check_health_summary.evaluate(bad)['ok'] is False
+    stale = json.loads(json.dumps(summary)); stale['checkedAt'] = '2020-01-01T00:00:00Z'
+    assert check_health_summary.evaluate(stale)['ok'] is False
+    missing = json.loads(json.dumps(summary)); missing.pop('sources')
+    assert check_health_summary.evaluate(missing)['ok'] is False
+    wrong = json.loads(json.dumps(summary)); wrong['build'] = 'OTHER'
+    assert check_health_summary.evaluate(wrong, expected_metadata={'build': 'B1'})['ok'] is False
     # A deployment receipt for a different build/payload must not be accepted.
     old_dep = dict(dep, build='OLD', releasePayloadHash='sha256:' + '0' * 64)
     old = source_status.build_status(
@@ -288,8 +307,8 @@ def test_official_advanced_missing_full_hash_cannot_be_ok_or_healthy(tmp_path):
     assert s['official']['lastAcquiredAt'] is None
     r = check_health_summary.evaluate(s, now=dt.datetime(2026, 10, 17, 4, 0,
                                                          tzinfo=dt.timezone.utc))
-    assert r['ok'] is False
-    assert any('official:degraded' in f for f in r['failures'])
+    assert r['ok'] is not True
+    assert r['status'] == 'unknown'
 
 
 def test_official_failed_unknown_never_uses_site_deployment_time():
@@ -352,7 +371,7 @@ def test_completed_sync_missing_history_degrades_biggo_even_if_provider_ok():
     assert s['biggo']['snapshotHash'] == 'sha256:' + 'b' * 64
     import check_health_summary
     assert check_health_summary.evaluate(
-        s, now=dt.datetime(2026, 10, 17, 4, 0, tzinfo=dt.timezone.utc))['ok'] is False
+        s, now=dt.datetime(2026, 10, 17, 4, 0, tzinfo=dt.timezone.utc))['ok'] is not True
 
 
 def test_completed_sync_success_does_not_degrade():
@@ -364,3 +383,11 @@ def test_completed_sync_success_does_not_degrade():
         completed_sync={'ok': True, 'reason': 'applied', 'applied': True},
         now=dt.datetime(2026, 10, 17, 4, 0, tzinfo=dt.timezone.utc).timestamp())
     assert s['biggo']['status'] == 'ok'
+
+
+def test_completed_receive_step_precedes_provider_stage_in_daily():
+    p = os.path.join(BASE, '.github', 'workflows', 'daily-update.yml')
+    text = open(p, encoding='utf-8').read()
+    i_recv = text.index('接收 shared BigGo completed bundle')
+    i_provider = text.index('價錢快照分批更新（BigGo API')
+    assert i_recv < i_provider, 'completed receive 必須在 provider stage 前'

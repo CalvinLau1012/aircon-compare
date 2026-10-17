@@ -52,7 +52,9 @@ jobs:
         env:
           AIRCON_HEALTH_SUMMARY_URL: ${{ secrets.AIRCON_HEALTH_SUMMARY_URL }}
         run: |
-          python scripts/check_health_summary.py             --report "$RUNNER_TEMP/source-health-summary.json"             --max-age-hours 48
+          python scripts/check_health_summary.py \
+            --report "$RUNNER_TEMP/source-health-summary.json" \
+            --max-age-hours 48 --metadata metadata.json
 
       - name: 72h freshness＋監控告警（無論上一步結果都要處理）
         if: always()

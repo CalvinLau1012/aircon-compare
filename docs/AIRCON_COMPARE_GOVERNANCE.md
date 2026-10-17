@@ -2265,3 +2265,16 @@ aircon-compare/
 - **Completed receive**：GitHub daily 的 receive 已移到 provider stage 之前；private full run-update 亦在網絡抓取前。`sync_biggo_completed.py` 所有出口（未配置、GET 失敗、state 缺、history gap、驗證／import、already-applied、remote-not-completed、apply）都原子寫版本化 report，失敗不沿用上次成功 report；missing history／unavailable 經 source_status 的 BigGo degraded 及 monitor/CI 可見。
 - **獨立健康入口**：新增 private read-only `aircon-health-monitor.sh` wrapper 與候選 `/etc/cron.d/aircon-health`（*/15），只讀 source status／metadata／deployment receipt／web root，不執行 run-update、sync_code、fetch、provider、queue 或 publish；候選檔未安裝。Read-only 核實現有 live updater cron 為 `30 0 * * *` HKT（不是 run-update header 的 03:30）；候選 health cron 與 updater 分離，正式啟用待 Root。
 - **身份**：此 v3 候選的最終 commit／image／test 數字見 repo 外 `evidence/workflow-repair-20261017/v3/`、handoff 及 status matrix；本文件不重複固定可變 hash。Health URL、live merge/deploy/repair、next schedule observation 仍 pending，不可稱全方案或 live 完成。
+
+---
+
+## 附錄 H. 2026-10-17 追加：v4 CLI／actual official manifest／health summary 契約（supersede v3 過度聲稱）
+
+> 本節只追加。v3 曾稱「monitor 已核對 official manifest」，實際只比較兩個聲稱 hash，未重讀 actual official outputs；此為過度聲稱，現由本節更正。沒有 live 服務／資料／coordinator／排程／remote 改動。
+
+- **CLI 入口**：`publish_official_status.py` 在 import repo-root `biggo_canonical` 前 bootstrap BASE；fresh env（unset PYTHONPATH）`--help` 及 real receipt→out 已用 subprocess 驗證。其他本輪新增／改動 CLI 亦做 fresh env help／local synthetic input 檢查。
+- **Official manifest**：advanced publisher 會把可重算的版本化 `outputManifest`（stage、精確允許 output 名稱、bytes size、full `sha256:`、manifestHash）保存在 official status；private monitor 在 official 聲稱 ok 或仍有 snapshotHash 時，必須有對應 manifest，重讀每個 actual output 驗 size/hash 及有效非空 JSON/evidence，並驗 manifestHash/snapshotHash/stage/成功時間綁定。缺失、短 hash、錯 hash、錯 stage/檔集合、JSON 損毀、manifestHash 錯、成功時間不符全部 unhealthy；不存在時不可默默跳過。Pending/unknown/degraded/blocked 總體仍非 ok。
+- **Health summary**：private monitor（含獨立 wrapper）每次原子寫 `source_health_summary.json`，即使失敗亦覆寫 unhealthy，包含 version/checkedAt/ok/status/safe failures，以及 sourceStatusHash、build、releasePayloadHash、deploymentReceipt、emsd/biggo/official snapshot hashes、officialManifestHash、sources 狀態。Public `check_health_summary` 只接受此明確 summary 契約，驗時效／版本／健康值／來源狀態／hash/build/receipt 綁定；raw sourceStatus 或缺健康證據回 unknown，不默認 PASS；未設 `AIRCON_HEALTH_SUMMARY_URL` 仍 UNKNOWN 非零。
+- **Completed receive**：GitHub daily receive 已置於 provider stage 前；sync 所有出口寫版本化 atomic report；missing history 經 sourceStatus BigGo degraded 與 summary/monitor 可見。無 coordinator 寫入、無猜 baseline。
+- **驗證**：actual runner receipt→publisher→sourceStatus→monitor summary→public client 正向 green；corrupt price/CSV/official、缺 manifest、錯 hash/stage、損毀 receipt/metadata 均轉 unhealthy summary，public CLI fail；獨立 wrapper 與 public client 同一離線鏈。V4 最終 identity 見 repo 外 `evidence/workflow-repair-20261017/v4/`。
+- **Pending**：health URL、live merge/deploy/private cutover/live repair/schedule activation/next 00:30 observation。不稱全方案或 live 完成。

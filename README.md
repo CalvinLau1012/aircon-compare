@@ -746,3 +746,9 @@ python fetch_rasonic.py        # 樂信官方網店價格
 - Official advanced 需版本化 outputManifest（指定名稱＋full bytes hash）；coverage pending 保留完整舊快照，不混合新舊。
 - Private monitor 對 corrupt/pending/unknown/degraded/blocked、bad generatedAt、manifest/receipt mismatch 全部 unhealthy；另有獨立 read-only health wrapper／候選 cron，未安裝。
 - Completed receive 已移到 GitHub provider stage 前，所有出口寫 durable report，missing history 經 source status/monitor 可見。
+
+## 2026-10-17 v4 追加
+
+- Publisher CLI 可在 fresh env 直接執行；official advanced 會保存可重算 outputManifest，monitor 重讀 actual official outputs 驗 bytes/JSON/evidence 及成功時間。
+- Private monitor 每次寫 sanitised `source_health_summary.json`（失敗亦覆寫 unhealthy）；public client 只接受 summary 契約，raw status 不默認 PASS。
+- GitHub completed receive 在 provider 前；所有 sync 出口寫 durable report，history gap 可見。

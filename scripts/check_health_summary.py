@@ -30,56 +30,72 @@ def _load(url=None, path=None, timeout=20):
         return json.loads(resp.read().decode('utf-8'))
 
 
-def evaluate(status, *, now=None, max_age_hours=48):
-    errors = source_status.validate_status(status)
-    if errors:
-        return {'ok': False, 'failures': ['schema:' + e for e in errors[:10]]}
+def evaluate(summary, *, now=None, max_age_hours=48, expected_metadata=None):
+    """Validate the sanitised private health summary, not a raw sourceStatus."""
     now = now or dt.datetime.now(dt.timezone.utc)
+    if not isinstance(summary, dict) or summary.get('kind') != 'aircon-source-health-summary':
+        return {'ok': None, 'status': 'unknown',
+                'reason': 'raw-status-or-unsupported-summary-without-health-check',
+                'failures': ['summary:unsupported-or-missing-health-evidence']}
     failures = []
-    emsd = status.get('emsd') or {}
-    official = status.get('official') or {}
-    for name in ('emsd', 'biggo', 'official'):
-        block = status.get(name) or {}
-        st = block.get('status')
-        if st != 'ok':
-            failures.append(f'{name}:{st}:{block.get("safeReason")}')
-        if st == 'ok':
+    if summary.get('schemaVersion') != 1:
+        failures.append('summary:schemaVersion-unsupported')
+    checked = None
+    try:
+        checked = dt.datetime.fromisoformat(str(summary.get('checkedAt')).replace('Z', '+00:00'))
+    except ValueError:
+        pass
+    if checked is None or checked.tzinfo is None or checked.utcoffset() != dt.timedelta(0):
+        failures.append('summary:checkedAt-invalid')
+    elif checked > now + dt.timedelta(minutes=5):
+        failures.append('summary:checkedAt-future')
+    elif (now - checked).total_seconds() > max_age_hours * 3600:
+        failures.append('summary:checkedAt-stale')
+    if summary.get('ok') is not True or summary.get('status') != 'healthy':
+        failures.append('summary:not-healthy')
+    if summary.get('failures'):
+        failures.append('summary:contains-failures')
+    if not (isinstance(summary.get('sourceStatusHash'), str)
+            and source_status.SHA_RE.match(summary['sourceStatusHash'])):
+        failures.append('summary:sourceStatusHash-invalid')
+    try:
+        gen = dt.datetime.fromisoformat(str(summary.get('sourceStatusGeneratedAt')).replace('Z', '+00:00'))
+        if gen.tzinfo is None or gen.utcoffset() != dt.timedelta(0):
+            raise ValueError
+    except (ValueError, TypeError):
+        failures.append('summary:sourceStatusGeneratedAt-invalid')
+    for field in ('releasePayloadHash', 'emsdSnapshotHash', 'biggoSnapshotHash',
+                  'officialSnapshotHash', 'officialManifestHash'):
+        value = summary.get(field)
+        if not (isinstance(value, str) and source_status.SHA_RE.match(value)):
+            failures.append(f'summary:{field}-invalid')
+    for field in ('build', 'deploymentReceipt'):
+        value = summary.get(field)
+        if not isinstance(value, str) or not value.strip():
+            failures.append(f'summary:{field}-missing')
+    if summary.get('officialManifestHash') != summary.get('officialSnapshotHash'):
+        failures.append('summary:official-manifest-snapshot-hash-mismatch')
+    sources = summary.get('sources')
+    if not isinstance(sources, dict) or set(sources) != {'emsd', 'biggo', 'official'}:
+        failures.append('summary:sources-missing')
+    else:
+        for name in ('emsd', 'biggo', 'official'):
+            block = sources.get(name) or {}
+            if block.get('status') != 'ok':
+                failures.append(f'summary:{name}-not-ok')
             h = block.get('snapshotHash')
             if not (isinstance(h, str) and source_status.SHA_RE.match(h)):
-                failures.append(f'{name}:ok-without-full-snapshotHash')
-    gen = status.get('generatedAt')
-    try:
-        gen_dt = dt.datetime.fromisoformat(str(gen).replace('Z', '+00:00')) if gen else None
-    except ValueError:
-        gen_dt = None
-    if gen_dt is None:
-        failures.append('status:generatedAt-missing-or-invalid')
-    elif gen_dt > now + dt.timedelta(minutes=5):
-        failures.append('status:generatedAt-future')
-    elif (now - gen_dt).total_seconds() > max_age_hours * 3600:
-        failures.append('status:generatedAt-stale')
-    pub = status.get('publish') or {}
-    if not pub.get('deployedAt') or not pub.get('deploymentReceipt'):
-        failures.append('publish:no-verified-deployment-receipt')
-    if pub.get('deployedAt') and not pub.get('deploymentReceipt'):
-        failures.append('publish:deployedAt-without-receipt')
-    for name in ('emsd', 'biggo', 'official'):
-        block = status.get(name) or {}
-        ts = block.get('lastAppliedAt') or block.get('lastAcquiredAt')
-        if not ts:
-            continue
-        try:
-            when = dt.datetime.fromisoformat(ts.replace('Z', '+00:00'))
-        except ValueError:
-            failures.append(f'{name}:timestamp-invalid')
-            continue
-        if when > now + dt.timedelta(minutes=5):
-            failures.append(f'{name}:timestamp-future')
-        if (now - when).total_seconds() > max_age_hours * 3600:
-            failures.append(f'{name}:age>{max_age_hours}h')
-    return {'ok': not failures, 'failures': failures[:20],
-            'checkedAt': now.strftime('%Y-%m-%dT%H:%M:%SZ')}
-
+                failures.append(f'summary:{name}-snapshotHash-invalid')
+            elif h != summary.get(name + 'SnapshotHash'):
+                failures.append(f'summary:{name}-snapshotHash-binding-mismatch')
+    if isinstance(expected_metadata, dict):
+        for field, key in (('build', 'build'), ('releasePayloadHash', 'releasePayloadHash'),
+                           ('emsdSnapshotHash', 'datasetHash')):
+            if expected_metadata.get(key) != summary.get(field):
+                failures.append(f'summary:{field}-metadata-binding-mismatch')
+    return {'ok': not failures, 'status': 'healthy' if not failures else 'unhealthy',
+            'failures': failures[:20],
+            'checkedAt': summary.get('checkedAt')}
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description='validate sanitised health summary')
@@ -87,6 +103,8 @@ def main(argv=None):
     ap.add_argument('--file', default=None)
     ap.add_argument('--report', required=True)
     ap.add_argument('--max-age-hours', type=float, default=48)
+    ap.add_argument('--metadata', default=None,
+                    help='optional expected metadata for build/payload/EMSD binding')
     args = ap.parse_args(argv)
     report = {'schemaVersion': 1, 'configured': bool(args.url or args.file),
               'status': 'unknown'}
@@ -96,10 +114,16 @@ def main(argv=None):
                        'requiredAction': 'configure AIRCON_HEALTH_SUMMARY_URL secret'})
     else:
         try:
-            status = _load(args.url, args.file)
-            report.update(evaluate(status, max_age_hours=args.max_age_hours))
+            summary = _load(args.url, args.file)
+            expected = None
+            if args.metadata:
+                with open(args.metadata, encoding='utf-8') as f:
+                    expected = json.load(f)
+            report.update(evaluate(summary, max_age_hours=args.max_age_hours,
+                                   expected_metadata=expected))
         except Exception as e:  # noqa: BLE001
-            report.update({'ok': False, 'failures': [f'fetch:{type(e).__name__}']})
+            report.update({'ok': False, 'status': 'unhealthy',
+                           'failures': [f'fetch:{type(e).__name__}']})
     try:
         os.makedirs(os.path.dirname(os.path.abspath(args.report)) or '.', exist_ok=True)
         tmp = args.report + '.tmp'

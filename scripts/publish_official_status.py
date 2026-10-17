@@ -11,6 +11,10 @@ import json
 import os
 import sys
 
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE not in sys.path:
+    sys.path.insert(0, BASE)
+
 from biggo_canonical import canonical_json_bytes, sha256_id
 
 DECISIONS = {
@@ -148,6 +152,7 @@ def main(argv=None):
         snapshot_hash = receipt['outputManifest']['manifestHash']
         last_success = receipt['finishedAt']
         snapshot_id = 'official-' + str(receipt['stage']) + '-' + snapshot_hash[-12:]
+        output_manifest = receipt['outputManifest']
     else:
         # Preserve only a previously verified complete snapshot; the current
         # partial/staged outputs are NOT advertised as a new snapshot.
@@ -156,12 +161,14 @@ def main(argv=None):
         snapshot_hash = previous_hash if previous_hash and _valid_time(previous_time) else None
         last_success = previous_time if snapshot_hash else None
         snapshot_id = previous.get('snapshotId') if snapshot_hash else None
+        output_manifest = previous.get('outputManifest') if snapshot_hash else None
     status = {
         'schemaVersion': 1,
         'decision': decision,
         'lastSuccessAt': last_success,
         'snapshotId': snapshot_id,
         'snapshotHash': snapshot_hash,
+        'outputManifest': output_manifest,
         'stage': receipt.get('stage'),
         # pendingCoverage 係 OR：queue model 未有覆蓋 或 script 確認 coverage pending
         'pendingCoverage': decision == 'queue-kept-pending-coverage',

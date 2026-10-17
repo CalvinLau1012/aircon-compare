@@ -172,3 +172,18 @@ def test_real_runner_receipt_projects_trusted_manifest_chain(tmp_path, monkeypat
     assert s['official']['status'] == 'ok'
     assert s['official']['snapshotHash'] == st['snapshotHash']
     assert s['official']['lastAcquiredAt'] == receipt['finishedAt']
+
+
+def test_publisher_cli_runs_fresh_env_and_real_receipt(tmp_path):
+    import subprocess
+    script = os.path.join(BASE, 'scripts', 'publish_official_status.py')
+    env = {k: v for k, v in os.environ.items() if k != 'PYTHONPATH'}
+    p = subprocess.run([sys.executable, script, '--help'], cwd=BASE, env=env,
+                       capture_output=True, text=True)
+    assert p.returncode == 0 and '--receipt' in p.stdout
+    out = tmp_path / 'status.json'
+    p = subprocess.run([sys.executable, script, '--receipt',
+                        str(_advanced_receipt(tmp_path)), '--out', str(out)],
+                       cwd=BASE, env=env, capture_output=True, text=True)
+    assert p.returncode == 0, p.stderr
+    assert json.load(open(out))['snapshotHash'].startswith('sha256:')
