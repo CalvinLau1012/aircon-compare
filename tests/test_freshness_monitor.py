@@ -231,3 +231,32 @@ def test_monitor_workflow_contract():
     assert '--postdeploy-report' in text
     assert 'fetch-depth: 0' in text, '--repro-from-commit 需要完整歷史讀 deployed commit'
     assert '--repro-from-commit' in text
+
+
+def test_fresh_but_deployment_mismatch_is_not_called_stale_and_dedups():
+    fresh = freshness.evaluate(_meta(_now(), 3600), _now(),
+                               deployment={'mismatch': True,
+                                           'failures': ['metadata.build', 'metadata.commit']})
+    assert fresh['ok'] is True and fresh['stale'] is False
+    assert fresh['deploymentMismatch'] is True
+    assert fresh['ageStale'] is False
+    assert 'deployment_mismatch' in freshness.classify(fresh)
+    p = freshness.plan_issue(None, fresh)
+    assert p['action'] == 'create'
+    assert 'deployment mismatch: True' in p['body']
+    assert 'age stale: False' in p['body']
+    assert freshness.plan_issue({'body': p['body']}, fresh)['action'] == 'noop'
+    # Recovering deployment closes; age stays fresh.
+    healed = freshness.evaluate(_meta(_now(), 3600), _now(),
+                                deployment={'mismatch': False, 'failures': []})
+    healed['postdeployOk'] = True
+    assert freshness.plan_issue({'body': p['body']}, healed)['action'] == 'close'
+
+
+def test_stale_and_deployment_mismatch_are_separate_facts():
+    both = freshness.evaluate(_meta(_now(), 73 * 3600), _now(),
+                              deployment={'mismatch': True,
+                                          'failures': ['payload.releasePayloadHash']})
+    assert both['stale'] is True and both['deploymentMismatch'] is True
+    assert 'stale_over_72h' in freshness.classify(both)
+    assert 'deployment_mismatch' in freshness.classify(both)

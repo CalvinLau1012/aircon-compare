@@ -149,9 +149,12 @@ def plan_record_results(results, protected=None, batch_id=None, brand_of=None, *
         if has_price:
             new_tracking.pop(key, None)
             continue
-        rec = new_tracking.get(key)
-        if not isinstance(rec, dict):
-            rec = {'first_missed': today, 'misses': 0}
+        # 必須複製既有 record 才修改：dict(tracking) 只係淺複製，nested rec 仍係
+        # caller 傳入物件嘅 alias。舊實作會喺 preState hash／compute_effects 之前
+        # 靜默改動 caller 的 tracking（2026-10-17 已證實）；純 planner 不得有副作用。
+        existing = new_tracking.get(key)
+        rec = dict(existing) if isinstance(existing, dict) else {
+            'first_missed': today, 'misses': 0}
         if batch_id and rec.get('batch_id') == batch_id:
             continue  # 同一批次重跑，唔重複計 miss
         rec['last_checked'] = today

@@ -105,9 +105,8 @@ def validate_metadata_for_pdf(meta):
     import sys as _sys
     _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'scripts'))
     from validate_metadata import validate, validate_core
-    from extract_governance import extract_blocks, GOV_FILE
-    with open(GOV_FILE, encoding='utf-8') as f:
-        schema = extract_blocks(f.read())['AIRCON_METADATA_SCHEMA_V1']
+    from extract_governance import metadata_schema
+    schema = metadata_schema()
     if 'releasePayloadHash' in meta:
         return validate(meta, schema)
     return validate_core(meta, schema)

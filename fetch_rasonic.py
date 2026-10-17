@@ -19,7 +19,7 @@ import re
 import sys
 import time
 
-from crawl_utils import (fetch, no_verify_ssl_context, batch_failed, save_json,
+from crawl_utils import (fetch, official_ssl_context_for_url, batch_failed, save_json,
                          emit_fetch_receipt, coverage_pending_reason,
                          load_models, norm_model)
 
@@ -27,14 +27,13 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-CTX = no_verify_ssl_context()
 
 # 支援型號 token：RC-xxx（樂信）同 FR-KSxx（霜牌/Frostar）
 MODEL_TOKEN_RE = re.compile(r'(FR-KS\d+[A-Z]*|RC-[A-Z0-9]+)')
 
 
 def get(url, timeout=15):
-    return fetch(url, timeout=timeout, context=CTX)
+    return fetch(url, timeout=timeout, context=official_ssl_context_for_url(url))
 
 
 def strip_html(html):

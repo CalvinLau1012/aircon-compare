@@ -68,6 +68,7 @@ def main(argv=None):
         return 1
     result = None
     post_ok = True
+    deployment = None
     if args.postdeploy_report:
         if not os.path.isfile(args.postdeploy_report):
             post_ok = False
@@ -77,6 +78,11 @@ def main(argv=None):
             try:
                 post = json.load(open(args.postdeploy_report, encoding='utf-8'))
                 post_ok = post.get('ok') is True and not post.get('failures')
+                failures = post.get('failures') or []
+                if isinstance(failures, list):
+                    ids = [str(f) for f in failures]
+                    mismatch = any(f.startswith(('metadata.', 'payload.')) for f in ids)
+                    deployment = {'mismatch': mismatch, 'failures': ids}
             except (OSError, ValueError) as e:
                 post_ok = False
                 result = {'ok': False, 'stale': False, 'ageSeconds': None,
@@ -89,7 +95,7 @@ def main(argv=None):
             result = {'ok': False, 'stale': False, 'ageSeconds': None,
                       'reason': f'fetch_error:{type(e).__name__}'}
         else:
-            result = evaluate(meta)
+            result = evaluate(meta, deployment=deployment)
     result['postdeployOk'] = post_ok
     try:
         existing = find_open_issue(token, args.repo, args.label)

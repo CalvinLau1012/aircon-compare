@@ -11,15 +11,15 @@ import re
 import sys
 import time
 
-from crawl_utils import (fetch, no_verify_ssl_context, batch_failed, save_json,
-                         emit_fetch_receipt, coverage_pending_reason,
-                         COVERAGE_PENDING_REASONS, load_models, norm_model)
+from crawl_utils import (fetch, official_ssl_context_for_url,
+                         batch_failed, save_json, emit_fetch_receipt,
+                         coverage_pending_reason, COVERAGE_PENDING_REASONS,
+                         load_models, norm_model)
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-CTX = no_verify_ssl_context()
 
 # 分類頁攞到嘅全部產品 URL（含 item id）
 PANASONIC = [
@@ -69,7 +69,7 @@ COMFEE_MODELS = [
 
 
 def get(url, timeout=15):
-    return fetch(url, timeout=timeout, context=CTX)
+    return fetch(url, timeout=timeout, context=official_ssl_context_for_url(url))
 
 
 def strip_html(html):

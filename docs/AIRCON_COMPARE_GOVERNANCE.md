@@ -1067,6 +1067,14 @@ Hash 只能证明字节一致，不能单独证明来源真实。
 > （integer、minimum 0），向後兼容；`recordCount` 繼續表示唯一型號／產品計數。
 > CI 未傳入新欄位時可以省略。
 
+> 2026-10-17（追加；向後兼容）：新增 optional `sourceStatus`，分開記錄 EMSD
+> acquisition／apply、BigGo 分批快照、publish 事實；缺值必須係 null／unknown，
+> 不得用部署時間或今日日期偽造來源日期。舊 metadata 無此欄位仍有效。UI 只可讀
+> 此已驗證欄位顯示「EMSD 資料日期／BigGo 最近成功更新（分批快照）」，price
+> apply 失敗時顯示沿用舊快照及清楚警報，不得把 BigGo 日期冒充 EMSD 日期。
+> 本節只追加機器 Schema 的 optional property 及語義，不刪改既有 Schema 版本或歷史；
+> `schemaVersion` 維持 1.0.0，舊消費者不受影響。
+
 ### 7.2 生成、发布与读取
 
 1. 生产 `metadata.json` 只能在受信任部署作业中生成；
@@ -1860,3 +1868,363 @@ aircon-compare/
 - **整合核對（2026-10-13）**：以本文件 §1.2 規則提取六個區塊（BEGIN 標記起至 END 標記止，含邊界標記、不含尾隨換行），與 GPT 審閱稿相同區段逐位元組比較，六個區塊全部相同；方法、雜湊與限制見閱讀版 §22。
 - **差異與衝突處理**：閱讀版正文為繁體書面語轉述；機器區塊內部簡體中文機器字串仍以本文件為準。如閱讀版與本文件之規範正文或機器區塊出現真正衝突，須即時停止相關高風險動作並向 Root 報告，不得由 AI 選擇或任意覆蓋；正式納入治理仍依本文件第 15 節變更控制。
 - **未變更**：產品 `VERSION`、`metadata.json`、資料／價格快照、佇列、黑名單、生成物、工作流、定時任務、Schema、門禁與成功標準。
+
+---
+
+## 附錄 C. 2026-10-17 使用者批准：工作流修復、部分失敗政策與證據更正（追加；非歷史改寫）
+
+> 本附錄只追加。原有正文、機器區塊（除 §7.1 已按向後兼容方式新增 optional `sourceStatus` 欄位）、Registry、成功標準及歷史記錄一律保留。本輪沒有正式 merge／deploy／恢復寫入／改排程／對外通知。
+
+### C.1 使用者授權與範圍
+
+使用者明確要求 **IMPLEMENT 全部修復方案**，由本候選完成實作、離線測試、備份與恢復預演；正式 merge／deploy／正式恢復寫入／改排程／發送訊息／建立 issue／dispatch workflow 仍由 Root 審核後執行。此輪沒有 BigGo／EMSD 業務呼叫，沒有 reset coordinator／lease／budget，沒有 force-batch，沒有輸出任何 token／私密 env。
+
+### C.2 已核實根因更正（取代舊報告的錯誤因果）
+
+- 舊即時健康報告把 BigGo apply 失敗描述成「bundle 後 model_status 被新機／canonical migration 改動，所以 stale bundle」。**這個因果不正確**，本附錄更正如下。
+- 真正根因：生命週期 planner 用 `dict(tracking)` 淺複製，卻直接修改 nested record；`pre_tracking` 在計算 pre-state hash／effects 之前已被改動，所以 published preState hash 錯誤，`compute_effects` 漏掉既有 record 的更新。
+- 對 2026-10-10 stage 3 的證據：只對 `FORTRESS|FWAC08M18`、`MIDEA|MWH12HR3U1` 兩個既有 record 模擬 shallow mutation，重算出 published preHash `sha256:60eae7cb...ca7f8`；實際 current tracking `sha256:82167c54...f0ce5`；把兩個漏掉的 upsert（misses+1、last_checked 2026-10-12、batch_id 2026-10-10:3/7）連同原本 7 upserts／4 removals 套用，重算 exact original postHash `sha256:7a0fecc8...8f79`。
+- 因此**不需要重新抓價、不需要 reset／restore tracking**；舊「後來 migration 令 bundle stale」的說法不成立。Coordinator `status=completed`、lease 已釋放；`providerQuotaLimit`／`providerWindowEnd` 為 null 只代表 **UNKNOWN**，不是 unlimited。
+- 本輪 repair 以 immutable receipt 形式補回兩個既有 record 更新；price bytes、acquisition 日期、cycle、queue、usage 及原 bundle 完全不改。Repair receipt 的 pre 是 actual current pre-image，另存 publishedPreState 作審計；normal apply 必須重算出原 postHash 才可繼續。
+
+### C.3 已實作的分層與安全契約
+
+- **Metadata／publication**：測試計數由同一 CSV 動態推導；新增 precommit isolated clean candidate acceptance；Pages 只可發布已驗證 bytes；rebuild／repair release 重用 hash-bound 快照，零 provider／零 acquisition，不重跑舊失敗 commit。
+- **BigGo**：lifecycle planner 無 nested alias mutation；local apply 先完成全部 preflight／metadata target 驗證，再持 exclusive lock 寫入；durable journal／checkpoint、metadata last、partial write replay、same bundle no-op、conflict fail-closed。Repair receipt 為獨立 identity，舊 bundleHash 保持不變。
+- **Official batch**：scripts 只在 isolated staging 寫入；全部驗證後才 atomic promote，hard failure 保留原 outputs／queue；coverage pending 可發布已驗證資料但不推進 queue。TLS 全面 strict；reviewed intermediate 只按 host scope 載入，先驗 SHA-256／CA 屬性／有效期／issuer，再以現有 trust root 做完整鏈驗證；不使用 `CERT_NONE`、`PARTIAL_CHAIN`。
+- **Private release**：version directory + manifest／SHA256SUMS 全量驗證，atomic pointer switch；保留舊 version，failure 保留舊指標；adoption 前先備份舊 directory；rollback 同一驗證路徑。支援實際 nginx public-root 與 release-symlink 兩種 layout，不假設可替換 mount。
+- **Queue／cross-writer**：queue repair 只依本地 EMSD／official receipt 保留已驗證 entries；不複製 GitHub queue、不盲目 rollback stage；cross-writer compare 只讀、逐 key 報告。Completed-result receiving 與 provider writer 分離；sync 入口只 GET 已完成 bundle，零 lease／provider，stage gap 或缺 history 即 alert，不跳 stage。
+- **Status／health**：`sourceStatus` 分開記錄 EMSD acquisition／apply、BigGo 分批快照、publish 事實；缺值保持 null／unknown，不用部署時間或今日日期補來源日期。UI 顯示「EMSD 資料日期」、「BigGo 最近成功更新（分批快照）」、price failure 沿用先前已驗證快照。Health 與 publish 分離；alert 不因發布成功而被隱藏；monitor 有 durable dedup／recovery，實作階段不發外部通知。
+
+### C.4 部分失敗政策（使用者已選定）
+
+- 兩端 **獨立排程**，名義上 00:30 HKT；GitHub schedule 可延遲或丟棄，延遲不觸發自動補跑、不重複查價、不改 cron。
+- 兩端共享 BigGo coordinator 的 CAS 單一 writer；不改整體主備關係。
+- 有效 EMSD 資料可繼續發布；官網／價格故障時保留已驗證舊快照並清楚告警（degraded），不可把舊價當新價。
+- 混合／損毀／來源未知仍阻斷；不可用猜測 repair、不可 silent merge、不可把 status 缺失當成功。
+
+### C.5 邊界與狀態
+
+- 本輪只交付 isolated candidate、離線測試、backup／repair rehearsal、release／rollback scripts 及 runbook；**未正式 live 寫入**。正式部署、merge、issue、dispatch、通知由 Root 後續處理。
+- Candidate 的 exact commits／hashes／test counts 見私人 handoff 記錄；公開文件不列私人 host／domain／path／repo／token／期限。
+- 失敗或缺漏會如實列在 handoff status matrix；不以本附錄文字代替運行證據。
+
+---
+
+## 附錄 D. Metadata Schema 明確版本化擴充（2026-10-17 追加）
+
+> 原 §7.1 機器區塊 bytes 保持不變。以下係獨立、明確版本化嘅 superseding extension；
+> extractor／validator 只會經 `metadata_schema()` 按 `blockId`／`supersedes` 明確讀取，
+> 唔會默默取文件最後一個區塊，亦唔會改動六個 canonical 區塊。
+
+<!-- AIRCON:SCHEMA_EXTENSION:METADATA_SCHEMA_V1_1:BEGIN -->
+```json
+{
+  "blockId": "AIRCON_METADATA_SCHEMA_V1_1",
+  "schemaVersion": "1.1.0",
+  "supersedes": "AIRCON_METADATA_SCHEMA_V1",
+  "supersedesSchemaId": "urn:aircon-compare:metadata-schema:1.0.0",
+  "effective": "2026-10-17",
+  "compatibility": "optional sourceStatus; old metadata remains valid; schemaVersion stays 1.0.0",
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:aircon-compare:metadata-schema:1.0.0+source-status.1",
+    "blockId": "AIRCON_METADATA_SCHEMA_V1",
+    "title": "aircon-compare deployment metadata",
+    "type": "object",
+    "required": [
+      "schemaVersion",
+      "version",
+      "build",
+      "commit",
+      "deployTime",
+      "workflowRunId",
+      "deploymentType",
+      "releasePayloadHash",
+      "datasetDate",
+      "datasetDateBasis",
+      "datasetRetrievedAt",
+      "datasetSourceUrl",
+      "datasetSnapshotId",
+      "datasetHash",
+      "recordCount"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "schemaVersion": {
+        "const": "1.0.0"
+      },
+      "version": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-((?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\\+([0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*))?$"
+      },
+      "build": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128,
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+      },
+      "commit": {
+        "type": "string",
+        "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+      },
+      "deployTime": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$"
+      },
+      "workflowRunId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "deploymentType": {
+        "enum": [
+          "release",
+          "hotfix",
+          "rollback"
+        ]
+      },
+      "releasePayloadHash": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "rollbackOfBuild": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "datasetDate": {
+        "type": "string",
+        "format": "date",
+        "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+      },
+      "datasetDateBasis": {
+        "enum": [
+          "official-published-date",
+          "official-effective-date",
+          "retrieval-date-fallback"
+        ]
+      },
+      "datasetRetrievedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$"
+      },
+      "datasetSourceUrl": {
+        "type": "string",
+        "format": "uri"
+      },
+      "datasetSnapshotId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "datasetHash": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      },
+      "recordCount": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "rawRecordCount": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "registrationCount": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "modelCount": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "sourceStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "emsd",
+          "biggo",
+          "official"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "emsd": {
+            "$ref": "#/$defs/sourceBlock"
+          },
+          "biggo": {
+            "$ref": "#/$defs/sourceBlock"
+          },
+          "official": {
+            "$ref": "#/$defs/sourceBlock"
+          },
+          "publish": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "build": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "commit": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "packagedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              "deployedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              "deploymentReceipt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "releasePayloadHash": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "deploymentType": {
+              "const": "rollback"
+            }
+          },
+          "required": [
+            "deploymentType"
+          ]
+        },
+        "then": {
+          "required": [
+            "rollbackOfBuild"
+          ]
+        }
+      }
+    ],
+    "$defs": {
+      "sourceBlock": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "lastAttemptAt",
+          "lastAcquiredAt",
+          "lastAppliedAt",
+          "lastAppliedDate",
+          "snapshotId",
+          "snapshotHash",
+          "safeReason"
+        ],
+        "properties": {
+          "status": {
+            "enum": [
+              "ok",
+              "pending",
+              "degraded",
+              "blocked",
+              "unknown"
+            ]
+          },
+          "lastAttemptAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "lastAcquiredAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "lastAppliedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "lastAppliedDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+          },
+          "snapshotId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "snapshotHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "safeReason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "cycleId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stage": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}
+```
+<!-- AIRCON:SCHEMA_EXTENSION:METADATA_SCHEMA_V1_1:END -->

@@ -47,6 +47,13 @@ jobs:
             --repro-from-commit \
             --report "$RUNNER_TEMP/postdeploy.json"
 
+      - name: 私人來源健康摘要（secret 配置；未配置則明確 skip，不偽造健康）
+        if: always()
+        env:
+          AIRCON_HEALTH_SUMMARY_URL: ${{ secrets.AIRCON_HEALTH_SUMMARY_URL }}
+        run: |
+          python scripts/check_health_summary.py             --report "$RUNNER_TEMP/source-health-summary.json"             --max-age-hours 48
+
       - name: 72h freshness＋監控告警（無論上一步結果都要處理）
         if: always()
         env:

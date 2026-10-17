@@ -567,7 +567,14 @@ def _check_price_stage(args):
     idx = meta.get('price_batch_idx', 0)
     if start and isinstance(idx, int) and not isinstance(idx, bool) \
             and idx < batch.PRICE_BATCH_DAYS:
-        errors.append('price stage 仍然 active：rebuild 模式只可喺 inactive 時執行')
+        if getattr(args, 'allow_degraded_price', False):
+            # Repair-release mode: reuse the existing verified price snapshot and
+            # mark the publication degraded.  This still performs zero provider
+            # or acquisition calls; it never advances the price stage.
+            args.degraded_price_warning = (
+                'price stage active；repair release 沿用已驗證舊快照（degraded，零 provider）')
+        else:
+            errors.append('price stage 仍然 active：rebuild 模式只可喺 inactive 時執行')
     return errors
 
 
@@ -744,6 +751,8 @@ def run_preflight(args):
     ok = all(c['pass'] for c in checks)
     report = {'schemaVersion': SCHEMA_VERSION, 'mode': 'preflight', 'ok': ok,
               'checks': checks, 'baseline': baseline_state,
+              'warnings': [getattr(args, 'degraded_price_warning', '')]
+              if getattr(args, 'degraded_price_warning', '') else [],
               'snapshot': (None if not metadata else {
                   'metadataCommit': metadata.get('commit'),
                   'datasetDate': metadata.get('datasetDate'),
@@ -893,6 +902,8 @@ def main(argv=None):
             p.add_argument('--price-meta', default=None)
             p.add_argument('--expected-head', default=None)
             p.add_argument('--force-price-batch', default='')
+            p.add_argument('--allow-degraded-price', action='store_true',
+                           help='repair release: reuse existing verified price snapshot；零 provider')
             p.add_argument('--now', default=None)
             p.add_argument('--baseline-out', required=True)
         else:

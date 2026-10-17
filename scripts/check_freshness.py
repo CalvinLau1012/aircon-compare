@@ -35,38 +35,59 @@ def parse_utc_z(value):
     return dt
 
 
-def evaluate(metadata, now=None):
+def evaluate(metadata, now=None, deployment=None):
+    """Separate acquisition age from deployment mismatch.
+
+    `deployment` may be a dict with `mismatch` and safe failure IDs.  It never
+    changes the age calculation; it is reported independently so a fresh master
+    with an old live build is not mislabelled as stale, and vice versa.
+    """
     now = now or _dt.datetime.now(_dt.timezone.utc)
+    deployment = deployment if isinstance(deployment, dict) else {}
+    mismatch = bool(deployment.get('mismatch'))
+    deployment_ids = [str(x) for x in (deployment.get('failures') or [])][:10]
+    base = {'deploymentMismatch': mismatch,
+            'deploymentFailures': deployment_ids}
     if not isinstance(metadata, dict):
         return {'ok': False, 'stale': False, 'ageSeconds': None,
-                'reason': 'metadata_not_object'}
+                'reason': 'metadata_not_object', 'ageOk': False,
+                'ageStale': False, **base}
     try:
         retrieved = parse_utc_z(metadata.get('datasetRetrievedAt'))
     except ValueError:
         return {'ok': False, 'stale': False, 'ageSeconds': None,
-                'reason': 'missing_or_invalid_datasetRetrievedAt'}
+                'reason': 'missing_or_invalid_datasetRetrievedAt', 'ageOk': False,
+                'ageStale': False, **base}
     if retrieved > now:
         return {'ok': False, 'stale': False, 'ageSeconds': None,
-                'reason': 'future_datasetRetrievedAt'}
+                'reason': 'future_datasetRetrievedAt', 'ageOk': False,
+                'ageStale': False, **base}
     age = (now - retrieved).total_seconds()
     if age > THRESHOLD.total_seconds():
-        return {'ok': True, 'stale': True, 'ageSeconds': age, 'reason': 'stale_over_72h'}
-    return {'ok': True, 'stale': False, 'ageSeconds': age, 'reason': 'fresh'}
+        return {'ok': True, 'stale': True, 'ageSeconds': age,
+                'reason': 'stale_over_72h', 'ageOk': True, 'ageStale': True, **base}
+    return {'ok': True, 'stale': False, 'ageSeconds': age, 'reason': 'fresh',
+            'ageOk': True, 'ageStale': False, **base}
 
 
 def classify(result):
     """穩定分類指紋：唔含 ageSeconds，同一狀態跨 6 小時重跑要完全一樣。"""
     if not result.get('ok'):
         reason = str(result.get('reason') or 'unknown')
-        return 'invalid:' + re.sub(r'[^a-z0-9_.:+-]', '_', reason.lower())
-    if result.get('stale'):
-        return 'stale_over_72h'
-    return 'fresh'
+        base = 'invalid:' + re.sub(r'[^a-z0-9_.:+-]', '_', reason.lower())
+    elif result.get('stale'):
+        base = 'stale_over_72h'
+    else:
+        base = 'fresh'
+    if result.get('deploymentMismatch'):
+        base += ':deployment_mismatch'
+    return base
 
 
 def combined_health(result):
     """回傳 (freshness_bad, postdeploy_bad)；postdeployOk=None 表示未提供。"""
-    freshness_bad = (not result.get('ok')) or bool(result.get('stale'))
+    freshness_bad = (not result.get('ok')) or bool(result.get('stale')) \
+        or bool(result.get('deploymentMismatch'))
     post = result.get('postdeployOk')
     return freshness_bad, post is False
 
@@ -91,6 +112,9 @@ def issue_body(result, fp):
         f'- postdeploy failure: {"yes" if post_bad else "no"}\n'
         f'- reason: `{result.get("reason")}`\n'
         f'- ageSeconds: {result.get("ageSeconds")}\n'
+        f'- age stale: {bool(result.get("stale"))}\n'
+        f'- deployment mismatch: {bool(result.get("deploymentMismatch"))}\n'
+        f'- deployment failures: {result.get("deploymentFailures") or []}\n'
         f'- threshold: age > 72h\n'
     )
 

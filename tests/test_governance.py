@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 import generate_html
 import models_data
-from extract_governance import extract_blocks, BlockError, GOV_FILE
+from extract_governance import extract_blocks, BlockError, GOV_FILE, metadata_schema
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -93,7 +93,7 @@ def test_metadata_validation_rejects_bad():
     """壞 metadata（缺欄位/錯 enum/rollback 缺 rollbackOfBuild）必須被拒"""
     from validate_metadata import validate
     with open(GOV_FILE, encoding='utf-8') as f:
-        schema = extract_blocks(f.read())['AIRCON_METADATA_SCHEMA_V1']
+        schema = metadata_schema(f.read())
     base = {
         'schemaVersion': '1.0.0', 'version': '1.2.7', 'build': 'B1',
         'commit': 'a' * 40, 'deployTime': '2026-08-26T00:00:00Z',
@@ -120,7 +120,7 @@ def test_metadata_schema_accepts_fractional_seconds():
     """RFC 3339 date-time 允許小數秒（內嵌 Schema format: date-time）；Web 亦支援顯示"""
     from validate_metadata import validate
     with open(GOV_FILE, encoding='utf-8') as f:
-        schema = extract_blocks(f.read())['AIRCON_METADATA_SCHEMA_V1']
+        schema = metadata_schema(f.read())
     meta = {
         'schemaVersion': '1.0.0', 'version': '1.2.7', 'build': 'B1',
         'commit': 'a' * 40, 'deployTime': '2026-09-02T19:28:14.500Z',

@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 """信興官網 shew.com.hk Rasonic/FROSTAR/Panasonic 窗口機規格抓取"""
 import json, re, sys, time, os
-from crawl_utils import fetch, html_to_text, no_verify_ssl_context, batch_failed, save_json, emit_fetch_receipt
-CTX = no_verify_ssl_context()
+from crawl_utils import (fetch, html_to_text, official_ssl_context_for_url,
+                         batch_failed, save_json, emit_fetch_receipt)
 def get(u):
-    return fetch(u, context=CTX)
+    return fetch(u, context=official_ssl_context_for_url(u))
 def grab(t, kws, n=80):
     for kw in kws:
         i = t.find(kw)

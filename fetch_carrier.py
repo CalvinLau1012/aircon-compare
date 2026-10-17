@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 """世紀開利官網 century-carrier.com 窗口機規格抓取（Carrier + Canopus 肯特）"""
 import json, re, sys, os, time
-from crawl_utils import fetch, html_to_text, no_verify_ssl_context, batch_failed, save_json, emit_fetch_receipt
+from crawl_utils import (fetch, html_to_text, official_ssl_context_for_url,
+                         batch_failed, save_json, emit_fetch_receipt)
 
-CTX = no_verify_ssl_context()
 
 
 def get(u):
-    return fetch(u, context=CTX)
+    return fetch(u, context=official_ssl_context_for_url(u))
 
 
 def main():

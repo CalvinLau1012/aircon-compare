@@ -34,6 +34,7 @@ Status artifact（`--status-out`）供 CI guard／alert 用；只含狀態、cyc
 from __future__ import annotations
 
 import datetime
+import inspect
 import json
 import os
 import sys
@@ -198,6 +199,49 @@ def _record_evidence(client, fetch_mod, delta):
         client.apply_cooldown(evidence['status'], {'Retry-After': evidence.get('retryAfter')})
 
 
+def _load_repair_receipt(env, repo_root, bundle_hash):
+    """Discover a Root-supplied immutable repair receipt for this bundle.
+
+    Only the explicit env path or a hash-named file under the local repair
+    directory is accepted.  Normal apply still validates bundle/stage identity,
+    actual pre-image, and exact original post-hash; discovery is not authority.
+    """
+    candidates = []
+    explicit = (env or {}).get('AIRCON_BIGGO_REPAIR_RECEIPT')
+    if explicit:
+        candidates.append(explicit)
+    if bundle_hash:
+        short = bundle_hash.split(':', 1)[-1]
+        for d in ('repair-receipts', 'biggo-repair'):
+            candidates.append(os.path.join(repo_root, d, f'{short}.json'))
+            candidates.append(os.path.join(repo_root, d, f'{bundle_hash}.json'))
+    for path in candidates:
+        if path and os.path.isfile(path):
+            try:
+                with open(path, encoding='utf-8') as f:
+                    data = json.load(f)
+            except (OSError, ValueError) as e:
+                raise _apply_mod.ApplyError(
+                    f'repair receipt 讀取失敗：{type(e).__name__}') from e
+            if not isinstance(data, dict):
+                raise _apply_mod.ApplyError('repair receipt 必須係 object')
+            return data
+    return None
+
+
+def _invoke_apply(apply_fn, bundle, *, repo_root, now, repair):
+    """Call apply_fn with repair only when its signature supports it."""
+    try:
+        params = inspect.signature(apply_fn).parameters
+        supports = ('repair' in params or
+                    any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values()))
+    except (TypeError, ValueError):
+        supports = False
+    if supports:
+        return apply_fn(bundle, repo_root=repo_root, now=now, repair=repair)
+    return apply_fn(bundle, repo_root=repo_root, now=now)
+
+
 def _needs_review(client, emit, cycle_id, *, stage, reason, lease_lost=False,
                   calls='made', extra=None):
     """標記 needs_review；lease 已轉手時唔可以寫 state，只如實報告。
@@ -293,7 +337,7 @@ def _build_stage_result(*, cycle_id, stage_no, mode, client, now_fn, staged):
 def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
               now=None, print_fn=print, force=None,
               heartbeat_interval=DEFAULT_HEARTBEAT_INTERVAL,
-              apply_fn=None, repo_root=None, status_out=None):
+              apply_fn=None, repo_root=None, status_out=None, repair=None):
     """回傳 exit code：0 = 安全 skip／成功；1 = 未預期失敗；2 = 契約／配置錯誤阻斷。"""
     env = env if env is not None else os.environ
     batch_mod = batch_mod or _batch_utils
@@ -302,6 +346,7 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
     apply_fn = apply_fn or _apply_mod.apply_bundle
     repo_root = repo_root or BASE
     force_mode = _force_requested(env, force)
+    repair_receipt = repair
     record = {
         'schemaVersion': 1,
         'status': None,
@@ -438,10 +483,11 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
             return 0
         if result == 'completed-idempotent':
             return _import_and_apply(client, emit, apply_fn, repo_root, now_fn,
-                                     cycle_id, stage_no, final_status='completed-idempotent-applied')
+                                     cycle_id, stage_no, final_status='completed-idempotent-applied',
+                                     env=env, repair=repair_receipt)
         if result == 'winner-intent':
             return _recover_intent(client, emit, apply_fn, repo_root, now_fn,
-                                   cycle_id, stage_no)
+                                   cycle_id, stage_no, env=env, repair=repair_receipt)
         if result not in ('winner', 'renewed'):
             emit('blocked-coordinator-error', error=f'unexpected-acquire:{result}')
             return 2
@@ -676,7 +722,11 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
                 'snapshotPath': published['snapshotPath'],
             }
             try:
-                apply_report = apply_fn(bundle, repo_root=repo_root, now=now_fn())
+                selected_repair = repair_receipt or _load_repair_receipt(
+                    env, repo_root, bundle['bundleHash'])
+                apply_report = _invoke_apply(
+                    apply_fn, bundle, repo_root=repo_root, now=now_fn(),
+                    repair=selected_repair)
             except _apply_mod.ApplyError as e:
                 emit('completed-apply-failed', cycle=cycle_id, stage=stage_no,
                      error=type(e).__name__, published=True,
@@ -709,7 +759,7 @@ def _safe_abort(client, print_fn, emit, cycle_id, stage_no, *, reason, **extra):
 
 
 def _import_and_apply(client, emit, apply_fn, repo_root, now_fn, cycle_id, stage_no,
-                      *, final_status):
+                      *, final_status, env=None, repair=None):
     """completed-idempotent：import v2 bundle → apply（零 BigGo）。legacy → 人手。"""
     try:
         bundle = client.import_bundle(cycle_id, stage_no)
@@ -722,7 +772,10 @@ def _import_and_apply(client, emit, apply_fn, repo_root, now_fn, cycle_id, stage
              error=type(e).__name__, rerun='prohibited')
         return 0
     try:
-        report = apply_fn(bundle, repo_root=repo_root, now=now_fn())
+        selected_repair = repair or _load_repair_receipt(
+            env or {}, repo_root, bundle['bundleHash'])
+        report = _invoke_apply(apply_fn, bundle, repo_root=repo_root,
+                               now=now_fn(), repair=selected_repair)
     except _apply_mod.ApplyError as e:
         emit('completed-apply-failed', cycle=cycle_id, stage=stage_no,
              error=type(e).__name__, imported=True,
@@ -734,7 +787,8 @@ def _import_and_apply(client, emit, apply_fn, repo_root, now_fn, cycle_id, stage
     return 0
 
 
-def _recover_intent(client, emit, apply_fn, repo_root, now_fn, cycle_id, stage_no):
+def _recover_intent(client, emit, apply_fn, repo_root, now_fn, cycle_id, stage_no,
+                    *, env=None, repair=None):
     """expired active 帶 intent：只可 adopt 完整 bundle；否則 needs_review。"""
     try:
         bundle = client.import_bundle(cycle_id, stage_no)
@@ -775,7 +829,10 @@ def _recover_intent(client, emit, apply_fn, repo_root, now_fn, cycle_id, stage_n
              reason='recover-commit-failed', error=type(e).__name__)
         return 0
     try:
-        report = apply_fn(bundle, repo_root=repo_root, now=now_fn())
+        selected_repair = repair or _load_repair_receipt(
+            env or {}, repo_root, bundle['bundleHash'])
+        report = _invoke_apply(apply_fn, bundle, repo_root=repo_root,
+                               now=now_fn(), repair=selected_repair)
     except _apply_mod.ApplyError as e:
         emit('completed-apply-failed', cycle=cycle_id, stage=stage_no,
              error=type(e).__name__, recovered=True,
@@ -794,6 +851,14 @@ def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     force = '--force' in argv
     status_out = None
+    repair_path = None
+    if '--repair-receipt' in argv:
+        i = argv.index('--repair-receipt')
+        if i + 1 >= len(argv):
+            print('❌ --repair-receipt 缺少 path', file=sys.stderr)
+            return 2
+        repair_path = argv[i + 1]
+        del argv[i:i + 2]
     if '--status-out' in argv:
         i = argv.index('--status-out')
         if i + 1 >= len(argv):
@@ -803,10 +868,18 @@ def main(argv=None):
         del argv[i:i + 2]
     unknown = [a for a in argv if a != '--force']
     if unknown:
-        print(f'❌ 唔支援嘅參數：{unknown}（只支援 --force／--status-out PATH；'
+        print(f'❌ 唔支援嘅參數：{unknown}（只支援 --force／--status-out PATH／--repair-receipt PATH；'
               f'force intent 亦可以經 AIRCON_BIGGO_FORCE_STAGE=1）', file=sys.stderr)
         return 2
-    return run_stage(force=True if force else None, status_out=status_out)
+    repair = None
+    if repair_path:
+        try:
+            with open(repair_path, encoding='utf-8') as f:
+                repair = json.load(f)
+        except (OSError, ValueError) as e:
+            print(f'❌ repair receipt 讀取失敗：{e}', file=sys.stderr)
+            return 2
+    return run_stage(force=True if force else None, status_out=status_out, repair=repair)
 
 
 if __name__ == '__main__':

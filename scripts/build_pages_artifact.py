@@ -186,10 +186,9 @@ def _sha256_file(path):
 def verify_metadata(repo, payload_files, metadata_path):
     """驗 metadata 同 payload／CSV 完全一致；回傳 (metadata, csv_rel, errors)。"""
     from validate_metadata import validate
-    from extract_governance import extract_blocks, GOV_FILE
+    from extract_governance import metadata_schema
     errors = []
-    with open(GOV_FILE, encoding='utf-8') as f:
-        schema = extract_blocks(f.read())['AIRCON_METADATA_SCHEMA_V1']
+    schema = metadata_schema()
     meta = _load_json(metadata_path, 'metadata.json')
     if not isinstance(meta, dict):
         return None, None, ['metadata 必須係 object']

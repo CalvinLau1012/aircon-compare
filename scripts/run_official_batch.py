@@ -18,9 +18,11 @@ Fail-closed 不變式：
 退出碼：0 = 已驗證並推進；1 = 未全部完成（queue 保留）或 receipt 寫入失敗。
 """
 import argparse
+import contextlib
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -110,6 +112,19 @@ def _sha256_file(path):
     return h.hexdigest()
 
 
+def _sha256_file_direct(path):
+    """Hash bytes without the injectable receipt helper.
+
+    Receipts store this value; verification deliberately uses `_sha256_file`
+    so a late mutation (or an injected race in the receipt path) is detected.
+    """
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1 << 20), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def _atomic_write_json(path, data):
     tmp = path + '.tmp'
     with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
@@ -117,6 +132,101 @@ def _atomic_write_json(path, data):
         f.flush()
         os.fsync(f.fileno())
     os.replace(tmp, path)
+
+
+STAGING_IGNORE = shutil.ignore_patterns(
+    '.git', '__pycache__', '.pytest_cache', '.venv', 'node_modules', 'reports',
+    '.mypy_cache', '.ruff_cache', '*.pyc')
+
+
+def _make_staging_copy(root):
+    """Create an isolated candidate copy; scripts write only inside it."""
+    tmp = tempfile.mkdtemp(prefix='aircon-official-staging-')
+    dest = os.path.join(tmp, 'repo')
+    shutil.copytree(root, dest, ignore=STAGING_IGNORE, symlinks=True)
+    return tmp, dest
+
+
+def _cleanup_staging(tmp):
+    if tmp:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _read_file_bytes(path):
+    if not os.path.exists(path):
+        return None
+    with open(path, 'rb') as f:
+        return f.read()
+
+
+def _atomic_write_bytes(path, data, mode=0o644):
+    directory = os.path.dirname(os.path.abspath(path)) or '.'
+    tmp = path + f'.promote.{os.getpid()}.{time.time_ns()}'
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, mode)
+    try:
+        with os.fdopen(fd, 'wb') as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+    try:
+        dfd = os.open(directory, os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0))
+        try:
+            os.fsync(dfd)
+        finally:
+            os.close(dfd)
+    except OSError:
+        pass
+
+
+def _promote_outputs(repo, staging_repo, outputs):
+    """Promote verified staged outputs atomically; rollback on any failure.
+
+    Returns (promoted, before_after) where before_after maps rel -> (before, after).
+    The queue is never promoted from staging.
+    """
+    before = {rel: _read_file_bytes(os.path.join(repo, rel)) for rel in outputs}
+    promoted = []
+    try:
+        for rel in outputs:
+            src = os.path.join(staging_repo, rel)
+            if not os.path.isfile(src):
+                raise OSError(f'staged output 唔存在：{rel}')
+            with open(src, 'rb') as f:
+                data = f.read()
+            dst = os.path.join(repo, rel)
+            os.makedirs(os.path.dirname(os.path.abspath(dst)), exist_ok=True)
+            mode = 0o644
+            try:
+                mode = os.stat(src).st_mode & 0o777
+            except OSError:
+                pass
+            _atomic_write_bytes(dst, data, mode or 0o644)
+            promoted.append(rel)
+    except Exception:
+        # Restore every path touched so a promotion failure leaves the old set.
+        rollback_errors = []
+        for rel in promoted:
+            dst = os.path.join(repo, rel)
+            try:
+                if before[rel] is None:
+                    if os.path.exists(dst):
+                        os.unlink(dst)
+                else:
+                    _atomic_write_bytes(dst, before[rel])
+            except OSError as e:
+                rollback_errors.append(f'{rel}:{e}')
+        if rollback_errors:
+            raise OSError('promotion 失敗而且 rollback 失敗：' + '; '.join(rollback_errors))
+        raise
+    after = {rel: _read_file_bytes(os.path.join(repo, rel)) for rel in outputs}
+    return promoted, before, after
 
 
 def parse_receipt(stdout):
@@ -305,6 +415,9 @@ def main(argv=None):
     ap.add_argument('--from-queue', action='store_true')
     ap.add_argument('--timeout', type=int, default=1500)
     ap.add_argument('--receipt', default=None)
+    ap.add_argument('--degraded-exit-zero', action='store_true',
+                    help='safe source failure (old outputs/queue intact) returns 0 with degraded receipt; '
+                         'integrity/transaction failure still returns 1')
     args = ap.parse_args(argv)
 
     queue_path = os.path.join(BASE, 'update_queue.json')
@@ -335,6 +448,7 @@ def main(argv=None):
 
     plan = STAGES[stage]
     failures = []
+    integrity_failure = False
     receipt = {
         'schemaVersion': 1,
         'stage': stage,
@@ -349,82 +463,138 @@ def main(argv=None):
         'decision': 'pending',
     }
 
-    for idx, script in enumerate(plan['scripts']):
-        path = os.path.join(BASE, script)
-        output_rel = plan['outputs'][idx]
-        print(f'▶️ [{stage}] {script}', flush=True)
-        t0 = time.time()
-        entry = {'script': script, 'argv': ['python', script], 'output': output_rel}
-        try:
-            proc = subprocess.run([sys.executable, path], cwd=BASE, timeout=args.timeout,
-                                  capture_output=True, text=True, encoding='utf-8',
-                                  errors='replace')
-            if proc.stdout:
-                print(proc.stdout, end='')
-            if proc.stderr:
-                print(proc.stderr, end='', file=sys.stderr)
-            rc = proc.returncode
-            marker = parse_receipt(proc.stdout or '')
-        except subprocess.TimeoutExpired:
-            rc = -1
-            marker = None
-            failures.append(f'{script} 逾時（>{args.timeout}s）')
-        entry['returncode'] = rc
-        entry['seconds'] = round(time.time() - t0, 1)
-        entry['receipt'] = marker
-        entry['outputHashAfter'] = _sha256_file(os.path.join(BASE, output_rel))
-        if rc != 0:
-            failures.append(f'{script} exit {rc}')
-        if marker is None:
-            failures.append(f'{script} 冇 machine receipt（未證明本輪完成證據）')
-            entry['markerValid'] = False
-        else:
-            models = output_models(os.path.join(BASE, output_rel))
-            marker_errors = validate_marker(marker, script, models)
-            failures.extend(f'{script}: {e}' for e in marker_errors)
-            entry['markerValid'] = not marker_errors
-        receipt['scripts'].append(entry)
+    staging_tmp = None
+    staging_repo = None
+    try:
+        staging_tmp, staging_repo = _make_staging_copy(BASE)
+        staging_queue = os.path.join(staging_repo, 'update_queue.json')
+        staging_queue_before = _sha256_file(staging_queue)
+        for idx, script in enumerate(plan['scripts']):
+            path = os.path.join(staging_repo, script)
+            output_rel = plan['outputs'][idx]
+            original_output = os.path.join(BASE, output_rel)
+            staged_output = os.path.join(staging_repo, output_rel)
+            print(f'▶️ [{stage}] {script}（isolated staging）', flush=True)
+            t0 = time.time()
+            entry = {'script': script, 'argv': ['python', script], 'output': output_rel,
+                     'outputHashBefore': _sha256_file(original_output)}
+            try:
+                child_env = dict(os.environ)
+                child_env['AIRCON_OFFICIAL_STAGING_REPO'] = staging_repo
+                proc = subprocess.run([sys.executable, path], cwd=staging_repo,
+                                      timeout=args.timeout, capture_output=True,
+                                      text=True, encoding='utf-8', errors='replace',
+                                      env=child_env)
+                if proc.stdout:
+                    print(proc.stdout, end='')
+                if proc.stderr:
+                    print(proc.stderr, end='', file=sys.stderr)
+                rc = proc.returncode
+                marker = parse_receipt(proc.stdout or '')
+            except subprocess.TimeoutExpired:
+                rc = -1
+                marker = None
+                failures.append(f'{script} 逾時（>{args.timeout}s）')
+            entry['returncode'] = rc
+            entry['seconds'] = round(time.time() - t0, 1)
+            entry['receipt'] = marker
+            entry['stagedOutputHash'] = _sha256_file_direct(staged_output)
+            entry['outputHashAfter'] = entry['stagedOutputHash']
+            if rc != 0:
+                failures.append(f'{script} exit {rc}')
+            if marker is None:
+                failures.append(f'{script} 冇 machine receipt（未證明本輪完成證據）')
+                entry['markerValid'] = False
+            else:
+                models = output_models(staged_output)
+                marker_errors = validate_marker(marker, script, models)
+                failures.extend(f'{script}: {e}' for e in marker_errors)
+                entry['markerValid'] = not marker_errors
+            receipt['scripts'].append(entry)
 
-    covers_norm = set()
-    coverage_pending_norm = set()
-    coverage_pending_reasons = {}
-    for entry in receipt['scripts']:
-        marker = entry.get('receipt')
-        # 只有通過 validate_marker 嘅 receipt 才可貢獻 covers／coverage pending；
-        # 任何 invalid marker 只可以係 hard failure（見上面 failures）。
-        if isinstance(marker, dict) and entry.get('returncode') == 0 \
-                and entry.get('markerValid') is True:
-            covers_norm.update(norm_model(m) for m in (marker.get('covers') or []))
-            pending = coverage_pending_from_marker(marker)
-            coverage_pending_norm.update(pending)
-            for m, reason in (marker.get('coveragePendingReasons') or {}).items():
-                coverage_pending_reasons[norm_model(m)] = reason
+        staging_queue_after = _sha256_file(staging_queue)
+        if staging_queue_after != staging_queue_before:
+            failures.append('queue 喺 staging 批次執行期間被改動；拒絕推進')
+            integrity_failure = True
 
-    for rel in plan['outputs']:
-        p = os.path.join(BASE, rel)
-        ok, reason = validate_output(p)
-        receipt['outputs'].append(
-            {'output': rel, 'ok': ok, 'reason': reason, 'hash': _sha256_file(p)})
-        if not ok:
-            failures.append(f'{rel}：{reason}')
+        covers_norm = set()
+        coverage_pending_norm = set()
+        coverage_pending_reasons = {}
+        for entry in receipt['scripts']:
+            marker = entry.get('receipt')
+            # 只有通過 validate_marker 嘅 receipt 才可貢獻 covers／coverage pending；
+            # 任何 invalid marker 只可以係 hard failure（見上面 failures）。
+            if isinstance(marker, dict) and entry.get('returncode') == 0 \
+                    and entry.get('markerValid') is True:
+                covers_norm.update(norm_model(m) for m in (marker.get('covers') or []))
+                pending = coverage_pending_from_marker(marker)
+                coverage_pending_norm.update(pending)
+                for m, reason in (marker.get('coveragePendingReasons') or {}).items():
+                    coverage_pending_reasons[norm_model(m)] = reason
 
-    queue_hash_after = _sha256_file(queue_path)
-    receipt['queueHashAfter'] = queue_hash_after
-    if queue_hash_after != queue_hash_before:
-        failures.append('queue 喺批次執行期間被改動；拒絕推進')
-    missing_coverage = [m for m in target_models if norm_model(m) not in covers_norm]
-    script_pending_norm = set(coverage_pending_norm)
-    # 兩個獨立事實：queue model 冇任何覆蓋；script 確認嘅 target coverage pending。
-    # 任何一項非空都必須保留 queue（queue-kept-pending-coverage），包括 script pending
-    # target 已經被另一個 script／舊快照覆蓋嘅情況（D1-B／D27）。
-    receipt['missingQueueCoverage'] = bool(missing_coverage)
-    receipt['scriptCoveragePending'] = bool(script_pending_norm)
-    receipt['coveragePending'] = bool(missing_coverage or script_pending_norm)
-    receipt['missingModels'] = list(missing_coverage)
-    receipt['missingCanonicalModels'] = sorted({norm_model(m) for m in missing_coverage})
-    receipt['coveragePendingFromScripts'] = sorted(script_pending_norm)
-    receipt['coveragePendingReasons'] = dict(sorted(coverage_pending_reasons.items()))
-    failures.extend(verify_receipt_outputs(receipt))
+        staged_outputs = []
+        for rel in plan['outputs']:
+            p = os.path.join(staging_repo, rel)
+            ok, reason = validate_output(p)
+            staged_outputs.append({'output': rel, 'ok': ok, 'reason': reason,
+                                   'stagedHash': _sha256_file(p),
+                                   'originalHash': _sha256_file(os.path.join(BASE, rel))})
+            if not ok:
+                failures.append(f'{rel}：{reason}')
+
+        # Only verified, coherent staged outputs are promoted.  Any hard
+        # failure leaves the original four files byte-identical.
+        promoted = False
+        if not failures:
+            try:
+                _promoted, before, after = _promote_outputs(
+                    BASE, staging_repo, plan['outputs'])
+                promoted = True
+                for entry in staged_outputs:
+                    rel = entry['output']
+                    entry['hash'] = _sha256_file(os.path.join(BASE, rel))
+                    entry['promoted'] = True
+                for entry in receipt['scripts']:
+                    rel = entry['output']
+                    entry['outputHashAfter'] = _sha256_file_direct(os.path.join(BASE, rel))
+            except OSError as e:
+                failures.append(f'output promotion 失敗（已 rollback）：{e}')
+                integrity_failure = True
+        if not promoted:
+            for entry in staged_outputs:
+                entry['hash'] = entry.get('originalHash')
+                entry['promoted'] = False
+        receipt['outputs'] = staged_outputs
+        receipt['staging'] = {'used': True, 'promoted': promoted}
+
+        queue_hash_after = _sha256_file(queue_path)
+        receipt['queueHashAfter'] = queue_hash_after
+        if queue_hash_after != queue_hash_before:
+            failures.append('queue 喺批次執行期間被改動；拒絕推進')
+            integrity_failure = True
+        missing_coverage = [m for m in target_models if norm_model(m) not in covers_norm]
+        script_pending_norm = set(coverage_pending_norm)
+        # 兩個獨立事實：queue model 冇任何覆蓋；script 確認嘅 target coverage pending。
+        # 任何一項非空都必須保留 queue（queue-kept-pending-coverage），包括 script pending
+        # target 已經被另一個 script／舊快照覆蓋嘅情況（D1-B／D27）。
+        receipt['missingQueueCoverage'] = bool(missing_coverage)
+        receipt['scriptCoveragePending'] = bool(script_pending_norm)
+        receipt['coveragePending'] = bool(missing_coverage or script_pending_norm)
+        receipt['missingModels'] = list(missing_coverage)
+        receipt['missingCanonicalModels'] = sorted({norm_model(m) for m in missing_coverage})
+        receipt['coveragePendingFromScripts'] = sorted(script_pending_norm)
+        receipt['coveragePendingReasons'] = dict(sorted(coverage_pending_reasons.items()))
+        if not failures:
+            verify_errors = verify_receipt_outputs(receipt)
+            if verify_errors:
+                failures.extend(verify_errors)
+                integrity_failure = True
+    finally:
+        _cleanup_staging(staging_tmp)
+
+    receipt['failureClass'] = 'integrity' if integrity_failure else (
+        'source' if failures else 'none')
+    receipt['safeToContinue'] = not integrity_failure
 
     def _finalize(decision, advanced):
         receipt['decision'] = decision
@@ -446,6 +616,10 @@ def main(argv=None):
         print('❌ 官網核實批次未全部完成，queue 保留：', file=sys.stderr)
         for f in failures:
             print('  -', f, file=sys.stderr)
+        if args.degraded_exit_zero and not integrity_failure:
+            print('⚠️ 來源失敗但已驗證舊 outputs／queue 保持完整；'
+                  '以 degraded 狀態繼續發布，獨立告警保留。', file=sys.stderr)
+            return 0
         return 1
 
     # D1-B：只有「所有腳本／receipt／輸出本身成功」而出現 coverage gap（queue model

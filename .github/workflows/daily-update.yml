@@ -21,6 +21,11 @@ on:
         required: false
         default: false
         type: boolean
+      repair_release:
+        description: 'REPAIR RELEASE：零來源／零 provider 重建並重新發布；price stage active 時沿用舊快照並標示 degraded'
+        required: false
+        default: false
+        type: boolean
 
 # 安全：只授予寫內容嘅最低權限（需要 push 已驗證候選包）
 permissions:
@@ -121,10 +126,10 @@ jobs:
       - name: REBUILD 前置檢查（contradictory force）
         if: >
           github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.rebuild_verified_snapshot == 'true'
+          (github.event.inputs.rebuild_verified_snapshot == 'true' || github.event.inputs.repair_release == 'true')
         run: |
           if [ "${{ github.event.inputs.force_price_batch }}" = "true" ]; then
-            echo "::error::rebuild_verified_snapshot=true 唔可以同 force_price_batch=true 同時使用"
+            echo "::error::rebuild/repair release 唔可以同 force_price_batch=true 同時使用"
             exit 1
           fi
 
@@ -174,7 +179,7 @@ jobs:
       - name: REBUILD 快照預檢（offline；零 provider）
         if: >
           github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.rebuild_verified_snapshot == 'true'
+          (github.event.inputs.rebuild_verified_snapshot == 'true' || github.event.inputs.repair_release == 'true')
         run: |
           python scripts/verify_snapshot_rebuild.py preflight \
             --repo . \
@@ -186,12 +191,13 @@ jobs:
             --price-meta prices_meta.json \
             --expected-head "$GITHUB_SHA" \
             --force-price-batch "${{ github.event.inputs.force_price_batch }}" \
+            ${{ github.event.inputs.repair_release == 'true' && '--allow-degraded-price' || '' }} \
             --baseline-out "$RUNNER_TEMP/rebuild-snapshot-baseline.json" \
             --report "$RUNNER_TEMP/rebuild-preflight.json"
           cat "$RUNNER_TEMP/rebuild-preflight.json"
 
       - name: 抓取 EMSD + 新機偵測
-        if: github.event.inputs.rebuild_verified_snapshot != 'true'
+        if: (github.event.inputs.rebuild_verified_snapshot != 'true' && github.event.inputs.repair_release != 'true')
         env:
           # D7-A：平台完成私人 raw sink 設定後，將 REQUIRE 設為 1；未設定時行為同以前
           # 一樣（非 require，唔寫 public raw receipt）。require 模式缺配置／上傳失敗
@@ -237,7 +243,7 @@ jobs:
       # 會標明每個檔 staged／excluded；舊 checkout receipt 因為 timestamp 過舊而唔入）。
       # private raw sink 路徑／token／objectId 一律唔喺 staging；亦唔會上載。
       - name: 上載 EMSD 收據與 diff（失敗審計；always）
-        if: always() && github.event.inputs.rebuild_verified_snapshot != 'true'
+        if: always() && (github.event.inputs.rebuild_verified_snapshot != 'true' && github.event.inputs.repair_release != 'true')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: emsd-evidence-${{ github.run_id }}
@@ -259,7 +265,7 @@ jobs:
       - name: 官網核實 pre-step baseline
         if: >
           (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2') &&
-          github.event.inputs.rebuild_verified_snapshot != 'true'
+          (github.event.inputs.rebuild_verified_snapshot != 'true' && github.event.inputs.repair_release != 'true')
         run: |
           mkdir -p "$RUNNER_TEMP/official-evidence" "$RUNNER_TEMP/evidence-baseline"
           python scripts/stage_run_evidence.py \
@@ -269,13 +275,13 @@ jobs:
       - name: 官網核實第一批（新機後第 1 日）
         if: >
           steps.stage.outputs.stage == '1' &&
-          github.event.inputs.rebuild_verified_snapshot != 'true'
+          (github.event.inputs.rebuild_verified_snapshot != 'true' && github.event.inputs.repair_release != 'true')
         id: official_stage1
         env:
           AIRCON_OFFICIAL_RECEIPT: ${{ runner.temp }}/aircon-official-receipt.json
         run: |
           set +e
-          python scripts/run_official_batch.py --stage 1
+          python scripts/run_official_batch.py --stage 1 --degraded-exit-zero
           rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           exit "$rc"
@@ -283,13 +289,13 @@ jobs:
       - name: 官網核實第二批（新機後第 2 日）
         if: >
           steps.stage.outputs.stage == '2' &&
-          github.event.inputs.rebuild_verified_snapshot != 'true'
+          (github.event.inputs.rebuild_verified_snapshot != 'true' && github.event.inputs.repair_release != 'true')
         id: official_stage2
         env:
           AIRCON_OFFICIAL_RECEIPT: ${{ runner.temp }}/aircon-official-receipt.json
         run: |
           set +e
-          python scripts/run_official_batch.py --stage 2
+          python scripts/run_official_batch.py --stage 2 --degraded-exit-zero
           rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           exit "$rc"
@@ -297,7 +303,7 @@ jobs:
       - name: 投影官網 pending status（D1-B；queue coverage 不足時 UI 顯示待核）
         if: >
           (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2') &&
-          github.event.inputs.rebuild_verified_snapshot != 'true'
+          (github.event.inputs.rebuild_verified_snapshot != 'true' && github.event.inputs.repair_release != 'true')
         run: |
           python scripts/publish_official_status.py \
             --receipt "${{ runner.temp }}/aircon-official-receipt.json" \
@@ -311,7 +317,7 @@ jobs:
         if: >
           always() &&
           (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2') &&
-          github.event.inputs.rebuild_verified_snapshot != 'true'
+          (github.event.inputs.rebuild_verified_snapshot != 'true' && github.event.inputs.repair_release != 'true')
         run: |
           RUN_START="$(cat "$RUNNER_TEMP/emsd-evidence/run-start.utc" 2>/dev/null || date -u +%Y-%m-%dT%H:%M:%SZ)"
           python scripts/stage_run_evidence.py \
@@ -326,7 +332,7 @@ jobs:
         if: >
           always() &&
           (steps.stage.outputs.stage == '1' || steps.stage.outputs.stage == '2') &&
-          github.event.inputs.rebuild_verified_snapshot != 'true'
+          (github.event.inputs.rebuild_verified_snapshot != 'true' && github.event.inputs.repair_release != 'true')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: official-batch-receipt-${{ github.run_id }}
@@ -349,7 +355,7 @@ jobs:
           AIRCON_BIGGO_FORCE_STAGE: ${{ github.event.inputs.force_price_batch }}
           # REBUILD 模式：額外 defense-in-depth，測試模式禁止任何真實 BigGo 網絡入口。
           # 預檢已要求 price stage inactive／force=false；正常路徑行為不變。
-          AIRCON_BIGGO_TEST_MODE: ${{ github.event.inputs.rebuild_verified_snapshot == 'true' && '1' || '' }}
+          AIRCON_BIGGO_TEST_MODE: ${{ (github.event.inputs.rebuild_verified_snapshot == 'true' || github.event.inputs.repair_release == 'true') && '1' || '' }}
           # approved design C：共享憑證自動 atomic lease。呢组 secret 未配置時，active
           # 階段只會安全跳過（保留現有快照、零 BigGo 呼叫）；private coordinator 識別
           # 只可以放 Secrets，唔准寫入 repo／Variables／log。
@@ -403,6 +409,13 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
+      # 來源狀態獨立於發布成功：EMSD/BigGo/price 失敗會令 UI 顯示 degraded／blocked，
+      # 但唔會阻止已驗證 EMSD 資料繼續發布。無事實時保持 UNKNOWN，不用今日日期補。
+      - name: 建立 versioned source status receipt（sanitised）
+        run: |
+          python scripts/source_status.py build             --emsd-receipt emsd_receipt.json             --prices-meta prices_meta.json             --biggo-status "$RUNNER_TEMP/biggo-stage-status.json"             --official-status official_batch_status.json             --out "$RUNNER_TEMP/source_status.json"             --history-dir "$RUNNER_TEMP/source-status-history"
+          python scripts/source_status.py validate "$RUNNER_TEMP/source_status.json"
+
       # ============ 第 4 步：安全閘門 + 生成網頁/PDF + 部署元數據 + 上線 ============
       - name: 數據驗證（防壞數據上線）
         run: python validate_data.py
@@ -436,7 +449,8 @@ jobs:
             --record-count "$MODELS" \
             --raw-record-count "$RAW_RECORDS" \
             --registration-count "$REGISTRATIONS" \
-            --model-count "$MODELS"
+            --model-count "$MODELS" \
+            --source-status "$RUNNER_TEMP/source_status.json"
           echo "✅ 核心事實：modelCount=$MODELS · registrationCount=$REGISTRATIONS · rawRecordCount=$RAW_RECORDS"
 
       - name: 驗證核心事實（未 finalize 唔可以生成 PDF）
@@ -472,7 +486,7 @@ jobs:
       - name: REBUILD 來源保留守門（offline）
         if: >
           github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.rebuild_verified_snapshot == 'true'
+          (github.event.inputs.rebuild_verified_snapshot == 'true' || github.event.inputs.repair_release == 'true')
         run: |
           python scripts/verify_snapshot_rebuild.py guard \
             --repo . \
@@ -484,7 +498,7 @@ jobs:
         if: >
           always() &&
           github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.rebuild_verified_snapshot == 'true'
+          (github.event.inputs.rebuild_verified_snapshot == 'true' || github.event.inputs.repair_release == 'true')
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: verified-snapshot-rebuild-${{ github.run_id }}
@@ -493,6 +507,13 @@ jobs:
             ${{ runner.temp }}/rebuild-guard.json
           retention-days: 30
           if-no-files-found: warn
+
+      # 用新資料重建後、commit 前，在隔離 clean candidate snapshot 再跑新資料
+      # metadata／counts／hash／artifact suite；捕捉「daily 先過、Pages 後發現」。
+      - name: 候選接受閘門（isolated clean snapshot；precommit）
+        run: |
+          python scripts/verify_candidate_acceptance.py             --repo .             --report "$RUNNER_TEMP/candidate-acceptance.json"             --log-dir "$RUNNER_TEMP/candidate-acceptance-logs"
+          cat "$RUNNER_TEMP/candidate-acceptance.json"
 
       - name: 提交並推送（精確 allowlist）
         id: commit_push

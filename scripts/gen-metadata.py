@@ -318,6 +318,18 @@ def build_core_meta(args):
     if meta.get('datasetRetrievedAt'):
         if not meta['datasetRetrievedAt'].endswith('Z'):
             raise ValueError('datasetRetrievedAt 必須係 UTC Z')
+    if getattr(args, 'source_status', None):
+        try:
+            with open(args.source_status, encoding='utf-8') as f:
+                source_status = json.load(f)
+            from source_status import finalize_status, validate_status
+            source_status = finalize_status(source_status, meta)
+            source_errors = validate_status(source_status)
+            if source_errors:
+                raise ValueError('sourceStatus 唔合格：' + '; '.join(source_errors))
+            meta['sourceStatus'] = source_status
+        except (OSError, ValueError) as e:
+            raise ValueError(f'sourceStatus 讀取／驗證失敗：{e}') from e
     # 計數一致性契約（唔以真實 count 代替契約）
     record_count = meta.get('recordCount')
     if record_count is not None and record_count < 1:
@@ -344,10 +356,8 @@ def write_json(path, data):
 def schema_errors(meta):
     """用治理內嵌 METADATA_SCHEMA_V1 驗證（同 scripts/validate_metadata.py 同一份 Schema）"""
     from validate_metadata import validate
-    from extract_governance import extract_blocks, GOV_FILE
-    with open(GOV_FILE, encoding='utf-8') as f:
-        schema = extract_blocks(f.read())['AIRCON_METADATA_SCHEMA_V1']
-    return validate(meta, schema)
+    from extract_governance import metadata_schema
+    return validate(meta, metadata_schema())
 
 
 def core_schema_errors(meta):
@@ -372,6 +382,8 @@ def _build_parser():
     ap.add_argument('--deployment-type', choices=['release', 'hotfix', 'rollback'], default='release')
     ap.add_argument('--rollback-of-build', default=None)
     ap.add_argument('--emsd-receipt', default=None)
+    ap.add_argument('--source-status', default=None,
+                    help='sanitised versioned source-status receipt（optional）')
     ap.add_argument('--dataset-csv', default=os.path.join(BASE, 'emsd_空調能源標籤.csv'))
     ap.add_argument('--dataset-date', default=None)
     ap.add_argument('--dataset-date-basis', default=None,

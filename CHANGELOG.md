@@ -990,3 +990,11 @@
 ### Added
 
 - 報告初版（29 型號統合對比）
+
+## 2026-10-17（未發布候選）
+
+- 修復 metadata 測試 hardcode 計數；新增 precommit isolated candidate acceptance。
+- 修復 BigGo shallow tracking mutation；apply 加 lock／journal／checkpoint／metadata-last；新增 immutable repair receipt。
+- Official batch 改 isolated staging＋verified promote；TLS strict＋host-scoped reviewed intermediate。
+- 新增 atomic private release／rollback、source status／health、queue／cross-writer 只讀工具及 sync-completed 入口。
+- 文件追加部分失敗政策及根因更正；未 merge／未部署。

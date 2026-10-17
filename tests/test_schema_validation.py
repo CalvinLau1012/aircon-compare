@@ -16,7 +16,7 @@ import pytest
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(BASE, 'scripts'))
-from extract_governance import extract_blocks, BlockError, GOV_FILE  # noqa: E402
+from extract_governance import extract_blocks, BlockError, GOV_FILE, metadata_schema  # noqa: E402
 from validate_metadata import validate, validate_core  # noqa: E402
 
 _SPEC = importlib.util.spec_from_file_location(
@@ -25,7 +25,7 @@ feature_check = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(feature_check)
 
 with open(GOV_FILE, encoding='utf-8') as _f:
-    SCHEMA = extract_blocks(_f.read())['AIRCON_METADATA_SCHEMA_V1']
+    SCHEMA = metadata_schema(_f.read())
 
 VALID = {
     'schemaVersion': '1.0.0', 'version': '1.2.9', 'build': 'B20260921.1',

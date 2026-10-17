@@ -1,0 +1,65 @@
+name: BigGo completed-result sync (read-only)
+
+# Explicit, manual catch-up from the shared coordinator.  It NEVER acquires a
+# lease, never calls BigGo, and never writes coordinator state.  Dry-run is the
+# default; apply only writes the runner workspace (no push/deploy in this
+# implementation phase).  Missing history/stage gaps fail closed for Root review.
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Apply verified completed bundle locally in this ephemeral runner'
+        required: false
+        default: false
+        type: boolean
+      confirm_no_provider:
+        description: 'I confirm this is a read-only coordinator GET, no provider call'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: 確認 no-provider
+        run: |
+          test "${{ inputs.confirm_no_provider }}" = "true" || {
+            echo "::error::需要明確確認 no-provider"; exit 1; }
+      - name: 取出 master
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: 設定 Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: 安裝依賴
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: 同步 completed bundle（只 GET；零 lease／provider／state write）
+        env:
+          AIRCON_BIGGO_COORDINATOR_REPO: ${{ secrets.AIRCON_BIGGO_COORDINATOR_REPO }}
+          AIRCON_BIGGO_COORDINATOR_TOKEN: ${{ secrets.AIRCON_BIGGO_COORDINATOR_TOKEN }}
+          AIRCON_BIGGO_COORDINATOR_BRANCH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_BRANCH }}
+          AIRCON_BIGGO_COORDINATOR_STATE_PATH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_STATE_PATH }}
+          AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR: ${{ secrets.AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR }}
+          AIRCON_BIGGO_REPAIR_RECEIPT: ${{ inputs.apply && 'repair-receipt.json' || '' }}
+        run: |
+          ARGS="--report $RUNNER_TEMP/completed-sync.json"
+          if [ "${{ inputs.apply }}" = "true" ]; then ARGS="$ARGS --apply"; fi
+          python scripts/sync_biggo_completed.py $ARGS
+      - name: 上載報告（always）
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: biggo-completed-sync-${{ github.run_id }}
+          path: ${{ runner.temp }}/completed-sync.json
+          retention-days: 30
+          if-no-files-found: warn

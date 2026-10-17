@@ -35,18 +35,35 @@ def _run(script, *args):
 
 
 def _csv_facts():
+    """Return facts from the SAME CSV the generator will read.
+
+    This module used to hardcode record/model counts (1814) while registration
+    counts came from the live CSV.  When EMSD reduced the snapshot to 1782
+    rows the production generator was correct but the tests failed.  Keep all
+    three counts derived from one bytes snapshot so future increases,
+    decreases and duplicate registrations cannot drift silently.
+    """
     import csv
     import hashlib
     path = os.path.join(BASE, 'emsd_空調能源標籤.csv')
     with open(path, 'rb') as f:
-        digest = 'sha256:' + hashlib.sha256(f.read()).hexdigest()
-    with open(path, encoding='utf-8-sig') as f:
-        rows = sum(1 for _ in csv.reader(f)) - 1
-    return digest, rows
+        raw = f.read()
+    digest = 'sha256:' + hashlib.sha256(raw).hexdigest()
+    rows = list(csv.reader(raw.decode('utf-8-sig').splitlines()))
+    body = rows[1:] if rows else []
+    registrations = sum(1 for r in body if len(r) >= 2 and r[1].strip())
+    # Mirror crawl_utils.load_models(): canonical product view (dedupe by
+    # canonical brand|normalized model), which is what the workflow passes as
+    # recordCount/modelCount.  Use the production helper to avoid a second
+    # interpretation of the CSV.
+    from crawl_utils import load_models
+    models = len(load_models(path))
+    return digest, len(body), models, registrations
 
 
 def _core_args(out):
-    digest, n_rows = _csv_facts()
+    digest, n_rows, n_models, n_registrations = _csv_facts()
+    assert n_rows > 0 and n_models > 0 and n_registrations >= n_models
     return [
         '--stage', 'core', '--out', str(out), '--force',
         '--version', '1.2.8',
@@ -60,10 +77,10 @@ def _core_args(out):
         'https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php',
         '--dataset-snapshot-id', 'emsd-2026-09-03',
         '--dataset-hash', digest,
-        '--record-count', '1814',
+        '--record-count', str(n_models),
         '--raw-record-count', str(n_rows),
-        '--registration-count', str(n_rows),
-        '--model-count', '1814',
+        '--registration-count', str(n_registrations),
+        '--model-count', str(n_models),
     ]
 
 

@@ -59,10 +59,45 @@ REPRO_PIN_PACKAGES = ('markdown', 'reportlab')
 def metadata_schema_errors(meta):
     """完整 Draft 2020-12 + format 驗證（同治理內嵌 METADATA_SCHEMA_V1）。"""
     from validate_metadata import validate
-    from extract_governance import extract_blocks, GOV_FILE
-    with open(GOV_FILE, encoding='utf-8') as f:
-        schema = extract_blocks(f.read())['AIRCON_METADATA_SCHEMA_V1']
-    return validate(meta, schema)
+    from extract_governance import metadata_schema
+    return validate(meta, metadata_schema())
+
+
+def source_status_errors(meta):
+    """Validate truthful sourceStatus and its binding to the released CSV."""
+    import datetime as _dt
+    import sys as _sys
+    _sys.path.insert(0, os.path.join(BASE, 'scripts'))
+    import source_status
+    errors = []
+    src = meta.get('sourceStatus') if isinstance(meta, dict) else None
+    if src is None:
+        return []  # legacy release without the optional extension is still valid
+    for e in source_status.validate_status(src):
+        errors.append('sourceStatus: ' + e)
+    if not isinstance(src, dict):
+        return errors
+    emsd = src.get('emsd') or {}
+    if emsd.get('snapshotHash') != meta.get('datasetHash'):
+        errors.append('sourceStatus.emsd.snapshotHash != metadata.datasetHash')
+    if not isinstance(src.get('official'), dict):
+        errors.append('sourceStatus.official missing')
+    pub = src.get('publish') or {}
+    if pub.get('deployedAt') and not pub.get('deploymentReceipt'):
+        errors.append('sourceStatus.publish.deployedAt without deploymentReceipt')
+    now = _dt.datetime.now(_dt.timezone.utc)
+    for field in ('packagedAt', 'deployedAt'):
+        value = pub.get(field)
+        if not value:
+            continue
+        try:
+            when = _dt.datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+        except ValueError:
+            errors.append(f'sourceStatus.publish.{field} invalid')
+            continue
+        if when > now + _dt.timedelta(minutes=5):
+            errors.append(f'sourceStatus.publish.{field} future')
+    return errors
 
 
 def metadata_object_diff(expected, online):
@@ -489,6 +524,8 @@ def run(args):
         return finish(1)
     expected_errors = metadata_schema_errors(expected)
     rec(check('metadata.expected_schema_valid', not expected_errors, expected_errors[:5]))
+    source_errors = source_status_errors(expected)
+    rec(check('metadata.source_status_truthful', not source_errors, source_errors[:5]))
     if expected_errors:
         print('❌ expected metadata 唔過完整 Schema，停止後續 request', file=sys.stderr)
         return finish(1)

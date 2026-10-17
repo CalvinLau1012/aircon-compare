@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "subject": "CN=Thawte TLS RSA CA G1, OU=www.digicert.com, O=DigiCert Inc, C=US",
+  "issuer": "CN=DigiCert Global Root G2, OU=www.digicert.com, O=DigiCert Inc, C=US",
+  "serial": "09:0E:E8:C5:DE:5B:FA:62:D2:AE:2F:F7:09:7C:48:57",
+  "sha256": "4bcc5e234fe81ede4eaf883aa19c31335b0b26e85e066b9945e4cb6153eb20c2",
+  "notBefore": "2017-11-02T12:24:25Z",
+  "notAfter": "2027-11-02T12:24:25Z",
+  "provenance": "http://cacerts.thawte.com/ThawteTLSRSACAG1.crt (fetched once for TLS diagnostic 2026-10-17; DER validated to the system trust store)",
+  "hosts": [
+    "www.hitachi-homeappliances.com.hk"
+  ],
+  "usage": "Host-scoped intermediate only; root, hostname and expiry verification remain enabled."
+}

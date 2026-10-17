@@ -38,7 +38,7 @@ import zipfile
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(BASE, 'scripts'))
 from validate_metadata import validate  # noqa: E402
-from extract_governance import extract_blocks, GOV_FILE  # noqa: E402
+from extract_governance import metadata_schema  # noqa: E402
 import check_public_privacy  # noqa: E402
 
 SEMVER_TAG_RE = re.compile(
@@ -115,8 +115,7 @@ def tag_matches_version(tag, version):
 def verify_metadata(meta_path, manifest_path, artifacts_dir, source_commit=None, build=None):
     """重驗 metadata（完整 Schema + payload hash + manifest 路徑契約）。"""
     errors = []
-    with open(GOV_FILE, encoding='utf-8') as f:
-        schema = extract_blocks(f.read())['AIRCON_METADATA_SCHEMA_V1']
+    schema = metadata_schema()
     with open(meta_path, encoding='utf-8') as f:
         meta = json.load(f)
     errors.extend(f'metadata schema: {e}' for e in validate(meta, schema))

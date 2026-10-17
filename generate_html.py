@@ -458,10 +458,33 @@ def format_status(meta_dict, version):
     else:
         v = version
     date_text = f'📅 資料日期 {dataset_date}' if dataset_date else '📅 資料日期暫不可用'
-    deploy_text = f'✅ 最後部署 {deploy_hkt} HKT' if deploy_hkt else '🔄 每日偵測新機 · 有機先更新'
+    publish = ((meta_dict or {}).get('sourceStatus') or {}).get('publish') or {}
+    deployed_actual = bool(publish.get('deployedAt'))
+    deploy_label = '最後部署' if deployed_actual else '最後封裝'
+    deploy_text = f'📦 {deploy_label} {deploy_hkt} HKT' if deploy_hkt else '🔄 每日偵測新機 · 有機先更新'
     line1 = f'{date_text} · v{v} · {deploy_text}'
+    biggo_text = 'BigGo 更新時間未知'
+    try:
+        src = (meta_dict or {}).get('sourceStatus') or {}
+        b = src.get('biggo') or {}
+        status = b.get('status')
+        when = b.get('lastAppliedDate') or (b.get('lastAppliedAt') or '')[:10] or None
+        if status == 'ok' and when:
+            biggo_text = f'BigGo 最近成功更新 {when}（分批快照）'
+        elif status == 'degraded':
+            biggo_text = ('BigGo 價格沿用先前已驗證快照'
+                          + (f'（{when}）' if when else '') + ' · ⚠️ 價格來源降級')
+        elif status == 'blocked':
+            biggo_text = 'BigGo 價格來源受阻 · 沿用先前已驗證快照'
+        elif status == 'pending':
+            biggo_text = 'BigGo 本輪待更新 · 沿用先前已驗證快照'
+        elif when:
+            biggo_text = f'BigGo 更新時間 {when}（分批快照）'
+    except (AttributeError, TypeError):
+        pass
     line2 = ('🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）· 有新機先分批核實更新 · '
              + (f'資料日期 {dataset_date}' if dataset_date else '資料日期暫不可用')
+             + ' · ' + biggo_text
              + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考')
     return line1, line2
 
@@ -1117,7 +1140,7 @@ __CONTENT__
     <p>· 機電工程署 EMSD 能源標籤資料庫（官方能源/雪種/耗電數據）<br>
       · 資料目錄：DATA.GOV.HK（資料由機電工程署提供；dataset hk-emsd-emsd1-meels-listed-models）<br>
       · 品牌官網及總代理：信興集團、樂信網店、Panasonic、世紀開利、GENERAL 第一電業、HITACHI、COMFEE、美的<br>
-      · 價格快照：BigGo 官方 JSON API（更新至 2026-09-14）+ PricesAPI 核心 29 驗收 + Price.com.hk 2026-08-15 舊快照（分批快照；缺價標「待查」；點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
+      · 價格快照：BigGo 官方 JSON API（分批快照；實際更新日期見頁面狀態） + PricesAPI 核心 29 驗收 + Price.com.hk 舊快照（缺價標「待查」；點擊 🔍 轉跳 Google 搜最新價）· 豐澤 / 百老匯 / 友和 / BUILT-IN PRO · LIHKG 電器台用戶評價</p>
   </div>
 
   <div class="blk">
@@ -1579,18 +1602,27 @@ window.addEventListener('scroll',()=>{
       if (ver && m.version) ver.textContent = 'v' + m.version;
       const ds = m.datasetDate;
       const dt = m.deployTime;
+      const sb = (m.sourceStatus && m.sourceStatus.biggo) || {};
+      const bw = sb.lastAppliedDate || (sb.lastAppliedAt ? String(sb.lastAppliedAt).slice(0,10) : '');
+      let biggoText = 'BigGo 更新時間未知';
+      if (sb.status === 'ok' && bw) biggoText = 'BigGo 最近成功更新 ' + bw + '（分批快照）';
+      else if (sb.status === 'degraded') biggoText = 'BigGo 價格沿用先前已驗證快照' + (bw ? ('（' + bw + '）') : '') + ' · ⚠️ 價格來源降級';
+      else if (sb.status === 'blocked') biggoText = 'BigGo 價格來源受阻 · 沿用先前已驗證快照';
+      else if (sb.status === 'pending') biggoText = 'BigGo 本輪待更新 · 沿用先前已驗證快照';
+      else if (bw) biggoText = 'BigGo 更新時間 ' + bw + '（分批快照）';
       let line = (ds ? ('📅 資料日期 ' + ds) : '📅 資料日期暫不可用');
       if (m.version) line += ' · v' + m.version;
       if (dt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(dt)) {
         const hkt = new Date(new Date(dt).getTime() + 8*3600*1000);
         const p = hkt.toISOString().slice(0,16).replace('T',' ');
-        line += ' · ✅ 最後部署 ' + p + ' HKT';
+        line += ' · 📦 最後部署 ' + p + ' HKT';
       } else {
         line += ' · 🔄 每日偵測新機 · 有機先更新';
       }
       if (el) el.textContent = line;
       if (foot) foot.textContent = '🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）· 有新機先分批核實更新 · '
-        + (ds ? ('資料日期 ' + ds) : '資料日期暫不可用') + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考';
+        + (ds ? ('資料日期 ' + ds) : '資料日期暫不可用') + ' · ' + biggoText
+        + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考';
     })
     .catch(() => {
       if (el) el.textContent = '📅 資料日期暫不可用 · 部署資訊暫不可用';

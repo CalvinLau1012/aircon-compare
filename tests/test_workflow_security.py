@@ -570,6 +570,12 @@ def _eval_if(cond, *, event='schedule', inputs=None, stage='',
         expr = expr.replace(
             f"github.event.inputs.rebuild_verified_snapshot != '{flag}'",
             str(inputs.get('rebuild_verified_snapshot') != flag))
+        expr = expr.replace(
+            f"github.event.inputs.repair_release == '{flag}'",
+            str(inputs.get('repair_release') == flag))
+        expr = expr.replace(
+            f"github.event.inputs.repair_release != '{flag}'",
+            str(inputs.get('repair_release') != flag))
     expr = expr.replace("steps.stage.outputs.stage == '1'", str(stage == '1'))
     expr = expr.replace("steps.stage.outputs.stage == '2'", str(stage == '2'))
     expr = expr.replace('&&', ' and ').replace('||', ' or ')

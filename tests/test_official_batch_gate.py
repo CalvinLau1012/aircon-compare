@@ -80,7 +80,7 @@ def test_validate_marker_strict_negative_cases():
 FAKE_SCRIPT = '''\
 # -*- coding: utf-8 -*-
 import json, os, sys
-OUT = os.environ["FAKE_OUT"]
+OUT = os.path.join(os.environ.get("AIRCON_OFFICIAL_STAGING_REPO", os.path.dirname(os.path.abspath(__file__))), os.path.basename(os.environ["FAKE_OUT"]))
 out = json.load(open(OUT, encoding="utf-8")) if os.path.exists(OUT) else {}
 mode = os.environ.get("FAKE_MODE", "covered")
 def emit(payload):
@@ -684,7 +684,8 @@ import json, os, sys
 BASE = os.path.dirname(os.path.abspath(__file__))
 cfg = json.load(open(os.path.join(BASE, "fake_multi_config.json"), encoding="utf-8"))
 spec = cfg[os.path.basename(__file__)]
-out = spec["out"]
+root = os.environ.get("AIRCON_OFFICIAL_STAGING_REPO", BASE)
+out = os.path.join(root, os.path.basename(spec["out"]))
 data = json.load(open(out, encoding="utf-8")) if os.path.exists(out) else {}
 data.setdefault("M1", {"size": "100x200x300"})
 json.dump(data, open(out, "w", encoding="utf-8"), ensure_ascii=False)
@@ -906,3 +907,94 @@ def test_fetch_official_non404_success_not_blocked_by_registration(tmp_path, mon
     assert receipt['attempted'] == 1 and receipt['succeeded'] == 1
     assert receipt['succeededModels'] == ['CW-NOTREG']
     assert receipt['failed'] == 0
+
+
+# ---------------------------------------------------------------- transactional staging (2026-10-17)
+
+def test_isolated_staging_promotes_only_verified_outputs(tmp_path, monkeypatch):
+    repo, out = _setup_wrapper(tmp_path, monkeypatch, 'covered',
+                               advance_ran=tmp_path / 'advance-ran.txt')
+    old = out.read_bytes()
+    assert _run_wrapper(repo) == 0
+    assert out.read_bytes() != old, '成功 batch 要 promote 已驗證 staged output'
+    assert json.load(open(out, encoding='utf-8'))['M1']['size'] == '100x200x300'
+    receipt = json.load(open(repo / 'receipt.json', encoding='utf-8'))
+    assert receipt['staging']['used'] is True
+    assert receipt['staging']['promoted'] is True
+
+
+def test_coverage_pending_promotes_verified_output_but_keeps_queue(tmp_path, monkeypatch):
+    repo, out = _setup_wrapper(tmp_path, monkeypatch, 'coverage_pending')
+    assert _run_wrapper(repo) == 0
+    assert json.load(open(out, encoding='utf-8'))['M1']['size'] == '100x200x300'
+    q = json.load(open(repo / 'update_queue.json', encoding='utf-8'))
+    assert q == {'stage': 1, 'models': ['M1']}
+    receipt = json.load(open(repo / 'receipt.json', encoding='utf-8'))
+    assert receipt['decision'] == 'queue-kept-pending-coverage'
+    assert receipt['staging']['promoted'] is True
+
+
+def test_promotion_failure_rolls_back_original_outputs(tmp_path, monkeypatch):
+    repo = _setup_multi_wrapper(tmp_path, monkeypatch, 'covered', 'covered')
+    a = repo / 'fake_a.json'
+    b = repo / 'fake_b.json'
+    before = {a: a.read_bytes(), b: b.read_bytes()}
+    real_write = rob._atomic_write_bytes
+    failed = {'done': False}
+
+    def flaky_write(path, data, mode=0o644):
+        if os.path.basename(path) == 'fake_b.json' and not failed['done']:
+            failed['done'] = True
+            raise OSError('simulated promotion failure on second output')
+        return real_write(path, data, mode)
+
+    monkeypatch.setattr(rob, '_atomic_write_bytes', flaky_write)
+    assert rob.main(['--stage', '1', '--receipt', str(repo / 'receipt.json')]) == 1
+    for path, data in before.items():
+        assert path.read_bytes() == data, f'{path.name} 必須 rollback'
+    assert not (repo / 'advance-ran.txt').exists()
+    receipt = json.load(open(repo / 'receipt.json', encoding='utf-8'))
+    assert any('promotion' in f for f in receipt['failures'])
+
+
+def test_degraded_exit_zero_continues_only_source_failure(tmp_path, monkeypatch):
+    repo, out = _setup_wrapper(tmp_path, monkeypatch, 'fail')
+    old = out.read_bytes()
+    rc = rob.main(['--stage', '1', '--receipt', str(repo / 'r.json'),
+                   '--degraded-exit-zero'])
+    assert rc == 0, '可保留舊快照的來源失敗應以 degraded 狀態繼續'
+    assert out.read_bytes() == old
+    receipt = json.load(open(repo / 'r.json', encoding='utf-8'))
+    assert receipt['failureClass'] == 'source'
+    assert receipt['safeToContinue'] is True
+    assert receipt['decision'] == 'queue-kept-fail-closed'
+
+
+def test_degraded_exit_zero_still_blocks_transaction_integrity(tmp_path, monkeypatch):
+    repo, out = _setup_wrapper(tmp_path, monkeypatch, 'queuemutate')
+    rc = rob.main(['--stage', '1', '--receipt', str(repo / 'r.json'),
+                   '--degraded-exit-zero'])
+    assert rc == 1, 'queue mutation 屬 integrity failure，必須阻斷'
+    receipt = json.load(open(repo / 'r.json', encoding='utf-8'))
+    assert receipt['failureClass'] == 'integrity'
+    assert receipt['safeToContinue'] is False
+    assert not (tmp_path / 'advance-ran.txt').exists()
+
+
+def test_promotion_failure_is_integrity_even_with_degraded_flag(tmp_path, monkeypatch):
+    repo = _setup_multi_wrapper(tmp_path, monkeypatch, 'covered', 'covered')
+    real_write = rob._atomic_write_bytes
+    failed = {'done': False}
+
+    def flaky(path, data, mode=0o644):
+        if os.path.basename(path) == 'fake_b.json' and not failed['done']:
+            failed['done'] = True
+            raise OSError('simulated promotion failure')
+        return real_write(path, data, mode)
+
+    monkeypatch.setattr(rob, '_atomic_write_bytes', flaky)
+    rc = rob.main(['--stage', '1', '--receipt', str(repo / 'r.json'),
+                   '--degraded-exit-zero'])
+    assert rc == 1
+    receipt = json.load(open(repo / 'r.json', encoding='utf-8'))
+    assert receipt['failureClass'] == 'integrity'

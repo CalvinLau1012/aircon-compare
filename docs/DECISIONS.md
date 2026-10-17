@@ -1247,3 +1247,23 @@ PR #23 最終 head `a8e5444` 已通過 GitHub CI 並 merge；trusted rebuild `36
 Root 指 Codex 主審角色，並非人類維護者或 Code Owner。候選附錄及閱讀版已更正此稱謂；正式批准權限仍屬人類維護者。原治理基線所有既有內容及六個機器區塊保持原樣。
 
 - 後續 Codex 驗收：完整依賴、零網絡、容器自有 Git 工作樹內，治理提取（六個區塊）通過，治理／工具入口／公開私隱／Schema／功能證據五組測試共 **80 passed**。先前四項環境失敗歷史保留；此為本輪實際結果，尚非受信任 GitHub CI 或部署證據。
+
+## D37 · 2026-10-17：部分失敗、BigGo 修復與 atomic release（append-only）
+
+- **日期**：2026-10-17（HKT）
+- **狀態**：隔離候選實作及離線預演；未 merge／未部署／未改排程；Root 待獨立驗收
+- **背景**：2026-10-17 即時健康檢查發現 GitHub Pages 因測試 hardcode 計數而 fail、私人 BigGo stage 3 重複 apply 失敗、官網 HITACHI TLS 鏈不完整、server 四檔發布非原子。使用者要求 IMPLEMENT 全部修復方案。
+- **更正**：舊報告的 BigGo stale bundle 因果不正確；真正原因是 `dict(tracking)` 淺複製後修改 nested record，令 preState hash 錯誤及 effects 漏掉既有 record。以兩個漏掉 upsert 可重算 exact published preHash／postHash，無需 reprice 或 reset tracking。`providerQuotaLimit`／`providerWindowEnd` 為 null 只代表 UNKNOWN，不是 unlimited。
+- **決策**：
+  1. 兩端維持獨立 00:30 HKT 排程；共享 BigGo coordinator CAS 單一 writer；不改整體主備。
+  2. 有效 EMSD 資料可繼續發布；價格／官網故障保留已驗證舊快照並 clear alert；混合／損毀／來源未知阻斷。`completed-apply-failed` 不再被當成完全成功，但亦不令所有 daily 硬失敗。
+  3. BigGo apply 改為 lock＋journal＋checkpoint＋metadata last；repair 以 immutable receipt 補兩個既有 record 更新，保留原 bundleHash 及原 postHash 身份。
+  4. Official batch 使用 isolated staging，hard failure 保留原 output／queue；coverage pending 不 advance。
+  5. TLS strict；reviewed intermediate host-scoped、hash／expiry／issuer／root-chain 驗證；禁止 `CERT_NONE`。
+  6. Private release 使用 immutable version dir＋manifest／SHA256SUMS＋atomic pointer switch＋rollback；保留舊 version。
+  7. `sourceStatus` optional schema、truthful dates、UI EMSD／BigGo 分開顯示；health 與 publishing 分離。
+- **後果（分類）**：
+  - `REQUIREMENT`：原 fail-closed 門禁、Gate、Schema 版本兼容、00:30 HKT、shared CAS、隱私邊界保持；沒有放寬。
+  - `OBSERVED / E2`：isolated candidate 的 tests、rehearsal、fault injection 見私人 handoff；尚未是 trusted CI／E3／E4／live。
+  - `UNKNOWN`：Root 正式驗收、merge、Pages deploy、server image deploy、下次實際排程觀察。
+- **回滾**：revert 候選 commits；production 仍由舊 version／指標提供；repair receipt 未 apply 前不影響 live；已 apply 的舊 bundle 可用 immutable version／tracking receipt 回退。

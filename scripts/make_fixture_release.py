@@ -127,8 +127,8 @@ def build_fixture(repo, out_dir, now=None, build=None, commit='a' * 40):
         payload_hash = gen.hash_files(payload, base=out_dir)
         core['releasePayloadHash'] = payload_hash
         from validate_metadata import validate
-        from extract_governance import extract_blocks, GOV_FILE
-        schema = extract_blocks(open(GOV_FILE, encoding='utf-8').read())['AIRCON_METADATA_SCHEMA_V1']
+        from extract_governance import metadata_schema
+        schema = metadata_schema()
         errors = validate(core, schema)
         if errors:
             raise RuntimeError('fixture metadata 唔過 Schema：' + '；'.join(errors))

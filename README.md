@@ -732,3 +732,10 @@ python fetch_rasonic.py        # 樂信官方網店價格
 - 專案治理另提供 [繁體書面語閱讀版](docs/AIRCON_COMPARE_GOVERNANCE.zh-Hant.md)（2026-10-13 閱讀版）；經使用者審閱，倉庫整合尚待 Root 驗收。
 - [docs/AIRCON_COMPARE_GOVERNANCE.md](docs/AIRCON_COMPARE_GOVERNANCE.md) 仍為唯一機器規範來源，六個規範機器區塊與門禁不變；閱讀版只作正文轉述及相對連結，不建立第二個可編輯規範源。
 - 使用者本次批准只涵蓋文件表述，不代表批准額外 API、排程架構變更或機器規範變更；詳見 [DECISIONS D36](docs/DECISIONS.md)、[CHANGELOG](CHANGELOG.md) 與 [需求摘要](需求摘要.md)。
+
+## 2026-10-17 追加：來源狀態 schema extension 與修復政策
+
+- 原 `docs/AIRCON_COMPARE_GOVERNANCE.md` §7.1 的 `AIRCON_METADATA_SCHEMA_V1` 機器區塊 bytes 保持不變。
+- 新增明確版本化 extension `AIRCON_METADATA_SCHEMA_V1_1`（optional `sourceStatus`，包含 EMSD／BigGo／official／publish 分開事實）；extractor 只按 `metadata_schema()` 的 `blockId`／`supersedes` 明確讀取，不會默默取最後區塊，六個 canonical 區塊不變。
+- `sourceStatus.publish.packagedAt` 是封包時間；只有實際成功 deployment receipt 才可寫 `deployedAt`。舊資料缺值維持 unknown，不偽造日期。
+- 來源部分失敗政策：有效 EMSD 可繼續發布；官網／價格故障保留已驗證舊快照並告警；混合／損毀／未知阻斷；延遲不自動補跑。

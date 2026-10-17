@@ -9,12 +9,17 @@
 - EMSD CSV 型號載入 load_models（去重）
 """
 import csv
+import datetime as _dt
+import hashlib
 import json
 import os
 import random
 import re
 import ssl
+import subprocess
+import tempfile
 import time
+import urllib.parse
 import urllib.request
 import urllib.error
 
@@ -315,12 +320,169 @@ def html_to_text(html, joiner=' ', keep_lines=False):
     return re.sub(r'\s+', joiner, t).strip()
 
 
-def no_verify_ssl_context():
-    """部分香港官網 TLS 憑證鏈唔完整，先提供一個唔驗證憑證嘅 context（同舊行為一致）"""
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+# Host-scoped reviewed intermediate registry.  The certificate itself is public
+# CA material; provenance/hash/validity are pinned in the adjacent JSON.  It is
+# only loaded for the listed vendor host, after cryptographic validation to the
+# existing system trust store.  This is NOT a new root and never disables
+# hostname/expiry checks.
+REVIEWED_INTERMEDIATES = (
+    {
+        'hosts': ('www.hitachi-homeappliances.com.hk',),
+        'pem': os.path.join(BASE, 'certs', 'reviewed', 'thawte_tls_rsa_ca_g1.pem'),
+        'metadata': os.path.join(BASE, 'certs', 'reviewed', 'thawte_tls_rsa_ca_g1.json'),
+        'sha256': '4bcc5e234fe81ede4eaf883aa19c31335b0b26e85e066b9945e4cb6153eb20c2',
+        'issuer': 'DigiCert Global Root G2',
+        'not_after': '2027-11-02T12:24:25Z',
+    },
+)
+
+
+class TLSConfigError(RuntimeError):
+    """Reviewed intermediate / trust store cannot be validated (fail closed)."""
+
+
+def _system_cafile():
+    paths = ssl.get_default_verify_paths()
+    for candidate in (paths.cafile, paths.openssl_cafile,
+                      '/etc/ssl/certs/ca-certificates.crt',
+                      '/etc/pki/tls/certs/ca-bundle.crt'):
+        if candidate and os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+def _openssl(*args, stdin=None):
+    try:
+        return subprocess.run(['openssl', *args], input=stdin, capture_output=True,
+                              text=True, timeout=20)
+    except (OSError, subprocess.SubprocessError) as e:
+        raise TLSConfigError(f'openssl 無法執行（fail closed）：{type(e).__name__}') from e
+
+
+def _parse_openssl_date(value):
+    # openssl prints e.g. "Nov  2 12:24:25 2017 GMT"
+    try:
+        return _dt.datetime.strptime(value.strip(), '%b %d %H:%M:%S %Y GMT').replace(
+            tzinfo=_dt.timezone.utc)
+    except ValueError as e:
+        raise TLSConfigError(f'openssl 日期格式無法解析：{value!r}') from e
+
+
+def validate_reviewed_intermediate(spec, trusted_cafile=None):
+    """Return validated PEM text, or raise TLSConfigError.
+
+    Checks pinned SHA-256, CA/keyUsage, validity, issuer, and that the
+    intermediate verifies to the existing trust store with *full* chain
+    validation.  No PARTIAL_CHAIN and no CERT_NONE.
+    """
+    pem_path = spec['pem']
+    try:
+        with open(pem_path, 'rb') as f:
+            pem_bytes = f.read()
+    except OSError as e:
+        raise TLSConfigError(f'reviewed intermediate 讀取失敗：{e}') from e
+    if b'-----BEGIN CERTIFICATE-----' not in pem_bytes:
+        raise TLSConfigError('reviewed intermediate 必須係 PEM certificate')
+    # Re-encode to DER via openssl (also validates PEM structure).
+    try:
+        der_proc = subprocess.run(
+            ['openssl', 'x509', '-in', pem_path, '-outform', 'DER'],
+            capture_output=True, timeout=20)
+    except (OSError, subprocess.SubprocessError) as e:
+        raise TLSConfigError(f'openssl 無法執行（fail closed）：{type(e).__name__}') from e
+    if der_proc.returncode != 0:
+        raise TLSConfigError('reviewed intermediate PEM 無法解析')
+    der = der_proc.stdout
+    actual = hashlib.sha256(der).hexdigest()
+    if actual.lower() != str(spec['sha256']).lower():
+        raise TLSConfigError(f'reviewed intermediate SHA-256 唔符：{actual}')
+    text = _openssl('x509', '-in', pem_path, '-noout', '-subject', '-issuer',
+                    '-startdate', '-enddate', '-text')
+    if text.returncode != 0:
+        raise TLSConfigError('reviewed intermediate 詳細資料無法讀取')
+    details = text.stdout
+    if 'CA:TRUE' not in details or 'Certificate Sign' not in details:
+        raise TLSConfigError('reviewed intermediate 缺少 CA:TRUE／Certificate Sign')
+    start = end = None
+    for line in details.splitlines():
+        if line.startswith('notBefore='):
+            start = _parse_openssl_date(line.split('=', 1)[1])
+        elif line.startswith('notAfter='):
+            end = _parse_openssl_date(line.split('=', 1)[1])
+    if not start or not end:
+        raise TLSConfigError('reviewed intermediate 缺 notBefore／notAfter')
+    now = _dt.datetime.now(_dt.timezone.utc)
+    if now < start or now > end:
+        raise TLSConfigError('reviewed intermediate 已過期或未生效')
+    try:
+        pinned_end = _dt.datetime.fromisoformat(str(spec['not_after']).replace('Z', '+00:00'))
+    except ValueError as e:
+        raise TLSConfigError('reviewed intermediate not_after pin 格式錯誤') from e
+    if pinned_end.tzinfo is None:
+        pinned_end = pinned_end.replace(tzinfo=_dt.timezone.utc)
+    if end > pinned_end:
+        raise TLSConfigError('reviewed intermediate expiry 超出已審核期限')
+    if str(spec['issuer']) not in details:
+        raise TLSConfigError('reviewed intermediate issuer 唔符已審核值')
+    cafile = trusted_cafile or _system_cafile()
+    if not cafile:
+        raise TLSConfigError('找唔到系統 trust store（fail closed）')
+    verified = _openssl('verify', '-CAfile', cafile, pem_path)
+    if verified.returncode != 0:
+        raise TLSConfigError(
+            'reviewed intermediate 未能驗證到既有 trust root：'
+            + (verified.stderr or verified.stdout).strip()[:300])
+    if 'OK' not in (verified.stdout or ''):
+        raise TLSConfigError('reviewed intermediate verify 結果唔明確')
+    return pem_bytes.decode('ascii')
+
+
+def _reviewed_specs_for_host(host):
+    if not host:
+        return []
+    host = host.lower().rstrip('.')
+    out = []
+    for spec in REVIEWED_INTERMEDIATES:
+        for allowed in spec['hosts']:
+            a = allowed.lower().rstrip('.')
+            if host == a or host.endswith('.' + a):
+                out.append(spec)
+                break
+    return out
+
+
+def official_ssl_context(cafile=None, *, reviewed_intermediates=None,
+                         trusted_cafile=None):
+    """官網抓取用 strict TLS context：受信任 CA + hostname verification。
+
+    `cafile` 只供測試或已審核 CA bundle 注入；預設用系統信任庫。
+    `reviewed_intermediates` 只可由已審核 registry 傳入；每個 intermediate
+    先驗證 SHA-256、CA 屬性、有效期、issuer，再以 openssl verify 對現有
+    trust store 做完整鏈驗證，最後才在記憶體加入 context。任何失敗 fail closed。
+    """
+    ctx = ssl.create_default_context(cafile=cafile)
+    ctx.check_hostname = True
+    ctx.verify_mode = ssl.CERT_REQUIRED
+    for spec in reviewed_intermediates or ():
+        pem = validate_reviewed_intermediate(spec, trusted_cafile=trusted_cafile or cafile)
+        try:
+            ctx.load_verify_locations(cadata=pem)
+        except ssl.SSLError as e:
+            raise TLSConfigError(f'reviewed intermediate 載入 context 失敗：{e}') from e
     return ctx
+
+
+def official_ssl_context_for_url(url, *, cafile=None, trusted_cafile=None):
+    """Strict context for a business URL, with host-scoped reviewed intermediates."""
+    host = urllib.parse.urlparse(str(url)).hostname
+    specs = _reviewed_specs_for_host(host)
+    return official_ssl_context(cafile=cafile, reviewed_intermediates=specs,
+                                trusted_cafile=trusted_cafile)
+
+
+def no_verify_ssl_context():
+    """已停用：保留舊名但 fail-closed，避免任何呼叫路徑靜默降級 TLS。"""
+    raise RuntimeError('no_verify_ssl_context 已停用：官網抓取必須用 official_ssl_context()')
 
 
 def load_registrations(csv_path=None):

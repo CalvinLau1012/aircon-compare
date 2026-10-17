@@ -17,7 +17,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from extract_governance import extract_blocks, BlockError, GOV_FILE
+from extract_governance import BlockError, GOV_FILE, metadata_schema
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_PATH = os.path.join(BASE, 'metadata.json')
@@ -49,11 +49,10 @@ def _load_schema():
     with open(GOV_FILE, encoding='utf-8') as f:
         text = f.read()
     try:
-        blocks = extract_blocks(text)
+        return metadata_schema(text)
     except BlockError as e:
-        print(f'❌ 治理區塊失敗：{e}', file=sys.stderr)
+        print(f'❌ 治理區塊／Schema extension 失敗：{e}', file=sys.stderr)
         return None
-    return blocks['AIRCON_METADATA_SCHEMA_V1']
 
 
 def main(argv=None):
