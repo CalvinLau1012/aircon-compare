@@ -1655,3 +1655,11 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
 - 網站 fixture（D32）：`generate_html.py` → `make_fixture_release.py`（build `B20261011.PR-FIXTURE`）→ `build_pages_artifact.py` → `verify_candidate.py`；**fixture 同 artifact payload hash 一致**（該次 run `sha256:1ffe8eeb…`；fixture PDF 每次重建可因時間戳不同），候選 24/24 checks 全 pass（含 `payload.pdf_matches_metadata`）；375px dark 及 1280px light 本機 HTTP 瀏覽器檢查：水平溢出 0px、footer 出現「非準時保證」、報告內文出現「2026-10-12 排程口徑」及「高負載時可延遲甚至丟棄」。
 - Markdown append-only 檢查：全部修改 md 原行 multiset 100% 保留；`git diff --check` clean。
 - 邊界：全程零 BigGo／EMSD／官網／GitHub API 呼叫；未改 `VERSION`／`metadata.json`／價格快照／queue／黑名單／runner 行為／cron／治理 Schema；未 commit `index.html`／PDF。E3／E4 仍待 Root PR 與 D31 重建後嘅真實 run。
+
+
+## 2026-10-17T13:35Z · R4 idle diagnostic / test-grant candidate（append-only）
+
+- Root/CLI scope correction: Pi only isolated implementation/tests/candidate/runbook; server Docker and authorized live operations are CLI-only. No Pi credential/sudo/elevation; public text only generic CLI operator.
+- Isolated public release candidate `f1837a5b4e97693f1e4c2047bacaa1d52d573e6f` (parent live `d6e834e`) 1108 tests / 7 gates; private `b38354e3cda038c04833d80f7c55f7cf337b0814` 1163 tests / 7 gates. Not pushed/deployed.
+- Normal writers honor unexpired foreign lease in every status; unresolved/malformed diagnostic markers block takeover even with expired lease; completed marker preserved. Fixed-path central five-request test-grant ledger; business idle/stage/refs/requestAttempts preserved; no production auth budget use. Read-only grant proposal `grantId c85d6990…`; not installed.
+- Repair+rebuild both true rejected before checkout/Secrets; both individually skip provider/lease. Test budget remains 0/5 used; current live sourceStatus remains degraded; no live operation in this round.
