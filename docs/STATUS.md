@@ -1663,3 +1663,8 @@ Cloudflare anti-bot 放棄（唔係新決定），確認維持放棄；`fetch_pr
 - Isolated public release candidate `f1837a5b4e97693f1e4c2047bacaa1d52d573e6f` (parent live `d6e834e`) 1108 tests / 7 gates; private `b38354e3cda038c04833d80f7c55f7cf337b0814` 1163 tests / 7 gates. Not pushed/deployed.
 - Normal writers honor unexpired foreign lease in every status; unresolved/malformed diagnostic markers block takeover even with expired lease; completed marker preserved. Fixed-path central five-request test-grant ledger; business idle/stage/refs/requestAttempts preserved; no production auth budget use. Read-only grant proposal `grantId c85d6990…`; not installed.
 - Repair+rebuild both true rejected before checkout/Secrets; both individually skip provider/lease. Test budget remains 0/5 used; current live sourceStatus remains degraded; no live operation in this round.
+
+
+### 2026-10-17T13:47Z · final identity correction
+
+The final docs-inclusive audit candidate is public `d17b06f98c32c516dd34880be8a1dd4ebeda3b38` (1108/7) and private `8bdc778af3e026003aa3f1bee2139cdd66dd49e2` (1163/7). The earlier `f1837a5…`/`b38354e…` identities are superseded; both remain in history. Grant proposal is not installed; no live operation.
