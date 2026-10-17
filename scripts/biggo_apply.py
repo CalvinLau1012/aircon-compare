@@ -242,11 +242,67 @@ def _plan_blacklist_file(path, pre_hash, post_hash, effects):
     return 'pre', new_wrapper, current_hash
 
 
-def _target_meta(meta, sr, manifest, now):
+def _run_date_from_stage(sr, manifest, now):
+    """Stage actual completion date (UTC generatedAt → HKT); fallback cycle date."""
+    gen = str(sr.get('generatedAt') or '')
+    try:
+        dt_utc = _dt.datetime.strptime(gen, '%Y-%m-%dT%H:%M:%SZ').replace(
+            tzinfo=_dt.timezone.utc)
+        return dt_utc.astimezone(_dt.timezone(_dt.timedelta(hours=8))).strftime('%Y-%m-%d')
+    except ValueError:
+        cycle = str(manifest.get('cycleId') or '')
+        return cycle.split(':', 1)[0] if ':' in cycle else time.strftime(
+            '%Y-%m-%d', time.gmtime(now or time.time()))
+
+
+def _utc_timestamp(value):
+    """Normalise a successful apply instant to a full UTC Z timestamp.
+
+    Date-only values are deliberately not accepted for a new write: the old
+    producer stored such a value, which source_status cannot use as a time.
+    Existing date-only values remain readable for legacy/no-op preservation.
+    """
+    if value is None:
+        when = _dt.datetime.now(_dt.timezone.utc)
+    elif isinstance(value, _dt.datetime):
+        when = value
+    elif isinstance(value, (int, float)) and not isinstance(value, bool):
+        when = _dt.datetime.fromtimestamp(value, _dt.timezone.utc)
+    elif isinstance(value, str):
+        text = value.strip()
+        if len(text) == 10:
+            raise ApplyError('appliedAt 新寫入必須係完整 UTC timestamp，不可用 date-only')
+        try:
+            when = _dt.datetime.fromisoformat(text.replace('Z', '+00:00'))
+        except ValueError as e:
+            raise ApplyError(f'appliedAt 時間格式唔正確：{value!r}') from e
+    else:
+        raise ApplyError(f'appliedAt 類型唔支援：{type(value).__name__}')
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=_dt.timezone.utc)
+    return when.astimezone(_dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def _applied_date(applied_at):
+    """Legacy display date helper; never used for the new appliedAt field."""
+    ts = applied_at.timestamp() if hasattr(applied_at, 'timestamp') else applied_at
+    return _dt.datetime.fromtimestamp(ts or time.time(), _dt.timezone.utc).astimezone(
+        _dt.timezone(_dt.timedelta(hours=8))).strftime('%Y-%m-%d')
+
+
+def _snapshot_identity(manifest, snapshot_hash):
+    cycle = str(manifest.get('cycleId') or 'unknown-cycle')
+    stage = manifest.get('stage')
+    tail = str(snapshot_hash or '')[-12:]
+    return f'biggo-{cycle}-stage{stage}-{tail}'
+
+
+def _target_meta(meta, sr, manifest, now, applied_at=None):
     """由 bundle 計算新 meta（唔寫檔）；stage 只可前進，不可倒退。"""
     mode = manifest.get('mode')
     stage = manifest['stage']
-    today = time.strftime('%Y-%m-%d', time.gmtime(now or time.time()))
+    run_date = _run_date_from_stage(sr, manifest, now)
+    today = run_date
     new_meta = dict(meta)
     if mode == 'price-batch':
         cycle = manifest.get('cycleId', '')
@@ -256,6 +312,7 @@ def _target_meta(meta, sr, manifest, now):
         current = int(meta.get('price_batch_idx', 0) or 0)
         target = max(current, int(stage))
         new_meta['price_batch_idx'] = target
+        new_meta['last_price_month'] = date[:7]
         if target >= batch_utils.PRICE_BATCH_DAYS:
             new_meta.pop('price_batch_start', None)
             new_meta['last_full'] = today
@@ -270,6 +327,10 @@ def _target_meta(meta, sr, manifest, now):
     else:
         raise ApplyError(f'bundle mode 唔支援：{mode!r}')
     new_meta['last_applied_cycle'] = manifest.get('cycleId')
+    new_meta['appliedSnapshotId'] = _snapshot_identity(
+        manifest, manifest.get('snapshotHash') or manifest.get('newSnapshotHash'))
+    if applied_at is not None:
+        new_meta['appliedAt'] = _utc_timestamp(applied_at)
     return new_meta
 
 
@@ -476,7 +537,7 @@ def apply_repair(bundle, repair, *, repo_root):
         return {'tracking': 'applied', 'noop': False, 'repairId': repair.get('repairId')}
 
 
-def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, repair=None, lock_held=False):
+def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, applied_at=None, repair=None, lock_held=False):
     """套用已驗證 bundle 到 repo_root 的四個本地檔。
 
     先做全檔 preflight（任何一個 file 係唔明 image 就零寫入 fail-closed），
@@ -498,6 +559,16 @@ def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, repair=None, l
         journal = _read_journal(root)
         if journal is not None and journal.get('bundleHash') != bundle['bundleHash']:
             raise ApplyError('存在另一個未完成 bundle 的 apply journal（衝突；零寫入）')
+        # Capture the apply instant once, before the durable journal.  If a
+        # journal already exists, its original instant is authoritative; a
+        # retry/recovery may never move the successful time forward.
+        if journal is not None:
+            recorded = journal.get('appliedAt')
+            if not isinstance(recorded, str):
+                raise ApplyError('舊 journal 缺 appliedAt；拒絕以重試時間補造（需人手遷移）')
+            apply_timestamp = _utc_timestamp(recorded)
+        else:
+            apply_timestamp = _utc_timestamp(applied_at if applied_at is not None else now)
 
         # ---- preflight（零寫入），全部目標內容先計算 ----
         current_snapshot, snapshot_hash = _hash_file_json(snapshot_path)
@@ -525,9 +596,11 @@ def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, repair=None, l
             meta = batch_utils.load_meta(meta_path)
         except batch_utils.MetaError as e:
             raise ApplyError(f'prices_meta.json 讀取失敗：{e}') from e
-        staged_meta = _target_meta(meta, sr, manifest, now)
+        staged_meta = _target_meta(meta, sr, manifest, now, applied_at=apply_timestamp)
         staged_meta['appliedBundleHash'] = bundle['bundleHash']
         staged_meta['appliedSnapshotHash'] = bundle['newSnapshotHash']
+        staged_meta['appliedSnapshotId'] = _snapshot_identity(
+            manifest, bundle['newSnapshotHash'])
         try:
             batch_utils._validate_meta(staged_meta, 'prices_meta')
         except batch_utils.MetaError as e:
@@ -555,6 +628,8 @@ def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, repair=None, l
                 'bundleHash': bundle['bundleHash'],
                 'stageResultHash': bundle['stageResultHash'],
                 'createdAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+                'appliedAt': apply_timestamp,
+                'appliedSnapshotId': _snapshot_identity(manifest, bundle['newSnapshotHash']),
                 'files': {
                     BIGGO_SNAPSHOT: {
                         'preHash': snapshot_hash, 'postHash': bundle['newSnapshotHash'],

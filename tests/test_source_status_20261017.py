@@ -399,3 +399,21 @@ def test_completed_sync_report_stays_out_of_worktree_and_health_not_cross_build_
     assert '--completed-sync-report "$RUNNER_TEMP/biggo_completed_sync.json"' in daily
     fresh = open(os.path.join(BASE, '.github', 'workflows', 'freshness-monitor.yml'), encoding='utf-8').read()
     assert '--metadata metadata.json' not in fresh, 'public build metadata is not the private site build identity'
+
+
+def test_biggo_applied_full_timestamp_and_snapshot_identity_from_meta():
+    meta = {'last_run': '2026-10-12', 'price_batch_start': '2026-10-10',
+            'price_batch_idx': 3, 'appliedAt': '2026-10-17T08:52:47Z',
+            'appliedSnapshotHash': 'sha256:' + 'b' * 64,
+            'appliedSnapshotId': 'biggo-2026-10-10:3/7-stage3-bbbbbbbbbbbb'}
+    s = source_status.build_status(
+        metadata={'datasetDate': '2026-10-17', 'datasetHash': 'sha256:' + 'a' * 64,
+                  'deployTime': '2026-10-17T08:53:35Z'},
+        emsd_receipt=_receipt(), prices_meta=meta,
+        biggo_status={'status': 'completed', 'cycle': '2026-10-10:3/7', 'stage': 3,
+                      'snapshotHash': 'sha256:' + 'b' * 64})
+    assert s['biggo']['status'] == 'ok'
+    assert s['biggo']['lastAppliedAt'] == '2026-10-17T08:52:47Z'
+    assert s['biggo']['lastAppliedDate'] == '2026-10-17'
+    assert s['biggo']['snapshotId'] == 'biggo-2026-10-10:3/7-stage3-bbbbbbbbbbbb'
+    assert source_status.validate_status(s) == []

@@ -437,3 +437,69 @@ def test_stage_runner_discovers_hash_named_repair_attachment(tmp_path):
     receipt = {'repairId': 'sha256:' + 'f' * 64, 'kind': 'test'}
     (d / (bundle_hash.split(':', 1)[1] + '.json')).write_text(json.dumps(receipt), encoding='utf-8')
     assert runner._load_repair_receipt({}, str(tmp_path), bundle_hash) == receipt
+
+
+def test_apply_records_full_utc_applied_at_and_snapshot_identity(tmp_path):
+    bundle = _bundle(str(tmp_path))
+    _seed(tmp_path)
+    report = biggo_apply.apply_bundle(bundle, repo_root=str(tmp_path), now=1_000_000)
+    meta = _read(os.path.join(tmp_path, 'prices_meta.json'))
+    assert report['noop'] is False
+    assert meta['appliedAt'] == '1970-01-12T13:46:40Z'
+    assert meta['appliedSnapshotId'] == (
+        'biggo-2026-10-01:1/7-stage1-' + bundle['newSnapshotHash'][-12:])
+    assert meta['appliedSnapshotHash'] == bundle['newSnapshotHash']
+    # no-op must preserve the original successful timestamp and identity
+    biggo_apply.apply_bundle(bundle, repo_root=str(tmp_path), now=1_000_100)
+    assert _read(os.path.join(tmp_path, 'prices_meta.json')) == meta
+
+
+def test_apply_rejects_date_only_new_timestamp(tmp_path):
+    bundle = _bundle(str(tmp_path))
+    _seed(tmp_path)
+    with pytest.raises(biggo_apply.ApplyError, match='date-only'):
+        biggo_apply.apply_bundle(bundle, repo_root=str(tmp_path),
+                                 applied_at='2026-10-17')
+    assert 'appliedAt' not in _read(os.path.join(tmp_path, 'prices_meta.json'))
+
+
+def test_journal_recovery_preserves_original_applied_at(tmp_path, monkeypatch):
+    bundle = _bundle(str(tmp_path))
+    _seed(tmp_path)
+    real_save = biggo_apply.batch_utils.save_meta
+    calls = {'n': 0}
+
+    def flaky(meta, path=None):
+        calls['n'] += 1
+        if calls['n'] == 1:
+            raise biggo_apply.batch_utils.MetaError('simulated crash')
+        return real_save(meta, path)
+
+    monkeypatch.setattr(biggo_apply.batch_utils, 'save_meta', flaky)
+    with pytest.raises(biggo_apply.ApplyError):
+        biggo_apply.apply_bundle(bundle, repo_root=str(tmp_path), now=1_000_000)
+    journal = _read(os.path.join(tmp_path, biggo_apply.JOURNAL_NAME))
+    assert journal['appliedAt'] == '1970-01-12T13:46:40Z'
+    report = biggo_apply.apply_bundle(bundle, repo_root=str(tmp_path), now=1_000_100)
+    assert report['noop'] is False
+    meta = _read(os.path.join(tmp_path, 'prices_meta.json'))
+    assert meta['appliedAt'] == journal['appliedAt']
+    assert meta['appliedSnapshotId'] == journal['appliedSnapshotId']
+
+
+def test_legacy_date_only_applied_at_is_readable_but_not_rewritten(tmp_path):
+    bundle = _bundle(str(tmp_path))
+    _seed(tmp_path, meta={'price_batch_start': '2026-10-01', 'price_batch_idx': 0,
+                          'appliedBundleHash': bundle['bundleHash'],
+                          'appliedSnapshotHash': bundle['newSnapshotHash'],
+                          'appliedAt': '2026-10-17'})
+    for name in ('biggo_prices.json', 'model_status.json', 'model_blacklist.json'):
+        _write(os.path.join(tmp_path, name),
+               bundle['newSnapshot'] if name == 'biggo_prices.json' else
+               (bundle['stageResult']['postState']['trackingHash'] if False else {}))
+    # Use a real post image for tracking/blacklist.
+    _write(os.path.join(tmp_path, 'model_status.json'), {})
+    _write(os.path.join(tmp_path, 'model_blacklist.json'), {'version': 1, 'updated': 'x', 'models': {}})
+    report = biggo_apply.apply_bundle(bundle, repo_root=str(tmp_path), now=1_000_000)
+    assert report['noop'] is True
+    assert _read(os.path.join(tmp_path, 'prices_meta.json'))['appliedAt'] == '2026-10-17'
