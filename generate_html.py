@@ -458,9 +458,13 @@ def format_status(meta_dict, version):
     else:
         v = version
     date_text = f'📅 資料日期 {dataset_date}' if dataset_date else '📅 資料日期暫不可用'
-    publish = ((meta_dict or {}).get('sourceStatus') or {}).get('publish') or {}
+    source = (meta_dict or {}).get('sourceStatus')
+    publish = (source or {}).get('publish') or {}
+    # Legacy metadata (no sourceStatus) historically used deployTime as the
+    # deployment fact.  New metadata distinguishes packagedAt from an actual
+    # deployment receipt.
     deployed_actual = bool(publish.get('deployedAt'))
-    deploy_label = '最後部署' if deployed_actual else '最後封裝'
+    deploy_label = '最後部署' if (source is None or deployed_actual) else '最後封裝'
     deploy_text = f'📦 {deploy_label} {deploy_hkt} HKT' if deploy_hkt else '🔄 每日偵測新機 · 有機先更新'
     line1 = f'{date_text} · v{v} · {deploy_text}'
     biggo_text = 'BigGo 更新時間未知'

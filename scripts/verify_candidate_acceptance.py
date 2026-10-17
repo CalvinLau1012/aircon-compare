@@ -143,8 +143,17 @@ def main(argv=None):
         # preflight tests (metadata.commit must be a real ancestor); a synthetic
         # single-commit init would silently fail those tests instead of testing
         # the real candidate.
+        clone_env = dict(os.environ)
+        clone_home = os.path.join(tmp, 'git-home')
+        os.makedirs(clone_home, exist_ok=True)
+        gitconfig = os.path.join(clone_home, '.gitconfig')
+        with open(gitconfig, 'w', encoding='utf-8') as f:
+            f.write('[safe]\n\tdirectory = ' + repo + '\n'
+                    '\tdirectory = ' + os.path.join(repo, '.git') + '\n')
+        clone_env.update({'HOME': clone_home, 'GIT_CONFIG_GLOBAL': gitconfig})
         clone = subprocess.run(['git', 'clone', '--no-hardlinks', repo, candidate],
-                               capture_output=True, text=True, timeout=120)
+                               capture_output=True, text=True, timeout=120,
+                               env=clone_env)
         if clone.returncode != 0:
             raise RuntimeError('local git clone 失敗：' + (clone.stderr or '')[:300])
         copied = _copy_candidate(repo, candidate)
