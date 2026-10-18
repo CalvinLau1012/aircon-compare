@@ -1693,3 +1693,8 @@ Root R5 acceptance found five residual gaps; this candidate adds: missing/unknow
 ### 2026-10-18 · R5 Root acceptance gaps (append-only)
 
 Root found missing-health default recovery, unsafe health-reason exposure, unbound monitor reports, proposal evidence trust, and missing heartbeat interleaving tests. This candidate fixes: missing/unknown health/postdeploy never default healthy; fixed safe failure/reason codes; run/head/event-bound monitor reports saved even on API failure; evidence-bound usage proposal (state/manifest/stage-result/stage-status/release receipt) and explicit no-op; deterministic renew/record/commit thread tests with lock coverage. No live/provider/coordinator/grant operation.
+
+
+### 2026-10-18 · R6 evidence-integrity corrections (append-only)
+
+R6 Root review found health-summary schema/identity acceptance, unsafe postdeploy failure text, unbound monitor reports, swallowed report-write failure, and proposal evidence trust issues. This candidate strictly validates the real check_health_summary producer contract and identity before any issue side effect, maps only fixed safe health/postdeploy codes, binds both monitor reports to run/head/event before freshness, returns nonzero if evidence cannot be written, records planned vs applied issue actions, validates proposal evidence without CLI actual counts, and adds deterministic renew interleaving tests. No live/provider/coordinator/grant operation.
