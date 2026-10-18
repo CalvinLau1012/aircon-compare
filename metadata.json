@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0.0",
   "version": "1.2.9",
-  "build": "B20261017.159.1",
-  "commit": "be2636f36bef5542840fdda3553839ffbd671b73",
-  "deployTime": "2026-10-17T18:49:54Z",
-  "workflowRunId": "39059258825",
+  "build": "B20261018.161.1",
+  "commit": "a186691944f5c2febdaa8c3c0688107cb2b9e8ae",
+  "deployTime": "2026-10-18T06:12:25Z",
+  "workflowRunId": "39103045985",
   "deploymentType": "release",
   "datasetDate": "2026-10-18",
   "datasetDateBasis": "retrieval-date-fallback",
@@ -18,16 +18,14 @@
   "modelCount": 1721,
   "sourceStatus": {
     "biggo": {
-      "cycleId": "2026-10-10:4/7",
-      "lastAcquiredAt": null,
-      "lastAppliedAt": "2026-10-17T11:37:53Z",
-      "lastAppliedDate": "2026-10-17",
-      "lastAttemptAt": "2026-10-17T18:49:52Z",
-      "safeReason": "completed-sync-unavailable",
-      "snapshotHash": "sha256:043f44b417c76a9c584c4d1c77848022dc2caa4321177add6f3609e12ac30482",
-      "snapshotId": "biggo-baseline-2026-10-10:3/7-stage3-09e12ac30482",
-      "stage": 4,
-      "status": "degraded"
+      "lastAcquiredAt": "2026-10-17T16:38:58Z",
+      "lastAppliedAt": "2026-10-18T06:12:23Z",
+      "lastAppliedDate": "2026-10-18",
+      "lastAttemptAt": null,
+      "safeReason": "applied",
+      "snapshotHash": "sha256:533af741ead964d5a8aa8e12f81231db4fa8b0de262ee7484db7ceeb46fb5e8d",
+      "snapshotId": "biggo-2026-10-10:4/7-stage4-ceeb46fb5e8d",
+      "status": "ok"
     },
     "emsd": {
       "lastAcquiredAt": "2026-10-17T18:46:52Z",
@@ -39,7 +37,7 @@
       "snapshotId": "emsd-2026-10-18-7e132c45ed00",
       "status": "ok"
     },
-    "generatedAt": "2026-10-17T18:49:53Z",
+    "generatedAt": "2026-10-18T06:12:25Z",
     "official": {
       "lastAcquiredAt": null,
       "lastAppliedAt": null,
@@ -51,14 +49,14 @@
       "status": "degraded"
     },
     "publish": {
-      "build": "B20261017.159.1",
-      "commit": "be2636f36bef5542840fdda3553839ffbd671b73",
+      "build": "B20261018.161.1",
+      "commit": "a186691944f5c2febdaa8c3c0688107cb2b9e8ae",
       "deployedAt": null,
       "deploymentReceipt": null,
-      "packagedAt": "2026-10-17T18:49:54Z",
+      "packagedAt": "2026-10-18T06:12:25Z",
       "releasePayloadHash": null
     },
     "schemaVersion": 1
   },
-  "releasePayloadHash": "sha256:1f1bc99015941b0d236dd4fd2e2b5a462b627dbb757b417a93384bc3c0031f71"
+  "releasePayloadHash": "sha256:d97d894f8b2d53de5eabd470ce7f731c2f1a901292ecd0373e725381bd0d101d"
 }
