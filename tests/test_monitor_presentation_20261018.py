@@ -63,9 +63,18 @@ def test_pending_biggo_and_degraded_official_remain_source_alert_with_prior_snap
     assert flag(b, '資料過期 (freshness)') == 'no'
     assert flag(b, '待發布版本未上線／部署核對 (postdeploy)') == 'no'
     assert flag(b, '來源部分失敗 (source health)') == 'yes'
-    assert 'BigGo 來源未健康（沿用先前已驗證快照）' in b
+    assert 'BigGo 來源未健康' in b and '本輪未完成' in b
     assert 'official 來源未健康' in b
-    assert '過期' not in b.split('###')[0] or True
+    assert '沿用先前已驗證快照' not in b
+    r2 = result(health=False, health_reason='health:biggo,health:official',
+                sourceStates={'biggo': {'status': 'pending', 'safeReason': 'completed-sync-remote-not-completed'},
+                              'official': {'status': 'degraded', 'safeReason': 'sources-degraded'}})
+    b2 = body(r2)
+    assert 'biggo: 待更新' in b2 and 'official: 降級' in b2
+    # BigGo has the producer-defined remote-not-completed preservation fact;
+    # official's generic degraded code must not claim a verified snapshot.
+    assert 'biggo: 待更新；遠端尚未完成新一輪；沿用先前已驗證快照' in b2
+    assert 'official: 降級；來源部分失敗；沿用先前已驗證快照' not in b2
 
 
 def test_missing_or_invalid_health_and_postdeploy_never_close():
@@ -114,7 +123,7 @@ def test_source_states_are_sanitised_and_cannot_green_unknown():
     assert flag(body(result(health=False)), '來源部分失敗 (source health)') == 'yes'
 
 
-def test_input_not_mutated_and_summary_missing_is_non_healthy(capsys):
+def test_input_not_mutated_and_summary_missing_is_non_healthy(tmp_path, capsys):
     r = result(health=False)
     before = json.loads(json.dumps(r, sort_keys=True))
     body(r)
@@ -125,7 +134,9 @@ def test_input_not_mutated_and_summary_missing_is_non_healthy(capsys):
     report = {'action': 'noop', 'plannedAction': 'noop', 'appliedAction': 'none',
               'sourceRunId': 1, 'headSha': 'a' * 40,
               'check': result(health=False)}
-    assert summary.main(['/dev/stdin']) in (0, 1)
+    valid = tmp_path / 'valid-monitor-report.json'
+    valid.write_text(json.dumps(report), encoding='utf-8')
+    assert summary.main([str(valid)]) == 0
 
 
 def test_report_write_failure_returns_nonzero_before_api(tmp_path, monkeypatch):
@@ -144,6 +155,31 @@ def test_report_write_failure_returns_nonzero_before_api(tmp_path, monkeypatch):
     assert rc == 1
     assert calls == []
 
+
+
+def test_summary_rejects_invalid_shapes_and_sanitizes_identity(tmp_path, capsys):
+    for i, payload in enumerate([[], None, {}, {'check': []}, {'check': {}}]):
+        path = tmp_path / f'invalid-{i}.json'
+        path.write_text(json.dumps(payload), encoding='utf-8')
+        assert summary.main([str(path)]) == 1
+        out = capsys.readouterr().out
+        assert 'unknown' in out and '未確認' in out
+    secret = 'TOKEN-MUST-NOT-LEAK'
+    bad = result(health=False, health_reason='health:' + secret)
+    rendered = mp.render_monitor_summary({'check': bad, 'action': secret,
+                                          'plannedAction': secret, 'appliedAction': secret,
+                                          'sourceRunId': secret, 'headSha': secret})
+    assert secret not in rendered
+    body_text = mp.render_issue_body(bad, 'fresh:source_health_failed:health:unknown')
+    assert secret not in body_text
+
+
+def test_corrupt_source_state_does_not_claim_verified_snapshot():
+    r = result(health=False, health_reason='health:integrity,health:invalid')
+    text = mp.render_monitor_summary({'check': r})
+    assert '沿用先前已驗證快照' not in text
+    r2 = result(health=False, sourceStates={'biggo': {'status': ['pending'], 'safeReason': 7}})
+    assert 'unknown' in mp.render_monitor_summary({'check': r2})
 
 def test_workflow_name_and_safety_contract_unchanged():
     text = (BASE / '.github' / 'workflows' / 'freshness-monitor.yml').read_text(encoding='utf-8')

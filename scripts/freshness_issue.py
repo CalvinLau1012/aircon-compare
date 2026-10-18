@@ -22,6 +22,7 @@ for _p in (BASE, SCRIPTS):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 from check_freshness import evaluate, plan_issue  # noqa: E402
+from monitor_presentation import sanitize_source_states  # noqa: E402
 
 LABEL = 'monitoring:freshness'
 TITLE = '[MONITOR] 資料新鮮度、部署與來源健康警報'
@@ -238,6 +239,7 @@ def main(argv=None):
     post_ok = False
     post_known = False
     health_known = False
+    health_states = {}
     deployment = None
     health_ok = False
     health_reason = 'health-report-missing'
@@ -248,6 +250,7 @@ def main(argv=None):
             health = json.load(open(args.health_report, encoding='utf-8'))
             health_ok, health_reason, health_failures, health_known = _health_fact(
                 health, expected_identity)
+            health_states = sanitize_source_states(health.get('sourceStates')) if health_known else {}
         except (OSError, ValueError, TypeError, AttributeError):
             health_ok = False; health_known = False; health_reason = 'health:invalid'
             health_failures = ['health:invalid']
@@ -282,6 +285,8 @@ def main(argv=None):
     result['postdeployKnown'] = post_known
     result['healthSummaryOk'] = health_ok
     result['healthKnown'] = health_known
+    if health_states:
+        result['sourceStates'] = health_states
     result['healthReason'] = health_reason
     result['healthFailures'] = health_failures
     result['postdeployFailures'] = post_failures

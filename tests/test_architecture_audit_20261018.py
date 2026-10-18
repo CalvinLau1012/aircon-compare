@@ -59,7 +59,7 @@ def test_invalid_python_exits_nonzero_without_fake_audit(tmp_path):
     write(r, 'broken.py', 'def nope(:\n')
     out = subprocess.run([sys.executable, str(SCRIPT), '--repo', str(r)], text=True, capture_output=True)
     assert out.returncode == 2
-    assert 'invalid Python source' in out.stderr
+    assert 'invalid source or workflow' in out.stderr
 
 
 def test_missing_repo_is_nonzero(tmp_path):
@@ -77,7 +77,7 @@ def test_output_no_clobber_and_relative_privacy(tmp_path):
     assert str(r) not in text and '/tmp/' not in text and '/home/' not in text
     assert json.loads(text)['repoName'] == 'repo'
     again = subprocess.run([sys.executable, str(SCRIPT), '--repo', str(r), '--output', str(target)], text=True, capture_output=True)
-    assert again.returncode != 0 and 'no-clobber' in again.stderr
+    assert again.returncode != 0 and 'output refused' in again.stderr
 
 
 def test_output_dir_requires_new_dir(tmp_path):
@@ -86,3 +86,26 @@ def test_output_dir_requires_new_dir(tmp_path):
     assert subprocess.run([sys.executable, str(SCRIPT), '--repo', str(r), '--output-dir', str(d)], capture_output=True).returncode == 0
     assert (d / 'architecture-audit.json').is_file()
     assert subprocess.run([sys.executable, str(SCRIPT), '--repo', str(r), '--output-dir', str(d)], capture_output=True).returncode != 0
+
+
+def test_relative_imports_schedule_and_symlink(tmp_path):
+    r = repo(tmp_path)
+    write(r, 'pkg/__init__.py', '')
+    write(r, 'pkg/util.py', 'VALUE=1\n')
+    write(r, 'pkg/runner.py', 'from . import util\n')
+    a = AA.audit(r)
+    assert ('pkg/runner.py', 'pkg/util.py') in {(e['from'], e['to']) for e in a['edges']}
+    write(r, '.github/workflows/check.yml', "on:\n  schedule:\n    - cron: '0 */6 * * *'\njobs: {}\n")
+    assert AA.audit(r)['workflows'][0]['schedule'] == [{'cron': '0 */6 * * *'}]
+    outside = tmp_path / 'outside.py'
+    outside.write_text('VALUE=1\n')
+    (r / 'escape.py').symlink_to(outside)
+    out = subprocess.run([sys.executable, str(SCRIPT), '--repo', str(r)], text=True, capture_output=True)
+    assert out.returncode != 0
+
+
+def test_invalid_workflow_is_nonzero(tmp_path):
+    r = repo(tmp_path)
+    write(r, '.github/workflows/check.yml', 'jobs: [broken\n')
+    out = subprocess.run([sys.executable, str(SCRIPT), '--repo', str(r)], text=True, capture_output=True)
+    assert out.returncode != 0

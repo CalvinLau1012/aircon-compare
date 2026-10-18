@@ -18,6 +18,7 @@ import urllib.request
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(BASE, 'scripts'))
 import source_status  # noqa: E402
+from monitor_presentation import sanitize_source_states  # noqa: E402
 
 
 def _load(url=None, path=None, timeout=20):
@@ -95,6 +96,8 @@ def evaluate(summary, *, now=None, max_age_hours=48, expected_metadata=None):
                 failures.append(f'summary:{field}-metadata-binding-mismatch')
     return {'ok': not failures, 'status': 'healthy' if not failures else 'unhealthy',
             'failures': failures[:20],
+            # Optional presentation-only facts; they never decide `ok`.
+            'sourceStates': sanitize_source_states(summary.get('sources')),
             'checkedAt': summary.get('checkedAt')}
 
 def main(argv=None):

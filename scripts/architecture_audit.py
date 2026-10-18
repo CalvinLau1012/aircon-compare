@@ -24,20 +24,44 @@ ENTRY_RE = re.compile(r'(?:python(?:3(?:\.\d+)?)?|py)\s+(?:-m\s+)?([A-Za-z0-9_./
 SCRIPT_RE = re.compile(r'(?<![\w/])((?:scripts/)?[A-Za-z0-9_./-]+\.py)\b')
 
 
+class AuditError(ValueError):
+    pass
+
+
 def sha256_file(path):
+    p = Path(path)
+    if p.is_symlink():
+        raise AuditError('symlink source rejected')
     h = hashlib.sha256()
-    with open(path, 'rb') as f:
+    with open(p, 'rb') as f:
         for chunk in iter(lambda: f.read(1024 * 1024), b''):
             h.update(chunk)
     return 'sha256:' + h.hexdigest()
 
 
-def rel_files(repo):
-    repo = Path(repo).resolve()
-    for p in sorted(repo.rglob('*.py')):
-        if any(part in SKIP_DIRS for part in p.relative_to(repo).parts):
-            continue
-        yield p.relative_to(repo).as_posix(), p
+def rel_python_files(repo):
+    repo = Path(repo)
+    for root, dirs, files in os.walk(repo, followlinks=False):
+        dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS)
+        for name in sorted(files):
+            if not name.endswith('.py'):
+                continue
+            p = Path(root) / name
+            if p.is_symlink():
+                raise AuditError('symlink source rejected')
+            yield p.relative_to(repo).as_posix(), p
+
+
+def workflow_files(repo):
+    wfdir = Path(repo) / '.github' / 'workflows'
+    if not wfdir.is_dir():
+        return []
+    out = []
+    for p in sorted(wfdir.glob('*.yml')) + sorted(wfdir.glob('*.yaml')):
+        if p.is_symlink():
+            raise AuditError('symlink workflow rejected')
+        out.append((p.relative_to(Path(repo)).as_posix(), p))
+    return out
 
 
 def group_for(rel):
@@ -62,49 +86,68 @@ def group_for(rel):
     return 'runtime_support'
 
 
-def module_candidates(rel):
+def canonical_module(rel):
     p = Path(rel)
-    names = {p.stem, rel[:-3].replace('/', '.')}
-    parts = p.parts
-    if len(parts) > 1:
-        names.add('.'.join(parts[:-1]) + '.' + p.stem)
-        # scripts/ and tests/ are routinely on sys.path.
-        names.add(p.stem)
-    return names
+    if p.name == '__init__.py':
+        parts = p.parts[:-1]
+    else:
+        parts = p.parts[:-1] + (p.stem,)
+    return '.'.join(parts)
+
+
+def module_aliases(rel):
+    canonical = canonical_module(rel)
+    aliases = {canonical} if canonical else set()
+    parts = Path(rel).parts
+    if len(parts) > 1 and parts[0] in {'scripts', 'tests'}:
+        aliases.add('.'.join(parts[1:-1] + (Path(rel).stem,)))
+    return {a for a in aliases if a}
 
 
 def parse_imports(tree):
-    found = []
+    """Return full (level, module) import specs; never collapse dotted names."""
+    out = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
-                found.append(alias.name.split('.')[0])
+                out.append({'level': 0, 'module': alias.name})
         elif isinstance(node, ast.ImportFrom):
-            if node.level:
-                continue
-            if node.module:
-                found.append(node.module.split('.')[0])
-    return sorted(set(found))
+            out.append({'level': int(node.level or 0), 'module': node.module or '',
+                        'names': [a.name for a in node.names]})
+    # Keep deterministic order and remove exact duplicates; names are retained.
+    unique = {}
+    for spec in out:
+        unique[(spec['level'], spec['module'], tuple(spec.get('names', ())))] = spec
+    return [unique[k] for k in sorted(unique)]
+
+
+def _read_text(path):
+    if Path(path).is_symlink():
+        raise AuditError('symlink source rejected')
+    return Path(path).read_text(encoding='utf-8')
 
 
 def load_yaml(path):
+    """Return (mapping, None) or (None, error_code); do not echo YAML."""
     try:
-        return yaml.safe_load(path.read_text(encoding='utf-8')) or {}
+        data = yaml.safe_load(_read_text(path))
     except Exception as exc:
-        return {'__error__': type(exc).__name__}
+        return None, type(exc).__name__
+    if not isinstance(data, dict):
+        return None, 'not-a-mapping'
+    return data, None
 
 
-def workflow_facts(repo, by_name):
+def workflow_facts(repo):
     rows = []
-    wfdir = Path(repo) / '.github' / 'workflows'
-    if not wfdir.is_dir():
-        return rows
-    for p in sorted(wfdir.glob('*.yml')) + sorted(wfdir.glob('*.yaml')):
-        data = load_yaml(p)
-        rel = p.relative_to(Path(repo)).as_posix()
-        if '__error__' in data:
-            rows.append({'workflow': rel, 'parse': 'invalid', 'entrypoints': []})
+    for rel, p in workflow_files(repo):
+        data, err = load_yaml(p)
+        if err is not None:
+            rows.append({'workflow': rel, 'parse': 'invalid', 'error': err,
+                         'entrypoints': [], 'schedule': None})
             continue
+        on = data['on'] if 'on' in data else data.get(True)
+        schedule = on.get('schedule') if isinstance(on, dict) else None
         steps = []
         jobs = data.get('jobs') if isinstance(data.get('jobs'), dict) else {}
         for job_name, job in jobs.items():
@@ -116,104 +159,169 @@ def workflow_facts(repo, by_name):
                 run = step.get('run')
                 if not isinstance(run, str):
                     continue
-                refs = []
-                for m in ENTRY_RE.finditer(run):
-                    refs.append(m.group(1))
-                # static script references in reviewed shell blocks (not import discovery)
-                refs += [m.group(1) for m in SCRIPT_RE.finditer(run) if m.group(1).startswith('scripts/')]
+                refs = [m.group(1) for m in ENTRY_RE.finditer(run)]
+                refs += [m.group(1) for m in SCRIPT_RE.finditer(run)
+                         if m.group(1).startswith('scripts/')]
                 refs = sorted(set(refs))
                 if refs:
-                    steps.append({'job': job_name, 'step': step.get('name') or f'step{idx}', 'scripts': refs})
-        rows.append({'workflow': rel, 'parse': 'ok', 'entrypoints': steps,
-                     'schedule': data.get('on', {}).get('schedule') if isinstance(data.get('on'), dict) else None})
+                    steps.append({'job': job_name,
+                                  'step': step.get('name') or f'step{idx}',
+                                  'scripts': refs})
+        rows.append({'workflow': rel, 'parse': 'ok', 'error': None,
+                     'entrypoints': steps, 'schedule': schedule})
     return rows
+
+
+def _resolve_spec(spec, importer, by_module):
+    level = spec['level']
+    module = spec['module']
+    if level:
+        base = list(Path(importer).parent.parts)
+        up = level - 1
+        if up > len(base):
+            return None, f'.{"." * level}{module}'
+        base = base[:len(base) - up] if up else base
+        names = ['.'.join(base + ([module] if module else []))]
+        if not module:
+            # `from . import util` can resolve a submodule through callers;
+            # the import itself does not name it without the alias.
+            names = ['.'.join(base)]
+        else:
+            names = ['.'.join(base + [module])]
+    else:
+        names = [module] if module else []
+    if level and not module:
+        base_name = '.'.join(base)
+        names = ['.'.join([base_name, n]) for n in spec.get('names', []) if n != '*'] or [base_name]
+    if not names or not names[0]:
+        return None, f'.{"." * level}{module}'
+    for name in names:
+        candidates = by_module.get(name, [])
+        if candidates:
+            # Never prefer a test module over production; deterministic first.
+            candidates = sorted(candidates, key=lambda x: (x.startswith('tests/'), x))
+            return candidates[0], name
+    # `from pkg import util` may name a submodule rather than an attribute.
+    if not level and module:
+        for alias in spec.get('names', []):
+            if alias == '*':
+                continue
+            name = module + '.' + alias
+            candidates = by_module.get(name, [])
+            if candidates:
+                candidates = sorted(candidates, key=lambda x: (x.startswith('tests/'), x))
+                return candidates[0], name
+    return None, names[0]
+
+
+def _read_workflow_entrypoints(rows):
+    entry = {}
+    for row in rows:
+        for step in row.get('entrypoints', []):
+            for script in step['scripts']:
+                entry.setdefault(script, []).append(
+                    {'workflow': row['workflow'], 'job': step['job'], 'step': step['step']})
+    return entry
 
 
 def audit(repo, peer_root=None):
     repo = Path(repo).resolve()
     if not repo.is_dir():
-        raise FileNotFoundError(f'repo directory not found: {repo.name}')
+        raise FileNotFoundError('repo directory not found')
     py = {}
-    by_candidate = {}
-    for rel, path in rel_files(repo):
+    by_module = {}
+    for rel, path in rel_python_files(repo):
         try:
-            text = path.read_text(encoding='utf-8')
+            text = _read_text(path)
             tree = ast.parse(text, filename=rel)
             imports = parse_imports(tree)
             size = len(text.encode('utf-8'))
             lines = len(text.splitlines())
             valid = True
+        except AuditError:
+            raise
         except Exception:
-            imports, size, lines, valid = [], path.stat().st_size, 0, False
+            imports, size, lines, valid = [], path.lstat().st_size, 0, False
         item = {'path': rel, 'sha256': sha256_file(path), 'bytes': size, 'lines': lines,
-                'group': group_for(rel), 'imports': imports, 'parse': 'ok' if valid else 'invalid'}
+                'group': group_for(rel), 'imports': imports,
+                'parse': 'ok' if valid else 'invalid'}
         py[rel] = item
-        for name in module_candidates(rel):
-            by_candidate.setdefault(name, []).append(rel)
-    edges = []
+        for name in module_aliases(rel):
+            by_module.setdefault(name, []).append(rel)
+    edges, unresolved, external = [], [], []
+    repo_tops = {str(x).split('.', 1)[0] for x in by_module}
     for rel, item in py.items():
-        for name in item['imports']:
-            candidates = by_candidate.get(name, [])
-            # Prefer a same-directory module, then root/scripts, never a test.
-            target = None
-            here = Path(rel).parent.as_posix()
-            for c in candidates:
-                if Path(c).parent.as_posix() == here:
-                    target = c
-                    break
-            if target is None:
-                for c in candidates:
-                    if c == f'{name}.py' or c == f'scripts/{name}.py':
-                        target = c
-                        break
-            if target is None and candidates:
-                target = candidates[0]
+        if item['parse'] != 'ok':
+            continue
+        for spec in item['imports']:
+            target, name = _resolve_spec(spec, rel, by_module)
             if target and target != rel:
-                edges.append({'from': rel, 'to': target, 'kind': 'observed_static_import', 'name': name})
+                edges.append({'from': rel, 'to': target, 'kind': 'observed_static_import',
+                              'name': name, 'level': spec['level']})
+            elif not target:
+                top = str(name).split('.', 1)[0]
+                if top in repo_tops:
+                    unresolved.append({'from': rel, 'kind': 'unresolved_static_import',
+                                       'name': name, 'level': spec['level']})
+                else:
+                    external.append(name)
     edges.sort(key=lambda x: (x['from'], x['to'], x['name']))
     callers = {}
     for e in edges:
-        callers.setdefault(e['to'], []).append(e['from'])
-    test_text = {}
-    for rel, item in py.items():
-        if item['group'] == 'tests_and_fixtures':
-            test_text[rel] = (repo / rel).read_text(encoding='utf-8', errors='replace')
+        bucket = callers.setdefault(e['to'], [])
+        if e['from'] not in bucket:
+            bucket.append(e['from'])
+    production_callers = {
+        k: sorted(v) for k, v in callers.items()
+        if any(not x.startswith('tests/') for x in v)
+    }
+    test_callers = {
+        k: sorted(x for x in v if x.startswith('tests/')) for k, v in callers.items()
+        if any(x.startswith('tests/') for x in v)
+    }
+    for k, v in production_callers.items():
+        production_callers[k] = [x for x in v if not x.startswith('tests/')]
+    # Static test references are associations, never evidence that tests ran.
     tests_for = {}
     for rel in py:
         if py[rel]['group'] == 'tests_and_fixtures':
             continue
-        needle = rel
         stem = Path(rel).stem
         hits = []
-        for t, text in test_text.items():
-            if needle in text or f"'{stem}'" in text or f'"{stem}"' in text or f'/{stem}.py' in text:
+        for t, item in py.items():
+            if item['group'] != 'tests_and_fixtures':
+                continue
+            text = _read_text(repo / t)
+            if rel in text or f"'{stem}'" in text or f'"{stem}"' in text:
                 hits.append(t)
         if hits:
-            tests_for[rel] = hits
-    wf = workflow_facts(repo, by_candidate)
-    entrypoints = {}
-    for row in wf:
-        for step in row.get('entrypoints', []):
-            for script in step['scripts']:
-                entrypoints.setdefault(script, []).append({'workflow': row['workflow'], 'job': step['job'], 'step': step['step']})
+            tests_for[rel] = sorted(hits)
+    wf = workflow_facts(repo)
+    workflow_errors = [r['workflow'] for r in wf if r['parse'] != 'ok']
+    entrypoints = _read_workflow_entrypoints(wf)
     unknown = []
     for rel, item in py.items():
         if item['group'] == 'tests_and_fixtures':
             continue
-        if not callers.get(rel) and rel not in entrypoints and not item['path'].startswith('scripts/'):
+        if not callers.get(rel) and rel not in entrypoints and not rel.startswith('scripts/'):
             unknown.append(rel)
     result = {
-        'schemaVersion': 1,
+        'schemaVersion': 2,
         'kind': 'aircon-architecture-audit',
         'repoName': repo.name,
         'head': git_head(repo),
         'pythonFiles': len(py),
         'modules': sorted(py.values(), key=lambda x: x['path']),
         'edges': edges,
-        'callers': callers,
+        'unresolvedStaticImports': sorted(unresolved, key=lambda x: (x['from'], x['name'])),
+        'externalImports': sorted(set(external)),
+        'callers': {k: sorted(v) for k, v in callers.items()},
+        'productionCallers': production_callers,
+        'testCallers': test_callers,
         'testsFor': tests_for,
         'workflows': wf,
         'workflowEntrypoints': entrypoints,
+        'workflowParseErrors': workflow_errors,
         'declaredDynamicOrUnknown': sorted(unknown),
         'parseErrors': sorted(rel for rel, item in py.items() if item['parse'] != 'ok'),
         'outboundPacingRisk': outbound_risk(repo),
@@ -221,7 +329,7 @@ def audit(repo, peer_root=None):
     if peer_root:
         peer = Path(peer_root).resolve()
         if not peer.is_dir():
-            raise FileNotFoundError(f'peer root not found: {peer.name}')
+            raise FileNotFoundError('peer root not found')
         presult = audit(peer)
         this = {m['path']: m for m in result['modules']}
         other = {m['path']: m for m in presult['modules']}
@@ -241,14 +349,16 @@ def audit(repo, peer_root=None):
             'peerOnly': sorted(p for p in allp if p in other and p not in this),
             'samePathDifferentHash': differences,
             'samePathSameHashCount': len(allp) - len(differences),
-            'samePathDifferentHashCount': len([d for d in differences if not d['thisOnly'] and not d['peerOnly']]),
+            'samePathDifferentHashCount': len([d for d in differences
+                                               if not d['thisOnly'] and not d['peerOnly']]),
         }
     return result
 
 
 def git_head(repo):
     try:
-        out = subprocess.run(['git', '-C', str(repo), 'rev-parse', 'HEAD'], capture_output=True, text=True, timeout=10)
+        out = subprocess.run(['git', '-C', str(repo), 'rev-parse', 'HEAD'],
+                             capture_output=True, text=True, timeout=10)
         return out.stdout.strip() if out.returncode == 0 else None
     except Exception:
         return None
@@ -256,13 +366,16 @@ def git_head(repo):
 
 def outbound_risk(repo):
     """Static, reviewed facts only; no network or live state is inferred."""
-    paths = ['fetch_biggo.py', 'scripts/biggo_stage_runner.py', 'scripts/biggo_smoke_diagnostic.py', 'scripts/biggo_test_probe.py']
+    paths = ['fetch_biggo.py', 'scripts/biggo_stage_runner.py',
+             'scripts/biggo_smoke_diagnostic.py', 'scripts/biggo_test_probe.py']
     found = []
     for rel in paths:
         p = Path(repo) / rel
+        if p.is_symlink():
+            raise AuditError('symlink source rejected')
         if not p.is_file():
             continue
-        text = p.read_text(encoding='utf-8', errors='replace')
+        text = _read_text(p)
         found.append({
             'path': rel,
             'sha256': sha256_file(p),
@@ -273,9 +386,19 @@ def outbound_risk(repo):
     return {
         'status': 'UNKNOWN/REVIEW_REQUIRED',
         'facts': found,
-        'reviewItem': 'Actual-send pacing must cover token/auth, search, smoke and both workers; smoke currently disables pace; auth may precede search pacing. Provider quota is unknown. This is not evidence that a delay fixes HTTP 429.',
+        'reviewItem': ('Actual-send pacing must cover token/auth, search, smoke and both workers; '
+                       'smoke currently disables pace; auth may precede search pacing. Provider '
+                       'quota is unknown. This is not evidence that a delay fixes HTTP 429.'),
         'notFixedInStage1': True,
     }
+
+
+def _write_exclusive(path, text):
+    # 'x' is atomic exclusive creation and refuses an existing dangling symlink.
+    with open(path, 'x', encoding='utf-8', newline='\n') as f:
+        f.write(text)
+        f.flush()
+        os.fsync(f.fileno())
 
 
 def main(argv=None):
@@ -289,32 +412,32 @@ def main(argv=None):
         ap.error('--output and --output-dir are mutually exclusive')
     try:
         result = audit(args.repo, args.peer_root)
-    except (OSError, ValueError) as exc:
-        print(f'architecture audit failed: {type(exc).__name__}: {exc}', file=sys.stderr)
+        text = json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + '\n'
+        if result.get('parseErrors') or result.get('workflowParseErrors'):
+            print('architecture audit failed: invalid source or workflow', file=sys.stderr)
+            return 2
+        if args.output_dir:
+            outdir = Path(args.output_dir)
+            try:
+                outdir.mkdir(parents=False, exist_ok=False)
+                _write_exclusive(outdir / 'architecture-audit.json', text)
+            except OSError:
+                print('architecture audit failed: output refused', file=sys.stderr)
+                return 2
+            print(str(outdir / 'architecture-audit.json'))
+        elif args.output:
+            try:
+                _write_exclusive(Path(args.output), text)
+            except OSError:
+                print('architecture audit failed: output refused', file=sys.stderr)
+                return 2
+            print(str(args.output))
+        else:
+            sys.stdout.write(text)
+        return 0
+    except (OSError, ValueError, AuditError):
+        print('architecture audit failed: source or repository invalid', file=sys.stderr)
         return 2
-    text = json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + '\n'
-    if result.get('parseErrors'):
-        print('architecture audit failed: invalid Python source: ' + ', '.join(result['parseErrors']), file=sys.stderr)
-        return 2
-    if args.output_dir:
-        outdir = Path(args.output_dir)
-        if outdir.exists():
-            ap.error('--output-dir must not exist (no-clobber)')
-        outdir.mkdir(parents=True)
-        target = outdir / 'architecture-audit.json'
-        target.write_text(text, encoding='utf-8')
-        print(str(target))
-    elif args.output:
-        target = Path(args.output)
-        if target.exists():
-            ap.error('--output must not exist (no-clobber)')
-        if not target.parent.exists():
-            ap.error('--output parent must exist')
-        target.write_text(text, encoding='utf-8')
-        print(str(target))
-    else:
-        sys.stdout.write(text)
-    return 0
 
 
 if __name__ == '__main__':
