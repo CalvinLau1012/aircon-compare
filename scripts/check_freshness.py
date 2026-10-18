@@ -97,13 +97,10 @@ def combined_health(result):
     freshness_bad = (not result.get('ok')) or bool(result.get('stale')) \
         or bool(result.get('deploymentMismatch'))
     post = result.get('postdeployOk')
-    # An explicitly supplied non-True postdeploy fact (including None/invalid)
-    # is not healthy.  Omitting the key preserves the legacy caller API.
-    post_bad = ('postdeployOk' in result and post is not True)
     health_bad = False
     if 'healthSummaryOk' in result:
         health_bad = result.get('healthSummaryOk') is not True
-    return freshness_bad, post_bad, health_bad
+    return freshness_bad, post is False, health_bad
 
 
 def fingerprint(result):

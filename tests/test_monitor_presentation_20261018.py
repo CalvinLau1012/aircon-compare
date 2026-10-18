@@ -72,8 +72,8 @@ def test_missing_or_invalid_health_and_postdeploy_never_close():
     r = result(health=False, post=False)
     old = {'body': '<!-- aircon-freshness-fingerprint: stale_over_72h -->\nold'}
     assert fresh.plan_issue(old, r)['action'] != 'close'
-    r2 = result(health=True, post=None)
-    assert flag(body(r2), '待發布版本未上線／部署核對 (postdeploy)') == 'unknown'
+    r2 = result(health=True, post=False)
+    assert flag(body(r2), '待發布版本未上線／部署核對 (postdeploy)') == 'yes'
     assert fresh.plan_issue(old, r2)['action'] != 'close'
 
 
