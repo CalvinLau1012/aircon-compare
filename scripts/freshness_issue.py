@@ -24,7 +24,7 @@ for _p in (BASE, SCRIPTS):
 from check_freshness import evaluate, plan_issue  # noqa: E402
 
 LABEL = 'monitoring:freshness'
-TITLE = '[MONITOR] 資料新鮮度 / 部署一致性警報'
+TITLE = '[MONITOR] 資料新鮮度、部署與來源健康警報'
 
 
 def _api(token, method, path, data=None):

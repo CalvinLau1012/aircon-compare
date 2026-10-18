@@ -1,18 +1,28 @@
 #!/usr/bin/env python3
-import json, os, sys
-p = sys.argv[1] if len(sys.argv) > 1 else ''
-try:
-    d = json.load(open(p, encoding='utf-8'))
-except Exception:
-    print('## Freshness / source monitor\n- report: missing or invalid')
-    sys.exit(0)
-c = d.get('check') or {}
-print('## Freshness / source monitor')
-print('- action:', d.get('action'))
-print('- freshness reason:', c.get('reason'))
-print('- age stale:', bool(c.get('stale')))
-print('- postdeploy ok:', c.get('postdeployOk'))
-print('- source health ok:', c.get('healthSummaryOk'))
-print('- source health reason:', c.get('healthReason'))
-print('- provider request by monitor: no')
-print('- mode: scheduled/manual freshness monitor; provider not triggered')
+# -*- coding: utf-8 -*-
+"""Render the monitor's safe three-axis summary; never writes provider state."""
+import json
+import sys
+
+from monitor_presentation import render_monitor_summary
+
+
+def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    path = argv[0] if argv else ''
+    try:
+        with open(path, encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        print('## 資料新鮮度、部署與來源健康監控')
+        print('- report: missing or invalid')
+        print('- 資料過期 (freshness): unknown — 未確認（無有效 monitor 報告）')
+        print('- 部署一致性 (postdeploy): unknown — 未確認（無有效 monitor 報告）')
+        print('- 來源健康 (source health): unknown — 未確認（無有效 monitor 報告）')
+        return 1
+    print(render_monitor_summary(data), end='')
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

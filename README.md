@@ -760,3 +760,8 @@ python fetch_rasonic.py        # 樂信官方網店價格
 - `docs/architecture/2026-10-18-public-private.md`：公開／私人差異及 source pin 邊界（公開文件不含私人身份）。
 - `docs/architecture/2026-10-18-reuse-risks.md`：重用風險、BigGo actual-send pacing 未確認事項及後續審核清單。
 - `scripts/architecture_audit.py`：只讀 AST／YAML／hash audit CLI；不 import 生產模塊，不覆寫既有輸出。
+
+### 2026-10-18 Stage 1 監控呈現入口（append-only）
+
+- `scripts/monitor_presentation.py`：issue body 與 Actions summary 共用的三軸 pure 呈現；不改 fingerprint／去重／健康門檻。
+- `scripts/check_freshness.py` 的 `issue_body()` 及 `scripts/render_monitor_summary.py` 已接入；`freshness-monitor.yml` 只改 display／step 名稱，cron／權限／always 綁定不變。

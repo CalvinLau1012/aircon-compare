@@ -1,4 +1,4 @@
-name: 72h 資料新鮮度監控
+name: 資料新鮮度、部署與來源健康監控
 
 # D8-A：每 6 小時檢查線上 metadata 新鮮度／部署一致性；首次失敗／狀態改變才開或更新
 # 單一 monitoring issue，同狀態重複時只 noop，恢復時關閉。
@@ -67,7 +67,7 @@ jobs:
             --report "$RUNNER_TEMP/source-health-summary.json" \
             --run-id "$HEALTH_RUN_ID" --head "$HEALTH_HEAD_SHA" --event "$HEALTH_EVENT"
 
-      - name: 72h freshness＋監控告警（無論上一步結果都要處理）
+      - name: 資料新鮮度、部署一致性與來源健康告警（無論上一步結果都要處理）
         if: always()
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -95,7 +95,7 @@ jobs:
             --report "$RUNNER_TEMP/source-health-summary.json" \
             --run-id "$MONITOR_RUN_ID" --head "$MONITOR_HEAD_SHA" --event "$MONITOR_EVENT"
 
-      - name: 上載 monitor 安全報告（always）
+      - name: 上載監控安全報告（always）
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
@@ -106,7 +106,7 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-      - name: Monitor 人可讀摘要（always；safe allowlist）
+      - name: 監控人可讀三軸摘要（always；safe allowlist）
         if: always()
         run: |
           python scripts/render_monitor_summary.py "$RUNNER_TEMP/freshness-monitor.json" >> "$GITHUB_STEP_SUMMARY" || true

@@ -305,6 +305,9 @@ def test_real_runner_publisher_source_status_monitor_summary_chain(tmp_path, mon
             'deployTime': '2026-10-16T16:32:54Z'}
     (tmp_path / 'metadata.json').write_text(json.dumps(meta))
     dep = _deployment(tmp_path)
+    # Keep the fixture's deployment age relative to the real clock; the
+    # monitor intentionally enforces a 36h deployed-data age.
+    dep['deployedAt'] = retrieved
     status = source_status.build_status(
         metadata=meta,
         emsd_receipt={'success': True, 'aborted': False,

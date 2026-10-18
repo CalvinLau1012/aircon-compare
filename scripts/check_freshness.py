@@ -14,6 +14,10 @@ import os
 import re
 import sys
 import time
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
+from monitor_presentation import render_issue_body
 import urllib.request
 
 THRESHOLD = _dt.timedelta(hours=72)
@@ -93,10 +97,13 @@ def combined_health(result):
     freshness_bad = (not result.get('ok')) or bool(result.get('stale')) \
         or bool(result.get('deploymentMismatch'))
     post = result.get('postdeployOk')
+    # An explicitly supplied non-True postdeploy fact (including None/invalid)
+    # is not healthy.  Omitting the key preserves the legacy caller API.
+    post_bad = ('postdeployOk' in result and post is not True)
     health_bad = False
     if 'healthSummaryOk' in result:
         health_bad = result.get('healthSummaryOk') is not True
-    return freshness_bad, post is False, health_bad
+    return freshness_bad, post_bad, health_bad
 
 
 def fingerprint(result):
@@ -112,25 +119,7 @@ def fingerprint(result):
 
 
 def issue_body(result, fp):
-    freshness_bad, post_bad, health_bad = combined_health(result)
-    return (
-        f'<!-- aircon-freshness-fingerprint: {fp} -->\n'
-        f'\n'
-        f'Freshness／部署一致性／來源健康 monitor alert.\n'
-        f'\n'
-        f'- category: `{fp}`\n'
-        f'- 資料過期 (freshness): {"yes" if freshness_bad else "no"}\n'
-        f'- 待發布版本未上線／部署核對 (postdeploy): {"yes" if post_bad else "no"}\n'
-        f'- postdeploy failure: {"yes" if post_bad else "no"}\n'
-        f'- 來源部分失敗 (source health): {"yes" if health_bad else "no"}\n'
-        f'- reason: `{result.get("reason")}`\n'
-        f'- ageSeconds: {result.get("ageSeconds")}\n'
-        f'- age stale: {bool(result.get("stale"))}\n'
-        f'- deployment mismatch: {bool(result.get("deploymentMismatch"))}\n'
-        f'- deployment failures: {result.get("deploymentFailures") or []}\n'
-        f'- source health reason: `{result.get("healthReason") or "unknown"}`\n'
-        f'- threshold: age > 72h\n'
-    )
+    return render_issue_body(result, fp)
 
 
 def plan_issue(existing_issue, result):
