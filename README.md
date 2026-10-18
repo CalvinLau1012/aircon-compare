@@ -752,3 +752,11 @@ python fetch_rasonic.py        # 樂信官方網店價格
 - Publisher CLI 可在 fresh env 直接執行；official advanced 會保存可重算 outputManifest，monitor 重讀 actual official outputs 驗 bytes/JSON/evidence 及成功時間。
 - Private monitor 每次寫 sanitised `source_health_summary.json`（失敗亦覆寫 unhealthy）；public client 只接受 summary 契約，raw status 不默認 PASS。
 - GitHub completed receive 在 provider 前；所有 sync 出口寫 durable report，history gap 可見。
+
+## 2026-10-18 架構與監控入口（append-only）
+
+- `docs/architecture/2026-10-18-dataflow.md`：實際資料→候選→四類發布→monitor 流程。
+- `docs/architecture/2026-10-18-modules.md`：Python 模塊分群、靜態 caller／測試／來源 hash，動態未確認分開列。
+- `docs/architecture/2026-10-18-public-private.md`：公開／私人差異及 source pin 邊界（公開文件不含私人身份）。
+- `docs/architecture/2026-10-18-reuse-risks.md`：重用風險、BigGo actual-send pacing 未確認事項及後續審核清單。
+- `scripts/architecture_audit.py`：只讀 AST／YAML／hash audit CLI；不 import 生產模塊，不覆寫既有輸出。
