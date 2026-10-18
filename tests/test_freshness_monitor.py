@@ -141,12 +141,16 @@ def _run_issue_main(tmp_path, monkeypatch, metadata=None, postdeploy=None, fail_
         return metadata if metadata is not None else _meta(_wall_now(), 60)
 
     monkeypatch.setattr(freshness, 'fetch_metadata', fake_fetch)
+    if postdeploy is None:
+        postdeploy = tmp_path / 'postdeploy-good.json'
+        postdeploy.write_text(json.dumps({'ok': True, 'failures': []}), encoding='utf-8')
+    if health is None:
+        health = tmp_path / 'health-good.json'
+        health.write_text(json.dumps({'ok': True, 'status': 'healthy'}), encoding='utf-8')
     args = ['--metadata-url', 'https://example.invalid/metadata.json',
-            '--repo', 'owner/repo', '--report', str(tmp_path / 'issue-report.json')]
-    if postdeploy is not None:
-        args += ['--postdeploy-report', str(postdeploy)]
-    if health is not None:
-        args += ['--health-report', str(health)]
+            '--repo', 'owner/repo', '--report', str(tmp_path / 'issue-report.json'),
+            '--postdeploy-report', str(postdeploy),
+            '--health-report', str(health)]
     rc = freshness_issue.main(args)
     report_path = tmp_path / 'issue-report.json'
     report = json.load(open(report_path, encoding='utf-8')) if report_path.exists() else None
@@ -316,3 +320,32 @@ def test_health_failure_cannot_be_closed_by_successful_postdeploy_main(tmp_path,
     assert report['check']['healthSummaryOk'] is False
     assert not any(c['method'] == 'PATCH' and (c.get('data') or {}).get('state') == 'closed'
                    for c in calls)
+
+
+def test_main_missing_health_is_unknown_and_cannot_close(tmp_path, monkeypatch):
+    import freshness_issue
+    post = tmp_path / 'post.json'
+    post.write_text(json.dumps({'ok': True, 'failures': []}), encoding='utf-8')
+    state = {'existing': {'number': 4,
+                          'body': '<!-- aircon-freshness-fingerprint: stale_over_72h -->\nold'}}
+    writes = []
+    def api(tok, method, path, data=None):
+        if method == 'GET':
+            return [state['existing']] if state['existing'] else []
+        writes.append((method, path, data))
+        if method == 'PATCH' and data and data.get('state') == 'closed':
+            state['existing'] = None
+        return {'ok': True}
+    monkeypatch.setattr(freshness_issue, '_api', api)
+    monkeypatch.setenv('GITHUB_TOKEN', 'x')
+    monkeypatch.setattr(freshness, 'fetch_metadata', lambda *a, **k: _meta(_now(), 60))
+    report = tmp_path / 'report.json'
+    rc = freshness_issue.main(['--metadata-url', 'https://example.invalid/m.json',
+                               '--repo', 'owner/repo',
+                               '--postdeploy-report', str(post),
+                               '--report', str(report)])
+    d = json.loads(report.read_text())
+    assert rc == 1 and d['check']['healthSummaryOk'] is False
+    assert d['action'] != 'close'
+    assert not any(m == 'PATCH' and data.get('state') == 'closed'
+                   for m, _p, data in writes)

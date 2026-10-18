@@ -401,8 +401,7 @@ def test_renew_preserves_unpersisted_attempts_response_and_cooldown():
     assert remote['cooldownUntil'] == renewed['cooldownUntil']
 
 
-def test_usage_correction_proposal_is_read_only_and_monotonic(tmp_path):
-    from biggo_canonical import canonical_json_bytes, sha256_json
+def test_usage_correction_proposal_is_read_only_and_evidence_bound(tmp_path):
     import propose_coordinator_usage_correction as proposal
     state = {
         'status': 'completed', 'cycleId': '2026-10-10:4/7', 'stage': 4,
@@ -414,25 +413,40 @@ def test_usage_correction_proposal_is_read_only_and_monotonic(tmp_path):
         'snapshotPath': 'coordinator/snapshots/2026-10-10-4-7/biggo_prices.json',
         'stageResultHash': 'sha256:' + 'b' * 64,
         'stageResultPath': 'coordinator/snapshots/2026-10-10-4-7/stage-result.json',
+        'bundleHash': None,
     }
     sr = {'cycleId': '2026-10-10:4/7', 'stage': 4,
           'requestAttempts': {'token': 0, 'search': 148},
           'responseStatusCounts': {'200': 23}}
-    manifest = {'stageResultHash': sha256_json(sr)}
+    manifest = {'stageResultHash': proposal.sha256_id(
+                    proposal.canonical_json_bytes(sr)),
+                'newSnapshotHash': 'sha256:' + 'a' * 64}
+    state['bundleHash'] = proposal.sha256_id(proposal.canonical_json_bytes(manifest))
+    state['stageResultHash'] = manifest['stageResultHash']
+    stage_status = {'cycle': state['cycleId'], 'stage': 4,
+                    'bundleHash': state['bundleHash'],
+                    'snapshotHash': manifest['newSnapshotHash'],
+                    'requests': {'token': 1, 'search': 149}}
+    release = {'receipt': {'receiptId': 'sha256:' + 'c' * 64},
+               'metadata': {'commit': 'd' * 40}}
     (tmp_path / 'state.json').write_text(json.dumps(state), encoding='utf-8')
-    (tmp_path / 'stage-result.json').write_bytes(canonical_json_bytes(sr))
-    (tmp_path / 'manifest.json').write_bytes(canonical_json_bytes(manifest))
+    (tmp_path / 'stage-result.json').write_bytes(proposal.canonical_json_bytes(sr))
+    (tmp_path / 'manifest.json').write_bytes(proposal.canonical_json_bytes(manifest))
+    (tmp_path / 'stage-status.json').write_text(json.dumps(stage_status), encoding='utf-8')
+    (tmp_path / 'release.json').write_text(json.dumps(release), encoding='utf-8')
     out = tmp_path / 'proposal.json'
     assert proposal.main([
         '--state', str(tmp_path / 'state.json'),
         '--stage-result', str(tmp_path / 'stage-result.json'),
         '--manifest', str(tmp_path / 'manifest.json'),
-        '--source-commit', 'a' * 40,
+        '--stage-status', str(tmp_path / 'stage-status.json'),
+        '--release-receipt', str(tmp_path / 'release.json'),
+        '--source-commit', 'd' * 40,
         '--receipt-id', 'sha256:' + 'c' * 64,
-        '--actual-token', '1', '--actual-search', '149',
         '--out', str(out)]) == 0
     p = json.loads(out.read_text())
     assert p['before'] == {'token': 0, 'search': 148}
     assert p['proposedAfter'] == {'token': 1, 'search': 149}
     assert p['delta'] == {'token': 1, 'search': 1}
+    assert p['noop'] is False
     assert p['mode'] == 'read-only-proposal'

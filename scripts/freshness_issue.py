@@ -51,6 +51,46 @@ def find_open_issue(token, repo, label=LABEL):
     return items[0] if items else None
 
 
+def _safe_health_fact(health):
+    """Map the real check_health_summary failures/status to fixed safe codes."""
+    if not isinstance(health, dict):
+        return False, 'health-report-invalid'
+    if health.get('ok') is True:
+        return True, 'ok'
+    values = health.get('failures')
+    codes = set()
+    if isinstance(values, list):
+        for item in values:
+            text = str(item or '').lower()
+            if text.startswith('fetch:'):
+                codes.add('health:fetch')
+            elif text.startswith('summary:'):
+                token = text.split(':', 1)[1]
+                if any(x in token for x in ('emsd', 'biggo', 'official')):
+                    for source in ('emsd', 'biggo', 'official'):
+                        if source in token:
+                            codes.add('health:' + source)
+                elif 'hash' in token or 'manifest' in token or 'binding' in token:
+                    codes.add('health:integrity')
+                elif 'not-healthy' in token or 'failures' in token:
+                    codes.add('health:unhealthy')
+                else:
+                    codes.add('health:unknown')
+            else:
+                codes.add('health:unknown')
+    sources = health.get('sources')
+    if isinstance(sources, dict):
+        for name in ('emsd', 'biggo', 'official'):
+            block = sources.get(name)
+            if not isinstance(block, dict) or block.get('status') != 'ok':
+                codes.add('health:' + name)
+    if health.get('configured') is False or health.get('skipped') is True:
+        codes.add('health:unconfigured')
+    if not codes:
+        codes.add('health:unhealthy')
+    return False, ','.join(sorted(codes))
+
+
 def main(argv=None):
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, 'reconfigure'):
@@ -62,36 +102,28 @@ def main(argv=None):
     ap.add_argument('--health-report', default=None)
     ap.add_argument('--report', required=True)
     ap.add_argument('--label', default=LABEL)
+    ap.add_argument('--run-id', default=None)
+    ap.add_argument('--head', default=None)
+    ap.add_argument('--event', default=None)
     args = ap.parse_args(argv)
     token = os.environ.get('GITHUB_TOKEN') or os.environ.get('GH_TOKEN')
     if not token:
         print('❌ 缺少 GITHUB_TOKEN／GH_TOKEN', file=sys.stderr)
         return 1
     result = None
-    post_ok = True if not args.postdeploy_report else False
+    post_ok = False
     deployment = None
-    health_ok = True
-    health_reason = 'health-report-not-provided'
+    health_ok = False
+    health_reason = 'health-report-missing'
     if args.health_report:
         try:
             health = json.load(open(args.health_report, encoding='utf-8'))
-            health_ok = health.get('ok') is True
-            if health_ok:
-                health_reason = 'ok'
-            else:
-                health_reason = str(health.get('reason') or health.get('status')
-                                    or 'source-health-unhealthy')[:80]
-                src = health.get('sources') or {}
-                if isinstance(src, dict):
-                    bad = sorted(k for k, v in src.items()
-                                 if not isinstance(v, dict) or v.get('status') != 'ok')
-                    if bad:
-                        health_reason = 'sources:' + ','.join(bad[:8])
-        except (OSError, ValueError) as e:
+            health_ok, health_reason = _safe_health_fact(health)
+        except (OSError, ValueError, TypeError, AttributeError):
             health_ok = False
-            health_reason = f'health-report-invalid:{type(e).__name__}'
+            health_reason = 'health-report-invalid'
             result = {'ok': False, 'stale': False, 'ageSeconds': None,
-                      'reason': f'health_report_invalid:{type(e).__name__}'}
+                      'reason': 'health_report_invalid'}
     if args.postdeploy_report:
         if not os.path.isfile(args.postdeploy_report):
             post_ok = False
@@ -100,16 +132,19 @@ def main(argv=None):
         else:
             try:
                 post = json.load(open(args.postdeploy_report, encoding='utf-8'))
+                if not isinstance(post, dict):
+                    raise ValueError('not an object')
                 post_ok = post.get('ok') is True and not post.get('failures')
                 failures = post.get('failures') or []
-                if isinstance(failures, list):
-                    ids = [str(f) for f in failures]
-                    mismatch = any(f.startswith(('metadata.', 'payload.')) for f in ids)
-                    deployment = {'mismatch': mismatch, 'failures': ids}
-            except (OSError, ValueError) as e:
+                if not isinstance(failures, list):
+                    raise ValueError('failures not list')
+                ids = [str(f)[:120] for f in failures]
+                mismatch = any(f.startswith(('metadata.', 'payload.')) for f in ids)
+                deployment = {'mismatch': mismatch, 'failures': ids}
+            except (OSError, ValueError, TypeError):
                 post_ok = False
                 result = {'ok': False, 'stale': False, 'ageSeconds': None,
-                          'reason': f'postdeploy_report_invalid:{type(e).__name__}'}
+                          'reason': 'postdeploy_report_invalid'}
     if result is None:
         try:
             from check_freshness import fetch_metadata
@@ -153,6 +188,9 @@ def main(argv=None):
         'reason': plan.get('reason'),
         'check': result,
         'issueNumber': existing.get('number') if existing else None,
+        'sourceRunId': int(args.run_id) if args.run_id and args.run_id.isdigit() else None,
+        'headSha': args.head,
+        'sourceEvent': args.event,
         'checkedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
     }
     try:

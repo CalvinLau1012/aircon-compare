@@ -60,13 +60,29 @@ jobs:
         if: always()
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          FRESHNESS_RUN_ID: ${{ github.run_id }}
+          FRESHNESS_HEAD_SHA: ${{ github.sha }}
+          FRESHNESS_EVENT: ${{ github.event_name }}
         run: |
           python scripts/freshness_issue.py \
+            --run-id "$FRESHNESS_RUN_ID" --head "$FRESHNESS_HEAD_SHA" --event "$FRESHNESS_EVENT" \
             --metadata-url 'https://calvinlau1012.github.io/aircon-compare/metadata.json' \
             --repo "$GITHUB_REPOSITORY" \
             --postdeploy-report "$RUNNER_TEMP/postdeploy.json" \
             --health-report "$RUNNER_TEMP/source-health-summary.json" \
             --report "$RUNNER_TEMP/freshness-monitor.json"
+
+      - name: 綁定 monitor report identity（always）
+        if: always()
+        env:
+          MONITOR_RUN_ID: ${{ github.run_id }}
+          MONITOR_HEAD_SHA: ${{ github.sha }}
+          MONITOR_EVENT: ${{ github.event_name }}
+        run: |
+          python scripts/bind_run_identity.py \
+            --report "$RUNNER_TEMP/freshness-monitor.json" \
+            --report "$RUNNER_TEMP/source-health-summary.json" \
+            --run-id "$MONITOR_RUN_ID" --head "$MONITOR_HEAD_SHA" --event "$MONITOR_EVENT"
 
       - name: 上載 monitor 安全報告（always）
         if: always()
