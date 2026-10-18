@@ -490,9 +490,12 @@ def _source_repo(tmp_path):
     _git_run(repo, 'init', '-q')
     _git_run(repo, 'config', 'user.email', 't@example.invalid')
     _git_run(repo, 'config', 'user.name', 't')
-    for rel in ('generate_pdf.py', 'generate_html.py', 'crawl_utils.py',
-                'models_data.py', 'requirements.txt', '空調對比報告.md'):
-        (repo / rel).write_text(rel + '\n', encoding='utf-8')
+    sys.path.insert(0, os.path.join(BASE, 'scripts'))
+    from postdeploy_check import REPRO_CODE_PATHS
+    for rel in (*REPRO_CODE_PATHS, 'requirements.txt', '空調對比報告.md'):
+        path = repo / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(rel + '\n', encoding='utf-8')
     (repo / 'metadata.json').write_text(json.dumps({'commit': '0' * 40}), encoding='utf-8')
     _git_run(repo, 'add', '-A')
     _git_run(repo, 'commit', '-qm', 'base')
