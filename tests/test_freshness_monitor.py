@@ -349,3 +349,28 @@ def test_main_missing_health_is_unknown_and_cannot_close(tmp_path, monkeypatch):
     assert d['action'] != 'close'
     assert not any(m == 'PATCH' and data.get('state') == 'closed'
                    for m, _p, data in writes)
+
+
+def test_health_failures_map_to_safe_dimensions_and_never_echo_private_text(tmp_path, monkeypatch):
+    import freshness_issue
+    post = tmp_path / 'post.json'
+    post.write_text(json.dumps({'ok': True, 'failures': []}), encoding='utf-8')
+    health = tmp_path / 'health.json'
+    health.write_text(json.dumps({'ok': False, 'status': 'unhealthy',
+                                  'failures': ['summary:biggo-not-ok',
+                                               'summary:official-not-ok',
+                                               'summary:/private/host-token-example']}),
+                      encoding='utf-8')
+    seen = []
+    def api(tok, method, path, data=None):
+        if method == 'GET': return []
+        seen.append(data); return {'ok': True}
+    monkeypatch.setattr(freshness_issue, '_api', api); monkeypatch.setenv('GITHUB_TOKEN','x')
+    monkeypatch.setattr(freshness, 'fetch_metadata', lambda *a, **k: _meta(_now(), 60))
+    report = tmp_path / 'r.json'
+    rc = freshness_issue.main(['--metadata-url','https://example.invalid/m.json','--repo','o/r',
+                               '--postdeploy-report',str(post),'--health-report',str(health),
+                               '--report',str(report)])
+    d=json.loads(report.read_text()); assert rc==1 and d['check']['healthSummaryOk'] is False
+    reason=d['check']['healthReason']; assert 'health:biggo' in reason and 'health:official' in reason
+    assert '/private' not in json.dumps(seen)

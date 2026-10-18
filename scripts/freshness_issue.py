@@ -166,22 +166,6 @@ def main(argv=None):
     body = (plan.get('body') or
             f"Freshness monitor recovered.\n\n- reason: `{result.get('reason')}`\n"
             f"- ageSeconds: {result.get('ageSeconds')}\n")
-    try:
-        if plan['action'] == 'create':
-            _api(token, 'POST', f'/repos/{args.repo}/issues',
-                 {'title': TITLE, 'body': body, 'labels': [args.label]})
-        elif plan['action'] == 'update' and existing:
-            _api(token, 'PATCH', f"/repos/{args.repo}/issues/{existing['number']}",
-                 {'body': body})
-        elif plan['action'] == 'close' and existing:
-            _api(token, 'POST', f"/repos/{args.repo}/issues/{existing['number']}/comments",
-                 {'body': 'Freshness recovered at '
-                          + time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())})
-            _api(token, 'PATCH', f"/repos/{args.repo}/issues/{existing['number']}",
-                 {'state': 'closed', 'state_reason': 'completed'})
-    except RuntimeError as e:
-        print(f'❌ 更新 monitoring issue 失敗：{e}', file=sys.stderr)
-        return 1
     out = {
         'schemaVersion': 1,
         'action': plan['action'],
@@ -197,11 +181,25 @@ def main(argv=None):
         tmp = args.report + '.tmp'
         with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
             json.dump(out, f, ensure_ascii=False, indent=2)
-            f.flush()
-            os.fsync(f.fileno())
+            f.flush(); os.fsync(f.fileno())
         os.replace(tmp, args.report)
-    except OSError as e:
-        print(f'❌ 監控告警 report 寫入失敗：{e}', file=sys.stderr)
+    except OSError:
+        pass
+    try:
+        if plan['action'] == 'create':
+            _api(token, 'POST', f'/repos/{args.repo}/issues',
+                 {'title': TITLE, 'body': body, 'labels': [args.label]})
+        elif plan['action'] == 'update' and existing:
+            _api(token, 'PATCH', f"/repos/{args.repo}/issues/{existing['number']}",
+                 {'body': body})
+        elif plan['action'] == 'close' and existing:
+            _api(token, 'POST', f"/repos/{args.repo}/issues/{existing['number']}/comments",
+                 {'body': 'Freshness recovered at '
+                          + time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())})
+            _api(token, 'PATCH', f"/repos/{args.repo}/issues/{existing['number']}",
+                 {'state': 'closed', 'state_reason': 'completed'})
+    except RuntimeError as e:
+        print(f'❌ 更新 monitoring issue 失敗：{e}', file=sys.stderr)
         return 1
     print(f"✅ freshness issue action={out['action']} reason={out['reason']} "
           f"ok={result.get('ok')} stale={result.get('stale')}")

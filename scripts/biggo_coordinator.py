@@ -948,41 +948,45 @@ class CoordinatorClient:
 
     def maybe_renew(self):
         """每 5 分鐘先 renew（避免每次模型都寫 API）。"""
-        if self.state and self._now_int() - self.state.get('leaseRenewedAt', 0) >= RENEW_INTERVAL_SECONDS:
-            return self.renew()
-        return None
+        with self._state_lock:
+            if self.state and self._now_int() - self.state.get('leaseRenewedAt', 0) >= RENEW_INTERVAL_SECONDS:
+                return self.renew()
+            return None
 
     def mark_calls_may_have_started(self):
-        """Write-ahead intent：任何真實 BigGo 請求之前 CAS 持久化 callsMayHaveStarted。
+        with self._state_lock:
+            return self._mark_calls_locked()
 
-        只寫一次（state 已 True 即 no-op）；CAS 失敗／lease 轉手即 raise，caller 必須
-        禁止發請求。唔會每個 request 寫 coordinator。
-        """
-        if self.state is None:
-            raise LeaseLostError('未持有 coordinator state')
-        if self.state.get('callsMayHaveStarted'):
-            return True
-        self.state['callsMayHaveStarted'] = True
-        self.state['intentAt'] = self._now_int()
-        self.state['updatedAt'] = self._now_int()
-        for _attempt in range(2):
-            remote, sha = self._contents.read_state()
-            if remote is not None:
-                if remote.get('leaseOwner') != self.owner \
-                        or remote.get('cycleId') != self.state['cycleId']:
-                    raise LeaseLostError('intent 寫入前 lease 已轉手')
-                if remote.get('callsMayHaveStarted'):
-                    self.state['callsMayHaveStarted'] = True
-                    self.state['intentAt'] = remote.get('intentAt')
-                    self.state['updatedAt'] = remote.get('updatedAt', self.state['updatedAt'])
-                    return True
-            try:
-                self._sha = self._contents.write_state(self.state, sha)
+    def _mark_calls_locked(self):
+            """Write-ahead intent：任何真實 BigGo 請求之前 CAS 持久化 callsMayHaveStarted。
+
+            只寫一次（state 已 True 即 no-op）；CAS 失敗／lease 轉手即 raise，caller 必須
+            禁止發請求。唔會每個 request 寫 coordinator。
+            """
+            if self.state is None:
+                raise LeaseLostError('未持有 coordinator state')
+            if self.state.get('callsMayHaveStarted'):
                 return True
-            except CASConflict:
-                continue
-        raise CASConflict('intent 寫入連續 CAS 失敗')
-
+            self.state['callsMayHaveStarted'] = True
+            self.state['intentAt'] = self._now_int()
+            self.state['updatedAt'] = self._now_int()
+            for _attempt in range(2):
+                remote, sha = self._contents.read_state()
+                if remote is not None:
+                    if remote.get('leaseOwner') != self.owner \
+                            or remote.get('cycleId') != self.state['cycleId']:
+                        raise LeaseLostError('intent 寫入前 lease 已轉手')
+                    if remote.get('callsMayHaveStarted'):
+                        self.state['callsMayHaveStarted'] = True
+                        self.state['intentAt'] = remote.get('intentAt')
+                        self.state['updatedAt'] = remote.get('updatedAt', self.state['updatedAt'])
+                        return True
+                try:
+                    self._sha = self._contents.write_state(self.state, sha)
+                    return True
+                except CASConflict:
+                    continue
+            raise CASConflict('intent 寫入連續 CAS 失敗')
     def record_attempt(self, kind, n=1):
         with self._state_lock:
             if self.state is None:

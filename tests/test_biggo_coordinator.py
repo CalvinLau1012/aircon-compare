@@ -450,3 +450,42 @@ def test_usage_correction_proposal_is_read_only_and_evidence_bound(tmp_path):
     assert p['delta'] == {'token': 1, 'search': 1}
     assert p['noop'] is False
     assert p['mode'] == 'read-only-proposal'
+
+
+def test_renew_lock_serializes_record_during_paused_read():
+    import threading
+    api = FakeGitHubApi(); box, now = _clock(); c = _client(api, 'writer-a', now)
+    c.acquire('2026-10-01:1/7', 1)
+    started = threading.Event(); release = threading.Event(); original = c._contents.read_state
+    def paused():
+        started.set(); release.wait(5); return original()
+    c._contents.read_state = paused
+    errors = []
+    def do_renew():
+        try: c.renew()
+        except Exception as e: errors.append(e)
+    t1 = threading.Thread(target=do_renew); t1.start(); assert started.wait(5)
+    def do_record():
+        c.record_attempt('token', 1); c.record_attempt('search', 1)
+        c.record_response(429); c.apply_cooldown(429, {'Retry-After': '60'})
+    t2 = threading.Thread(target=do_record); t2.start()
+    # record must not mutate while renew holds the lock/read.
+    assert c.state['requestAttempts'] == {'token': 0, 'search': 0}
+    release.set(); t1.join(5); t2.join(5)
+    assert not errors
+    assert c.state['requestAttempts'] == {'token': 1, 'search': 1}
+    c.commit()
+    remote = json.loads(api.files['coordinator/state.json'][0].decode())
+    assert remote['requestAttempts'] == {'token': 1, 'search': 1}
+    assert remote['responseStatusCounts']['429'] == 1
+
+
+def test_renew_cas_conflict_preserves_pending_deltas():
+    api = FakeGitHubApi(); box, now = _clock(); c = _client(api, 'writer-a', now)
+    c.acquire('2026-10-01:1/7', 1)
+    c.record_attempt('token', 1); c.record_attempt('search', 1)
+    c.record_response(429); c.apply_cooldown(429, {'Retry-After': '60'})
+    api.fail_next_put = 409
+    r = c.renew()
+    assert r['requestAttempts'] == {'token': 1, 'search': 1}
+    assert r['responseStatusCounts']['429'] == 1 and r['cooldownUntil'] > 0
