@@ -1348,3 +1348,8 @@ Root 在 review2 的 26 項既有反例通過後，額外重現：保留快照�
 - All `frontend/` .html/.css/.js production sources and `frontend_assets.py` are covered by PDF reproduction, runtime source binding, snapshot preservation, candidate copy and stale-template rejection. Old PDF exact/repro guards are retained.
 - Public list/status and private collections/notes/import-export/provenance/EMSD status remain separate where they differ; no same-hash claim is used as runtime reuse evidence.
 - Stage2 timestamps labelled in the future are retained as historical bytes but not treated as UTC evidence; Root's actual acceptance time is authoritative. New Stage3 receipt uses actual UTC. No provider/coordinator/grant/budget/data/formal deployment operation in this round.
+
+
+### 2026-10-18T20:16:08.492536Z Root Stage3 pre-deploy source closure correction (append-only)
+
+Root independently reproduced that the production Pages `check_generated_source_binding` accepted changed `report_common.py` and `frontend/public/status.js` because its old six-file list omitted new transitive inputs. The pre-deploy guard now consumes the same explicit `REPRO_CODE_PATHS` as post-deploy PDF reproduction, plus report Markdown and requirements. Real local Git fixtures cover the unchanged positive case and changed/missing rejection for every input: 31 pass; the two original failing counterexamples are retained in Root evidence. Existing post-deploy and exact PDF checks are unchanged. This source candidate is still isolated; full gates on the corrected final commit and trusted artifact rebuild remain required. No provider, data, quota, or deployment change.

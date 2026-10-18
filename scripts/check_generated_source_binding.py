@@ -16,8 +16,11 @@ import sys
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
-INPUTS = ('generate_pdf.py', 'generate_html.py', 'crawl_utils.py',
-          'models_data.py', 'requirements.txt', '空調對比報告.md')
+# Keep the production pre-deploy closure identical to the PDF reproduction
+# closure, including report_common, the assembler and every frontend asset.
+from postdeploy_check import REPRO_CODE_PATHS
+
+INPUTS = (*REPRO_CODE_PATHS, 'requirements.txt', '空調對比報告.md')
 
 
 def _git(repo, *args):

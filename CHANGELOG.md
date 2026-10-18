@@ -1006,3 +1006,8 @@
 ## Unreleased — 2026-10-19 Stage 3 candidate
 
 - Extracted the existing inline frontend into controlled `frontend/` sources and deterministic assembly; added source-closure, stale-template and PDF-repro guards. No release or data/provider change.
+
+
+### 2026-10-18T20:16:08.492536Z Root Stage3 pre-deploy source closure correction (append-only)
+
+Root independently reproduced that the production Pages `check_generated_source_binding` accepted changed `report_common.py` and `frontend/public/status.js` because its old six-file list omitted new transitive inputs. The pre-deploy guard now consumes the same explicit `REPRO_CODE_PATHS` as post-deploy PDF reproduction, plus report Markdown and requirements. Real local Git fixtures cover the unchanged positive case and changed/missing rejection for every input: 31 pass; the two original failing counterexamples are retained in Root evidence. Existing post-deploy and exact PDF checks are unchanged. This source candidate is still isolated; full gates on the corrected final commit and trusted artifact rebuild remain required. No provider, data, quota, or deployment change.

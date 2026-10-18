@@ -1721,3 +1721,8 @@ Public-canonical `report_common.py` now provides strict UTC→HKT, shared HTML/P
 ## 2026-10-19 Stage 3 frontend extraction（append-only）
 
 Frontend HTML/CSS/JS is now sourced from explicit production assets assembled by `frontend_assets.py`; the output template remains byte-identical to Stage2 and all assets are covered by PDF/snapshot source guards. Isolated candidate only; full browser/full gates, formal rebuild/deploy and next frontend behavior changes remain pending Root.
+
+
+### 2026-10-18T20:16:08.492536Z Root Stage3 pre-deploy source closure correction (append-only)
+
+Root independently reproduced that the production Pages `check_generated_source_binding` accepted changed `report_common.py` and `frontend/public/status.js` because its old six-file list omitted new transitive inputs. The pre-deploy guard now consumes the same explicit `REPRO_CODE_PATHS` as post-deploy PDF reproduction, plus report Markdown and requirements. Real local Git fixtures cover the unchanged positive case and changed/missing rejection for every input: 31 pass; the two original failing counterexamples are retained in Root evidence. Existing post-deploy and exact PDF checks are unchanged. This source candidate is still isolated; full gates on the corrected final commit and trusted artifact rebuild remain required. No provider, data, quota, or deployment change.
