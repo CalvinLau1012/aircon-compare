@@ -1323,3 +1323,7 @@ Run 39102553030 verified stage4 reception but the immutable-source rebuild guard
 ### 2026-10-18 · served-snapshot acquisition provenance (append-only)
 
 A pending stage5/remote-not-completed receive lost the previously served stage4 acquisition time. This candidate adds a separate optional prior BigGo metadata input plus bounded read-only committed metadata history fallback. It accepts lastAcquiredAt only when prior sourceStatus schema is valid, snapshotHash/id and lastAppliedAt exactly match current prices_meta, the actual snapshot, UTC/calendar is valid, acquisition is not future and not after apply. Prior metadata never feeds EMSD facts. No status/reason promotion; current pending/degraded remains. CLI/workflow pass prior metadata and explicitly enable at most 32 local git commits; no checkout/fetch/network. No live operation.
+
+
+### 2026-10-18 Root source-time acceptance correction
+Root found the prior-metadata helper could infer an actual hash from metadata, accept missing snapshot IDs/partial receipts, and recover from shallow history. It now requires actual file hash, complete versioned receipt, nonempty snapshot ID, and full local history; report generation time cannot become acquisition. Private runner integration must pass prior metadata in both build calls. No live/provider mutation in these changes.

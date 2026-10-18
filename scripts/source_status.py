@@ -310,6 +310,8 @@ def _prior_acquisition(prior_metadata, prices_meta, actual_snapshot, applied_at,
         return None
     if type(source.get('schemaVersion')) is not int or source.get('schemaVersion') != 1:
         return None
+    if validate_status(source):
+        return None
     b = source.get('biggo')
     if not isinstance(b, dict):
         return None
@@ -317,6 +319,8 @@ def _prior_acquisition(prior_metadata, prices_meta, actual_snapshot, applied_at,
         return None
     if b.get('snapshotHash') != actual_snapshot \
             or b.get('snapshotHash') != prices_meta.get('appliedSnapshotHash'):
+        return None
+    if not isinstance(prices_meta.get('appliedSnapshotId'), str) or not prices_meta['appliedSnapshotId']:
         return None
     if b.get('snapshotId') != prices_meta.get('appliedSnapshotId'):
         return None
@@ -345,6 +349,11 @@ def _history_acquisition(repo_root, prices_meta, actual_snapshot, applied_at,
     if limit < 1 or limit > 32:
         return None
     try:
+        shallow = subprocess.run(
+            ['git', '-C', repo_root, 'rev-parse', '--is-shallow-repository'],
+            capture_output=True, text=True, timeout=20)
+        if shallow.returncode != 0 or shallow.stdout.strip() != 'false':
+            return None
         rev = subprocess.run(
             ['git', '-C', repo_root, 'log', f'-n{limit}', '--format=%H', '--', 'metadata.json'],
             capture_output=True, text=True, timeout=20)
@@ -462,10 +471,10 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
     now_dt = _dt.datetime.fromtimestamp(now if now is not None else time.time(),
                                         _dt.timezone.utc)
     prior_acquired = _prior_acquisition(
-        prior_metadata, prices_meta, actual_snapshot, applied_at, now_dt)
+        prior_metadata, prices_meta, biggo_snapshot_hash, applied_at, now_dt)
     if prior_acquired is None and history_repo:
         prior_acquired = _history_acquisition(
-            history_repo, prices_meta, actual_snapshot, applied_at,
+            history_repo, prices_meta, biggo_snapshot_hash, applied_at,
             now_dt, history_limit)
     baseline_info = _baseline_info(prices_meta)
     baseline_verified = False
@@ -509,9 +518,11 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
     if baseline_verified:
         acquired_at = baseline_info['source'].get('acquiredAt')
     else:
-        acquired_at = biggo.get('acquiredAt') or biggo.get('generatedAt')
-        if not acquired_at and receiver:
-            acquired_at = receiver.get('acquiredAt')
+        # The report generation clock is not a price acquisition witness.
+        acquired_at = receiver.get('acquiredAt') if receiver else None
+        if not acquired_at and bstatus in ('completed', 'completed-idempotent-applied', 'completed-recovered') \
+                and biggo.get('snapshotHash') == actual_snapshot:
+            acquired_at = _past_ts(biggo.get('acquiredAt'), now_dt)
         if not acquired_at:
             acquired_at = prior_acquired
     biggo_block = _source_block(

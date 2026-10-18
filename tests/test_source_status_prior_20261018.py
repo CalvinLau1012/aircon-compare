@@ -14,7 +14,11 @@ def prior(**over):
     b = {'snapshotHash': SNAP, 'snapshotId': SID, 'lastAppliedAt': APPLIED,
          'lastAcquiredAt': ACQ}
     b.update(over.pop('biggo', {}))
-    return {'sourceStatus': {'schemaVersion': 1, 'biggo': b}}
+    source = {'schemaVersion': 1, 'emsd': ss._source_block(),
+              'official': ss._source_block(),
+              'biggo': ss._source_block('ok', safe_reason='applied')}
+    source['biggo'].update(b)
+    return {'sourceStatus': source}
 
 def prices(**over):
     d = {'last_run': '2026-10-18', 'price_batch_start': '2026-10-10',
@@ -64,7 +68,7 @@ def test_git_history_recovers_only_exact_committed_metadata(tmp_path):
     repo = tmp_path / 'repo'; repo.mkdir(); subprocess.run(['git', 'init', '-q'], cwd=repo, check=True)
     subprocess.run(['git', '-C', str(repo), 'config', 'user.email', 't@e.invalid'], check=True)
     subprocess.run(['git', '-C', str(repo), 'config', 'user.name', 't'], check=True)
-    (repo / 'metadata.json').write_text(json.dumps({'sourceStatus': {'schemaVersion': 1, 'biggo': {'snapshotHash': SNAP, 'snapshotId': SID, 'lastAppliedAt': APPLIED, 'lastAcquiredAt': ACQ}}}))
+    (repo / 'metadata.json').write_text(json.dumps(prior()))
     subprocess.run(['git', '-C', str(repo), 'add', 'metadata.json'], check=True)
     subprocess.run(['git', '-C', str(repo), 'commit', '-qm', 'old'], check=True)
     s = build(None, history=str(repo))
@@ -95,3 +99,32 @@ def test_prior_biggo_does_not_pollute_emsd_fresh_facts():
     assert s['emsd']['snapshotHash'] == 'sha256:' + 'f' * 64
     assert s['emsd']['lastAppliedDate'] is None
     assert s['biggo']['lastAcquiredAt'] == ACQ
+
+
+def test_missing_actual_price_hash_cannot_inherit_meta_hash():
+    assert build(prior(), actual=None)['biggo']['lastAcquiredAt'] is None
+
+
+def test_missing_snapshot_id_and_partial_source_receipt_rejected():
+    assert build(prior(biggo={'snapshotId':None}), prices(appliedSnapshotId=None))['biggo']['lastAcquiredAt'] is None
+    bad = prior(); del bad['sourceStatus']['emsd']
+    assert build(bad)['biggo']['lastAcquiredAt'] is None
+
+
+def test_pending_report_generation_clock_is_not_acquisition():
+    s=ss.build_status(prices_meta=prices(),biggo_snapshot_hash=SNAP,
+        biggo_status={'status':'skip-cooldown','generatedAt':'2026-10-18T10:00:00Z'},
+        completed_sync={'ok':False,'reason':'remote-not-completed'},now=NOW)
+    assert s['biggo']['lastAcquiredAt'] is None
+
+
+def test_shallow_git_history_is_not_recovery_evidence(tmp_path):
+    repo=tmp_path/'repo';repo.mkdir()
+    for args in [['init','-q'],['config','user.email','t@e.invalid'],['config','user.name','t']]:
+        subprocess.run(['git','-C',str(repo),*args],check=True)
+    (repo/'metadata.json').write_text(json.dumps(prior()))
+    subprocess.run(['git','-C',str(repo),'add','metadata.json'],check=True)
+    subprocess.run(['git','-C',str(repo),'commit','-qm','old'],check=True)
+    shallow=tmp_path/'shallow'
+    subprocess.run(['git','clone','--depth=1',repo.as_uri(),str(shallow)],check=True,capture_output=True)
+    assert build(None,history=str(shallow))['biggo']['lastAcquiredAt'] is None
