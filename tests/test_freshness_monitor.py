@@ -425,3 +425,32 @@ def test_invalid_identity_blocks_before_issue_side_effect(tmp_path, monkeypatch)
     d = json.loads(report.read_text())
     assert rc == 1 and d['action'] == 'blocked-identity'
     assert d['appliedAction'] == 'none' and not calls
+
+
+def test_close_comment_is_not_repeated_when_close_patch_retries(tmp_path, monkeypatch):
+    state = {'issue': {'number': 7,
+                       'body': '<!-- aircon-freshness-fingerprint: stale_over_72h -->\nold'},
+             'comments': 0, 'fail_close': True}
+    def api(calls, method, path, data):
+        if method == 'GET':
+            return [state['issue']] if state['issue'] else []
+        if method == 'POST' and path.endswith('/comments'):
+            state['comments'] += 1
+            return {'ok': True}
+        if method == 'PATCH' and data and data.get('state') == 'closed':
+            if state['fail_close']:
+                state['fail_close'] = False
+                raise RuntimeError('close failed')
+            state['issue'] = None
+            return {'ok': True}
+        if method == 'PATCH' and data and 'body' in data:
+            state['issue'] = dict(state['issue'], body=data['body'])
+            return {'ok': True}
+        return {'ok': True}
+    rc1, _calls, rep1 = _run_issue_main(tmp_path, monkeypatch, api=api)
+    assert rc1 == 1 and rep1['plannedAction'] == 'close'
+    assert rep1['appliedAction'] == 'none'
+    assert state['comments'] == 1
+    rc2, _calls, rep2 = _run_issue_main(tmp_path, monkeypatch, api=api)
+    assert rc2 == 0 and rep2['appliedAction'] == 'close'
+    assert state['comments'] == 1, 'close PATCH retry must not duplicate recovery comment'
