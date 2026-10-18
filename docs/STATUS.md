@@ -1713,3 +1713,7 @@ Root supplied the final narrow patch: strict integer schema, healthy codes empty
 ### 2026-10-18 · served-snapshot acquisition provenance (append-only)
 
 A pending stage5/remote-not-completed receive lost the previously served stage4 acquisition time. This candidate adds a separate optional prior BigGo metadata input plus bounded read-only committed metadata history fallback. It accepts lastAcquiredAt only when prior sourceStatus schema is valid, snapshotHash/id and lastAppliedAt exactly match current prices_meta, the actual snapshot, UTC/calendar is valid, acquisition is not future and not after apply. Prior metadata never feeds EMSD facts. No status/reason promotion; current pending/degraded remains. CLI/workflow pass prior metadata and explicitly enable at most 32 local git commits; no checkout/fetch/network. No live operation.
+
+## 2026-10-19 Stage 2 report_common（append-only）
+
+Public-canonical `report_common.py` now provides strict UTC→HKT, shared HTML/PDF status and script-safe JSON; three real HTML JSON slots use it, while HTML/PDF/private adapters retain compatibility. `report_common.py` is covered by PDF repro and snapshot-rebuild source guards. This remains an isolated candidate: no formal merge/deploy/data/provider/coordinator/grant change and no frontend extraction. Root must run final full 7 gates/browser before release.

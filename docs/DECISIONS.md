@@ -1331,3 +1331,12 @@ Root found the prior-metadata helper could infer an actual hash from metadata, a
 
 ## 2026-10-19 Root Stage1 收據反例更正（追加）
 Root 在 review2 的 26 項既有反例通過後，額外重現：保留快照的 safeReason 可與 sourceStatusHash／BigGo hash 損壞同時出現，不能單憑原因碼聲稱快照已驗證。監控呈現改為「先前快照保留，核驗狀態見來源收據」，增加實際健康 producer→issue contract→呈現的損壞組合測試。原 review2 結果保留作歷史；此次不改 fingerprint、告警／恢復門禁、來源時間或任何供應商行為。正式發布仍須最終版本完整驗收。
+
+## 2026-10-19 · Stage 2 shared report formatter and safe JSON（append-only）
+
+- 使用者已批准逐模塊方案；Root 已獨立接受 Stage0/Stage1，啟動第二模塊。此節只記本輪決策，不重做已驗收監控模塊。
+- 選擇以 public `report_common.py` 為 canonical，提供嚴格 `utc_to_hkt`、`format_status`、`script_safe_json`；不建立 framework／新 repo。HTML/PDF 保留薄 wrapper 及環境文案 adapter，私人 EMSD facts／markdown／collections／notes／import-export／provenance 不搬入 public。
+- 取得時間與套用時間分開；缺失／錯型別／不可能日期／未來或 overflow 為未確認，不以 deploy／packaged／generated 時間補造 acquisition；pending/degraded/blocked 不當成功。
+- 三個實際 script JSON 槽使用同一 encoder；public 原本可跳出 script 的 `json.dumps` 路徑已接上；private 原 `script_safe_json` 保留為 wrapper。
+- `report_common.py` 納入 PDF repro source paths／runtime `__file__` 守衛及 snapshot rebuild preserved inputs；舊 PDF exact/repro 拒絕契約保留。
+- 此輪不在正式 repo push/deploy，未改資料／價格／official／queue／coordinator／grant／provider；未開始前端拆分。Root 需對 final clean commits 跑完整7 gates及瀏覽器。

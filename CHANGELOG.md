@@ -998,3 +998,7 @@
 - Official batch 改 isolated staging＋verified promote；TLS strict＋host-scoped reviewed intermediate。
 - 新增 atomic private release／rollback、source status／health、queue／cross-writer 只讀工具及 sync-completed 入口。
 - 文件追加部分失敗政策及根因更正；未 merge／未部署。
+
+## Unreleased — 2026-10-19 Stage 2 candidate
+
+- Added isolated `report_common.py` strict UTC/HKT and script-safe JSON, shared by HTML/PDF compatibility adapters; added PDF-repro/runtime and snapshot-preservation dependency guards. Not released; no data/provider change.

@@ -771,3 +771,11 @@ python fetch_rasonic.py        # 樂信官方網店價格
 - 最新 reviewed 圖／caller 表／實際四檔來源鏈：`docs/architecture/2026-10-18-reviewed-models.md`。
 - `scripts/architecture_audit.py` 可直接 stdout 重算；公開 machine 清單見 `docs/architecture/architecture-audit-20261018.json`（public-only）。
 - 舊 `2026-10-18-dataflow/modules/public-private` 圖保留歷史；四檔封裝以 reviewed 文件及實際 workflow 為準。
+
+## 2026-10-19 Stage 2 report formatting／safe JSON（append-only）
+
+- New canonical `report_common.py`: strict UTC→HKT (fractional seconds, real calendar), shared HTML/PDF status lines, and script-safe compact JSON.
+- Public `generate_html.format_status`／`script_safe_json` and `_hkt_text` remain compatibility adapters; private adapters keep their distinct signatures and private schedule/EMSD/report extensions.
+- `generate_html` and private `generate_html` route the real `MODELS`／`EMSD_EXTRA`／`COMPARE_FIELDS` slots through the shared JSON encoder.
+- `report_common.py` is a generator dependency in PDF repro and snapshot preservation guards. No generated index／PDF／metadata changes in this module; formal HTML/PDF/metadata rebuild is required only after Root acceptance.
+- Detail: `docs/architecture/2026-10-19-report-common.md`; private pin: `docs/architecture/shared-source-pin-20261019.json` (private repo only).
