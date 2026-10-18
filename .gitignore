@@ -46,3 +46,6 @@ metadata.core.json
 private-server-notes/
 private-deployment/
 _site/
+
+# Local BigGo transaction mutex; never a source artifact
+.aircon-biggo-apply.lock

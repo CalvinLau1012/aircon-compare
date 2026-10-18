@@ -572,6 +572,7 @@ jobs:
           python scripts/verify_snapshot_rebuild.py guard \
             --repo . \
             --baseline "$RUNNER_TEMP/rebuild-snapshot-baseline.json" \
+            --completed-sync-report "$RUNNER_TEMP/biggo_completed_sync.json" \
             --report "$RUNNER_TEMP/rebuild-guard.json"
           cat "$RUNNER_TEMP/rebuild-guard.json"
 

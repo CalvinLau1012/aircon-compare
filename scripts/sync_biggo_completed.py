@@ -308,6 +308,12 @@ def main(argv=None):
         report.update(extra)
         report['reason'] = reason
         report['finishedAt'] = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+        if report.get('ok') is True and report.get('postStateVerified') is True:
+            report['postFileHashes'] = {}
+            for name in ('biggo_prices.json', 'model_status.json',
+                         'model_blacklist.json', 'prices_meta.json'):
+                with open(os.path.join(BASE, name), 'rb') as stream:
+                    report['postFileHashes'][name] = 'sha256:' + hashlib.sha256(stream.read()).hexdigest()
         err = _write_report(args.report, report)
         if err:
             print(f'❌ completed sync report 寫入失敗：{err}', file=sys.stderr)

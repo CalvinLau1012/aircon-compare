@@ -764,6 +764,49 @@ def run_preflight(args):
     return 0 if ok else 1
 
 
+SYNC_FILES = frozenset(('biggo_prices.json', 'prices_meta.json',
+                        'model_blacklist.json', 'model_status.json'))
+
+
+def _verified_sync_files(args, baseline):
+    """Allow only this run's verified receiver post-image, never arbitrary edits."""
+    path = getattr(args, 'completed_sync_report', None)
+    if not path:
+        return {}
+    report = _load_json(path, 'completed sync report')
+    if report.get('ok') is not True or report.get('postStateVerified') is not True:
+        return {}  # An unchanged old snapshot can still pass the original guard.
+    if (report.get('schemaVersion') != 2 or report.get('mode') != 'sync-completed'
+            or report.get('headSha') != baseline.get('head')
+            or report.get('sourceEvent') != 'workflow_dispatch'
+            or str(report.get('sourceRunId')) != os.environ.get('GITHUB_RUN_ID')
+            or report.get('reason') not in ('applied', 'already-applied')):
+        raise CheckError('completed sync identity mismatch')
+    # augment_sync_report adds only the three run identity fields after signing.
+    body = {k: v for k, v in report.items()
+            if k not in ('receiptId', 'headSha', 'sourceEvent', 'sourceRunId')}
+    digest = 'sha256:' + hashlib.sha256(json.dumps(
+        body, ensure_ascii=False, sort_keys=True).encode('utf-8')).hexdigest()
+    if report.get('receiptId') != digest:
+        raise CheckError('completed sync receipt hash mismatch')
+    hashes = report.get('postFileHashes')
+    if not isinstance(hashes, dict) or set(hashes) != SYNC_FILES:
+        raise CheckError('completed sync four-file witness missing')
+    for name, want in hashes.items():
+        path = os.path.join(args.files_root, name)
+        if not isinstance(want, str) or not SHA256_RE.fullmatch(want) \
+                or os.path.islink(path) or not os.path.isfile(path) \
+                or 'sha256:' + _sha256_file(path) != want:
+            raise CheckError('completed sync post-image mismatch: ' + name)
+    meta = _load_json(os.path.join(args.files_root, 'prices_meta.json'), 'prices_meta')
+    if (meta.get('appliedBundleHash') != report.get('bundleHash')
+            or meta.get('last_applied_cycle') != report.get('cycleId')
+            or meta.get('price_batch_idx') != report.get('stage')
+            or meta.get('appliedSnapshotHash') != report.get('newSnapshotHash')):
+        raise CheckError('completed sync metadata binding mismatch')
+    return hashes
+
+
 def _check_git_changes(args, baseline):
     """worktree 同 index 改動只准係三個 generated outputs；git 失敗即 fail。"""
     errors = []
@@ -787,7 +830,7 @@ def _check_git_changes(args, baseline):
         if any(ch in status for ch in 'ADTU'):
             errors.append(f'唔准 {status} 改動：{path}')
             continue
-        if path not in ALLOWED_GENERATED:
+        if path not in ALLOWED_GENERATED and path not in getattr(args, 'verified_sync_files', {}):
             errors.append(f'generated outputs 以外嘅改動：{status} {path}')
             continue
         changed.append(path)
@@ -833,11 +876,18 @@ def run_guard(args):
     rec('baseline-schema', schema_errors)
 
     if baseline is not None and not schema_errors:
+        try:
+            args.verified_sync_files = _verified_sync_files(args, baseline)
+            rec('completed-sync-post-image', [])
+        except (CheckError, OSError, ValueError) as exc:
+            args.verified_sync_files = {}
+            rec('completed-sync-post-image', [str(exc)])
         errors, changed = _check_git_changes(args, baseline)
         rec('git-changes-limited-to-generated', errors, {'changed': changed})
 
         changed_files = []
         for rel, want in (baseline.get('files') or {}).items():
+            want = args.verified_sync_files.get(rel, want)
             path = os.path.join(args.files_root, *rel.split('/'))
             if os.path.islink(path):
                 changed_files.append(f'{rel}（symlink）')
@@ -908,6 +958,7 @@ def main(argv=None):
             p.add_argument('--baseline-out', required=True)
         else:
             p.add_argument('--baseline', required=True)
+            p.add_argument('--completed-sync-report', default=None)
         parsers[name] = p
     args = ap.parse_args(argv)
     if args.command not in parsers:

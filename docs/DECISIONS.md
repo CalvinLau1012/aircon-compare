@@ -1314,3 +1314,7 @@ Root R7 rejected an `ok:true` health report with `skipped:true`, empty/false-che
 ### 2026-10-18 · R8 final producer-contract closure (append-only)
 
 Root supplied the final narrow patch: strict integer schema, healthy codes empty, real UTC calendar parsing, and required core GATE-08 check names/non-duplication for success. This candidate uses a sanitized real 25-check deployment receipt fixture; Root counterexamples (skipped healthy, empty checks, false check with ok true, missing generatedAt/baseUrl) are rejected through the main path. Close partial-failure idempotence, atomic writer, safe reports, renew/stage4/grant regressions remain. No live operation.
+
+
+### 2026-10-18 live receiver/rebuild integration correction
+Run 39102553030 verified stage4 reception but the immutable-source rebuild guard correctly rejected four changed BigGo state files. Repair now permits only the exact four post-images from a same-run, same-head hash-verified receiver receipt; EMSD, official and other preserved inputs remain immutable. Local mutex is ignored, not committed. No provider request or lease is needed for receipt application.
