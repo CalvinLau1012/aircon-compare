@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0.0",
   "version": "1.2.9",
-  "build": "B20261018.162.1",
-  "commit": "d57ea272ef9c2d9b56c288de25fa0637fe1f6aa6",
-  "deployTime": "2026-10-18T12:46:17Z",
-  "workflowRunId": "39128153476",
+  "build": "B20261018.163.1",
+  "commit": "381e300630bfa8146df6f29bd65be5932c1e3955",
+  "deployTime": "2026-10-18T13:37:15Z",
+  "workflowRunId": "39132169710",
   "deploymentType": "release",
   "datasetDate": "2026-10-18",
   "datasetDateBasis": "retrieval-date-fallback",
@@ -18,15 +18,13 @@
   "modelCount": 1721,
   "sourceStatus": {
     "biggo": {
-      "cycleId": "2026-10-10:5/7",
-      "lastAcquiredAt": null,
+      "lastAcquiredAt": "2026-10-17T16:38:58Z",
       "lastAppliedAt": "2026-10-18T06:12:23Z",
       "lastAppliedDate": "2026-10-18",
-      "lastAttemptAt": "2026-10-18T12:46:15Z",
+      "lastAttemptAt": null,
       "safeReason": "completed-sync-remote-not-completed",
       "snapshotHash": "sha256:533af741ead964d5a8aa8e12f81231db4fa8b0de262ee7484db7ceeb46fb5e8d",
       "snapshotId": "biggo-2026-10-10:4/7-stage4-ceeb46fb5e8d",
-      "stage": 5,
       "status": "pending"
     },
     "emsd": {
@@ -39,7 +37,7 @@
       "snapshotId": "emsd-2026-10-18-7e132c45ed00",
       "status": "ok"
     },
-    "generatedAt": "2026-10-18T12:46:17Z",
+    "generatedAt": "2026-10-18T13:37:15Z",
     "official": {
       "lastAcquiredAt": null,
       "lastAppliedAt": null,
@@ -51,14 +49,14 @@
       "status": "degraded"
     },
     "publish": {
-      "build": "B20261018.162.1",
-      "commit": "d57ea272ef9c2d9b56c288de25fa0637fe1f6aa6",
+      "build": "B20261018.163.1",
+      "commit": "381e300630bfa8146df6f29bd65be5932c1e3955",
       "deployedAt": null,
       "deploymentReceipt": null,
-      "packagedAt": "2026-10-18T12:46:17Z",
+      "packagedAt": "2026-10-18T13:37:15Z",
       "releasePayloadHash": null
     },
     "schemaVersion": 1
   },
-  "releasePayloadHash": "sha256:c9568ef9482a98dc525eba017b3e56d2067ff55c6536907bb88714ad418a9a78"
+  "releasePayloadHash": "sha256:5412ad88c1e4e92692c8d8b0bd366c0c1953a48798e5ebd38ede76e2e283cb1d"
 }
