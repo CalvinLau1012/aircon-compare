@@ -1708,3 +1708,8 @@ Root R7 rejected an `ok:true` health report with `skipped:true`, empty/false-che
 ### 2026-10-18 · R8 final producer-contract closure (append-only)
 
 Root supplied the final narrow patch: strict integer schema, healthy codes empty, real UTC calendar parsing, and required core GATE-08 check names/non-duplication for success. This candidate uses a sanitized real 25-check deployment receipt fixture; Root counterexamples (skipped healthy, empty checks, false check with ok true, missing generatedAt/baseUrl) are rejected through the main path. Close partial-failure idempotence, atomic writer, safe reports, renew/stage4/grant regressions remain. No live operation.
+
+
+### 2026-10-18 · served-snapshot acquisition provenance (append-only)
+
+A pending stage5/remote-not-completed receive lost the previously served stage4 acquisition time. This candidate adds a separate optional prior BigGo metadata input plus bounded read-only committed metadata history fallback. It accepts lastAcquiredAt only when prior sourceStatus schema is valid, snapshotHash/id and lastAppliedAt exactly match current prices_meta, the actual snapshot, UTC/calendar is valid, acquisition is not future and not after apply. Prior metadata never feeds EMSD facts. No status/reason promotion; current pending/degraded remains. CLI/workflow pass prior metadata and explicitly enable at most 32 local git commits; no checkout/fetch/network. No live operation.

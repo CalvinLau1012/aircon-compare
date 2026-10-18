@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 
@@ -207,7 +208,7 @@ def validate_status(status):
     errors = []
     if not isinstance(status, dict):
         return ['sourceStatus 必須係 object']
-    if status.get('schemaVersion') != SCHEMA_VERSION:
+    if type(status.get('schemaVersion')) is not int or status.get('schemaVersion') != SCHEMA_VERSION:
         errors.append('sourceStatus.schemaVersion 必須係 1')
     for name in ('emsd', 'biggo', 'official'):
         block = status.get(name)
@@ -283,9 +284,97 @@ def deployment_matches(metadata, receipt):
     return True
 
 
+def _past_ts(value, now_dt):
+    if not _valid_ts(value) or value is None:
+        return None
+    try:
+        dt = _dt.datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except ValueError:
+        return None
+    if dt > now_dt + _dt.timedelta(minutes=5):
+        return None
+    return value
+
+
+def _prior_acquisition(prior_metadata, prices_meta, actual_snapshot, applied_at,
+                       now_dt):
+    """Accept only a prior sourceStatus for the exact served snapshot.
+
+    This is provenance only.  It never changes status/reason/apply facts and
+    never borrows a timestamp from another snapshot.
+    """
+    if not isinstance(prior_metadata, dict):
+        return None
+    source = prior_metadata.get('sourceStatus')
+    if not isinstance(source, dict):
+        return None
+    if type(source.get('schemaVersion')) is not int or source.get('schemaVersion') != 1:
+        return None
+    b = source.get('biggo')
+    if not isinstance(b, dict):
+        return None
+    if not _is_sha(actual_snapshot) or not _is_sha(prices_meta.get('appliedSnapshotHash')):
+        return None
+    if b.get('snapshotHash') != actual_snapshot \
+            or b.get('snapshotHash') != prices_meta.get('appliedSnapshotHash'):
+        return None
+    if b.get('snapshotId') != prices_meta.get('appliedSnapshotId'):
+        return None
+    if b.get('lastAppliedAt') != applied_at:
+        return None
+    acquired = _past_ts(b.get('lastAcquiredAt'), now_dt)
+    applied = _past_ts(applied_at, now_dt)
+    if not acquired or not applied:
+        return None
+    adt = _dt.datetime.fromisoformat(acquired.replace('Z', '+00:00'))
+    pdt = _dt.datetime.fromisoformat(applied.replace('Z', '+00:00'))
+    if adt > pdt:
+        return None
+    return acquired
+
+
+def _history_acquisition(repo_root, prices_meta, actual_snapshot, applied_at,
+                         now_dt, limit=32):
+    """Bounded read-only git metadata history fallback; no checkout/fetch."""
+    if not isinstance(repo_root, str) or not repo_root:
+        return None
+    try:
+        limit = int(limit)
+    except (TypeError, ValueError):
+        return None
+    if limit < 1 or limit > 32:
+        return None
+    try:
+        rev = subprocess.run(
+            ['git', '-C', repo_root, 'log', f'-n{limit}', '--format=%H', '--', 'metadata.json'],
+            capture_output=True, text=True, timeout=20)
+        if rev.returncode != 0:
+            return None
+        for commit in rev.stdout.splitlines():
+            if not re.fullmatch(r'[0-9a-f]{40}', commit):
+                continue
+            show = subprocess.run(
+                ['git', '-C', repo_root, 'show', f'{commit}:metadata.json'],
+                capture_output=True, text=True, timeout=20)
+            if show.returncode != 0:
+                continue
+            try:
+                candidate = json.loads(show.stdout)
+            except ValueError:
+                continue
+            got = _prior_acquisition(candidate, prices_meta, actual_snapshot,
+                                     applied_at, now_dt)
+            if got:
+                return got
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return None
+
+
 def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
                  biggo_status=None, official_status=None, deployment_receipt=None,
-                 biggo_snapshot_hash=None, completed_sync=None, now=None):
+                 biggo_snapshot_hash=None, completed_sync=None, now=None,
+                 prior_metadata=None, history_repo=None, history_limit=32):
     """Build a sanitised receipt from local facts.  Pure and side-effect free."""
     metadata = metadata if isinstance(metadata, dict) else {}
     receipt = emsd_receipt if isinstance(emsd_receipt, dict) else {}
@@ -370,6 +459,14 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
     actual_snapshot = biggo_snapshot_hash or prices_meta.get('appliedSnapshotHash')
     if not biggo_snapshot_hash and bstatus_ui == 'ok' and biggo.get('snapshotHash'):
         actual_snapshot = biggo.get('snapshotHash')
+    now_dt = _dt.datetime.fromtimestamp(now if now is not None else time.time(),
+                                        _dt.timezone.utc)
+    prior_acquired = _prior_acquisition(
+        prior_metadata, prices_meta, actual_snapshot, applied_at, now_dt)
+    if prior_acquired is None and history_repo:
+        prior_acquired = _history_acquisition(
+            history_repo, prices_meta, actual_snapshot, applied_at,
+            now_dt, history_limit)
     baseline_info = _baseline_info(prices_meta)
     baseline_verified = False
     # A missing/inactive provider status (including a normal repair-release run
@@ -415,6 +512,8 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
         acquired_at = biggo.get('acquiredAt') or biggo.get('generatedAt')
         if not acquired_at and receiver:
             acquired_at = receiver.get('acquiredAt')
+        if not acquired_at:
+            acquired_at = prior_acquired
     biggo_block = _source_block(
         bstatus_ui,
         last_attempt_at=biggo.get('at'),
@@ -596,6 +695,10 @@ def main(argv=None):
     b.add_argument('--deployment-receipt')
     b.add_argument('--biggo-snapshot-file')
     b.add_argument('--completed-sync-report')
+    b.add_argument('--prior-metadata')
+    b.add_argument('--recover-history', action='store_true')
+    b.add_argument('--history-repo')
+    b.add_argument('--history-limit', type=int, default=32)
     b.add_argument('--out', required=True)
     b.add_argument('--history-dir')
     v = sub.add_parser('validate')
@@ -616,7 +719,10 @@ def main(argv=None):
                               official_status=_load_json(args.official_status),
                               deployment_receipt=_load_json(args.deployment_receipt),
                               biggo_snapshot_hash=snap_hash,
-                              completed_sync=_load_json(args.completed_sync_report))
+                              completed_sync=_load_json(args.completed_sync_report),
+                              prior_metadata=_load_json(args.prior_metadata),
+                              history_repo=(args.history_repo if args.recover_history else None),
+                              history_limit=args.history_limit)
         write_receipt(args.out, status, history_dir=args.history_dir)
         print(f'✅ source status：{args.out}')
         return 0

@@ -1318,3 +1318,8 @@ Root supplied the final narrow patch: strict integer schema, healthy codes empty
 
 ### 2026-10-18 live receiver/rebuild integration correction
 Run 39102553030 verified stage4 reception but the immutable-source rebuild guard correctly rejected four changed BigGo state files. Repair now permits only the exact four post-images from a same-run, same-head hash-verified receiver receipt; EMSD, official and other preserved inputs remain immutable. Local mutex is ignored, not committed. No provider request or lease is needed for receipt application.
+
+
+### 2026-10-18 · served-snapshot acquisition provenance (append-only)
+
+A pending stage5/remote-not-completed receive lost the previously served stage4 acquisition time. This candidate adds a separate optional prior BigGo metadata input plus bounded read-only committed metadata history fallback. It accepts lastAcquiredAt only when prior sourceStatus schema is valid, snapshotHash/id and lastAppliedAt exactly match current prices_meta, the actual snapshot, UTC/calendar is valid, acquisition is not future and not after apply. Prior metadata never feeds EMSD facts. No status/reason promotion; current pending/degraded remains. CLI/workflow pass prior metadata and explicitly enable at most 32 local git commits; no checkout/fetch/network. No live operation.
