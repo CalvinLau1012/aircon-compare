@@ -1688,3 +1688,8 @@ Root's six blocking counterexamples were reproduced against this isolated candid
 ### 2026-10-18 · R5 Root counterexample follow-up (append-only)
 
 Root R5 acceptance found five residual gaps; this candidate adds: missing/unknown health is never default-healthy and missing postdeploy cannot close; health failures are mapped to fixed safe codes (never raw host/path/token); monitor reports are run/head/event-bound and always preserved even on API failure; usage proposal validates state.bundleHash, manifest/stage-result/stage-status and release receipt evidence rather than trusting CLI counts; heartbeat renewal uses deterministic interleaving tests for record/renew/commit. The completed-sync and provider-skip audit artifacts and source/date UI claims are also covered. This remains isolated; no live/provider/coordinator/grant operation.
+
+
+### 2026-10-18 · R5 Root acceptance gaps (append-only)
+
+Root found missing-health default recovery, unsafe health-reason exposure, unbound monitor reports, proposal evidence trust, and missing heartbeat interleaving tests. This candidate fixes: missing/unknown health/postdeploy never default healthy; fixed safe failure/reason codes; run/head/event-bound monitor reports saved even on API failure; evidence-bound usage proposal (state/manifest/stage-result/stage-status/release receipt) and explicit no-op; deterministic renew/record/commit thread tests with lock coverage. No live/provider/coordinator/grant operation.
