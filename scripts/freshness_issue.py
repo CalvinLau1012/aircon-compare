@@ -72,7 +72,7 @@ def _health_fact(health, expected_identity=None):
     """Strictly validate check_health_summary's producer report contract."""
     if not isinstance(health, dict):
         return False, 'health:invalid', ['health:invalid'], False
-    if health.get('schemaVersion') != 1:
+    if type(health.get('schemaVersion')) is not int or health['schemaVersion'] != 1:
         return False, 'health:invalid', ['health:invalid'], False
     configured = health.get('configured')
     status = health.get('status')
@@ -133,6 +133,8 @@ def _health_fact(health, expected_identity=None):
         codes.add('health:unconfigured')
     if ok is True and codes:
         return False, 'health:invalid', ['health:invalid'], False
+    if ok is True:
+        return True, 'ok', [], True
     if not codes:
         codes.add('health:unhealthy')
     return ok is True, ('ok' if ok is True else ','.join(sorted(codes))), sorted(codes), True
@@ -148,6 +150,11 @@ def _postdeploy_fact(post):
     if not isinstance(post.get('generatedAt'), str) or not re.fullmatch(
             r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z', post['generatedAt']):
         return False, None, [], False
+    try:
+        from check_freshness import parse_utc_z
+        parse_utc_z(post['generatedAt'])
+    except ValueError:
+        return False, None, [], False
     if not isinstance(post.get('baseUrl'), str) or not post['baseUrl'].strip():
         return False, None, [], False
     if not post['checks'] or not isinstance(post['checks'], list):
@@ -157,6 +164,21 @@ def _postdeploy_fact(post):
                 or not isinstance(entry.get('check'), str) or not entry['check']:
             return False, None, [], False
     if post.get('ok') is True and (post['failures'] or not all(e['pass'] for e in post['checks'])):
+        return False, None, [], False
+    # A successful producer report must include the core deployment checks;
+    # a truncated list containing only one passing check is not evidence.
+    required = {
+        'metadata.expected_schema_valid', 'metadata.source_status_truthful',
+        'manifest.paths', 'metadata.http_200', 'metadata.full_object_equal',
+        'metadata.online_schema_valid', 'metadata.releasePayloadHash',
+        'metadata.datasetHash', 'payload.http.index.html',
+        'payload.http.空調對比報告.pdf', 'payload.http.emsd_空調能源標籤.csv',
+        'payload.releasePayloadHash', 'payload.csv_datasetHash',
+        'payload.csv_online_metadata_hash', 'payload.pdf_magic',
+        'payload.pdf_matches_metadata',
+    }
+    names = [entry['check'] for entry in post['checks']]
+    if post['ok'] and (not required.issubset(names) or len(names) != len(set(names))):
         return False, None, [], False
     if post.get('ok') is False and not post['failures']:
         return False, None, [], False

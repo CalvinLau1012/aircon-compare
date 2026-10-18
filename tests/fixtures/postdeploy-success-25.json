@@ -1,0 +1,203 @@
+{
+  "generatedAt": "2026-10-18T00:41:29Z",
+  "baseUrl": "http://127.0.0.1/",
+  "checks": [
+    {
+      "check": "metadata.expected_schema_valid",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "check": "metadata.source_status_truthful",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "check": "manifest.paths",
+      "pass": true,
+      "detail": "3 個相對路徑"
+    },
+    {
+      "check": "metadata.http_200",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "check": "metadata.full_object_equal",
+      "pass": true
+    },
+    {
+      "check": "metadata.online_schema_valid",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "check": "metadata.version",
+      "pass": true,
+      "detail": "{'online': '1.2.9', 'expected': '1.2.9'}"
+    },
+    {
+      "check": "metadata.build",
+      "pass": true,
+      "detail": "{'online': 'B20261018.docker-20261018004041', 'expected': 'B20261018.docker-20261018004041'}"
+    },
+    {
+      "check": "metadata.commit",
+      "pass": true,
+      "detail": "{'online': '1c496a0793b9077e46c72d3e14cc39eb5d5ea67b', 'expected': '1c496a0793b9077e46c72d3e14cc39eb5d5ea67b'}"
+    },
+    {
+      "check": "metadata.workflowRunId",
+      "pass": true,
+      "detail": "{'online': 'docker-20261018004041', 'expected': 'docker-20261018004041'}"
+    },
+    {
+      "check": "metadata.releasePayloadHash",
+      "pass": true,
+      "detail": "{'online': 'sha256:0d2492a887fc816863259c30e1516d1f8388a6ac2ef97dae98e2d80e2455d8a5', 'expected': 'sha256:0d2492a887fc816863259c30e1516d1f8388a6ac2ef97dae98e2d80e2455d8a5'}"
+    },
+    {
+      "check": "metadata.datasetHash",
+      "pass": true,
+      "detail": "{'online': 'sha256:dcbe0ca2d4e9e25f7f62b6fcff54afd40d280cb7679e77a660b67e132c45ed00', 'expected': 'sha256:dcbe0ca2d4e9e25f7f62b6fcff54afd40d280cb7679e77a660b67e132c45ed00'}"
+    },
+    {
+      "check": "metadata.datasetDate",
+      "pass": true,
+      "detail": "{'online': '2026-10-18', 'expected': '2026-10-18'}"
+    },
+    {
+      "check": "metadata.deployTime",
+      "pass": true,
+      "detail": "{'online': '2026-10-18T00:40:42Z', 'expected': '2026-10-18T00:40:42Z'}"
+    },
+    {
+      "check": "payload.http.index.html",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "check": "payload.http.空調對比報告.pdf",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "check": "payload.http.emsd_空調能源標籤.csv",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "check": "payload.releasePayloadHash",
+      "pass": true,
+      "detail": "{'computed': 'sha256:0d2492a887fc816863259c30e1516d1f8388a6ac2ef97dae98e2d80e2455d8a5', 'expected': 'sha256:0d2492a887fc816863259c30e1516d1f8388a6ac2ef97dae98e2d80e2455d8a5'}"
+    },
+    {
+      "check": "payload.csv_datasetHash",
+      "pass": true,
+      "detail": "{'csv': 'sha256:dcbe0ca2d4e9e25f7f62b6fcff54afd40d280cb7679e77a660b67e132c45ed00', 'expected': 'sha256:dcbe0ca2d4e9e25f7f62b6fcff54afd40d280cb7679e77a660b67e132c45ed00'}"
+    },
+    {
+      "check": "payload.csv_online_metadata_hash",
+      "pass": true,
+      "detail": "sha256:dcbe0ca2d4e9e25f7f62b6fcff54afd40d280cb7679e77a660b67e132c45ed00"
+    },
+    {
+      "check": "payload.pdf_magic",
+      "pass": true,
+      "detail": "%PDF-1.4"
+    },
+    {
+      "check": "payload.pdf_matches_metadata",
+      "pass": true,
+      "detail": "{'online': 'a8ab1d4471f30797', 'rebuilt': 'a8ab1d4471f30797'}"
+    },
+    {
+      "check": "payload.bytes.index.html",
+      "pass": true,
+      "detail": "/app/web/index.html"
+    },
+    {
+      "check": "payload.bytes.空調對比報告.pdf",
+      "pass": true,
+      "detail": "/app/web/空調對比報告.pdf"
+    },
+    {
+      "check": "payload.bytes.emsd_空調能源標籤.csv",
+      "pass": true,
+      "detail": "/app/web/emsd_空調能源標籤.csv"
+    }
+  ],
+  "failures": [],
+  "browser": [
+    {
+      "check": "browser.index_200",
+      "pass": true,
+      "detail": 200
+    },
+    {
+      "check": "browser.version_from_metadata",
+      "pass": true,
+      "detail": "{'shown': 'v1.2.9', 'expected': 'v1.2.9'}"
+    },
+    {
+      "check": "browser.last_deploy_hkt",
+      "pass": true,
+      "detail": "{'shown': '📅 資料日期 2026-10-18 · v1.2.9 · 📦 最後部署 2026-10-18 08:40 HKT', 'expected_hkt': '2026-10-18 08:40'}"
+    },
+    {
+      "check": "browser.dataset_date",
+      "pass": true,
+      "detail": "2026-10-18"
+    },
+    {
+      "check": "browser.search_non_empty",
+      "pass": true,
+      "detail": 60
+    },
+    {
+      "check": "browser.search_brand_match",
+      "pass": true,
+      "detail": "['HITACHI 日立 RA-10RF', 'HITACHI 日立 RAS-S18CAK/RAC-S18CAK', 'HITACHI 日立 RAS-E24CAK/RAC-E24CAK']"
+    },
+    {
+      "check": "browser.filter_brand",
+      "pass": true,
+      "detail": "['Gree 格力 GWF09P', 'Gree 格力 GWF12DB', 'Gree 格力 GIM09AE / GIM09AC']"
+    },
+    {
+      "check": "browser.sort_price",
+      "pass": true,
+      "detail": "[45, 45, 48, 50, 50]"
+    },
+    {
+      "check": "browser.filter_price_unknown_excluded",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "check": "browser.compare_modal",
+      "pass": true,
+      "detail": "{'open': True, 'rows': 20}"
+    },
+    {
+      "check": "browser.compare_escape_keyboard",
+      "pass": true
+    },
+    {
+      "check": "browser.responsive_no_overflow",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "check": "browser.no_console_errors",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "check": "browser.no_failed_requests",
+      "pass": true,
+      "detail": "[]"
+    }
+  ],
+  "ok": true
+}
