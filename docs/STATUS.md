@@ -1703,3 +1703,8 @@ R6 Root review found health-summary schema/identity acceptance, unsafe postdeplo
 ### 2026-10-18 · R7 producer-contract corrections (append-only)
 
 Root R7 rejected an `ok:true` health report with `skipped:true`, empty/false-check postdeploy success, and non-atomic final report writes. This candidate requires real check_health_summary fields/types/consistency (including explicit failures and no skipped success), real postdeploy checks/generatedAt/baseUrl/all-pass/failures consistency, fixed safe failure codes, atomic report writes, and a recovery marker so a successful close comment is not repeated after a failed close PATCH. Main fake-API matrix covers healthy close/noop, invalid health, invalid identity, reason transitions, write/GET/mutation failure, and sentinel leakage. Isolated only.
+
+
+### 2026-10-18 · R8 final producer-contract closure (append-only)
+
+Root supplied the final narrow patch: strict integer schema, healthy codes empty, real UTC calendar parsing, and required core GATE-08 check names/non-duplication for success. This candidate uses a sanitized real 25-check deployment receipt fixture; Root counterexamples (skipped healthy, empty checks, false check with ok true, missing generatedAt/baseUrl) are rejected through the main path. Close partial-failure idempotence, atomic writer, safe reports, renew/stage4/grant regressions remain. No live operation.
