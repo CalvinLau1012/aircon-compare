@@ -17,6 +17,7 @@ import re
 BASE = os.path.dirname(os.path.abspath(__file__))
 
 from models_data import MODELS, VERSION
+import report_common
 from crawl_utils import (canonical_model_key, load_registrations, ENERGY_LEVELS,
                          load_energy_distributions)
 
@@ -432,86 +433,18 @@ def load_specs_emsd():
 
 
 def _hkt_text(value):
-    if not isinstance(value, str) or not re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$', value):
-        return None
-    try:
-        t = time.strptime(value.replace('Z', ''), '%Y-%m-%dT%H:%M:%S')
-        epoch = calendar.timegm(t) + 8 * 3600
-        return time.strftime('%Y-%m-%d %H:%M', time.gmtime(epoch))
-    except (ValueError, OverflowError):
-        return None
+    """Compatibility adapter: strict UTC Z (including fractional) -> HKT text."""
+    return report_common.utc_to_hkt(value)
 
 
 def format_status(meta_dict, version):
-    """純函數：metadata dict → (hero 狀態行, 頁腳狀態行)
+    """Compatibility adapter for the canonical pure report formatter."""
+    return report_common.format_status(meta_dict, version)
 
-    治理要求（AIRCON_COMPARE_GOVERNANCE.md §7.2）：
-    - Last Deploy 讀 metadata.json.deployTime（UTC）並以 HKT 顯示
-    - Last Update 讀 metadata.json.datasetDate，唔用靜態舊值
-    - 載入失敗顯示「暫不可用」，唔回退硬編舊值
 
-    注意：Web 版由 index.html 內 JS 於 runtime fetch metadata.json（同呢套規則）；
-    本函數供測試同未來 PDF 生成共用（PDF 同 Web 必須用同一套 metadata）。
-    """
-    deploy_hkt = None
-    dataset_date = None
-    if meta_dict:
-        dt = meta_dict.get('deployTime')
-        if dt:
-            try:
-                t = time.strptime(dt, '%Y-%m-%dT%H:%M:%SZ')
-                epoch = calendar.timegm(t) + 8 * 3600  # UTC → HKT
-                deploy_hkt = time.strftime('%Y-%m-%d %H:%M', time.gmtime(epoch))
-            except (ValueError, OverflowError):
-                deploy_hkt = None
-        dataset_date = meta_dict.get('datasetDate')
-        v = meta_dict.get('version') or version
-    else:
-        v = version
-    date_text = (f'📅 EMSD 資料日期 {dataset_date}' if dataset_date
-                 else '📅 EMSD 資料日期暫不可用')
-    source = (meta_dict or {}).get('sourceStatus')
-    publish = (source or {}).get('publish') or {}
-    # Legacy metadata (no sourceStatus) historically used deployTime as the
-    # deployment fact.  New metadata distinguishes packagedAt from an actual
-    # deployment receipt.
-    deployed_actual = bool(publish.get('deployedAt'))
-    deploy_label = '最後部署' if (source is None or deployed_actual) else '最後封裝'
-    deploy_text = f'📦 {deploy_label} {deploy_hkt} HKT' if deploy_hkt else '🔄 每日偵測新機 · 有機先更新'
-    line1 = f'{date_text} · v{v} · {deploy_text}'
-    biggo_text = '🛒 BigGo 更新時間未確認（分批快照）'
-    try:
-        src = (meta_dict or {}).get('sourceStatus') or {}
-        b = src.get('biggo') or {}
-        status = b.get('status')
-        acquired = _hkt_text(b.get('lastAcquiredAt'))
-        applied = _hkt_text(b.get('lastAppliedAt'))
-        when = acquired or applied
-        if status == 'ok' and acquired:
-            biggo_text = f'🛒 BigGo 最近成功更新 {acquired} HKT（分批快照）'
-            if applied:
-                biggo_text += f'；已套用 {applied} HKT'
-        elif status == 'ok' and applied:
-            biggo_text = (f'🛒 BigGo 取得時間未確認；已套用 {applied} HKT'
-                          '（分批快照，非全部同時查價）')
-        elif status in ('degraded', 'blocked', 'pending'):
-            prefix = {'degraded': '⚠️ BigGo 價格來源降級',
-                      'blocked': '⛔ BigGo 價格來源受阻',
-                      'pending': '⏳ BigGo 本輪待更新'}[status]
-            if acquired:
-                prefix += f'；先前快照取得 {acquired} HKT'
-            elif applied:
-                prefix += f'；已套用 {applied} HKT（取得時間未確認）'
-            biggo_text = prefix + ' · 價格更新未完成，沿用先前已驗證快照'
-        elif when:
-            biggo_text = f'🛒 BigGo 更新時間 {acquired or applied} HKT（分批快照）'
-    except (AttributeError, TypeError):
-        pass
-    line2 = ('🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）· 有新機先分批核實更新 · '
-             + (f'EMSD 資料日期 {dataset_date}' if dataset_date else 'EMSD 資料日期暫不可用')
-             + ' · ' + biggo_text
-             + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考')
-    return line1, line2
+def script_safe_json(obj):
+    """Compatibility adapter for the canonical script-safe JSON helper."""
+    return report_common.script_safe_json(obj)
 
 
 def load_new_models():
@@ -687,9 +620,9 @@ def build_html():
             m['price'] = bp
         assign_status(m, blacklist)
 
-    models_json = json.dumps(MODELS, ensure_ascii=False)
-    emsd_json = json.dumps(emsd_models, ensure_ascii=False, separators=(',', ':'))
-    fields_json = json.dumps(COMPARE_FIELDS, ensure_ascii=False)
+    models_json = script_safe_json(MODELS)
+    emsd_json = script_safe_json(emsd_models)
+    fields_json = script_safe_json(COMPARE_FIELDS)
     # 動態計數（治理 F-11）：total_models / emsd_registrations 已喺上面計出
 
     # 皮膚資源（Blue Fantasy 壁紙 + whale-girl 吉祥物；檔案唔喺就留空，唔整死生成）
@@ -1629,9 +1562,16 @@ window.addEventListener('scroll',()=>{
       const dt = m.deployTime;
       const sb = (m.sourceStatus && m.sourceStatus.biggo) || {};
       const hkt = (v) => {
-        if (!v || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(String(v))) return '';
-        const d = new Date(new Date(v).getTime() + 8*3600*1000);
-        return d.toISOString().slice(0,16).replace('T',' ');
+        const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z$/.exec(String(v || ''));
+        if (!m) return '';
+        const y=+m[1], mo=+m[2], d=+m[3], hh=+m[4], mi=+m[5], ss=+m[6];
+        if (y < 1 || mo < 1 || mo > 12 || d < 1 || d > 31 || hh > 23 || mi > 59 || ss > 59) return '';
+        const raw = new Date(Date.UTC(y, mo-1, d, hh, mi, ss));
+        if (raw.getUTCFullYear() !== y || raw.getUTCMonth() !== mo-1 || raw.getUTCDate() !== d
+            || raw.getUTCHours() !== hh || raw.getUTCMinutes() !== mi || raw.getUTCSeconds() !== ss) return '';
+        const shifted = new Date(raw.getTime() + 8*3600*1000);
+        if (!isFinite(shifted.getTime()) || shifted.getUTCFullYear() > 9999) return '';
+        return shifted.toISOString().slice(0,16).replace('T',' ');
       };
       const acq = hkt(sb.lastAcquiredAt), app = hkt(sb.lastAppliedAt);
       let biggoText = '🛒 BigGo 更新時間未確認（分批快照）';
@@ -1649,10 +1589,11 @@ window.addEventListener('scroll',()=>{
       }
       let line = (ds ? ('📅 EMSD 資料日期 ' + ds) : '📅 EMSD 資料日期暫不可用');
       if (m.version) line += ' · v' + m.version;
-      if (dt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(dt)) {
-        const hkt = new Date(new Date(dt).getTime() + 8*3600*1000);
-        const p = hkt.toISOString().slice(0,16).replace('T',' ');
-        line += ' · 📦 最後部署 ' + p + ' HKT';
+      const deployHkt = hkt(dt);
+      if (deployHkt) {
+        const pub = (m.sourceStatus && m.sourceStatus.publish) || {};
+        const label = (m.sourceStatus && !pub.deployedAt) ? '最後封裝' : '最後部署';
+        line += ' · 📦 ' + label + ' ' + deployHkt + ' HKT';
       } else {
         line += ' · 🔄 每日偵測新機 · 有機先更新';
       }

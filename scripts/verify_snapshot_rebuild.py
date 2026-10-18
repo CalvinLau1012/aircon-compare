@@ -70,6 +70,7 @@ REQUIRED_PRESERVED = (
     # 其餘規格／價格輸入
     'specs.json', 'specs_emsd.json', 'gemini_prices.json', 'prices.json',
     # 報告同生成器資產（generate_html／generate_pdf／extract_governance 讀取）
+    'report_common.py',
     '空調對比報告.md', 'whale_girl.webp', 'blue_fantasy_art.txt',
     'docs/AIRCON_COMPARE_GOVERNANCE.md',
     # 部署 payload manifest（releasePayloadHash 範圍）

@@ -440,7 +440,7 @@ def test_postdeploy_browser_runtime_check(site):
 # ---------------------------------------------------------------- --repro-from-commit（離線）
 
 
-_REPRO_GEN_FILES = ('generate_pdf.py', 'generate_html.py', 'crawl_utils.py', 'models_data.py')
+_REPRO_GEN_FILES = ('report_common.py', 'generate_pdf.py', 'generate_html.py', 'crawl_utils.py', 'models_data.py')
 _OLD_MD = ('# 香港空調對比報告\n\n> 舊部署版本（fixture）\n\n'
            '<!-- AIRCON:DYNAMIC:ENERGY_DISTRIBUTION -->\n\n## 段落\n\n- 內容\n')
 

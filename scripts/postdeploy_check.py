@@ -50,7 +50,7 @@ REQUIRED_COMPARE_FIELDS = (
     'datasetHash', 'datasetDate', 'deployTime',
 )
 # --repro-from-commit：實際影響 PDF bytes 嘅 generator 依賴（byte-equal 才可用當前 code）。
-REPRO_CODE_PATHS = ('generate_pdf.py', 'generate_html.py', 'crawl_utils.py', 'models_data.py')
+REPRO_CODE_PATHS = ('report_common.py', 'generate_pdf.py', 'generate_html.py', 'crawl_utils.py', 'models_data.py')
 REPRO_MD_PATH = '空調對比報告.md'
 REPRO_REQUIREMENTS_PATH = 'requirements.txt'
 REPRO_PIN_PACKAGES = ('markdown', 'reportlab')
@@ -334,6 +334,7 @@ def _pdf_repro_from_commit(args, expected, online, blobs, pdf_rel, csv_rel, rec,
     }
     try:
         sys.path.insert(0, BASE)
+        import report_common  # noqa: PLC0415
         import generate_pdf  # noqa: PLC0415
         import generate_html  # noqa: PLC0415
         import crawl_utils  # noqa: PLC0415
@@ -346,7 +347,8 @@ def _pdf_repro_from_commit(args, expected, online, blobs, pdf_rel, csv_rel, rec,
     # 防止 sys.modules 快取或其他 tree 嘅同名 module 繞過 byte comparison；
     # 任何 symlink 以 realpath 比對，唔一致即 fail closed（唔 rebuild）。
     base_real = os.path.realpath(BASE)
-    runtime_modules = {'generate_pdf.py': generate_pdf, 'generate_html.py': generate_html,
+    runtime_modules = {'report_common.py': report_common,
+                       'generate_pdf.py': generate_pdf, 'generate_html.py': generate_html,
                        'crawl_utils.py': crawl_utils, 'models_data.py': models_data}
     for rel, module in runtime_modules.items():
         module_file = getattr(module, '__file__', None)
