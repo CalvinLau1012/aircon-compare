@@ -2308,3 +2308,8 @@ Workflow input is environment-only; strict grant-id and explicit run identity ar
 - Header/PDF now distinguish EMSD date and BigGo acquisition HKT, plus separately labelled apply time; degraded/pending/blocked explicitly retain prior snapshot and never say success. Generated artifacts are not manually edited.
 - GitHub audit improvements: completed-sync report always uploaded with source run/head and safe summary; repair/rebuild emit a run-bound skipped-no-provider status that does not claim provider success; alert validates legal skip with source identity. Freshness monitor separates freshness/postdeploy/source-health, never closes on a successful postdeploy overwrite, and uploads an always-on safe report/summary.
 - No live push/deploy/dispatch/coordinator write/grant install/provider call in this candidate. Official queue, cron, health thresholds, and private data unchanged.
+
+
+### 2026-10-18 · R5 Root counterexample follow-up (append-only)
+
+Root R5 acceptance found five residual gaps; this candidate adds: missing/unknown health is never default-healthy and missing postdeploy cannot close; health failures are mapped to fixed safe codes (never raw host/path/token); monitor reports are run/head/event-bound and always preserved even on API failure; usage proposal validates state.bundleHash, manifest/stage-result/stage-status and release receipt evidence rather than trusting CLI counts; heartbeat renewal uses deterministic interleaving tests for record/renew/commit. The completed-sync and provider-skip audit artifacts and source/date UI claims are also covered. This remains isolated; no live/provider/coordinator/grant operation.
