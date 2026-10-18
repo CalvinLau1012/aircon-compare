@@ -50,3 +50,9 @@ Private keeps its private schedule wording and private EMSD facts/markdown/injec
 ## Verification boundary
 
 Root 24 fixed contracts and Stage1 26 external contracts are run independently. Host browser/pypdf/CA gates are not claimed here; Root will run the approved `aircon-source-time-20261018:local` network-disabled full and browser checks on final clean commits. BigGo provider remains 0 calls; no coordinator/budget/grant/write, no price/official/queue/EMSД changes, no metadata regeneration.
+
+## Additional actual dependency callers
+
+- `scripts/postdeploy_check.py` imports `report_common` in the PDF-repro runtime check and includes it in `REPRO_CODE_PATHS`; the static audit therefore shows it as a production consumer of `report_common.py` (not a page-rendering path).
+- `scripts/verify_snapshot_rebuild.py` records `report_common.py` in `REQUIRED_PRESERVED`; this is a source-preservation guard, not a runtime import.
+- `generate_pdf.py` remains an indirect caller through `generate_html.format_status`; this preserves the private/public environment wording adapter and avoids a second formatter.
