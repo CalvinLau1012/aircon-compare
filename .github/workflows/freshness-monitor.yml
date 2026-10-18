@@ -56,6 +56,17 @@ jobs:
             --report "$RUNNER_TEMP/source-health-summary.json" \
             --max-age-hours 48
 
+      - name: 綁定 source-health report identity（always；在 freshness 前）
+        if: always()
+        env:
+          HEALTH_RUN_ID: ${{ github.run_id }}
+          HEALTH_HEAD_SHA: ${{ github.sha }}
+          HEALTH_EVENT: ${{ github.event_name }}
+        run: |
+          python scripts/bind_run_identity.py \
+            --report "$RUNNER_TEMP/source-health-summary.json" \
+            --run-id "$HEALTH_RUN_ID" --head "$HEALTH_HEAD_SHA" --event "$HEALTH_EVENT"
+
       - name: 72h freshness＋監控告警（無論上一步結果都要處理）
         if: always()
         env:

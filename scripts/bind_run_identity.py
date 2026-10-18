@@ -9,7 +9,7 @@ def _one(path, run_id, head, event):
         d={'ok':False,'status':'unknown','reason':'report-missing-or-invalid'}
     if not isinstance(d,dict):
         d={'ok':False,'status':'unknown','reason':'report-not-object'}
-    d.update({'sourceRunId':run_id,'headSha':head,'sourceEvent':event})
+    d.update({'sourceRunId':int(run_id),'headSha':head,'sourceEvent':event})
     tmp=path+'.tmp'
     with open(tmp,'w',encoding='utf-8',newline='\n') as f:
         json.dump(d,f,ensure_ascii=False,sort_keys=True,indent=2); f.flush(); os.fsync(f.fileno())

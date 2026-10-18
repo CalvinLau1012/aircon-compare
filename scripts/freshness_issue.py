@@ -9,6 +9,7 @@ create／update／close／noop；只維護單一 label 嘅 open issue。Token �
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -51,44 +52,92 @@ def find_open_issue(token, repo, label=LABEL):
     return items[0] if items else None
 
 
-def _safe_health_fact(health):
-    """Map the real check_health_summary failures/status to fixed safe codes."""
+def _health_fact(health, expected_identity=None):
+    """Strictly validate check_health_summary's producer report contract."""
     if not isinstance(health, dict):
-        return False, 'health-report-invalid'
-    if health.get('ok') is True:
-        return True, 'ok'
-    values = health.get('failures')
+        return False, 'health:invalid', ['health:invalid'], False
+    if health.get('schemaVersion') != 1:
+        return False, 'health:invalid', ['health:invalid'], False
+    configured = health.get('configured')
+    status = health.get('status')
+    ok = health.get('ok')
+    failures = health.get('failures', [])
+    if not isinstance(configured, bool) or not isinstance(failures, list):
+        return False, 'health:invalid', ['health:invalid'], False
+    if status not in ('healthy', 'unhealthy', 'unknown'):
+        return False, 'health:invalid', ['health:invalid'], False
+    if ok is True:
+        if status != 'healthy' or configured is not True or failures:
+            return False, 'health:invalid', ['health:invalid'], False
+    elif ok is False:
+        if status != 'unhealthy' or not failures:
+            return False, 'health:invalid', ['health:invalid'], False
+    elif ok is None:
+        if status != 'unknown' or not (configured is False or health.get('skipped') is True):
+            return False, 'health:invalid', ['health:invalid'], False
+    else:
+        return False, 'health:invalid', ['health:invalid'], False
+    # The report must be produced in this run and bound to the same identity.
+    ident_ok = (isinstance(health.get('sourceRunId'), int)
+                and not isinstance(health.get('sourceRunId'), bool)
+                and health.get('sourceRunId') > 0
+                and isinstance(health.get('headSha'), str)
+                and re.fullmatch(r'[0-9a-f]{40}', health.get('headSha'))
+                and health.get('sourceEvent') in ('schedule', 'workflow_dispatch'))
+    if not ident_ok:
+        return False, 'health:identity-invalid', ['health:identity-invalid'], False
+    if expected_identity is not None:
+        run_id, head, event = expected_identity
+        if (health.get('sourceRunId') != run_id or health.get('headSha') != head
+                or health.get('sourceEvent') != event):
+            return False, 'health:identity-mismatch', ['health:identity-mismatch'], False
     codes = set()
-    if isinstance(values, list):
-        for item in values:
-            text = str(item or '').lower()
-            if text.startswith('fetch:'):
-                codes.add('health:fetch')
-            elif text.startswith('summary:'):
-                token = text.split(':', 1)[1]
-                if any(x in token for x in ('emsd', 'biggo', 'official')):
-                    for source in ('emsd', 'biggo', 'official'):
-                        if source in token:
-                            codes.add('health:' + source)
-                elif 'hash' in token or 'manifest' in token or 'binding' in token:
-                    codes.add('health:integrity')
-                elif 'not-healthy' in token or 'failures' in token:
-                    codes.add('health:unhealthy')
-                else:
-                    codes.add('health:unknown')
+    for item in failures:
+        text = str(item or '').lower()
+        if text.startswith('fetch:'):
+            codes.add('health:fetch')
+        elif text.startswith('summary:'):
+            token = text.split(':', 1)[1]
+            if any(x in token for x in ('emsd', 'biggo', 'official')):
+                for source in ('emsd', 'biggo', 'official'):
+                    if source in token:
+                        codes.add('health:' + source)
+            elif 'hash' in token or 'manifest' in token or 'binding' in token:
+                codes.add('health:integrity')
+            elif 'not-healthy' in token or 'failures' in token:
+                codes.add('health:unhealthy')
             else:
                 codes.add('health:unknown')
-    sources = health.get('sources')
-    if isinstance(sources, dict):
-        for name in ('emsd', 'biggo', 'official'):
-            block = sources.get(name)
-            if not isinstance(block, dict) or block.get('status') != 'ok':
-                codes.add('health:' + name)
-    if health.get('configured') is False or health.get('skipped') is True:
+        else:
+            codes.add('health:unknown')
+    if not configured or health.get('skipped') is True:
         codes.add('health:unconfigured')
     if not codes:
         codes.add('health:unhealthy')
-    return False, ','.join(sorted(codes))
+    return ok is True, ','.join(sorted(codes)), sorted(codes), True
+
+
+def _postdeploy_fact(post):
+    """Strict producer contract; public failure codes never echo raw details."""
+    if not isinstance(post, dict):
+        return False, None, [], False
+    if not isinstance(post.get('ok'), bool) or not isinstance(post.get('failures'), list)             or not isinstance(post.get('checks'), list):
+        return False, None, [], False
+    if post.get('ok') is True and post['failures']:
+        return False, None, [], False
+    if post.get('ok') is False and not post['failures']:
+        return False, None, [], False
+    allowed_prefixes = ('metadata.', 'payload.', 'browser.', 'http.', 'repro.')
+    ids = []
+    for item in post['failures']:
+        name = item.get('check') or item.get('name') if isinstance(item, dict) else None
+        value = str(name or '')
+        code = value if value.startswith(allowed_prefixes) and re.fullmatch(
+            r'[A-Za-z0-9_.:-]{1,80}', value) else 'postdeploy:unknown'
+        ids.append(code)
+    mismatch = any(x.startswith(('metadata.', 'payload.')) for x in ids)
+    return post['ok'] is True, {'mismatch': mismatch, 'failures': ids}, ids, True
+
 
 
 def main(argv=None):
@@ -110,18 +159,41 @@ def main(argv=None):
     if not token:
         print('❌ 缺少 GITHUB_TOKEN／GH_TOKEN', file=sys.stderr)
         return 1
+    # Identity is required before any issue read/write side effect.
+    identity_ok = (isinstance(args.run_id, str) and args.run_id.isdigit()
+                   and int(args.run_id) > 0
+                   and isinstance(args.head, str) and re.fullmatch(r'[0-9a-f]{40}', args.head)
+                   and args.event in ('schedule', 'workflow_dispatch'))
+    if not identity_ok:
+        result = {'ok': False, 'stale': False, 'ageSeconds': None,
+                  'reason': 'invalid-source-identity'}
+        out = {'schemaVersion': 1, 'action': 'blocked-identity',
+               'appliedAction': 'none', 'reason': 'invalid-source-identity',
+               'check': result, 'issueNumber': None,
+               'sourceRunId': None, 'headSha': None, 'sourceEvent': None,
+               'checkedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
+        try:
+            with open(args.report, 'w', encoding='utf-8', newline='\n') as f:
+                json.dump(out, f, ensure_ascii=False, indent=2); f.flush(); os.fsync(f.fileno())
+        except OSError:
+            return 1
+        return 1
+    expected_identity = (int(args.run_id), args.head, args.event)
     result = None
     post_ok = False
     deployment = None
     health_ok = False
     health_reason = 'health-report-missing'
+    health_failures = ['health:missing']
+    post_failures = []
     if args.health_report:
         try:
             health = json.load(open(args.health_report, encoding='utf-8'))
-            health_ok, health_reason = _safe_health_fact(health)
+            health_ok, health_reason, health_failures, _valid = _health_fact(
+                health, expected_identity)
         except (OSError, ValueError, TypeError, AttributeError):
-            health_ok = False
-            health_reason = 'health-report-invalid'
+            health_ok = False; health_reason = 'health:invalid'
+            health_failures = ['health:invalid']
             result = {'ok': False, 'stale': False, 'ageSeconds': None,
                       'reason': 'health_report_invalid'}
     if args.postdeploy_report:
@@ -132,19 +204,14 @@ def main(argv=None):
         else:
             try:
                 post = json.load(open(args.postdeploy_report, encoding='utf-8'))
-                if not isinstance(post, dict):
-                    raise ValueError('not an object')
-                post_ok = post.get('ok') is True and not post.get('failures')
-                failures = post.get('failures') or []
-                if not isinstance(failures, list):
-                    raise ValueError('failures not list')
-                ids = [str(f)[:120] for f in failures]
-                mismatch = any(f.startswith(('metadata.', 'payload.')) for f in ids)
-                deployment = {'mismatch': mismatch, 'failures': ids}
+                post_ok, deployment, post_failures, _valid = _postdeploy_fact(post)
+                if not _valid:
+                    raise ValueError('contract')
             except (OSError, ValueError, TypeError):
                 post_ok = False
                 result = {'ok': False, 'stale': False, 'ageSeconds': None,
                           'reason': 'postdeploy_report_invalid'}
+                post_failures = ['postdeploy:invalid']
     if result is None:
         try:
             from check_freshness import fetch_metadata
@@ -157,6 +224,23 @@ def main(argv=None):
     result['postdeployOk'] = post_ok
     result['healthSummaryOk'] = health_ok
     result['healthReason'] = health_reason
+    result['healthFailures'] = health_failures
+    result['postdeployFailures'] = post_failures
+    # Save the check result before any issue read/mutation.  This report is
+    # explicitly pending; it is upgraded only after a successful action.
+    pre = {'schemaVersion': 1, 'action': 'pending', 'plannedAction': 'pending',
+           'appliedAction': 'none', 'reason': 'evidence-saved',
+           'check': result, 'issueNumber': None,
+           'sourceRunId': int(args.run_id), 'headSha': args.head,
+           'sourceEvent': args.event,
+           'checkedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
+    try:
+        tmp = args.report + '.tmp'
+        with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
+            json.dump(pre, f, ensure_ascii=False, indent=2); f.flush(); os.fsync(f.fileno())
+        os.replace(tmp, args.report)
+    except OSError:
+        return 1
     try:
         existing = find_open_issue(token, args.repo, args.label)
     except RuntimeError as e:
@@ -169,10 +253,12 @@ def main(argv=None):
     out = {
         'schemaVersion': 1,
         'action': plan['action'],
+        'plannedAction': plan['action'],
+        'appliedAction': 'none',
         'reason': plan.get('reason'),
         'check': result,
         'issueNumber': existing.get('number') if existing else None,
-        'sourceRunId': int(args.run_id) if args.run_id and args.run_id.isdigit() else None,
+        'sourceRunId': int(args.run_id),
         'headSha': args.head,
         'sourceEvent': args.event,
         'checkedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
@@ -184,7 +270,7 @@ def main(argv=None):
             f.flush(); os.fsync(f.fileno())
         os.replace(tmp, args.report)
     except OSError:
-        pass
+        return 1
     try:
         if plan['action'] == 'create':
             _api(token, 'POST', f'/repos/{args.repo}/issues',
@@ -200,6 +286,12 @@ def main(argv=None):
                  {'state': 'closed', 'state_reason': 'completed'})
     except RuntimeError as e:
         print(f'❌ 更新 monitoring issue 失敗：{e}', file=sys.stderr)
+        return 1
+    out['appliedAction'] = plan['action']
+    try:
+        with open(args.report, 'w', encoding='utf-8', newline='\n') as f:
+            json.dump(out, f, ensure_ascii=False, indent=2); f.flush(); os.fsync(f.fileno())
+    except OSError:
         return 1
     print(f"✅ freshness issue action={out['action']} reason={out['reason']} "
           f"ok={result.get('ok')} stale={result.get('stale')}")

@@ -20,6 +20,7 @@ _ISSUE_SPEC = importlib.util.spec_from_file_location(
     'freshness_issue_mod', os.path.join(BASE, 'scripts', 'freshness_issue.py'))
 freshness_issue = importlib.util.module_from_spec(_ISSUE_SPEC)
 _ISSUE_SPEC.loader.exec_module(freshness_issue)
+sys.modules['freshness_issue'] = freshness_issue
 TOKEN_FORBIDDEN = 'TOKEN-MUST-NEVER-APPEAR-9f3a'
 
 
@@ -143,18 +144,38 @@ def _run_issue_main(tmp_path, monkeypatch, metadata=None, postdeploy=None, fail_
     monkeypatch.setattr(freshness, 'fetch_metadata', fake_fetch)
     if postdeploy is None:
         postdeploy = tmp_path / 'postdeploy-good.json'
-        postdeploy.write_text(json.dumps({'ok': True, 'failures': []}), encoding='utf-8')
+        postdeploy.write_text(json.dumps({'ok': True, 'failures': [],
+                                          'checks': [], 'generatedAt': '2026-10-18T02:00:00Z'}),
+                             encoding='utf-8')
     if health is None:
         health = tmp_path / 'health-good.json'
-        health.write_text(json.dumps({'ok': True, 'status': 'healthy'}), encoding='utf-8')
+        health.write_text(json.dumps({'schemaVersion': 1, 'configured': True,
+                                      'status': 'healthy', 'ok': True, 'failures': []}),
+                          encoding='utf-8')
+    # Bind the fixture to the same run identity the main command is given.
+    try:
+        h = json.loads(health.read_text(encoding='utf-8'))
+        if isinstance(h, dict):
+            h.update({'sourceRunId': 123, 'headSha': 'a' * 40,
+                      'sourceEvent': 'schedule'})
+            health.write_text(json.dumps(h), encoding='utf-8')
+    except Exception:
+        pass
     args = ['--metadata-url', 'https://example.invalid/metadata.json',
             '--repo', 'owner/repo', '--report', str(tmp_path / 'issue-report.json'),
-            '--postdeploy-report', str(postdeploy),
-            '--health-report', str(health)]
-    rc = freshness_issue.main(args)
+            '--postdeploy-report', str(postdeploy), '--health-report', str(health),
+            '--run-id', '123', '--head', 'a' * 40, '--event', 'schedule']
+    rc = _fresh_main(args)
     report_path = tmp_path / 'issue-report.json'
     report = json.load(open(report_path, encoding='utf-8')) if report_path.exists() else None
     return rc, calls, report
+
+
+def _fresh_main(args):
+    if '--run-id' not in args:
+        args = list(args) + ['--run-id', '123', '--head', 'a' * 40,
+                             '--event', 'schedule']
+    return freshness_issue.main(args)
 
 
 def test_issue_main_missing_postdeploy_report_fail_closed(tmp_path, monkeypatch):
@@ -270,8 +291,10 @@ def test_stale_and_deployment_mismatch_are_separate_facts():
 
 def test_health_unknown_keeps_monitor_alert(tmp_path, monkeypatch):
     health = tmp_path / 'health.json'
-    health.write_text(json.dumps({'ok': None, 'status': 'unknown',
-                                  'configured': False,
+    health.write_text(json.dumps({'schemaVersion': 1, 'ok': None, 'status': 'unknown',
+                                  'configured': False, 'failures': [],
+                                  'sourceRunId': 123, 'headSha': 'a' * 40,
+                                  'sourceEvent': 'schedule',
                                   'reason': 'health-summary-not-wired'}),
                       encoding='utf-8')
     rc, calls, report = _run_issue_main(tmp_path, monkeypatch, health=health)
@@ -300,12 +323,15 @@ def test_source_health_failure_is_not_overwritten_by_successful_postdeploy():
 
 def test_health_failure_cannot_be_closed_by_successful_postdeploy_main(tmp_path, monkeypatch):
     health = tmp_path / 'health-bad.json'
-    health.write_text(json.dumps({'ok': False, 'status': 'unhealthy',
-                                  'reason': 'source-health-failed',
-                                  'sources': {'biggo': {'status': 'degraded'}}}),
+    health.write_text(json.dumps({'schemaVersion': 1, 'configured': True,
+                                  'ok': False, 'status': 'unhealthy',
+                                  'failures': ['summary:biggo-not-ok'],
+                                  'sourceRunId': 123, 'headSha': 'a' * 40,
+                                  'sourceEvent': 'schedule',
+                                  'reason': 'source-health-failed'}),
                       encoding='utf-8')
     post = tmp_path / 'post-ok.json'
-    post.write_text(json.dumps({'ok': True, 'failures': []}), encoding='utf-8')
+    post.write_text(json.dumps({'ok': True, 'failures': [], 'checks': [], 'generatedAt': '2026-10-18T02:00:00Z'}), encoding='utf-8')
     state = {'existing': {'number': 9,
                           'body': '<!-- aircon-freshness-fingerprint: stale_over_72h -->\nold'}}
     def api(calls, method, path, data):
@@ -325,7 +351,7 @@ def test_health_failure_cannot_be_closed_by_successful_postdeploy_main(tmp_path,
 def test_main_missing_health_is_unknown_and_cannot_close(tmp_path, monkeypatch):
     import freshness_issue
     post = tmp_path / 'post.json'
-    post.write_text(json.dumps({'ok': True, 'failures': []}), encoding='utf-8')
+    post.write_text(json.dumps({'ok': True, 'failures': [], 'checks': [], 'generatedAt': '2026-10-18T02:00:00Z'}), encoding='utf-8')
     state = {'existing': {'number': 4,
                           'body': '<!-- aircon-freshness-fingerprint: stale_over_72h -->\nold'}}
     writes = []
@@ -337,10 +363,12 @@ def test_main_missing_health_is_unknown_and_cannot_close(tmp_path, monkeypatch):
             state['existing'] = None
         return {'ok': True}
     monkeypatch.setattr(freshness_issue, '_api', api)
+    monkeypatch.setattr(freshness_issue, 'find_open_issue',
+                        lambda *a, **k: state['existing'])
     monkeypatch.setenv('GITHUB_TOKEN', 'x')
     monkeypatch.setattr(freshness, 'fetch_metadata', lambda *a, **k: _meta(_now(), 60))
     report = tmp_path / 'report.json'
-    rc = freshness_issue.main(['--metadata-url', 'https://example.invalid/m.json',
+    rc = _fresh_main(['--metadata-url', 'https://example.invalid/m.json',
                                '--repo', 'owner/repo',
                                '--postdeploy-report', str(post),
                                '--report', str(report)])
@@ -354,23 +382,46 @@ def test_main_missing_health_is_unknown_and_cannot_close(tmp_path, monkeypatch):
 def test_health_failures_map_to_safe_dimensions_and_never_echo_private_text(tmp_path, monkeypatch):
     import freshness_issue
     post = tmp_path / 'post.json'
-    post.write_text(json.dumps({'ok': True, 'failures': []}), encoding='utf-8')
+    post.write_text(json.dumps({'ok': True, 'failures': [], 'checks': [], 'generatedAt': '2026-10-18T02:00:00Z'}), encoding='utf-8')
     health = tmp_path / 'health.json'
-    health.write_text(json.dumps({'ok': False, 'status': 'unhealthy',
+    health.write_text(json.dumps({'schemaVersion': 1, 'configured': True,
+                                  'ok': False, 'status': 'unhealthy',
                                   'failures': ['summary:biggo-not-ok',
                                                'summary:official-not-ok',
-                                               'summary:/private/host-token-example']}),
+                                               'summary:/private/host-token-example'],
+                                  'sourceRunId': 123, 'headSha': 'a' * 40,
+                                  'sourceEvent': 'schedule'}),
                       encoding='utf-8')
     seen = []
     def api(tok, method, path, data=None):
         if method == 'GET': return []
         seen.append(data); return {'ok': True}
     monkeypatch.setattr(freshness_issue, '_api', api); monkeypatch.setenv('GITHUB_TOKEN','x')
+    monkeypatch.setattr(freshness_issue, 'find_open_issue', lambda *a, **k: None)
     monkeypatch.setattr(freshness, 'fetch_metadata', lambda *a, **k: _meta(_now(), 60))
     report = tmp_path / 'r.json'
-    rc = freshness_issue.main(['--metadata-url','https://example.invalid/m.json','--repo','o/r',
+    rc = _fresh_main(['--metadata-url','https://example.invalid/m.json','--repo','o/r',
                                '--postdeploy-report',str(post),'--health-report',str(health),
                                '--report',str(report)])
     d=json.loads(report.read_text()); assert rc==1 and d['check']['healthSummaryOk'] is False
     reason=d['check']['healthReason']; assert 'health:biggo' in reason and 'health:official' in reason
     assert '/private' not in json.dumps(seen)
+
+
+def test_invalid_identity_blocks_before_issue_side_effect(tmp_path, monkeypatch):
+    import freshness_issue
+    calls = []
+    monkeypatch.setattr(freshness_issue, '_api', lambda *a, **k: calls.append(a))
+    monkeypatch.setenv('GITHUB_TOKEN', 'x')
+    health = tmp_path / 'h.json'
+    health.write_text(json.dumps({'schemaVersion': 1, 'configured': True,
+                                  'status': 'healthy', 'ok': True, 'failures': []}),
+                      encoding='utf-8')
+    report = tmp_path / 'r.json'
+    rc = freshness_issue.main(['--metadata-url', 'https://example.invalid/m.json',
+                               '--repo', 'o/r', '--report', str(report),
+                               '--run-id', 'bad', '--head', 'not-a-sha',
+                               '--event', 'pull_request', '--health-report', str(health)])
+    d = json.loads(report.read_text())
+    assert rc == 1 and d['action'] == 'blocked-identity'
+    assert d['appliedAction'] == 'none' and not calls
