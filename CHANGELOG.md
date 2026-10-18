@@ -1002,3 +1002,7 @@
 ## Unreleased — 2026-10-19 Stage 2 candidate
 
 - Added isolated `report_common.py` strict UTC/HKT and script-safe JSON, shared by HTML/PDF compatibility adapters; added PDF-repro/runtime and snapshot-preservation dependency guards. Not released; no data/provider change.
+
+## Unreleased — 2026-10-19 Stage 3 candidate
+
+- Extracted the existing inline frontend into controlled `frontend/` sources and deterministic assembly; added source-closure, stale-template and PDF-repro guards. No release or data/provider change.

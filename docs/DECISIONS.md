@@ -1340,3 +1340,11 @@ Root 在 review2 的 26 項既有反例通過後，額外重現：保留快照�
 - 三個實際 script JSON 槽使用同一 encoder；public 原本可跳出 script 的 `json.dumps` 路徑已接上；private 原 `script_safe_json` 保留為 wrapper。
 - `report_common.py` 納入 PDF repro source paths／runtime `__file__` 守衛及 snapshot rebuild preserved inputs；舊 PDF exact/repro 拒絕契約保留。
 - 此輪不在正式 repo push/deploy，未改資料／價格／official／queue／coordinator／grant／provider；未開始前端拆分。Root 需對 final clean commits 跑完整7 gates及瀏覽器。
+
+## 2026-10-19 · Stage 3 frontend source extraction（append-only）
+
+- Root accepted Stage2 and authorized the approved third module. This round only moves the existing inline HTML/CSS/JS into explicit production assets and a deterministic assembler; it does not redesign UI, add external assets, change data, or start a different module.
+- `frontend_assets.ASSET_PATHS` is a closed ordered repo-relative tuple; `load_template()` reads only those files, rejects missing/symlink sources and validates assembly tokens. `generate_html.HTML_TEMPLATE` remains a readable compatibility string from the loader; `build_html` fills the existing runtime JSON tokens once.
+- All `frontend/` .html/.css/.js production sources and `frontend_assets.py` are covered by PDF reproduction, runtime source binding, snapshot preservation, candidate copy and stale-template rejection. Old PDF exact/repro guards are retained.
+- Public list/status and private collections/notes/import-export/provenance/EMSD status remain separate where they differ; no same-hash claim is used as runtime reuse evidence.
+- Stage2 timestamps labelled in the future are retained as historical bytes but not treated as UTC evidence; Root's actual acceptance time is authoritative. New Stage3 receipt uses actual UTC. No provider/coordinator/grant/budget/data/formal deployment operation in this round.

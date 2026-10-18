@@ -779,3 +779,11 @@ python fetch_rasonic.py        # 樂信官方網店價格
 - `generate_html` and private `generate_html` route the real `MODELS`／`EMSD_EXTRA`／`COMPARE_FIELDS` slots through the shared JSON encoder.
 - `report_common.py` is a generator dependency in PDF repro and snapshot preservation guards. No generated index／PDF／metadata changes in this module; formal HTML/PDF/metadata rebuild is required only after Root acceptance.
 - Detail: `docs/architecture/2026-10-19-report-common.md`; the private-side pin receipt stays in the private repository and is not linked from public docs.
+
+## 2026-10-19 Stage 3 frontend source extraction（append-only）
+
+- `frontend_assets.py` now assembles the controlled explicit `ASSET_PATHS` under `frontend/`; `generate_html.HTML_TEMPLATE` is the loader result and `build_html` remains the real caller.
+- The generated page remains a single inline HTML with the same four-file/public-payload contract; no frontend HTTP asset or UI redesign was added.
+- HTML/CSS/JS assets are split by responsibility, including private collections/notes/import-export and private EMSD status extension. The assembled template remains byte-identical to the pre-split Stage2 template.
+- Every asset plus `frontend_assets.py` is in PDF repro and snapshot-rebuild source guards, including stale cached assembled-template rejection.
+- Current detail: `docs/architecture/2026-10-19-stage3-frontend.md`. Private pin stays private.

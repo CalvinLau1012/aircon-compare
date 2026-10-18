@@ -1717,3 +1717,7 @@ A pending stage5/remote-not-completed receive lost the previously served stage4 
 ## 2026-10-19 Stage 2 report_common（append-only）
 
 Public-canonical `report_common.py` now provides strict UTC→HKT, shared HTML/PDF status and script-safe JSON; three real HTML JSON slots use it, while HTML/PDF/private adapters retain compatibility. `report_common.py` is covered by PDF repro and snapshot-rebuild source guards. This remains an isolated candidate: no formal merge/deploy/data/provider/coordinator/grant change and no frontend extraction. Root must run final full 7 gates/browser before release.
+
+## 2026-10-19 Stage 3 frontend extraction（append-only）
+
+Frontend HTML/CSS/JS is now sourced from explicit production assets assembled by `frontend_assets.py`; the output template remains byte-identical to Stage2 and all assets are covered by PDF/snapshot source guards. Isolated candidate only; full browser/full gates, formal rebuild/deploy and next frontend behavior changes remain pending Root.
