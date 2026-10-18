@@ -48,3 +48,7 @@
 - HKT **20:38／20:46** 兩端 normal full 均 skip-cooldown，**0/0**；之後零 provider 請求。
 - 因此 HKT 10/18 已核對至少 **2 auth／149 search**；「今日 0 search」只可指 **UTC 10/18 之後觀察到的 runs**，不可說成香港整個自然日 0。不可編造 quota exhausted，也不可把 auth429 說成 search endpoint 來源層限流。
 - 本輪 scope 不變：Stage 0 + monitor presentation；沒有修改 fetch_biggo／biggo_limiter／stage_runner／diag，沒有 provider／coordinator／credential 操作，沒有改 cooldown。
+
+## 2026-10-18 reviewed current entry
+
+舊圖保留歷史；最新實際四檔鏈、caller 表及 machine audit 入口見 `2026-10-18-reviewed-models.md`（同目錄）。

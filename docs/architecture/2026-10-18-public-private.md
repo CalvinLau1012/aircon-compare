@@ -39,3 +39,7 @@ flowchart TB
 
 - 沒有 push／deploy／Docker／正式環境操作；Root 才能做正式發布。
 - 沒有把私人 dashboard／provider 事實寫成公開身份；任何 provider 或部署狀態仍以 Root 證據為準。
+
+## 2026-10-18 reviewed current entry
+
+舊圖保留歷史；最新實際四檔鏈、caller 表及 machine audit 入口見 `2026-10-18-reviewed-models.md`（同目錄）。

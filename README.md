@@ -765,3 +765,9 @@ python fetch_rasonic.py        # 樂信官方網店價格
 
 - `scripts/monitor_presentation.py`：issue body 與 Actions summary 共用的三軸 pure 呈現；不改 fingerprint／去重／健康門檻。
 - `scripts/check_freshness.py` 的 `issue_body()` 及 `scripts/render_monitor_summary.py` 已接入；`freshness-monitor.yml` 只改 display／step 名稱，cron／權限／always 綁定不變。
+
+### 2026-10-18 reviewed 架構入口（append-only）
+
+- 最新 reviewed 圖／caller 表／實際四檔來源鏈：`docs/architecture/2026-10-18-reviewed-models.md`。
+- `scripts/architecture_audit.py` 可直接 stdout 重算；公開 machine 清單見 `docs/architecture/architecture-audit-20261018.json`（public-only）。
+- 舊 `2026-10-18-dataflow/modules/public-private` 圖保留歷史；四檔封裝以 reviewed 文件及實際 workflow 為準。
