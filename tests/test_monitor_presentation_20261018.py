@@ -124,6 +124,23 @@ def test_input_not_mutated_and_summary_missing_is_non_healthy(capsys):
     assert summary.main(['/dev/stdin']) in (0, 1)
 
 
+def test_report_write_failure_returns_nonzero_before_api(tmp_path, monkeypatch):
+    import freshness_issue
+    calls = []
+    monkeypatch.setenv('GITHUB_TOKEN', 'x')
+    monkeypatch.setattr(freshness_issue, '_api', lambda *a, **k: calls.append(a))
+    monkeypatch.setattr(fresh, 'fetch_metadata', lambda *a, **k: result(health=False))
+    bad_report = tmp_path / 'report-is-a-directory'
+    bad_report.mkdir()
+    rc = freshness_issue.main([
+        '--metadata-url', 'https://example.invalid/m.json', '--repo', 'o/r',
+        '--report', str(bad_report), '--run-id', '123', '--head', 'a' * 40,
+        '--event', 'schedule',
+    ])
+    assert rc == 1
+    assert calls == []
+
+
 def test_workflow_name_and_safety_contract_unchanged():
     text = (BASE / '.github' / 'workflows' / 'freshness-monitor.yml').read_text(encoding='utf-8')
     wf = yaml.safe_load(text)

@@ -66,6 +66,8 @@ def _source_axis(result):
 
 
 def _health_details(result):
+    if result.get('healthSummaryOk') is True:
+        return []
     tokens = _safe_health_details(result.get('healthReason'))
     labels = {
         'health:biggo': 'BigGo 來源未健康（沿用先前已驗證快照）',
