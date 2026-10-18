@@ -37,3 +37,14 @@
 
 - 沒有報告共用／安全 JSON／前端拆分（按計畫等 Root 接受本輪）。
 - 沒有改門檻、health gate、fingerprint、issue 去重、恢復或 coordinator 狀態。
+
+## 2026-10-18 追加更正：BigGo 會員頁、HKT 日界線與當日實際請求
+
+以下追加更正較前段「今日 0」措辭優先，歷史文字保留：
+
+- 使用者提供的會員頁 `https://biggo.hk/member/searchlog?tab=product` 是會員頁；Root 未登入 GET 會被 redirect 到首頁，**未能證實**該頁是否收錄 API requests，也**不能斷言**它不計 API 或其日界線是 UTC。會員紀錄類型、日界線、與目前 API credential 是否同一帳戶仍 **UNKNOWN**。
+- 已核對：HKT 2026-10-18 **00:32:47–00:39:09** 私人端自然 stage4 實際 **auth 1／search 149**（完成時間 UTC `2026-10-17T16:39:09Z`；raw receipt 在 Root 的私人 poststate 證據）。
+- HKT 2026-10-18 **14:04** 的額外 GitHub probe 是 **auth 1／search 0 → HTTP 429**；認證請求返回 429，不是產品 search endpoint 已被限流，也沒有帶 `site=biggo.hk/region=hk` 的 search 請求。
+- HKT **20:38／20:46** 兩端 normal full 均 skip-cooldown，**0/0**；之後零 provider 請求。
+- 因此 HKT 10/18 已核對至少 **2 auth／149 search**；「今日 0 search」只可指 **UTC 10/18 之後觀察到的 runs**，不可說成香港整個自然日 0。不可編造 quota exhausted，也不可把 auth429 說成 search endpoint 來源層限流。
+- 本輪 scope 不變：Stage 0 + monitor presentation；沒有修改 fetch_biggo／biggo_limiter／stage_runner／diag，沒有 provider／coordinator／credential 操作，沒有改 cooldown。
