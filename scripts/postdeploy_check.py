@@ -50,7 +50,18 @@ REQUIRED_COMPARE_FIELDS = (
     'datasetHash', 'datasetDate', 'deployTime',
 )
 # --repro-from-commit：實際影響 PDF bytes 嘅 generator 依賴（byte-equal 才可用當前 code）。
-REPRO_CODE_PATHS = ('report_common.py', 'generate_pdf.py', 'generate_html.py', 'crawl_utils.py', 'models_data.py')
+REPRO_CODE_PATHS = (
+    'report_common.py',
+    'frontend_assets.py',
+    'frontend/public/shell.html',
+    'frontend/public/style.css',
+    'frontend/public/state.js',
+    'frontend/public/list.js',
+    'frontend/public/compare.js',
+    'frontend/public/bootstrap.js',
+    'frontend/public/status.js',
+    'generate_pdf.py', 'generate_html.py', 'crawl_utils.py', 'models_data.py',
+)
 REPRO_MD_PATH = '空調對比報告.md'
 REPRO_REQUIREMENTS_PATH = 'requirements.txt'
 REPRO_PIN_PACKAGES = ('markdown', 'reportlab')
@@ -335,6 +346,7 @@ def _pdf_repro_from_commit(args, expected, online, blobs, pdf_rel, csv_rel, rec,
     try:
         sys.path.insert(0, BASE)
         import report_common  # noqa: PLC0415
+        import frontend_assets  # noqa: PLC0415
         import generate_pdf  # noqa: PLC0415
         import generate_html  # noqa: PLC0415
         import crawl_utils  # noqa: PLC0415
@@ -348,6 +360,7 @@ def _pdf_repro_from_commit(args, expected, online, blobs, pdf_rel, csv_rel, rec,
     # 任何 symlink 以 realpath 比對，唔一致即 fail closed（唔 rebuild）。
     base_real = os.path.realpath(BASE)
     runtime_modules = {'report_common.py': report_common,
+                       'frontend_assets.py': frontend_assets,
                        'generate_pdf.py': generate_pdf, 'generate_html.py': generate_html,
                        'crawl_utils.py': crawl_utils, 'models_data.py': models_data}
     for rel, module in runtime_modules.items():
@@ -357,6 +370,17 @@ def _pdf_repro_from_commit(args, expected, online, blobs, pdf_rel, csv_rel, rec,
             rec(check('pdf.repro_code_changed', False,
                       f'{rel} runtime source 唔係 executing checkout'))
             return
+    # The imported generate_html may have a cached assembled template from
+    # another tree even when frontend_assets.__file__ itself is correct.
+    try:
+        if generate_html.HTML_TEMPLATE != frontend_assets.load_template():
+            rec(check('pdf.repro_code_changed', False,
+                      'frontend_assets assembled template is stale'))
+            return
+    except Exception as e:  # noqa: BLE001
+        rec(check('pdf.repro_code_changed', False,
+                  f'frontend_assets template load failed: {type(e).__name__}'))
+        return
     try:
         with tempfile.TemporaryDirectory() as td:
             meta_path = os.path.join(td, 'online-metadata.json')

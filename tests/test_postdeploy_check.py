@@ -440,7 +440,7 @@ def test_postdeploy_browser_runtime_check(site):
 # ---------------------------------------------------------------- --repro-from-commit（離線）
 
 
-_REPRO_GEN_FILES = ('report_common.py', 'generate_pdf.py', 'generate_html.py', 'crawl_utils.py', 'models_data.py')
+_REPRO_GEN_FILES = tuple(postdeploy.REPRO_CODE_PATHS)
 _OLD_MD = ('# 香港空調對比報告\n\n> 舊部署版本（fixture）\n\n'
            '<!-- AIRCON:DYNAMIC:ENERGY_DISTRIBUTION -->\n\n## 段落\n\n- 內容\n')
 
@@ -459,6 +459,12 @@ def _commit_all(repo, message):
     return _git(repo, 'rev-parse', 'HEAD').stdout.decode().strip()
 
 
+def _copy_repro_files(repo):
+    for rel in (*_REPRO_GEN_FILES, 'requirements.txt'):
+        dst = repo / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(os.path.join(BASE, rel), dst)
+
 def _checkout_repo(tmp_path, *, docs_only=True, code_drift=False, env_drift=False,
                    missing_md=False):
     """建立本機 fixture git repo：commit A = 部署版本；HEAD 可為較新 checkout。
@@ -468,8 +474,7 @@ def _checkout_repo(tmp_path, *, docs_only=True, code_drift=False, env_drift=Fals
     """
     repo = tmp_path / 'checkout'
     repo.mkdir()
-    for rel in (*_REPRO_GEN_FILES, 'requirements.txt'):
-        shutil.copy2(os.path.join(BASE, rel), repo / rel)
+    _copy_repro_files(repo)
     if code_drift:
         p = repo / 'generate_pdf.py'
         p.write_text(p.read_text(encoding='utf-8') + '\n# historical drift\n',
@@ -679,14 +684,12 @@ def test_repro_origin_master_fallback(tmp_path):
     assert _git(repo, 'init', '-q').returncode == 0
     (repo / 'placeholder.txt').write_text('base\n', encoding='utf-8')
     root = _commit_all(repo, 'base')
-    for rel in (*_REPRO_GEN_FILES, 'requirements.txt'):
-        shutil.copy2(os.path.join(BASE, rel), repo / rel)
+    _copy_repro_files(repo)
     (repo / '空調對比報告.md').write_text(_OLD_MD, encoding='utf-8')
     commit_a = _commit_all(repo, 'deployment')
     _git(repo, 'update-ref', 'refs/remotes/origin/master', commit_a)
     assert _git(repo, 'checkout', '-q', root).returncode == 0
-    for rel in (*_REPRO_GEN_FILES, 'requirements.txt'):
-        shutil.copy2(os.path.join(BASE, rel), repo / rel)
+    _copy_repro_files(repo)
     old_md = _git(repo, 'show', f'{commit_a}:空調對比報告.md').stdout
     site_dir = _repro_site(tmp_path, commit_a, old_md, _online_csv())
     rc, report = _run_repro(tmp_path, site_dir, repo)

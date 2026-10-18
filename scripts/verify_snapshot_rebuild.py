@@ -71,6 +71,14 @@ REQUIRED_PRESERVED = (
     'specs.json', 'specs_emsd.json', 'gemini_prices.json', 'prices.json',
     # 報告同生成器資產（generate_html／generate_pdf／extract_governance 讀取）
     'report_common.py',
+    'frontend_assets.py',
+    'frontend/public/shell.html',
+    'frontend/public/style.css',
+    'frontend/public/state.js',
+    'frontend/public/list.js',
+    'frontend/public/compare.js',
+    'frontend/public/bootstrap.js',
+    'frontend/public/status.js',
     '空調對比報告.md', 'whale_girl.webp', 'blue_fantasy_art.txt',
     'docs/AIRCON_COMPARE_GOVERNANCE.md',
     # 部署 payload manifest（releasePayloadHash 範圍）
