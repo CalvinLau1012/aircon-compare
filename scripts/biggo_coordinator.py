@@ -25,8 +25,10 @@ import copy
 import hashlib
 import json
 import os
+import posixpath
 import re
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -678,6 +680,7 @@ class CoordinatorClient:
         self._provider_window_end = provider_window_end
         self.state = None
         self._sha = None
+        self._state_lock = threading.RLock()
 
     def _now_int(self):
         return int(self._now())
@@ -890,19 +893,58 @@ class CoordinatorClient:
                 continue
         raise CASConflict('coordinator acquire 連續 CAS 失敗')
 
+    def _merge_local_facts(self, remote, local):
+        """Merge unpushed local accounting/diagnostic facts into a fresh remote.
+
+        Business fields and refs stay remote-authoritative.  Local pending deltas
+        are monotonic maxima; cooldown and the diagnostic marker are never lost.
+        """
+        merged = copy.deepcopy(remote)
+        local = local if isinstance(local, dict) else {}
+        for kind in ('token', 'search'):
+            merged.setdefault('requestAttempts', {'token': 0, 'search': 0})[kind] = max(
+                int(merged.get('requestAttempts', {}).get(kind, 0) or 0),
+                int(local.get('requestAttempts', {}).get(kind, 0) or 0))
+        counts = dict(merged.get('responseStatusCounts') or {})
+        for key, value in (local.get('responseStatusCounts') or {}).items():
+            counts[key] = max(int(counts.get(key, 0) or 0), int(value or 0))
+        merged['responseStatusCounts'] = counts
+        merged['cooldownUntil'] = max(int(merged.get('cooldownUntil', 0) or 0),
+                                       int(local.get('cooldownUntil', 0) or 0))
+        if local.get('callsMayHaveStarted'):
+            merged['callsMayHaveStarted'] = True
+            merged['intentAt'] = local.get('intentAt')
+        else:
+            merged['callsMayHaveStarted'] = bool(merged.get('callsMayHaveStarted'))
+            merged['intentAt'] = merged.get('intentAt')
+        if DIAGNOSTIC_FIELD in local:
+            merged[DIAGNOSTIC_FIELD] = copy.deepcopy(local[DIAGNOSTIC_FIELD])
+        elif DIAGNOSTIC_FIELD in remote:
+            merged[DIAGNOSTIC_FIELD] = copy.deepcopy(remote[DIAGNOSTIC_FIELD])
+        return merged
+
     def renew(self):
-        if self.state is None or self._sha is None:
-            raise LeaseLostError('未持有 coordinator state')
-        state, sha = self._contents.read_state()
-        if state is None or state['leaseOwner'] != self.owner \
-                or state['cycleId'] != self.state['cycleId']:
-            raise LeaseLostError('lease 已轉手或消失')
-        renewed = dict(state)
-        renewed['leaseRenewedAt'] = self._now_int()
-        renewed['leaseExpiresAt'] = self._now_int() + LEASE_SECONDS
-        self._sha = self._contents.write_state(renewed, sha)
-        self.state = renewed
-        return renewed
+        with self._state_lock:
+            if self.state is None or self._sha is None:
+                raise LeaseLostError('未持有 coordinator state')
+            local = self.state
+            for _attempt in range(3):
+                state, sha = self._contents.read_state()
+                if state is None or state.get('leaseOwner') != self.owner \
+                        or state.get('cycleId') != local.get('cycleId'):
+                    raise LeaseLostError('lease 已轉手或消失')
+                renewed = self._merge_local_facts(state, local)
+                now = self._now_int()
+                renewed['leaseRenewedAt'] = now
+                renewed['leaseExpiresAt'] = now + LEASE_SECONDS
+                renewed['updatedAt'] = now
+                try:
+                    self._sha = self._contents.write_state(renewed, sha)
+                    self.state = renewed
+                    return renewed
+                except CASConflict:
+                    continue
+            raise CASConflict('renew 連續 CAS 失敗')
 
     def maybe_renew(self):
         """每 5 分鐘先 renew（避免每次模型都寫 API）。"""
@@ -942,29 +984,43 @@ class CoordinatorClient:
         raise CASConflict('intent 寫入連續 CAS 失敗')
 
     def record_attempt(self, kind, n=1):
-        if self.state is None:
-            raise LeaseLostError('未持有 coordinator state')
-        if kind not in ('token', 'search'):
-            raise CoordinatorStateError('attempt kind 只准 token／search')
-        self.state['requestAttempts'][kind] = self.state['requestAttempts'].get(kind, 0) + n
+        with self._state_lock:
+            if self.state is None:
+                raise LeaseLostError('未持有 coordinator state')
+            if kind not in ('token', 'search'):
+                raise CoordinatorStateError('attempt kind 只准 token／search')
+            self.state['requestAttempts'][kind] = self.state['requestAttempts'].get(kind, 0) + n
 
     def record_response(self, status):
-        if self.state is None:
-            raise LeaseLostError('未持有 coordinator state')
-        key = str(int(status))
-        self.state['responseStatusCounts'][key] = \
-            self.state['responseStatusCounts'].get(key, 0) + 1
+        with self._state_lock:
+            if self.state is None:
+                raise LeaseLostError('未持有 coordinator state')
+            key = str(int(status))
+            self.state['responseStatusCounts'][key] = \
+                self.state['responseStatusCounts'].get(key, 0) + 1
 
     def apply_cooldown(self, status, headers=None):
-        until, evidence, basis = cooldown_until_for(status, headers, self._now_int())
-        if until:
-            self.state['cooldownUntil'] = max(self.state.get('cooldownUntil', 0), until)
-        return {'cooldownUntil': self.state.get('cooldownUntil', 0),
-                'evidence': evidence, 'basis': basis}
+        with self._state_lock:
+            until, evidence, basis = cooldown_until_for(status, headers, self._now_int())
+            if until:
+                self.state['cooldownUntil'] = max(self.state.get('cooldownUntil', 0), until)
+            return {'cooldownUntil': self.state.get('cooldownUntil', 0),
+                    'evidence': evidence, 'basis': basis}
 
     def commit(self, *, status=None, snapshot_hash=None, snapshot_path=None,
                stage_result_hash=None, stage_result_path=None, bundle_hash=None,
                last_review_reason=None):
+        with self._state_lock:
+            return self._commit_locked(status=status, snapshot_hash=snapshot_hash,
+                                       snapshot_path=snapshot_path,
+                                       stage_result_hash=stage_result_hash,
+                                       stage_result_path=stage_result_path,
+                                       bundle_hash=bundle_hash,
+                                       last_review_reason=last_review_reason)
+
+    def _commit_locked(self, *, status=None, snapshot_hash=None, snapshot_path=None,
+                       stage_result_hash=None, stage_result_path=None, bundle_hash=None,
+                       last_review_reason=None):
         if self.state is None:
             raise LeaseLostError('未持有 coordinator state')
         if status is not None:
@@ -1013,6 +1069,9 @@ class CoordinatorClient:
                 for key, value in self.state.get('responseStatusCounts', {}).items():
                     counts[key] = max(counts.get(key, 0), value)
                 self.state['responseStatusCounts'] = counts
+                self.state['cooldownUntil'] = max(
+                    int(remote.get('cooldownUntil', 0) or 0),
+                    int(self.state.get('cooldownUntil', 0) or 0))
             try:
                 self._sha = self._contents.write_state(self.state, sha)
                 return self._sha
@@ -1195,9 +1254,57 @@ class CoordinatorClient:
             'manifestPath': paths['manifest'],
         }
 
+    def _safe_published_path(self, value):
+        if not isinstance(value, str) or not value or '\\' in value \
+                or value.startswith('/') or '://' in value:
+            return None
+        parts = value.split('/')
+        if any(p in ('', '.', '..') for p in parts):
+            return None
+        return value
+
+    def _import_paths(self, expected_cycle, expected_stage):
+        """Prefer completed-state published refs, else configured snapshot dir.
+
+        State refs are accepted only when they are safe relative paths in the
+        same configured repository/branch and agree on one parent directory.
+        Every actual byte/hash/cycle/stage/state binding is still verified.
+        """
+        configured = self._bundle_paths(expected_cycle)
+        state = self.state if isinstance(self.state, dict) else None
+        flags = {'stateRefsPresent': False, 'configuredSnapshotDirMatchesState': None,
+                 'importSource': 'configured-snapshot-dir'}
+        if not state or state.get('status') != 'completed' \
+                or state.get('cycleId') != expected_cycle \
+                or state.get('stage') != expected_stage:
+            return configured, flags
+        snap = self._safe_published_path(state.get('snapshotPath'))
+        sr = self._safe_published_path(state.get('stageResultPath'))
+        if not snap or not sr:
+            flags['stateRefsPresent'] = True
+            return configured, flags
+        parent = posixpath.dirname(snap)
+        if not parent or posixpath.dirname(sr) != parent \
+                or posixpath.basename(snap) != 'biggo_prices.json' \
+                or posixpath.basename(sr) != 'stage-result.json':
+            flags['stateRefsPresent'] = True
+            return configured, flags
+        paths = {
+            'base': parent + '/base-biggo_prices.json',
+            'snapshot': snap,
+            'stageResult': sr,
+            'manifest': parent + '/manifest.json',
+        }
+        flags['stateRefsPresent'] = True
+        flags['configuredSnapshotDirMatchesState'] = (posixpath.normpath(parent)
+                                                      == posixpath.normpath(
+                                                          str(self._contents.config.snapshot_dir)))
+        flags['importSource'] = 'state-published-refs'
+        return paths, flags
+
     def import_bundle(self, expected_cycle, expected_stage):
         """讀取並嚴格驗證 v2 bundle；任何缺檔／hash／binding 唔符即 raise。"""
-        paths = self._bundle_paths(expected_cycle)
+        paths, import_flags = self._import_paths(expected_cycle, expected_stage)
         man_bytes, _sha = self._contents.read_snapshot(paths['manifest'])
         if man_bytes is None:
             raise SnapshotImportError('coordinator 冇 manifest 可以匯入')
@@ -1261,4 +1368,5 @@ class CoordinatorClient:
             'stageResultHash': manifest['stageResultHash'],
             'bundleHash': self.bundle_hash(manifest),
             'snapshotPath': paths['snapshot'],
+            'importPaths': import_flags,
         }

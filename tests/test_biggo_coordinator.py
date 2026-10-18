@@ -379,3 +379,60 @@ def test_retry_after_parses_delta_seconds_and_http_date():
         429, {'Retry-After': 'not-a-date'}, now)
     assert until2 == now + coord.PROJECT_COOLDOWN_SECONDS
     assert basis2 == 'project-48h', '無法解析 reset 時只可用項目 fallback，唔猜 provider window'
+
+
+def test_renew_preserves_unpersisted_attempts_response_and_cooldown():
+    api = FakeGitHubApi()
+    box, now = _clock()
+    a = _client(api, 'writer-a', now)
+    a.acquire('2026-10-01:1/7', 1)
+    base = dict(a.state)
+    a.record_attempt('token', 1)
+    a.record_attempt('search', 1)
+    a.record_response(429)
+    a.apply_cooldown(429, {'Retry-After': '60'})
+    renewed = a.renew()
+    assert renewed['requestAttempts'] == {'token': 1, 'search': 1}
+    assert renewed['responseStatusCounts']['429'] == 1
+    assert renewed['cooldownUntil'] > 0
+    remote = json.loads(api.files['coordinator/state.json'][0].decode())
+    assert remote['requestAttempts'] == {'token': 1, 'search': 1}
+    assert remote['responseStatusCounts']['429'] == 1
+    assert remote['cooldownUntil'] == renewed['cooldownUntil']
+
+
+def test_usage_correction_proposal_is_read_only_and_monotonic(tmp_path):
+    from biggo_canonical import canonical_json_bytes, sha256_json
+    import propose_coordinator_usage_correction as proposal
+    state = {
+        'status': 'completed', 'cycleId': '2026-10-10:4/7', 'stage': 4,
+        'leaseOwner': None, 'leaseExpiresAt': 0, 'intentAt': None,
+        'callsMayHaveStarted': False,
+        'requestAttempts': {'token': 0, 'search': 148},
+        'responseStatusCounts': {}, 'cooldownUntil': 0,
+        'snapshotHash': 'sha256:' + 'a' * 64,
+        'snapshotPath': 'coordinator/snapshots/2026-10-10-4-7/biggo_prices.json',
+        'stageResultHash': 'sha256:' + 'b' * 64,
+        'stageResultPath': 'coordinator/snapshots/2026-10-10-4-7/stage-result.json',
+    }
+    sr = {'cycleId': '2026-10-10:4/7', 'stage': 4,
+          'requestAttempts': {'token': 0, 'search': 148},
+          'responseStatusCounts': {'200': 23}}
+    manifest = {'stageResultHash': sha256_json(sr)}
+    (tmp_path / 'state.json').write_text(json.dumps(state), encoding='utf-8')
+    (tmp_path / 'stage-result.json').write_bytes(canonical_json_bytes(sr))
+    (tmp_path / 'manifest.json').write_bytes(canonical_json_bytes(manifest))
+    out = tmp_path / 'proposal.json'
+    assert proposal.main([
+        '--state', str(tmp_path / 'state.json'),
+        '--stage-result', str(tmp_path / 'stage-result.json'),
+        '--manifest', str(tmp_path / 'manifest.json'),
+        '--source-commit', 'a' * 40,
+        '--receipt-id', 'sha256:' + 'c' * 64,
+        '--actual-token', '1', '--actual-search', '149',
+        '--out', str(out)]) == 0
+    p = json.loads(out.read_text())
+    assert p['before'] == {'token': 0, 'search': 148}
+    assert p['proposedAfter'] == {'token': 1, 'search': 149}
+    assert p['delta'] == {'token': 1, 'search': 1}
+    assert p['mode'] == 'read-only-proposal'

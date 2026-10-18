@@ -67,3 +67,19 @@ jobs:
             --postdeploy-report "$RUNNER_TEMP/postdeploy.json" \
             --health-report "$RUNNER_TEMP/source-health-summary.json" \
             --report "$RUNNER_TEMP/freshness-monitor.json"
+
+      - name: 上載 monitor 安全報告（always）
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: freshness-monitor-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/freshness-monitor.json
+            ${{ runner.temp }}/source-health-summary.json
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Monitor 人可讀摘要（always；safe allowlist）
+        if: always()
+        run: |
+          python scripts/render_monitor_summary.py "$RUNNER_TEMP/freshness-monitor.json" >> "$GITHUB_STEP_SUMMARY" || true

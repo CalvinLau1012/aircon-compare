@@ -164,7 +164,7 @@ def _abort_check(contents, owner, cycle_id, stage, grant_id, attempt_id, now_fn)
             if state is None or state.get('leaseOwner') != owner \
                     or state.get('cycleId') != cycle_id \
                     or state.get('stage') != stage \
-                    or state.get('status') != 'idle' \
+                    or state.get('status') not in ('idle', 'completed') \
                     or state.get('callsMayHaveStarted') \
                     or state.get('intentAt') is not None \
                     or _int(state.get('leaseExpiresAt')) <= now \
@@ -197,8 +197,8 @@ def _reserve_business(contents, owner, cycle_id, stage, marker, now_fn):
             raise ProbeBlocked('blocked-remote-state-missing', 'remote-state-missing')
         if current.get('cycleId') != cycle_id or current.get('stage') != stage:
             raise ProbeBlocked('blocked-business-state-changed', 'cycle-stage-changed')
-        if current.get('status') != 'idle':
-            raise ProbeBlocked('blocked-remote-inactive', 'remote-not-idle')
+        if current.get('status') not in ('idle', 'completed'):
+            raise ProbeBlocked('blocked-remote-inactive', 'remote-not-idle-or-completed')
         if current.get('callsMayHaveStarted') or current.get('intentAt') is not None:
             raise ProbeBlocked('blocked-business-intent', 'business-intent')
         if _int(current.get('cooldownUntil')) > now:
@@ -318,8 +318,8 @@ def run_probe(*, env=None, contents, fetch=None, now=None, selector=None,
         return _finish(report, 'blocked-coordinator-read', 'coordinator-read-error', 2)
     if state is None:
         return _finish(report, 'blocked-remote-state-missing', 'remote-state-missing', 2)
-    if state.get('status') != 'idle':
-        return _finish(report, 'blocked-remote-inactive', 'remote-not-idle', 2)
+    if state.get('status') not in ('idle', 'completed'):
+        return _finish(report, 'blocked-remote-inactive', 'remote-not-idle-or-completed', 2)
     if state.get('callsMayHaveStarted') or state.get('intentAt') is not None:
         return _finish(report, 'blocked-business-intent', 'business-intent', 2)
     if state.get('providerQuotaLimit') is not None or state.get('providerWindowEnd') is not None:

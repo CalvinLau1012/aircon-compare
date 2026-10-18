@@ -27,8 +27,10 @@ PATHS = ['biggo_prices.json', 'prices_meta.json', 'model_blacklist.json',
 CONFIRMED_STATUSES = {'completed', 'completed-recovered', 'completed-idempotent-applied'}
 ALERT_STATUSES = {'needs-review', 'blocked-intent-persist', 'completed-apply-failed',
                   'completed-legacy-manual', 'completed-bundle-unavailable',
-                  'blocked-incomplete', 'blocked-quota-window-unsupported',
+                  'blocked-incomplete', 'blocked-diagnostic-pending',
+                  'blocked-quota-window-unsupported',
                   'blocked-stage-gap', 'blocked-force-cycle-incomplete', 'blocked-stale'}
+LEGAL_SKIP_MODES = {'repair_release', 'rebuild_verified_snapshot'}
 
 
 def _changed_paths(repo):
@@ -64,6 +66,9 @@ def _summary(status):
         'imported': bool(status.get('imported')),
         'alert': bool(status.get('alert')),
         'requests': status.get('requests'),
+        'mode': status.get('mode'),
+        'sourceRunId': status.get('sourceRunId'),
+        'headSha': status.get('headSha'),
     }
 
 
@@ -97,7 +102,27 @@ def run_guard(repo, status_path, expect_clean=False):
     return 0
 
 
-def run_alert(status_path):
+def _legal_skip(status, expected_run_id, expected_head):
+    if status.get('status') != 'skipped-no-provider':
+        return False, 'not-skip'
+    if status.get('mode') not in LEGAL_SKIP_MODES:
+        return False, 'mode'
+    if expected_run_id is None or str(status.get('sourceRunId')) != str(expected_run_id):
+        return False, 'run-id'
+    if not isinstance(expected_head, str) or status.get('headSha') != expected_head:
+        return False, 'head'
+    if status.get('providerPhaseEntered') is not False \
+            or status.get('leaseAcquired') is not False:
+        return False, 'provider-or-lease'
+    req = status.get('requests') or {}
+    if req != {'token': 0, 'search': 0}:
+        return False, 'requests'
+    if status.get('alert') is True:
+        return False, 'alert'
+    return True, None
+
+
+def run_alert(status_path, expected_run_id=None, expected_head=None):
     status = _load_status(status_path)
     if status is None:
         print('❌ BigGo alert：status artifact 缺失／無效（fail-closed）')
@@ -107,6 +132,14 @@ def run_alert(status_path):
         return 1
     detail = _summary(status)
     print(f'BigGo alert：{detail}')
+    legal, why = _legal_skip(status, expected_run_id, expected_head)
+    if legal:
+        print('✅ BigGo provider skipped by explicitly authorized mode '
+              '(zero provider/lease; run/head bound)')
+        return 0
+    if status.get('status') == 'skipped-no-provider':
+        print(f'::error::BigGo provider-skip receipt invalid：{why}')
+        return 1
     if status.get('alert') is True or status.get('status') in ALERT_STATUSES:
         print(f"::error::BigGo 需要人手覆核：status={status.get('status')} "
               f"rerun={status.get('rerun')}")
@@ -123,11 +156,13 @@ def main(argv=None):
     ap.add_argument('--repo', default='.')
     ap.add_argument('--status', default=None)
     ap.add_argument('--alert-only', action='store_true')
+    ap.add_argument('--expected-run-id', default=None)
+    ap.add_argument('--expected-head', default=None)
     ap.add_argument('--expect-clean', action='store_true')
     args = ap.parse_args(argv)
     try:
         if args.alert_only:
-            return run_alert(args.status)
+            return run_alert(args.status, args.expected_run_id, args.expected_head)
         return run_guard(args.repo, args.status, expect_clean=args.expect_clean)
     except RuntimeError as e:
         print(f'❌ guard 執行錯誤：{e}', file=sys.stderr)

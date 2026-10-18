@@ -1279,3 +1279,13 @@ Root 指 Codex 主審角色，並非人類維護者或 Code Owner。候選附錄
 ## 2026-10-17T14:05Z · Root counterexample correction (append-only)
 
 Workflow input is environment-only; strict grant-id and explicit run identity are validated before any coordinator GET/CAS/provider. Business CAS rereads and every provider-phase guard revalidate cycle/stage, cooldown, configured/state quota-window, intent/status/lease and marker ownership. Ledger finalize uses one read payload+SHA, preserves concurrent rows and validates per-row bounds. `blocked-diagnostic-pending` is an alert and cannot be turned baseline-green. This remains an isolated candidate; no live/grant/provider operation.
+
+
+## 2026-10-18 · R5 continuation corrections (append-only, isolated)
+
+- Shared receiver may use completed-state published refs (safe relative paths in the same coordinator repo/branch) and records only sanitized config booleans/error codes; all manifest/state/cycle/stage/hash/local-pre/post checks remain strict. Public current stage3→real stage4 offline apply + no-op is rehearsed separately; no formal GitHub data change.
+- Coordinator renew merges unpushed local attempts/response counts/cooldown with fresh remote state under a lock; no CAS/commit/renew lost-update window. A read-only usage-correction proposal tool is provided; it is not applied.
+- Test grant is allowed on either idle or completed business state, always preserving status/cycle/stage/refs/requestAttempts; unresolved markers/leases still block normal writers. The five-call central grant remains uninstalled and 0/5 used.
+- Header/PDF now distinguish EMSD date and BigGo acquisition HKT, plus separately labelled apply time; degraded/pending/blocked explicitly retain prior snapshot and never say success. Generated artifacts are not manually edited.
+- GitHub audit improvements: completed-sync report always uploaded with source run/head and safe summary; repair/rebuild emit a run-bound skipped-no-provider status that does not claim provider success; alert validates legal skip with source identity. Freshness monitor separates freshness/postdeploy/source-health, never closes on a successful postdeploy overwrite, and uploads an always-on safe report/summary.
+- No live push/deploy/dispatch/coordinator write/grant install/provider call in this candidate. Official queue, cron, health thresholds, and private data unchanged.

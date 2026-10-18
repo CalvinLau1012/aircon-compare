@@ -129,3 +129,30 @@ def test_alert_red_for_apply_failed_and_daily_failure_source(tmp_path):
     status.write_text(json.dumps({'status': 'completed-apply-failed', 'alert': True}),
                       encoding='utf-8')
     assert guard.run_alert(str(status)) == 1
+
+
+def test_legal_provider_skip_receipt_requires_run_head_mode_and_zero_counts(tmp_path):
+    status = tmp_path / 'status.json'
+    base = {'status': 'skipped-no-provider', 'alert': False,
+            'mode': 'repair_release', 'sourceRunId': 123,
+            'headSha': 'a' * 40, 'providerPhaseEntered': False,
+            'leaseAcquired': False, 'requests': {'token': 0, 'search': 0}}
+    status.write_text(json.dumps(base), encoding='utf-8')
+    assert guard.run_alert(str(status), '123', 'a' * 40) == 0
+    for field, value in (('mode', 'normal'), ('sourceRunId', 124),
+                         ('headSha', 'b' * 40), ('leaseAcquired', True),
+                         ('requests', {'token': 1, 'search': 0})):
+        bad = dict(base, **{field: value})
+        status.write_text(json.dumps(bad), encoding='utf-8')
+        assert guard.run_alert(str(status), '123', 'a' * 40) == 1, field
+
+
+def test_provider_skip_without_expected_identity_is_fail_closed(tmp_path):
+    status = tmp_path / 'status.json'
+    status.write_text(json.dumps({'status': 'skipped-no-provider', 'alert': False,
+                                  'mode': 'rebuild_verified_snapshot',
+                                  'sourceRunId': 1, 'headSha': 'a' * 40,
+                                  'providerPhaseEntered': False, 'leaseAcquired': False,
+                                  'requests': {'token': 0, 'search': 0}}),
+                      encoding='utf-8')
+    assert guard.run_alert(str(status)) == 1

@@ -286,6 +286,29 @@ jobs:
             echo "::warning::completed sync 未能取得／驗證（report 見 artifact）；保留現有已驗證資料"
           fi
 
+      - name: 綁定 completed sync report 來源 identity（always）
+        if: always()
+        env:
+          SYNC_RUN_ID: ${{ github.run_id }}
+          SYNC_HEAD_SHA: ${{ github.sha }}
+          SYNC_EVENT: ${{ github.event_name }}
+        run: |
+          python scripts/augment_sync_report.py             --report "$RUNNER_TEMP/biggo_completed_sync.json"             --run-id "$SYNC_RUN_ID" --head "$SYNC_HEAD_SHA" --event "$SYNC_EVENT"
+
+      - name: 上載 completed sync machine report（always）
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: biggo-completed-sync-${{ github.run_id }}
+          path: ${{ runner.temp }}/biggo_completed_sync.json
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Completed sync 可操作摘要（always）
+        if: always()
+        run: |
+          python scripts/render_sync_summary.py "$RUNNER_TEMP/biggo_completed_sync.json" >> "$GITHUB_STEP_SUMMARY" || true
+
       - name: 讀取更新階段（共用 queue 契約；錯誤即失敗，冇 stage-0 fallback）
         id: stage
         run: |
@@ -439,8 +462,25 @@ jobs:
             --repo . \
             --status "$RUNNER_TEMP/biggo-stage-status.json"
 
+      - name: 建立 provider-skip status（repair/rebuild；零 provider／零 lease）
+        if: >
+          always() && github.event_name == 'workflow_dispatch' &&
+          (github.event.inputs.repair_release == 'true' ||
+           github.event.inputs.rebuild_verified_snapshot == 'true')
+        env:
+          SKIP_MODE: ${{ github.event.inputs.repair_release == 'true' && 'repair_release' || 'rebuild_verified_snapshot' }}
+          SKIP_RUN_ID: ${{ github.run_id }}
+          SKIP_HEAD_SHA: ${{ github.sha }}
+          SKIP_EVENT: ${{ github.event_name }}
+        run: |
+          python scripts/make_biggo_skip_status.py             --out "$RUNNER_TEMP/biggo-stage-status.json"             --mode "$SKIP_MODE" --run-id "$SKIP_RUN_ID"             --head "$SKIP_HEAD_SHA" --event "$SKIP_EVENT"
+
       - name: 上載 BigGo stage status（審計；always）
-        if: always() && steps.biggo_stage.outcome != 'skipped'
+        if: >
+          always() && (steps.biggo_stage.outcome != 'skipped' ||
+          (github.event_name == 'workflow_dispatch' &&
+           (github.event.inputs.repair_release == 'true' ||
+            github.event.inputs.rebuild_verified_snapshot == 'true')))
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: biggo-stage-status-${{ github.run_id }}

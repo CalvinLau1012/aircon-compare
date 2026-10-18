@@ -65,6 +65,36 @@ def plan_sync(meta, state):
     return {'ok': True, 'reason': 'ready', 'stage': stage}
 
 
+def _bundle_error_code(error):
+    text = str(error).lower()
+    if 'manifest' in text and ('冇' in text or 'missing' in text or '缺少' in text):
+        return 'manifest-missing'
+    if 'hash' in text:
+        return 'hash-mismatch'
+    if 'cycle' in text or 'stage' in text:
+        return 'cycle-stage-mismatch'
+    if 'state.' in text or 'state binding' in text or 'state.snapshot' in text:
+        return 'state-binding-mismatch'
+    if 'json' in text or 'canonical' in text:
+        return 'invalid-json-or-canonical'
+    if 'schema' in text:
+        return 'schema-mismatch'
+    if '缺少' in text or 'missing' in text:
+        return 'missing-file'
+    return 'bundle-import-error'
+
+
+def _import_flags(client, cycle, stage):
+    helper = getattr(client, '_import_paths', None)
+    if not callable(helper):
+        return None
+    try:
+        _paths, flags = helper(cycle, stage)
+        return flags
+    except Exception:
+        return None
+
+
 def _read_obj(path, label):
     try:
         with open(path, encoding='utf-8') as f:
@@ -381,13 +411,15 @@ def main(argv=None):
         return finish(2, reason)
     client = coord.CoordinatorClient(contents, owner='read-only-sync', now=lambda: 0)
     client.state = state
+    report['bundleImport'] = _import_flags(client, state['cycleId'], state['stage'])
     try:
         bundle = client.import_bundle(state['cycleId'], state['stage'])
     except coord.LegacyBundleError:
         return finish(2, 'legacy-bundle-manual')
     except coord.CoordinatorError as e:
         print(f'❌ completed bundle 匯入失敗（零寫入）：{type(e).__name__}', file=sys.stderr)
-        return finish(2, 'bundle-import-error')
+        return finish(2, 'bundle-import-error',
+                      bundleErrorCode=_bundle_error_code(e))
     repair = None
     if args.repair:
         try:
@@ -397,6 +429,7 @@ def main(argv=None):
             print(f'❌ repair receipt 讀取失敗：{e}', file=sys.stderr)
             return finish(2, 'repair-invalid')
     report['bundleHash'] = bundle['bundleHash']
+    report['bundleImport'] = bundle.get('importPaths') or report.get('bundleImport')
     report['stageResultHash'] = bundle['stageResultHash']
     report['newSnapshotHash'] = bundle['newSnapshotHash']
     # The repair secret is intentionally retained across stages.  It is only

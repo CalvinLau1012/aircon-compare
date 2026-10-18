@@ -68,18 +68,28 @@ def main(argv=None):
         print('❌ 缺少 GITHUB_TOKEN／GH_TOKEN', file=sys.stderr)
         return 1
     result = None
-    post_ok = True
+    post_ok = True if not args.postdeploy_report else False
     deployment = None
     health_ok = True
+    health_reason = 'health-report-not-provided'
     if args.health_report:
         try:
             health = json.load(open(args.health_report, encoding='utf-8'))
             health_ok = health.get('ok') is True
-            if not health_ok:
-                post_ok = False
+            if health_ok:
+                health_reason = 'ok'
+            else:
+                health_reason = str(health.get('reason') or health.get('status')
+                                    or 'source-health-unhealthy')[:80]
+                src = health.get('sources') or {}
+                if isinstance(src, dict):
+                    bad = sorted(k for k, v in src.items()
+                                 if not isinstance(v, dict) or v.get('status') != 'ok')
+                    if bad:
+                        health_reason = 'sources:' + ','.join(bad[:8])
         except (OSError, ValueError) as e:
             health_ok = False
-            post_ok = False
+            health_reason = f'health-report-invalid:{type(e).__name__}'
             result = {'ok': False, 'stale': False, 'ageSeconds': None,
                       'reason': f'health_report_invalid:{type(e).__name__}'}
     if args.postdeploy_report:
@@ -111,6 +121,7 @@ def main(argv=None):
             result = evaluate(meta, deployment=deployment)
     result['postdeployOk'] = post_ok
     result['healthSummaryOk'] = health_ok
+    result['healthReason'] = health_reason
     try:
         existing = find_open_issue(token, args.repo, args.label)
     except RuntimeError as e:
@@ -156,7 +167,9 @@ def main(argv=None):
         return 1
     print(f"✅ freshness issue action={out['action']} reason={out['reason']} "
           f"ok={result.get('ok')} stale={result.get('stale')}")
-    return 0 if (result.get('ok') and not result.get('stale') and post_ok) else 1
+    fresh_ok = bool(result.get('ok')) and not bool(result.get('stale')) \
+        and not bool(result.get('deploymentMismatch'))
+    return 0 if (fresh_ok and post_ok and health_ok) else 1
 
 
 if __name__ == '__main__':

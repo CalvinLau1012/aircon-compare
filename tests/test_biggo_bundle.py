@@ -707,3 +707,43 @@ def test_force_blocked_by_idle_normal_stage():
     res = a.acquire('force-2026-10-02', 1)
     assert res['result'] == 'blocked-incomplete'
     assert api.files == before
+
+
+def test_completed_state_published_refs_import_when_config_dir_differs():
+    api = FakeGitHubApi()
+    client, published, base, new, sr = _publish(api)
+    alt = 'coordinator/alternate/2026-10-01-1-7'
+    for src in (published['manifestPath'], published['snapshotPath'],
+                published['stageResultPath'],
+                published['manifestPath'].rsplit('/manifest.json', 1)[0]
+                + '/base-biggo_prices.json'):
+        data, sha = api.files[src]
+        api.files[src.replace(published['manifestPath'].rsplit('/manifest.json', 1)[0],
+                              alt)] = (data, sha + '-alt')
+    state = dict(client.state)
+    state.update({'status': 'completed',
+                  'snapshotPath': alt + '/biggo_prices.json',
+                  'stageResultPath': alt + '/stage-result.json',
+                  'snapshotHash': published['newSnapshotHash'],
+                  'stageResultHash': published['stageResultHash']})
+    reader = _client(api, 'reader-b')
+    reader.state = state
+    imported = reader.import_bundle('2026-10-01:1/7', 1)
+    assert imported['newSnapshot'] == new
+    assert imported['importPaths']['importSource'] == 'state-published-refs'
+    assert imported['importPaths']['configuredSnapshotDirMatchesState'] is False
+
+
+def test_state_published_path_traversal_or_missing_is_rejected():
+    api = FakeGitHubApi()
+    client, published, base, new, sr = _publish(api)
+    state = dict(client.state)
+    state.update({'status': 'completed',
+                  'snapshotPath': '../evil/biggo_prices.json',
+                  'stageResultPath': 'coordinator/snapshots/2026-10-01-1-7/stage-result.json',
+                  'snapshotHash': published['newSnapshotHash'],
+                  'stageResultHash': published['stageResultHash']})
+    reader = _client(api, 'reader-c')
+    reader.state = state
+    with pytest.raises(coord.SnapshotImportError):
+        reader.import_bundle('2026-10-01:1/7', 1)

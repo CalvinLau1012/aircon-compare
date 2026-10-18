@@ -431,6 +431,17 @@ def load_specs_emsd():
         return json.load(f)
 
 
+def _hkt_text(value):
+    if not isinstance(value, str) or not re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$', value):
+        return None
+    try:
+        t = time.strptime(value.replace('Z', ''), '%Y-%m-%dT%H:%M:%S')
+        epoch = calendar.timegm(t) + 8 * 3600
+        return time.strftime('%Y-%m-%d %H:%M', time.gmtime(epoch))
+    except (ValueError, OverflowError):
+        return None
+
+
 def format_status(meta_dict, version):
     """純函數：metadata dict → (hero 狀態行, 頁腳狀態行)
 
@@ -457,7 +468,8 @@ def format_status(meta_dict, version):
         v = meta_dict.get('version') or version
     else:
         v = version
-    date_text = f'📅 資料日期 {dataset_date}' if dataset_date else '📅 資料日期暫不可用'
+    date_text = (f'📅 EMSD 資料日期 {dataset_date}' if dataset_date
+                 else '📅 EMSD 資料日期暫不可用')
     source = (meta_dict or {}).get('sourceStatus')
     publish = (source or {}).get('publish') or {}
     # Legacy metadata (no sourceStatus) historically used deployTime as the
@@ -467,27 +479,36 @@ def format_status(meta_dict, version):
     deploy_label = '最後部署' if (source is None or deployed_actual) else '最後封裝'
     deploy_text = f'📦 {deploy_label} {deploy_hkt} HKT' if deploy_hkt else '🔄 每日偵測新機 · 有機先更新'
     line1 = f'{date_text} · v{v} · {deploy_text}'
-    biggo_text = 'BigGo 更新時間未知'
+    biggo_text = '🛒 BigGo 更新時間未確認（分批快照）'
     try:
         src = (meta_dict or {}).get('sourceStatus') or {}
         b = src.get('biggo') or {}
         status = b.get('status')
-        when = b.get('lastAppliedDate') or (b.get('lastAppliedAt') or '')[:10] or None
-        if status == 'ok' and when:
-            biggo_text = f'BigGo 最近成功更新 {when}（分批快照）'
-        elif status == 'degraded':
-            biggo_text = ('BigGo 價格沿用先前已驗證快照'
-                          + (f'（{when}）' if when else '') + ' · ⚠️ 價格來源降級')
-        elif status == 'blocked':
-            biggo_text = 'BigGo 價格來源受阻 · 沿用先前已驗證快照'
-        elif status == 'pending':
-            biggo_text = 'BigGo 本輪待更新 · 沿用先前已驗證快照'
+        acquired = _hkt_text(b.get('lastAcquiredAt'))
+        applied = _hkt_text(b.get('lastAppliedAt'))
+        when = acquired or applied
+        if status == 'ok' and acquired:
+            biggo_text = f'🛒 BigGo 最近成功更新 {acquired} HKT（分批快照）'
+            if applied:
+                biggo_text += f'；已套用 {applied} HKT'
+        elif status == 'ok' and applied:
+            biggo_text = (f'🛒 BigGo 取得時間未確認；已套用 {applied} HKT'
+                          '（分批快照，非全部同時查價）')
+        elif status in ('degraded', 'blocked', 'pending'):
+            prefix = {'degraded': '⚠️ BigGo 價格來源降級',
+                      'blocked': '⛔ BigGo 價格來源受阻',
+                      'pending': '⏳ BigGo 本輪待更新'}[status]
+            if acquired:
+                prefix += f'；先前快照取得 {acquired} HKT'
+            elif applied:
+                prefix += f'；已套用 {applied} HKT（取得時間未確認）'
+            biggo_text = prefix + ' · 價格更新未完成，沿用先前已驗證快照'
         elif when:
-            biggo_text = f'BigGo 更新時間 {when}（分批快照）'
+            biggo_text = f'🛒 BigGo 更新時間 {acquired or applied} HKT（分批快照）'
     except (AttributeError, TypeError):
         pass
     line2 = ('🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）· 有新機先分批核實更新 · '
-             + (f'資料日期 {dataset_date}' if dataset_date else '資料日期暫不可用')
+             + (f'EMSD 資料日期 {dataset_date}' if dataset_date else 'EMSD 資料日期暫不可用')
              + ' · ' + biggo_text
              + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考')
     return line1, line2
@@ -642,9 +663,9 @@ def build_html():
     content_html = md_to_html(md_text)
     # 部署資訊由瀏覽器 runtime fetch metadata.json 顯示（治理文檔 §7.2.7）；
     # build 只寫初始骨架；載入失敗顯示「暫不可用」（JS 處理）
-    date_status = '📅 資料日期暫不可用 · 部署資訊暫不可用'
+    date_status = '📅 EMSD 資料日期暫不可用 · 部署資訊暫不可用'
     foot_status = ('🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）· 有新機先分批核實更新 · '
-                   '資料日期暫不可用 · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考')
+                   'EMSD 資料日期暫不可用 · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考')
     new_hint = new_models_hint()
     pending_hint = official_pending_hint()
 
@@ -786,7 +807,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei
   text-underline-offset:2px; white-space:nowrap; border-radius:3px;}
 .hero .src .src-link:hover{color:#ffffff;}
 .hero .src .src-link:focus-visible{outline:2px solid #F0D48A; outline-offset:2px;}
-.hero .date{color:#ffffff; font-size:.95em; margin-top:8px; text-shadow:0 1px 3px rgba(15,20,35,.55);}
+.hero .date{color:#ffffff; font-size:.95em; margin-top:8px; text-shadow:0 1px 3px rgba(15,20,35,.55); white-space:pre-line;}
 
 /* ===== 頂部導覽 ===== */
 .topnav{position:sticky; top:0; z-index:100; background:rgba(34,43,77,.97);
@@ -1607,14 +1628,26 @@ window.addEventListener('scroll',()=>{
       const ds = m.datasetDate;
       const dt = m.deployTime;
       const sb = (m.sourceStatus && m.sourceStatus.biggo) || {};
-      const bw = sb.lastAppliedDate || (sb.lastAppliedAt ? String(sb.lastAppliedAt).slice(0,10) : '');
-      let biggoText = 'BigGo 更新時間未知';
-      if (sb.status === 'ok' && bw) biggoText = 'BigGo 最近成功更新 ' + bw + '（分批快照）';
-      else if (sb.status === 'degraded') biggoText = 'BigGo 價格沿用先前已驗證快照' + (bw ? ('（' + bw + '）') : '') + ' · ⚠️ 價格來源降級';
-      else if (sb.status === 'blocked') biggoText = 'BigGo 價格來源受阻 · 沿用先前已驗證快照';
-      else if (sb.status === 'pending') biggoText = 'BigGo 本輪待更新 · 沿用先前已驗證快照';
-      else if (bw) biggoText = 'BigGo 更新時間 ' + bw + '（分批快照）';
-      let line = (ds ? ('📅 資料日期 ' + ds) : '📅 資料日期暫不可用');
+      const hkt = (v) => {
+        if (!v || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(String(v))) return '';
+        const d = new Date(new Date(v).getTime() + 8*3600*1000);
+        return d.toISOString().slice(0,16).replace('T',' ');
+      };
+      const acq = hkt(sb.lastAcquiredAt), app = hkt(sb.lastAppliedAt);
+      let biggoText = '🛒 BigGo 更新時間未確認（分批快照）';
+      if (sb.status === 'ok' && acq) {
+        biggoText = '🛒 BigGo 最近成功更新 ' + acq + ' HKT（分批快照）' + (app ? ('；已套用 ' + app + ' HKT') : '');
+      } else if (sb.status === 'ok' && app) {
+        biggoText = '🛒 BigGo 取得時間未確認；已套用 ' + app + ' HKT（分批快照，非全部同時查價）';
+      } else if (sb.status === 'degraded' || sb.status === 'blocked' || sb.status === 'pending') {
+        const head = sb.status === 'degraded' ? '⚠️ BigGo 價格來源降級'
+          : (sb.status === 'blocked' ? '⛔ BigGo 價格來源受阻' : '⏳ BigGo 本輪待更新');
+        biggoText = head + (acq ? ('；先前快照取得 ' + acq + ' HKT') : (app ? ('；已套用 ' + app + ' HKT（取得時間未確認）') : ''))
+          + ' · 價格更新未完成，沿用先前已驗證快照';
+      } else if (acq || app) {
+        biggoText = '🛒 BigGo 更新時間 ' + (acq || app) + ' HKT（分批快照）';
+      }
+      let line = (ds ? ('📅 EMSD 資料日期 ' + ds) : '📅 EMSD 資料日期暫不可用');
       if (m.version) line += ' · v' + m.version;
       if (dt && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(dt)) {
         const hkt = new Date(new Date(dt).getTime() + 8*3600*1000);
@@ -1623,7 +1656,7 @@ window.addEventListener('scroll',()=>{
       } else {
         line += ' · 🔄 每日偵測新機 · 有機先更新';
       }
-      if (el) el.textContent = line;
+      if (el) el.textContent = line + '\n' + biggoText;
       if (foot) foot.textContent = '🔄 每日 00:30 偵測新機（EMSD 官方資料庫；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）· 有新機先分批核實更新 · '
         + (ds ? ('資料日期 ' + ds) : '資料日期暫不可用') + ' · ' + biggoText
         + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考';

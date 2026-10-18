@@ -70,4 +70,6 @@ jobs:
       - name: BigGo 人工覆核警報（紅）
         run: |
           python scripts/verify_biggo_stage_artifacts.py --alert-only \
-            --status "$RUNNER_TEMP/biggo-alert/biggo-stage-status.json"
+            --status "$RUNNER_TEMP/biggo-alert/biggo-stage-status.json" \
+            --expected-run-id "${{ github.event.workflow_run.id }}" \
+            --expected-head "${{ github.event.workflow_run.head_sha }}"

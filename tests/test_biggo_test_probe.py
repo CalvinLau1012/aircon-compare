@@ -398,3 +398,27 @@ def test_missing_run_identity_blocks_before_any_provider_or_ledger_write():
                         selector=_selection, grant_id=auth['grantId'])
     assert r['status'] == 'blocked-run-identity' and len(f.calls) == 0
     assert contents.puts == puts
+
+
+def test_completed_business_state_is_testable_without_mutation_of_business_snapshot():
+    contents = FakeContents(); path, ledger, auth = _ledger(contents)
+    contents.state.update({'status': 'completed',
+                           'requestAttempts': {'token': 1, 'search': 149},
+                           'responseStatusCounts': {'200': 2}, 'cooldownUntil': 0,
+                           'bundleHash': 'sha256:' + 'b' * 64,
+                           'snapshotHash': 'sha256:' + 'c' * 64,
+                           'stageResultHash': 'sha256:' + 'd' * 64,
+                           'stageResultPath': 'coordinator/snapshots/4/stage-result.json'})
+    contents.write_state(contents.state, contents.get_file(contents.config.state_path)[1])
+    f = FakeFetch()
+    r = probe.run_probe(env=_env(), contents=contents, fetch=f,
+                        selector=_selection, now=lambda: 100, grant_id=auth['grantId'])
+    assert r['ok'] is True and r['actual'] == {'token': 1, 'search': 1}
+    assert contents.state['status'] == 'completed'
+    assert contents.state['cycleId'] == '2026-10-10:4/7'
+    assert contents.state['stage'] == 4
+    assert contents.state['requestAttempts'] == {'token': 1, 'search': 149}
+    assert contents.state['bundleHash'] == 'sha256:' + 'b' * 64
+    assert contents.state['snapshotHash'] == 'sha256:' + 'c' * 64
+    assert contents.state['leaseOwner'] is None
+    assert contents.state[coord.DIAGNOSTIC_FIELD]['state'] == 'completed'

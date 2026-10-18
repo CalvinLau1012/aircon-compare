@@ -872,3 +872,21 @@ def test_daily_repair_and_rebuild_both_true_rejected_before_checkout():
     assert _eval_if(step['if'], event='workflow_dispatch',
                     inputs={'repair_release': 'false',
                             'rebuild_verified_snapshot': 'true'}) is False
+
+
+def test_daily_sync_report_artifact_and_provider_skip_artifact_are_wired():
+    text = _text('daily-update.yml')
+    assert 'name: biggo-completed-sync-${{ github.run_id }}' in text
+    assert 'scripts/augment_sync_report.py' in text
+    assert 'scripts/render_sync_summary.py' in text
+    assert 'name: 建立 provider-skip status' in text
+    assert 'scripts/make_biggo_skip_status.py' in text
+    assert '--expected-run-id "${{ github.event.workflow_run.id }}"' in _text('biggo-alert.yml')
+    assert '--expected-head "${{ github.event.workflow_run.head_sha }}"' in _text('biggo-alert.yml')
+
+
+def test_freshness_monitor_uploads_bound_safe_report_and_summary():
+    text = _text('freshness-monitor.yml')
+    assert 'name: freshness-monitor-${{ github.run_id }}' in text
+    assert 'scripts/render_monitor_summary.py' in text
+    assert 'if-no-files-found: error' in text

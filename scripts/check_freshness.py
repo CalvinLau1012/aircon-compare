@@ -85,36 +85,50 @@ def classify(result):
 
 
 def combined_health(result):
-    """回傳 (freshness_bad, postdeploy_bad)；postdeployOk=None 表示未提供。"""
+    """Return independent freshness, postdeploy and source-health bad facts.
+
+    A missing/unknown source-health witness is not healthy; callers that omit
+    the key keep the legacy two-dimensional behaviour for unit callers.
+    """
     freshness_bad = (not result.get('ok')) or bool(result.get('stale')) \
         or bool(result.get('deploymentMismatch'))
     post = result.get('postdeployOk')
-    return freshness_bad, post is False
+    health_bad = False
+    if 'healthSummaryOk' in result:
+        health_bad = result.get('healthSummaryOk') is not True
+    return freshness_bad, post is False, health_bad
 
 
 def fingerprint(result):
     fp = classify(result)
-    fresh_bad, post_bad = combined_health(result)
+    fresh_bad, post_bad, health_bad = combined_health(result)
     if post_bad:
         fp += ':postdeploy_failed'
+    if health_bad:
+        reason = str(result.get('healthReason') or 'unknown')
+        safe = re.sub(r'[^a-z0-9_.:+-]', '_', reason.lower())[:64]
+        fp += ':source_health_failed:' + safe
     return fp
 
 
 def issue_body(result, fp):
-    freshness_bad, post_bad = combined_health(result)
+    freshness_bad, post_bad, health_bad = combined_health(result)
     return (
         f'<!-- aircon-freshness-fingerprint: {fp} -->\n'
         f'\n'
-        f'Freshness／部署一致性 monitor alert.\n'
+        f'Freshness／部署一致性／來源健康 monitor alert.\n'
         f'\n'
         f'- category: `{fp}`\n'
-        f'- freshness failure: {"yes" if freshness_bad else "no"}\n'
+        f'- 資料過期 (freshness): {"yes" if freshness_bad else "no"}\n'
+        f'- 待發布版本未上線／部署核對 (postdeploy): {"yes" if post_bad else "no"}\n'
         f'- postdeploy failure: {"yes" if post_bad else "no"}\n'
+        f'- 來源部分失敗 (source health): {"yes" if health_bad else "no"}\n'
         f'- reason: `{result.get("reason")}`\n'
         f'- ageSeconds: {result.get("ageSeconds")}\n'
         f'- age stale: {bool(result.get("stale"))}\n'
         f'- deployment mismatch: {bool(result.get("deploymentMismatch"))}\n'
         f'- deployment failures: {result.get("deploymentFailures") or []}\n'
+        f'- source health reason: `{result.get("healthReason") or "unknown"}`\n'
         f'- threshold: age > 72h\n'
     )
 
@@ -122,8 +136,8 @@ def issue_body(result, fp):
 def plan_issue(existing_issue, result):
     """合用 health 去重：fingerprint 穩定（唔含 ageSeconds），狀態改變才 update，
     完全恢復（freshness + postdeploy 都好）才 close 一次。existing_issue 係 dict 或 None。"""
-    freshness_bad, post_bad = combined_health(result)
-    unhealthy = freshness_bad or post_bad
+    freshness_bad, post_bad, health_bad = combined_health(result)
+    unhealthy = freshness_bad or post_bad or health_bad
     fp = fingerprint(result)
     if not unhealthy:
         if existing_issue:

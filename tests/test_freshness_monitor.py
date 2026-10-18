@@ -274,3 +274,45 @@ def test_health_unknown_keeps_monitor_alert(tmp_path, monkeypatch):
     assert rc == 1
     assert report['action'] == 'create'
     assert report['check']['healthSummaryOk'] is False
+
+
+def test_source_health_failure_is_not_overwritten_by_successful_postdeploy():
+    fresh = freshness.evaluate(_meta(_now(), 60), _now())
+    fresh['postdeployOk'] = True
+    fresh['healthSummaryOk'] = False
+    fresh['healthReason'] = 'sources:biggo,official'
+    plan = freshness.plan_issue(None, fresh)
+    assert plan['action'] == 'create'
+    assert 'source_health_failed' in plan['fingerprint']
+    assert '來源部分失敗 (source health): yes' in plan['body']
+    # postdeploy success cannot close while health remains false
+    healed = dict(fresh)
+    healed['postdeployOk'] = True
+    assert freshness.plan_issue({'body': plan['body']}, healed)['action'] == 'noop'
+    good = dict(healed)
+    good['healthSummaryOk'] = True
+    assert freshness.plan_issue({'body': plan['body']}, good)['action'] == 'close'
+
+
+def test_health_failure_cannot_be_closed_by_successful_postdeploy_main(tmp_path, monkeypatch):
+    health = tmp_path / 'health-bad.json'
+    health.write_text(json.dumps({'ok': False, 'status': 'unhealthy',
+                                  'reason': 'source-health-failed',
+                                  'sources': {'biggo': {'status': 'degraded'}}}),
+                      encoding='utf-8')
+    post = tmp_path / 'post-ok.json'
+    post.write_text(json.dumps({'ok': True, 'failures': []}), encoding='utf-8')
+    state = {'existing': {'number': 9,
+                          'body': '<!-- aircon-freshness-fingerprint: stale_over_72h -->\nold'}}
+    def api(calls, method, path, data):
+        if method == 'GET':
+            return [state['existing']] if state['existing'] else []
+        if method == 'PATCH' and data and data.get('state') == 'closed':
+            state['existing'] = None
+        return {'ok': True}
+    rc, calls, report = _run_issue_main(
+        tmp_path, monkeypatch, postdeploy=post, health=health, api=api)
+    assert rc == 1 and report['action'] == 'update'
+    assert report['check']['healthSummaryOk'] is False
+    assert not any(c['method'] == 'PATCH' and (c.get('data') or {}).get('state') == 'closed'
+                   for c in calls)

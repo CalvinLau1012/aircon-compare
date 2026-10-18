@@ -265,3 +265,25 @@ def test_ranking_recommendation_sections():
     matched = [t for t in tokens if t in known]
     assert len(matched) / len(tokens) >= 0.6, (
         f'排名／推薦型號 token 大部分要對得上資料：matched={matched} all={sorted(tokens)}')
+
+
+def test_format_status_labels_emsd_and_biggo_hkt_without_ambiguous_success():
+    meta = {
+        'version': '1.2.9', 'datasetDate': '2026-10-18',
+        'deployTime': '2026-10-18T00:10:00Z',
+        'sourceStatus': {'biggo': {
+            'status': 'ok',
+            'lastAcquiredAt': '2026-10-17T16:38:58Z',
+            'lastAppliedAt': '2026-10-17T16:39:08Z'}},
+    }
+    line1, line2 = generate_html.format_status(meta, models_data.VERSION)
+    assert 'EMSD 資料日期 2026-10-18' in line1
+    assert 'BigGo 最近成功更新 2026-10-18 00:38 HKT' in line2
+    assert '已套用 2026-10-18 00:39 HKT' in line2
+    bad = dict(meta)
+    bad['sourceStatus'] = {'biggo': {
+        'status': 'degraded', 'lastAcquiredAt': '2026-10-17T16:38:58Z',
+        'lastAppliedAt': '2026-10-17T16:39:08Z'}}
+    _, line2b = generate_html.format_status(bad, models_data.VERSION)
+    assert '最近成功更新' not in line2b
+    assert '價格更新未完成，沿用先前已驗證快照' in line2b
