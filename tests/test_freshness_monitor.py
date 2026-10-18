@@ -145,7 +145,7 @@ def _run_issue_main(tmp_path, monkeypatch, metadata=None, postdeploy=None, fail_
     if postdeploy is None:
         postdeploy = tmp_path / 'postdeploy-good.json'
         postdeploy.write_text(json.dumps({'ok': True, 'failures': [],
-                                          'checks': [], 'generatedAt': '2026-10-18T02:00:00Z'}),
+                                          'checks': [{'check': 'metadata.build', 'pass': True}], 'baseUrl': 'http://127.0.0.1/', 'generatedAt': '2026-10-18T02:00:00Z'}),
                              encoding='utf-8')
     if health is None:
         health = tmp_path / 'health-good.json'
@@ -331,7 +331,7 @@ def test_health_failure_cannot_be_closed_by_successful_postdeploy_main(tmp_path,
                                   'reason': 'source-health-failed'}),
                       encoding='utf-8')
     post = tmp_path / 'post-ok.json'
-    post.write_text(json.dumps({'ok': True, 'failures': [], 'checks': [], 'generatedAt': '2026-10-18T02:00:00Z'}), encoding='utf-8')
+    post.write_text(json.dumps({'ok': True, 'failures': [], 'checks': [{'check': 'metadata.build', 'pass': True}], 'baseUrl': 'http://127.0.0.1/', 'generatedAt': '2026-10-18T02:00:00Z'}), encoding='utf-8')
     state = {'existing': {'number': 9,
                           'body': '<!-- aircon-freshness-fingerprint: stale_over_72h -->\nold'}}
     def api(calls, method, path, data):
@@ -351,7 +351,7 @@ def test_health_failure_cannot_be_closed_by_successful_postdeploy_main(tmp_path,
 def test_main_missing_health_is_unknown_and_cannot_close(tmp_path, monkeypatch):
     import freshness_issue
     post = tmp_path / 'post.json'
-    post.write_text(json.dumps({'ok': True, 'failures': [], 'checks': [], 'generatedAt': '2026-10-18T02:00:00Z'}), encoding='utf-8')
+    post.write_text(json.dumps({'ok': True, 'failures': [], 'checks': [{'check': 'metadata.build', 'pass': True}], 'baseUrl': 'http://127.0.0.1/', 'generatedAt': '2026-10-18T02:00:00Z'}), encoding='utf-8')
     state = {'existing': {'number': 4,
                           'body': '<!-- aircon-freshness-fingerprint: stale_over_72h -->\nold'}}
     writes = []
@@ -382,7 +382,7 @@ def test_main_missing_health_is_unknown_and_cannot_close(tmp_path, monkeypatch):
 def test_health_failures_map_to_safe_dimensions_and_never_echo_private_text(tmp_path, monkeypatch):
     import freshness_issue
     post = tmp_path / 'post.json'
-    post.write_text(json.dumps({'ok': True, 'failures': [], 'checks': [], 'generatedAt': '2026-10-18T02:00:00Z'}), encoding='utf-8')
+    post.write_text(json.dumps({'ok': True, 'failures': [], 'checks': [{'check': 'metadata.build', 'pass': True}], 'baseUrl': 'http://127.0.0.1/', 'generatedAt': '2026-10-18T02:00:00Z'}), encoding='utf-8')
     health = tmp_path / 'health.json'
     health.write_text(json.dumps({'schemaVersion': 1, 'configured': True,
                                   'ok': False, 'status': 'unhealthy',

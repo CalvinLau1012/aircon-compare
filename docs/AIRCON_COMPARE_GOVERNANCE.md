@@ -2323,3 +2323,8 @@ Root found missing-health default recovery, unsafe health-reason exposure, unbou
 ### 2026-10-18 · R6 evidence-integrity corrections (append-only)
 
 R6 Root review found health-summary schema/identity acceptance, unsafe postdeploy failure text, unbound monitor reports, swallowed report-write failure, and proposal evidence trust issues. This candidate strictly validates the real check_health_summary producer contract and identity before any issue side effect, maps only fixed safe health/postdeploy codes, binds both monitor reports to run/head/event before freshness, returns nonzero if evidence cannot be written, records planned vs applied issue actions, validates proposal evidence without CLI actual counts, and adds deterministic renew interleaving tests. No live/provider/coordinator/grant operation.
+
+
+### 2026-10-18 · R7 producer-contract corrections (append-only)
+
+Root R7 rejected an `ok:true` health report with `skipped:true`, empty/false-check postdeploy success, and non-atomic final report writes. This candidate requires real check_health_summary fields/types/consistency (including explicit failures and no skipped success), real postdeploy checks/generatedAt/baseUrl/all-pass/failures consistency, fixed safe failure codes, atomic report writes, and a recovery marker so a successful close comment is not repeated after a failed close PATCH. Main fake-API matrix covers healthy close/noop, invalid health, invalid identity, reason transitions, write/GET/mutation failure, and sentinel leakage. Isolated only.

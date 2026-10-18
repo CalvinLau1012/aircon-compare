@@ -44,6 +44,22 @@ def _api(token, method, path, data=None):
         raise RuntimeError(f'GitHub API {method} {path} 失敗：HTTP {e.code}')
 
 
+def _write_report(path, data):
+    try:
+        tmp = path + '.tmp'
+        with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.flush(); os.fsync(f.fileno())
+        os.replace(tmp, path)
+        return None
+    except OSError:
+        return 'report-write-failed'
+
+
+def _recovery_marker(fp):
+    return '<!-- aircon-freshness-recovery: ' + fp + ' -->'
+
+
 def find_open_issue(token, repo, label=LABEL):
     q = urllib.parse.urlencode({'state': 'open', 'labels': label, 'per_page': 100})
     items = _api(token, 'GET', f'/repos/{repo}/issues?{q}')
@@ -61,13 +77,16 @@ def _health_fact(health, expected_identity=None):
     configured = health.get('configured')
     status = health.get('status')
     ok = health.get('ok')
-    failures = health.get('failures', [])
-    if not isinstance(configured, bool) or not isinstance(failures, list):
+    if 'failures' not in health or not isinstance(health.get('failures'), list):
+        return False, 'health:invalid', ['health:invalid'], False
+    failures = health['failures']
+    skipped = health.get('skipped', False)
+    if not isinstance(configured, bool) or not isinstance(skipped, bool):
         return False, 'health:invalid', ['health:invalid'], False
     if status not in ('healthy', 'unhealthy', 'unknown'):
         return False, 'health:invalid', ['health:invalid'], False
     if ok is True:
-        if status != 'healthy' or configured is not True or failures:
+        if status != 'healthy' or configured is not True or failures or skipped:
             return False, 'health:invalid', ['health:invalid'], False
     elif ok is False:
         if status != 'unhealthy' or not failures:
@@ -110,23 +129,40 @@ def _health_fact(health, expected_identity=None):
                 codes.add('health:unknown')
         else:
             codes.add('health:unknown')
-    if not configured or health.get('skipped') is True:
+    if not configured or skipped:
         codes.add('health:unconfigured')
+    if ok is True and codes:
+        return False, 'health:invalid', ['health:invalid'], False
     if not codes:
         codes.add('health:unhealthy')
-    return ok is True, ','.join(sorted(codes)), sorted(codes), True
+    return ok is True, ('ok' if ok is True else ','.join(sorted(codes))), sorted(codes), True
 
 
 def _postdeploy_fact(post):
     """Strict producer contract; public failure codes never echo raw details."""
     if not isinstance(post, dict):
         return False, None, [], False
-    if not isinstance(post.get('ok'), bool) or not isinstance(post.get('failures'), list)             or not isinstance(post.get('checks'), list):
+    if not isinstance(post.get('ok'), bool) or not isinstance(post.get('failures'), list) \
+            or not isinstance(post.get('checks'), list):
         return False, None, [], False
-    if post.get('ok') is True and post['failures']:
+    if not isinstance(post.get('generatedAt'), str) or not re.fullmatch(
+            r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z', post['generatedAt']):
+        return False, None, [], False
+    if not isinstance(post.get('baseUrl'), str) or not post['baseUrl'].strip():
+        return False, None, [], False
+    if not post['checks'] or not isinstance(post['checks'], list):
+        return False, None, [], False
+    for entry in post['checks']:
+        if not isinstance(entry, dict) or not isinstance(entry.get('pass'), bool) \
+                or not isinstance(entry.get('check'), str) or not entry['check']:
+            return False, None, [], False
+    if post.get('ok') is True and (post['failures'] or not all(e['pass'] for e in post['checks'])):
         return False, None, [], False
     if post.get('ok') is False and not post['failures']:
         return False, None, [], False
+    for entry in post['failures']:
+        if not isinstance(entry, dict) or entry.get('pass') is not False:
+            return False, None, [], False
     allowed_prefixes = ('metadata.', 'payload.', 'browser.', 'http.', 'repro.')
     ids = []
     for item in post['failures']:
@@ -172,10 +208,7 @@ def main(argv=None):
                'check': result, 'issueNumber': None,
                'sourceRunId': None, 'headSha': None, 'sourceEvent': None,
                'checkedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
-        try:
-            with open(args.report, 'w', encoding='utf-8', newline='\n') as f:
-                json.dump(out, f, ensure_ascii=False, indent=2); f.flush(); os.fsync(f.fileno())
-        except OSError:
+        if _write_report(args.report, out):
             return 1
         return 1
     expected_identity = (int(args.run_id), args.head, args.event)
@@ -234,12 +267,7 @@ def main(argv=None):
            'sourceRunId': int(args.run_id), 'headSha': args.head,
            'sourceEvent': args.event,
            'checkedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}
-    try:
-        tmp = args.report + '.tmp'
-        with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
-            json.dump(pre, f, ensure_ascii=False, indent=2); f.flush(); os.fsync(f.fileno())
-        os.replace(tmp, args.report)
-    except OSError:
+    if _write_report(args.report, pre):
         return 1
     try:
         existing = find_open_issue(token, args.repo, args.label)
@@ -263,13 +291,7 @@ def main(argv=None):
         'sourceEvent': args.event,
         'checkedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
     }
-    try:
-        tmp = args.report + '.tmp'
-        with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
-            json.dump(out, f, ensure_ascii=False, indent=2)
-            f.flush(); os.fsync(f.fileno())
-        os.replace(tmp, args.report)
-    except OSError:
+    if _write_report(args.report, out):
         return 1
     try:
         if plan['action'] == 'create':
@@ -279,19 +301,25 @@ def main(argv=None):
             _api(token, 'PATCH', f"/repos/{args.repo}/issues/{existing['number']}",
                  {'body': body})
         elif plan['action'] == 'close' and existing:
-            _api(token, 'POST', f"/repos/{args.repo}/issues/{existing['number']}/comments",
-                 {'body': 'Freshness recovered at '
-                          + time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())})
+            marker = _recovery_marker(plan['fingerprint'])
+            body = existing.get('body') or ''
+            already = marker in body
+            if not already:
+                # Persist the retry marker before the public comment.  If the
+                # following comment/close fails, the next run can retry close
+                # without posting the same recovery comment twice.
+                _api(token, 'PATCH', f"/repos/{args.repo}/issues/{existing['number']}",
+                     {'body': body + '\n' + marker})
+                _api(token, 'POST', f"/repos/{args.repo}/issues/{existing['number']}/comments",
+                     {'body': 'Freshness recovered at '
+                              + time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())})
             _api(token, 'PATCH', f"/repos/{args.repo}/issues/{existing['number']}",
                  {'state': 'closed', 'state_reason': 'completed'})
     except RuntimeError as e:
         print(f'❌ 更新 monitoring issue 失敗：{e}', file=sys.stderr)
         return 1
     out['appliedAction'] = plan['action']
-    try:
-        with open(args.report, 'w', encoding='utf-8', newline='\n') as f:
-            json.dump(out, f, ensure_ascii=False, indent=2); f.flush(); os.fsync(f.fileno())
-    except OSError:
+    if _write_report(args.report, out):
         return 1
     print(f"✅ freshness issue action={out['action']} reason={out['reason']} "
           f"ok={result.get('ok')} stale={result.get('stale')}")
