@@ -778,4 +778,4 @@ python fetch_rasonic.py        # 樂信官方網店價格
 - Public `generate_html.format_status`／`script_safe_json` and `_hkt_text` remain compatibility adapters; private adapters keep their distinct signatures and private schedule/EMSD/report extensions.
 - `generate_html` and private `generate_html` route the real `MODELS`／`EMSD_EXTRA`／`COMPARE_FIELDS` slots through the shared JSON encoder.
 - `report_common.py` is a generator dependency in PDF repro and snapshot preservation guards. No generated index／PDF／metadata changes in this module; formal HTML/PDF/metadata rebuild is required only after Root acceptance.
-- Detail: `docs/architecture/2026-10-19-report-common.md`; private pin: `docs/architecture/shared-source-pin-20261019.json` (private repo only).
+- Detail: `docs/architecture/2026-10-19-report-common.md`; the private-side pin receipt stays in the private repository and is not linked from public docs.
