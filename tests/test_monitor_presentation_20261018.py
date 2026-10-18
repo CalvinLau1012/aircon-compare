@@ -73,8 +73,12 @@ def test_missing_or_invalid_health_and_postdeploy_never_close():
     old = {'body': '<!-- aircon-freshness-fingerprint: stale_over_72h -->\nold'}
     assert fresh.plan_issue(old, r)['action'] != 'close'
     r2 = result(health=True, post=False)
-    assert flag(body(r2), '待發布版本未上線／部署核對 (postdeploy)') == 'yes'
+    r2['postdeployKnown'] = False
+    assert flag(body(r2), '待發布版本未上線／部署核對 (postdeploy)') == 'unknown'
     assert fresh.plan_issue(old, r2)['action'] != 'close'
+    r3 = result(health=False)
+    r3['healthKnown'] = False
+    assert flag(body(r3), '來源部分失敗 (source health)') == 'unknown'
 
 
 def test_all_three_axes_healthy_closes_once():

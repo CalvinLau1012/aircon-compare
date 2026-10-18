@@ -49,6 +49,8 @@ def _freshness_axis(result):
 def _deployment_axis(result):
     post = result.get('postdeployOk')
     mismatch = bool(result.get('deploymentMismatch'))
+    if post is False and result.get('postdeployKnown') is False:
+        return 'unknown', '未確認（缺少或無效的部署核對收據）'
     if post is True and not mismatch:
         return 'no', '部署核對通過'
     if post is False or mismatch:
@@ -58,6 +60,8 @@ def _deployment_axis(result):
 
 def _source_axis(result):
     health = result.get('healthSummaryOk')
+    if health is False and result.get('healthKnown') is False:
+        return 'unknown', '未確認（缺少或無效的來源健康收據）'
     if health is True:
         return 'no', '來源健康；沒有來源失敗'
     if health is False:

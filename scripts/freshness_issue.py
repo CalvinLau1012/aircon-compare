@@ -236,6 +236,8 @@ def main(argv=None):
     expected_identity = (int(args.run_id), args.head, args.event)
     result = None
     post_ok = False
+    post_known = False
+    health_known = False
     deployment = None
     health_ok = False
     health_reason = 'health-report-missing'
@@ -244,10 +246,10 @@ def main(argv=None):
     if args.health_report:
         try:
             health = json.load(open(args.health_report, encoding='utf-8'))
-            health_ok, health_reason, health_failures, _valid = _health_fact(
+            health_ok, health_reason, health_failures, health_known = _health_fact(
                 health, expected_identity)
         except (OSError, ValueError, TypeError, AttributeError):
-            health_ok = False; health_reason = 'health:invalid'
+            health_ok = False; health_known = False; health_reason = 'health:invalid'
             health_failures = ['health:invalid']
             result = {'ok': False, 'stale': False, 'ageSeconds': None,
                       'reason': 'health_report_invalid'}
@@ -259,11 +261,11 @@ def main(argv=None):
         else:
             try:
                 post = json.load(open(args.postdeploy_report, encoding='utf-8'))
-                post_ok, deployment, post_failures, _valid = _postdeploy_fact(post)
-                if not _valid:
+                post_ok, deployment, post_failures, post_known = _postdeploy_fact(post)
+                if not post_known:
                     raise ValueError('contract')
             except (OSError, ValueError, TypeError):
-                post_ok = False
+                post_ok = False; post_known = False
                 result = {'ok': False, 'stale': False, 'ageSeconds': None,
                           'reason': 'postdeploy_report_invalid'}
                 post_failures = ['postdeploy:invalid']
@@ -277,7 +279,9 @@ def main(argv=None):
         else:
             result = evaluate(meta, deployment=deployment)
     result['postdeployOk'] = post_ok
+    result['postdeployKnown'] = post_known
     result['healthSummaryOk'] = health_ok
+    result['healthKnown'] = health_known
     result['healthReason'] = health_reason
     result['healthFailures'] = health_failures
     result['postdeployFailures'] = post_failures
