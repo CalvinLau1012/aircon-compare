@@ -109,7 +109,7 @@ flowchart TB
 
 - 公開文件只可 pin 公開候選／shared source；私人 root、domain、repo、account、token 不在公開文件。
 - 私人 collection、notes、import/export、provenance、動態 EMSD 報告及 reconcile 不得因 public 沒有而刪除。
-- 私人 legacy r24p tools 的 `private_io`、`reader_history`、`price_ledger`、`cron_plan`、`cron_handoff` daily integration 仍未確認；`price_ledger` 在該 tree 沒有 static importer，不可當 app daily 已使用。
+- 私人 legacy deployment tools 的部分模塊 daily integration 仍未確認；詳細私人模塊名稱及接線只留私人 repo／交付，公開文件不列 peer 私有文件名單。
 - 私人 health monitor（獨立 */15）已由 Root 正式證據確認；它與舊 legacy r24p 模塊的 daily integration 是兩件事，分開標記。
 
 ## D. 責任、production caller、static tests、source hash
