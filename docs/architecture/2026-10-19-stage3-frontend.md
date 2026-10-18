@@ -39,7 +39,7 @@ flowchart LR
 
 Real callers: `frontend_assets.py` ← `generate_html.py` (template import/build); each asset ← `frontend_assets.load_template`; `scripts/postdeploy_check.py` and `scripts/verify_snapshot_rebuild.py` consume the explicit source list for reproduction/preservation. These guard imports are static source-closure checks, not UI callers.
 
-Private keeps separate `frontend/private/` assets for collections/notes/groups/import-export/localStorage and EMSD source/status extension; public source is not copied into private and private functionality is not deleted. No same-hash count is claimed as runtime reuse percentage.
+Private keeps its separate extension assets for collections/notes/groups/import-export/localStorage and EMSD source/status; public source is not copied into private and private functionality is not deleted. No same-hash count is claimed as runtime reuse percentage.
 
 ## Behavior preservation
 
