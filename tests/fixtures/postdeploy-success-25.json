@@ -39,12 +39,12 @@
     {
       "check": "metadata.build",
       "pass": true,
-      "detail": "{'online': 'B20261018.docker-20261018004041', 'expected': 'B20261018.docker-20261018004041'}"
+      "detail": "{'online': 'B20990101.1.1', 'expected': 'B20990101.1.1'}"
     },
     {
       "check": "metadata.commit",
       "pass": true,
-      "detail": "{'online': '1c496a0793b9077e46c72d3e14cc39eb5d5ea67b', 'expected': '1c496a0793b9077e46c72d3e14cc39eb5d5ea67b'}"
+      "detail": "{'online': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', 'expected': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'}"
     },
     {
       "check": "metadata.workflowRunId",
@@ -54,7 +54,7 @@
     {
       "check": "metadata.releasePayloadHash",
       "pass": true,
-      "detail": "{'online': 'sha256:0d2492a887fc816863259c30e1516d1f8388a6ac2ef97dae98e2d80e2455d8a5', 'expected': 'sha256:0d2492a887fc816863259c30e1516d1f8388a6ac2ef97dae98e2d80e2455d8a5'}"
+      "detail": "{'online': 'sha256:2222222222222222222222222222222222222222222222222222222222222222', 'expected': 'sha256:2222222222222222222222222222222222222222222222222222222222222222'}"
     },
     {
       "check": "metadata.datasetHash",
@@ -89,7 +89,7 @@
     {
       "check": "payload.releasePayloadHash",
       "pass": true,
-      "detail": "{'computed': 'sha256:0d2492a887fc816863259c30e1516d1f8388a6ac2ef97dae98e2d80e2455d8a5', 'expected': 'sha256:0d2492a887fc816863259c30e1516d1f8388a6ac2ef97dae98e2d80e2455d8a5'}"
+      "detail": "{'computed': 'sha256:2222222222222222222222222222222222222222222222222222222222222222', 'expected': 'sha256:2222222222222222222222222222222222222222222222222222222222222222'}"
     },
     {
       "check": "payload.csv_datasetHash",
