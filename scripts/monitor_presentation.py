@@ -51,16 +51,16 @@ _SAFE_REASONS = {
     'completed-sync-unavailable', 'completed-sync-invalid',
     'completed-sync-remote-not-completed', 'baseline-accepted',
 }
-_TRUSTED_PRESERVE_REASONS = {
-    # Only producer-defined reasons that explicitly preserve a prior applied
-    # snapshot.  A generic failure/integrity code is never enough to claim it.
+_PRESERVE_REASONS = {
+    # These describe retention, not a current integrity-verification witness.
+    # A reason can survive alongside a corrupt/stale health summary.
     'price-snapshot-preserved', 'completed-sync-remote-not-completed',
 }
 _STATUS_LABEL = {'ok': '健康', 'pending': '待更新', 'degraded': '降級',
                  'blocked': '受阻', 'unknown': '未確認'}
 _REASON_LABEL = {
     'awaiting-source': '等待來源', 'sources-degraded': '來源部分失敗',
-    'price-snapshot-preserved': '先前已驗證價格快照保留',
+    'price-snapshot-preserved': '先前價格快照保留',
     'quota-or-lease-blocked': '配額／lease 受阻',
     'completed-sync-remote-not-completed': '遠端尚未完成新一輪',
     'completed-sync-missing-history': '缺少完成歷史',
@@ -163,8 +163,8 @@ def _source_state_lines(result):
             continue
         detail = _REASON_LABEL.get(reason, '安全原因已記錄')
         line = f'{name}: {_STATUS_LABEL[status]}；{detail}'
-        if status in ('pending', 'degraded') and reason in _TRUSTED_PRESERVE_REASONS:
-            line += '；沿用先前已驗證快照'
+        if status in ('pending', 'degraded') and reason in _PRESERVE_REASONS:
+            line += '；先前快照保留，核驗狀態見來源收據'
         lines.append(line)
     return lines
 

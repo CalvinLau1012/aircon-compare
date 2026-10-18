@@ -71,9 +71,9 @@ def test_pending_biggo_and_degraded_official_remain_source_alert_with_prior_snap
                               'official': {'status': 'degraded', 'safeReason': 'sources-degraded'}})
     b2 = body(r2)
     assert 'biggo: 待更新' in b2 and 'official: 降級' in b2
-    # BigGo has the producer-defined remote-not-completed preservation fact;
-    # official's generic degraded code must not claim a verified snapshot.
-    assert 'biggo: 待更新；遠端尚未完成新一輪；沿用先前已驗證快照' in b2
+    # Retention is a producer fact; it does not establish current integrity.
+    assert 'biggo: 待更新；遠端尚未完成新一輪；先前快照保留，核驗狀態見來源收據' in b2
+    assert '已驗證' not in b2
     assert 'official: 降級；來源部分失敗；沿用先前已驗證快照' not in b2
 
 
@@ -190,3 +190,44 @@ def test_workflow_name_and_safety_contract_unchanged():
     assert wf['permissions']['issues'] == 'write'
     assert 'if: always()' in text
     assert 'scripts/freshness_issue.py' in text
+
+
+def test_retention_reason_is_not_an_integrity_witness():
+    import copy
+    import check_health_summary as health_client
+    import freshness_issue as issue
+    digest = 'sha256:' + 'a' * 64
+    raw = {
+        'kind': 'aircon-source-health-summary', 'schemaVersion': 1,
+        'checkedAt': NOW.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'sourceStatusGeneratedAt': NOW.strftime('%Y-%m-%dT%H:%M:%SZ'),
+        'ok': False, 'status': 'unhealthy', 'failures': ['biggo:pending'],
+        'sourceStatusHash': digest, 'releasePayloadHash': digest,
+        'emsdSnapshotHash': digest, 'biggoSnapshotHash': digest,
+        'officialSnapshotHash': digest, 'officialManifestHash': digest,
+        'build': 'B20261018.fixture', 'deploymentReceipt': 'fixture',
+        'sources': {name: {'status': 'ok', 'safeReason': 'acquired',
+                           'snapshotHash': digest}
+                    for name in ('emsd', 'biggo', 'official')},
+    }
+    raw['sources']['biggo'].update(status='pending',
+        safeReason='completed-sync-remote-not-completed')
+    # Even an unchanged retention code cannot attest integrity after corruption
+    # of either the receipt binding or the served BigGo hash.
+    for field in ('sourceStatusHash', 'biggoSnapshotHash'):
+        damaged = copy.deepcopy(raw)
+        damaged[field] = 'corrupt'
+        fact = health_client.evaluate(damaged, now=NOW)
+        assert fact['ok'] is False
+        assert any(field in failure for failure in fact['failures'])
+        fact.update(schemaVersion=1, configured=True, sourceRunId=123,
+                    headSha='a' * 40, sourceEvent='schedule')
+        ok, reason, failures, known = issue._health_fact(
+            fact, (123, 'a' * 40, 'schedule'))
+        assert known and not ok and failures
+        check = result(health=ok, health_reason=reason,
+                       healthKnown=known, sourceStates=fact['sourceStates'])
+        rendered = body(check) + mp.render_monitor_summary({'check': check})
+        assert '先前快照保留' in rendered
+        assert '已驗證' not in rendered
+        assert fresh.plan_issue(None, check)['action'] != 'close'

@@ -147,3 +147,7 @@ python scripts/architecture_audit.py --repo . --peer-root <peer>  # private revi
 ## F. BigGo pacing risk（不變，未修）
 
 `fetch_biggo.py` 有 2.5s `BIGGO_MIN_PACE`，兩 worker 共用 `_wait_pace`；smoke `use_pace=False`；batch `_wait_pace` 在 `_get_access_token` 前，auth 後 search 可相連。需核對 daily smoke、daily batch、CLI smoke/batch、diagnostic `--execute`、test probe。HKT 10/18 00:32–00:39 私人自然 stage4 auth1/search149（UTC 10/17 完成）；14:04 GitHub probe auth1/search0→429；20:38／20:46 兩端 full 0/0 cooldown。會員頁未登入 redirect，API 收錄／日界線／帳戶匹配 unknown；provider quota 仍 UNKNOWN；auth 429 不可說成 product search endpoint 限流。本輪不改 fetch／limiter／runner／diag／delay。
+
+
+## 2026-10-19 Root Stage1 收據反例更正（追加）
+Root 在 review2 的 26 項既有反例通過後，額外重現：保留快照的 safeReason 可與 sourceStatusHash／BigGo hash 損壞同時出現，不能單憑原因碼聲稱快照已驗證。監控呈現改為「先前快照保留，核驗狀態見來源收據」，增加實際健康 producer→issue contract→呈現的損壞組合測試。原 review2 結果保留作歷史；此次不改 fingerprint、告警／恢復門禁、來源時間或任何供應商行為。正式發布仍須最終版本完整驗收。

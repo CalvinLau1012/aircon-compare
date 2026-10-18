@@ -1327,3 +1327,7 @@ A pending stage5/remote-not-completed receive lost the previously served stage4 
 
 ### 2026-10-18 Root source-time acceptance correction
 Root found the prior-metadata helper could infer an actual hash from metadata, accept missing snapshot IDs/partial receipts, and recover from shallow history. It now requires actual file hash, complete versioned receipt, nonempty snapshot ID, and full local history; report generation time cannot become acquisition. Private runner integration must pass prior metadata in both build calls. No live/provider mutation in these changes.
+
+
+## 2026-10-19 Root Stage1 收據反例更正（追加）
+Root 在 review2 的 26 項既有反例通過後，額外重現：保留快照的 safeReason 可與 sourceStatusHash／BigGo hash 損壞同時出現，不能單憑原因碼聲稱快照已驗證。監控呈現改為「先前快照保留，核驗狀態見來源收據」，增加實際健康 producer→issue contract→呈現的損壞組合測試。原 review2 結果保留作歷史；此次不改 fingerprint、告警／恢復門禁、來源時間或任何供應商行為。正式發布仍須最終版本完整驗收。
