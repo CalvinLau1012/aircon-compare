@@ -1,16 +1,16 @@
 {
   "schemaVersion": "1.0.0",
   "version": "1.2.9",
-  "build": "B20261018.166.1",
-  "commit": "217124538f69999897902c6b8f8a275349afadba",
-  "deployTime": "2026-10-18T20:33:47Z",
-  "workflowRunId": "39163639119",
+  "build": "B20261019.167.1",
+  "commit": "5a4677cd88d48e1555967b734d30fcc3f018ddfc",
+  "deployTime": "2026-10-19T00:25:23Z",
+  "workflowRunId": "39180156837",
   "deploymentType": "release",
-  "datasetDate": "2026-10-18",
+  "datasetDate": "2026-10-19",
   "datasetDateBasis": "retrieval-date-fallback",
-  "datasetRetrievedAt": "2026-10-18T12:43:38Z",
+  "datasetRetrievedAt": "2026-10-19T00:22:43Z",
   "datasetSourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-  "datasetSnapshotId": "emsd-2026-10-18-7e132c45ed00",
+  "datasetSnapshotId": "emsd-2026-10-19-7e132c45ed00",
   "datasetHash": "sha256:dcbe0ca2d4e9e25f7f62b6fcff54afd40d280cb7679e77a660b67e132c45ed00",
   "recordCount": 1721,
   "rawRecordCount": 1782,
@@ -18,45 +18,47 @@
   "modelCount": 1721,
   "sourceStatus": {
     "biggo": {
+      "cycleId": "2026-10-10:5/7",
       "lastAcquiredAt": "2026-10-17T16:38:58Z",
       "lastAppliedAt": "2026-10-18T06:12:23Z",
       "lastAppliedDate": "2026-10-18",
-      "lastAttemptAt": null,
+      "lastAttemptAt": "2026-10-19T00:25:21Z",
       "safeReason": "completed-sync-remote-not-completed",
       "snapshotHash": "sha256:533af741ead964d5a8aa8e12f81231db4fa8b0de262ee7484db7ceeb46fb5e8d",
       "snapshotId": "biggo-2026-10-10:4/7-stage4-ceeb46fb5e8d",
+      "stage": 5,
       "status": "pending"
     },
     "emsd": {
-      "lastAcquiredAt": "2026-10-18T12:43:38Z",
+      "lastAcquiredAt": "2026-10-19T00:22:43Z",
       "lastAppliedAt": null,
       "lastAppliedDate": null,
-      "lastAttemptAt": "2026-10-18T12:43:38Z",
+      "lastAttemptAt": "2026-10-19T00:22:43Z",
       "safeReason": "acquired",
       "snapshotHash": "sha256:dcbe0ca2d4e9e25f7f62b6fcff54afd40d280cb7679e77a660b67e132c45ed00",
-      "snapshotId": "emsd-2026-10-18-7e132c45ed00",
+      "snapshotId": "emsd-2026-10-19-7e132c45ed00",
       "status": "ok"
     },
-    "generatedAt": "2026-10-18T20:33:46Z",
+    "generatedAt": "2026-10-19T00:25:22Z",
     "official": {
       "lastAcquiredAt": null,
       "lastAppliedAt": null,
       "lastAppliedDate": null,
-      "lastAttemptAt": "2026-10-18T12:46:11Z",
+      "lastAttemptAt": "2026-10-19T00:25:17Z",
       "safeReason": "sources-degraded",
       "snapshotHash": null,
       "snapshotId": null,
       "status": "degraded"
     },
     "publish": {
-      "build": "B20261018.166.1",
-      "commit": "217124538f69999897902c6b8f8a275349afadba",
+      "build": "B20261019.167.1",
+      "commit": "5a4677cd88d48e1555967b734d30fcc3f018ddfc",
       "deployedAt": null,
       "deploymentReceipt": null,
-      "packagedAt": "2026-10-18T20:33:47Z",
+      "packagedAt": "2026-10-19T00:25:23Z",
       "releasePayloadHash": null
     },
     "schemaVersion": 1
   },
-  "releasePayloadHash": "sha256:692cb27ff4dfde3f1791c1d46eae908eba24807ea3b04eb1c7ba77fa8e10ffdf"
+  "releasePayloadHash": "sha256:dbfbadf3923b5b64488661b65337540c17d704b6a9e4472cce01b34e6eab2021"
 }
