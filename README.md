@@ -848,3 +848,8 @@ Existing BigGo status identity is now compared to the current run/head/event, no
 - target-scoped `selectedOutputs` 由 receipt 的 `sourceRouting`/supported route profile 驗證；publisher 與 health 使用同一 MECAN/Gilman allowed output 映射，不再一層接受跨 stage 任意檔。
 - 新增 Gilman 官方代理 catalogue route（GREE/MHI）；官方 raw 目錄已遍歷 GREE 7 頁/82 products、MHI 2 頁/22 products，首輪沒有 exact targets，仍保留 pending，不將 catalogue page 當產品規格完成。
 - 私人 missing8 只作本端 evidence 核對；不以 public queue 差集宣稱完成。
+
+
+### 2026-10-20 Root R4 route acceptance supplement（追加）
+
+Root found that the target-scoped legacy route still excluded verified RC-HU / RC-H / RC-S / RC-V and CF- product families. The route now keeps those existing official adapters reachable; five concrete regression cases cover these families. This does not count an adapter attempt as model coverage, change the full-stage mode, or clear unresolved official targets. Earlier R4 evidence is retained and does not describe this later supplement as already deployed.
