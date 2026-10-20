@@ -292,8 +292,10 @@ jobs:
           SYNC_RUN_ID: ${{ github.run_id }}
           SYNC_HEAD_SHA: ${{ github.sha }}
           SYNC_EVENT: ${{ github.event_name }}
+          SYNC_OUTCOME: ${{ steps.completed_sync.outcome }}
+          SYNC_JOB_STATUS: ${{ job.status }}
         run: |
-          python scripts/augment_sync_report.py             --report "$RUNNER_TEMP/biggo_completed_sync.json"             --run-id "$SYNC_RUN_ID" --head "$SYNC_HEAD_SHA" --event "$SYNC_EVENT"
+          python scripts/augment_sync_report.py             --report "$RUNNER_TEMP/biggo_completed_sync.json"             --run-id "$SYNC_RUN_ID" --head "$SYNC_HEAD_SHA" --event "$SYNC_EVENT"             --upstream-outcome "$SYNC_OUTCOME" --job-status "$SYNC_JOB_STATUS"             --allow-upstream-fallback
 
       - name: 上載 completed sync machine report（always）
         if: always()
@@ -454,6 +456,27 @@ jobs:
             exit "$rc"
           fi
 
+      - name: BigGo 上游／provider 失敗 receipt（只反映未執行或未知，不假稱 provider）
+        id: biggo_failure_receipt
+        if: >
+          always() &&
+          (steps.biggo_stage.outcome == 'skipped' || steps.biggo_stage.outcome == 'failure') &&
+          failure()
+        env:
+          BIGGO_STEP_OUTCOME: ${{ steps.biggo_stage.outcome }}
+          BIGGO_JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ "$BIGGO_STEP_OUTCOME" = "skipped" ]; then
+            kind=upstream-skipped
+            if [ "$BIGGO_JOB_STATUS" != "failure" ]; then
+              echo "::warning::BigGo skipped without upstream failure; no fallback receipt"
+              exit 0
+            fi
+          else
+            kind=provider-phase-unknown
+          fi
+          python scripts/make_biggo_failure_status.py             --out "$RUNNER_TEMP/biggo-stage-status.json" --kind "$kind"             --run-id "$GITHUB_RUN_ID" --head "$GITHUB_SHA" --event "$GITHUB_EVENT_NAME"
+
       # P0：未確認（completed 前）的 BigGo canonical 四檔 diff 唔可以 push。
       - name: BigGo canonical 檔推送守門（未確認價格阻斷）
         if: steps.biggo_stage.outcome == 'success'
@@ -464,7 +487,7 @@ jobs:
 
       - name: 建立 provider-skip status（repair/rebuild；零 provider／零 lease）
         if: >
-          always() && github.event_name == 'workflow_dispatch' &&
+          github.event_name == 'workflow_dispatch' &&
           (github.event.inputs.repair_release == 'true' ||
            github.event.inputs.rebuild_verified_snapshot == 'true')
         env:
@@ -478,6 +501,7 @@ jobs:
       - name: 上載 BigGo stage status（審計；always）
         if: >
           always() && (steps.biggo_stage.outcome != 'skipped' ||
+          steps.biggo_failure_receipt.outcome == 'success' ||
           (github.event_name == 'workflow_dispatch' &&
            (github.event.inputs.repair_release == 'true' ||
             github.event.inputs.rebuild_verified_snapshot == 'true')))

@@ -205,7 +205,7 @@ def _full_repo(tmp_path):
     return tmp_path, status, dep, meta, official
 
 
-def test_summary_to_public_consumer_chain_and_tamper(tmp_path):
+def test_summary_to_public_consumer_chain_and_tamper(tmp_path, monkeypatch):
     import importlib.util
     repo, status, dep, meta, official = _full_repo(tmp_path)
     summary = repo / 'source_health_summary.json'; report = repo / 'source_health_report.json'
@@ -223,6 +223,13 @@ def test_summary_to_public_consumer_chain_and_tamper(tmp_path):
     spec = importlib.util.spec_from_file_location(
         'health_client_chain', os.path.join(BASE, 'scripts', 'check_health_summary.py'))
     client = importlib.util.module_from_spec(spec); spec.loader.exec_module(client)
+    fixed_now = dt.datetime(2026, 10, 17, 4, 0, tzinfo=dt.timezone.utc)
+    real_evaluate = client.evaluate
+    # The producer CLI is pinned with --now; the consumer must use the same
+    # explicit fixture clock rather than wall time.  Keep production defaults
+    # and max_age_hours unchanged.
+    monkeypatch.setattr(client, 'evaluate',
+                        lambda summary, **kw: real_evaluate(summary, now=fixed_now, **kw))
     out = repo / 'client-report.json'
     assert client.main(['--file', str(summary), '--metadata', str(repo / 'metadata.json'),
                         '--report', str(out)]) == 0
@@ -384,3 +391,35 @@ def test_official_manifest_actual_byte_negative_matrix(tmp_path):
     for name, result, needle in cases:
         assert result['ok'] is False, (name, result)
         assert any(needle in e for e in result['failures']), (name, result['failures'])
+
+
+def test_health_summary_48h_boundary_future_and_multi_year_are_explicit():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        'health_client_clock', os.path.join(BASE, 'scripts', 'check_health_summary.py'))
+    client = importlib.util.module_from_spec(spec); spec.loader.exec_module(client)
+    sha = 'sha256:' + 'a' * 64
+    summary = {'schemaVersion': 1, 'kind': 'aircon-source-health-summary',
+               'checkedAt': '2026-10-17T04:00:00Z',
+               'sourceStatusGeneratedAt': '2026-10-17T03:59:00Z',
+               'ok': True, 'status': 'healthy', 'failures': [],
+               'sourceStatusHash': sha, 'releasePayloadHash': sha,
+               'emsdSnapshotHash': sha, 'biggoSnapshotHash': sha,
+               'officialSnapshotHash': sha, 'officialManifestHash': sha,
+               'build': 'B1', 'deploymentReceipt': 'r1',
+               'sources': {n: {'status': 'ok', 'snapshotHash': sha}
+                           for n in ('emsd', 'biggo', 'official')}}
+    exactly = dt.datetime(2026, 10, 19, 4, 0, tzinfo=dt.timezone.utc)
+    assert client.evaluate(summary, now=exactly)['ok'] is True
+    just_over = exactly + dt.timedelta(seconds=1)
+    r = client.evaluate(summary, now=just_over)
+    assert r['ok'] is False and 'summary:checkedAt-stale' in r['failures']
+    future = dt.datetime(2026, 10, 17, 3, 54, tzinfo=dt.timezone.utc)
+    r = client.evaluate(summary, now=future)
+    assert r['ok'] is False and 'summary:checkedAt-future' in r['failures']
+    years = dt.datetime(2031, 10, 19, 4, 0, tzinfo=dt.timezone.utc)
+    r = client.evaluate(summary, now=years)
+    assert r['ok'] is False and 'summary:checkedAt-stale' in r['failures']
+    tampered = dict(summary, sourceStatusHash='bad')
+    r = client.evaluate(tampered, now=exactly)
+    assert r['ok'] is False and 'summary:sourceStatusHash-invalid' in r['failures']

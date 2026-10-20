@@ -29,7 +29,8 @@ ALERT_STATUSES = {'needs-review', 'blocked-intent-persist', 'completed-apply-fai
                   'completed-legacy-manual', 'completed-bundle-unavailable',
                   'blocked-incomplete', 'blocked-diagnostic-pending',
                   'blocked-quota-window-unsupported',
-                  'blocked-stage-gap', 'blocked-force-cycle-incomplete', 'blocked-stale'}
+                  'blocked-stage-gap', 'blocked-force-cycle-incomplete', 'blocked-stale',
+                  'blocked-upstream', 'blocked-provider-unknown'}
 LEGAL_SKIP_MODES = {'repair_release', 'rebuild_verified_snapshot'}
 
 
@@ -139,6 +140,14 @@ def run_alert(status_path, expected_run_id=None, expected_head=None):
         return 0
     if status.get('status') == 'skipped-no-provider':
         print(f'::error::BigGo provider-skip receipt invalid：{why}')
+        return 1
+    if status.get('status') == 'blocked-upstream':
+        print('::error::BigGo provider phase was not started because an upstream workflow step failed; '
+              'requests=0, lease=false, providerPhaseEntered=false; this is not a provider 429')
+        return 1
+    if status.get('status') == 'blocked-provider-unknown':
+        print('::error::BigGo provider phase outcome is UNKNOWN (status missing/invalid); '
+              'cannot claim zero requests or success')
         return 1
     if status.get('alert') is True or status.get('status') in ALERT_STATUSES:
         print(f"::error::BigGo 需要人手覆核：status={status.get('status')} "
