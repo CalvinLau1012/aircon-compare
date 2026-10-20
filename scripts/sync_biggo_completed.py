@@ -277,6 +277,7 @@ def verify_local_post(bundle, meta, root, repair=None):
             'sourceRunId': marker['sourceRunId'],
             'sourceHead': marker['sourceHead'],
             'artifactSha256': marker['artifactSha256'],
+            'recoveryTimeEvidence': dict(marker),
         })
     return result
 

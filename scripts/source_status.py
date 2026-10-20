@@ -395,6 +395,13 @@ def _recovery_unknown_receiver(receiver):
         return False
     if not _is_sha(receiver.get('recoveryTimeEvidenceHash')):
         return False
+    evidence = receiver.get('recoveryTimeEvidence')
+    if not isinstance(evidence, dict):
+        return False
+    raw = json.dumps(evidence, ensure_ascii=False, sort_keys=True,
+                     separators=(',', ':')).encode('utf-8')
+    if receiver.get('recoveryTimeEvidenceHash') != 'sha256:' + hashlib.sha256(raw).hexdigest():
+        return False
     if receiver.get('sourceCompletionBound') != '2026-10-20T07:19:53Z' \
             or receiver.get('logWindowStart') != '2026-10-20T07:13:40Z':
         return False
