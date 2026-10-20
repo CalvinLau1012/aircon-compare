@@ -114,8 +114,8 @@ def _rehash(bundle):
 
 
 @pytest.mark.parametrize('publication,applied_at', [
-    ('2026-10-20T08:10:00Z', '2026-10-20T08:30:00Z'),
-    ('2026-10-20T08:20:00Z', '2026-10-20T08:40:00Z'),
+    ('2026-10-20T07:50:00Z', '2026-10-20T08:00:00Z'),
+    ('2026-10-20T07:55:00Z', '2026-10-20T08:05:00Z'),
 ])
 def test_two_publication_intents_preserve_unknown_acquisition(tmp_path, publication, applied_at):
     packet = _packet(publication)
@@ -145,28 +145,28 @@ def test_two_publication_intents_preserve_unknown_acquisition(tmp_path, publicat
 
 
 def test_second_intent_keeps_price_effects_and_source_bound_identical(tmp_path):
-    first = _packet('2026-10-20T08:10:00Z')
-    second = _packet('2026-10-20T08:20:00Z')
+    first = _packet('2026-10-20T07:50:00Z')
+    second = _packet('2026-10-20T07:55:00Z')
     assert first['newSnapshot'] == second['newSnapshot']
     assert first['stageResult'] == second['stageResult']
     assert first['manifest']['recoveryTimeEvidence'] == second['manifest']['recoveryTimeEvidence']
     assert first['bundleHash'] != second['bundleHash']
     r1 = _root(tmp_path / 'one')
     r2 = _root(tmp_path / 'two')
-    _, m1, v1, _ = _apply(first, r1, '2026-10-20T08:30:00Z')
-    _, m2, v2, _ = _apply(second, r2, '2026-10-20T08:40:00Z')
+    _, m1, v1, _ = _apply(first, r1, '2026-10-20T08:00:00Z')
+    _, m2, v2, _ = _apply(second, r2, '2026-10-20T08:05:00Z')
     assert v1['acquiredAt'] is None and v2['acquiredAt'] is None
     assert m1['appliedSnapshotHash'] == m2['appliedSnapshotHash']
     assert m1['appliedBundleHash'] != m2['appliedBundleHash']
 
 
 def test_repeat_receive_is_noop_and_unknown_time_stays_unknown(tmp_path):
-    packet = _packet('2026-10-20T08:10:00Z')
+    packet = _packet('2026-10-20T07:50:00Z')
     root = _root(tmp_path)
-    bundle, meta, verified, result = _apply(packet, root, '2026-10-20T08:30:00Z')
+    bundle, meta, verified, result = _apply(packet, root, '2026-10-20T08:00:00Z')
     assert result['noop'] is False
     again = apply_mod.apply_bundle(bundle, repo_root=str(root),
-                                   applied_at='2026-10-20T09:00:00Z')
+                                   applied_at='2026-10-20T08:05:00Z')
     assert again['noop'] is True
     meta2 = json.loads((root / 'prices_meta.json').read_text())
     assert meta2 == meta
@@ -174,7 +174,7 @@ def test_repeat_receive_is_noop_and_unknown_time_stays_unknown(tmp_path):
     assert verified2['acquiredAt'] is None
     status = _status(meta2, verified2, prior_metadata=_old_prior(meta2))
     assert status['biggo']['lastAcquiredAt'] is None
-    assert status['biggo']['lastAppliedAt'] == '2026-10-20T08:30:00Z'
+    assert status['biggo']['lastAppliedAt'] == '2026-10-20T08:00:00Z'
     assert status['biggo']['timeProvenance'] == 'unknown'
 
 
@@ -183,7 +183,7 @@ def test_pending_and_tampered_recovery_evidence_is_rejected(tmp_path):
     with pytest.raises((apply_mod.ApplyError, sync_biggo_completed.SyncError)):
         sync_biggo_completed.verify_local_post(_bundle(pending), {}, str(tmp_path))
 
-    final = _packet('2026-10-20T08:10:00Z')
+    final = _packet('2026-10-20T07:50:00Z')
 
     missing = copy.deepcopy(_bundle(final))
     del missing['manifest']['recoveryTimeEvidence']
@@ -215,9 +215,9 @@ def test_pending_and_tampered_recovery_evidence_is_rejected(tmp_path):
             sync_biggo_completed.verify_local_post(broken, {}, str(tmp_path))
 
 def test_unverified_unknown_marker_does_not_clear_trusted_prior_time(tmp_path):
-    packet = _packet('2026-10-20T08:10:00Z')
+    packet = _packet('2026-10-20T07:50:00Z')
     root = _root(tmp_path)
-    bundle, meta, verified, _ = _apply(packet, root, '2026-10-20T08:30:00Z')
+    bundle, meta, verified, _ = _apply(packet, root, '2026-10-20T08:00:00Z')
     loose = dict(verified)
     loose.update({'acquiredAt': None, 'acquiredAtProvenance': 'unknown',
                   'recoveryTimeEvidenceHash': None})
