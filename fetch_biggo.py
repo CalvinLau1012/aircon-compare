@@ -548,27 +548,64 @@ def _key_of(model, brand_lookup):
     return canonical_model_key(brand_lookup.get(norm_model(model)) or 'UNKNOWN', model)
 
 
-def _merge_outcomes(got, clean_miss, net_err, revived, results, brand_lookup):
-    """組合 outcome ledger（priced／clean_miss／net_error）；每個 model 最多一次。"""
+def _merge_outcomes(got, clean_miss, net_err, revived, results, brand_lookup,
+                   review_evidence=None):
+    """Build the exact outcome ledger; revived canonical keys resolve to raw models.
+
+    Revived checks use canonical ``BRAND|MODEL`` keys while results/snapshot use
+    raw model names.  Resolve only through the exact revived review evidence and
+    canonical brand; missing/ambiguous/colliding evidence fails closed.
+    """
     out = []
     seen = set()
-    for m in list(got) + [m for m in revived if m in results]:
+    evidence = review_evidence if isinstance(review_evidence, list) else []
+    revived_specs = []
+    for key in revived:
+        if not isinstance(key, str) or '|' not in key:
+            raise ValueError('revived key must be canonical BRAND|MODEL')
+        brand, model = key.split('|', 1)
+        if not brand or not model:
+            raise ValueError('revived canonical key is incomplete')
+        matches = [e for e in evidence if isinstance(e, dict)
+                   and e.get('key') == key and e.get('result') == 'revived']
+        if len(matches) != 1:
+            raise ValueError('revived evidence is missing or ambiguous')
+        ev = matches[0]
+        canonical_from_lookup = _key_of(model, brand_lookup)
+        if ev.get('model') != model or (
+                canonical_from_lookup != key
+                and not canonical_from_lookup.startswith('UNKNOWN|')):
+            raise ValueError('revived canonical brand/model mismatch')
+        if model not in results or not isinstance(results.get(model), dict):
+            raise ValueError('revived price is missing')
+        price = results[model]
+        if ev.get('price') != price:
+            raise ValueError('revived evidence price mismatch')
+        if model in seen:
+            raise ValueError('revived model collides with another outcome')
+        seen.add(model)
+        revived_specs.append((model, key, price))
+    for m in got:
         if m in seen:
-            continue
+            raise ValueError('duplicate priced outcome')
         seen.add(m)
         entry = results.get(m)
-        if entry is not None:
-            out.append({'model': m, 'canonicalKey': _key_of(m, brand_lookup),
-                        'outcome': 'priced', 'price': entry})
+        if entry is None:
+            raise ValueError('priced outcome missing result')
+        out.append({'model': m, 'canonicalKey': _key_of(m, brand_lookup),
+                    'outcome': 'priced', 'price': entry})
+    for model, key, price in revived_specs:
+        out.append({'model': model, 'canonicalKey': key,
+                    'outcome': 'priced', 'price': price})
     for m in clean_miss:
         if m in seen:
-            continue
+            raise ValueError('duplicate clean_miss outcome')
         seen.add(m)
         out.append({'model': m, 'canonicalKey': _key_of(m, brand_lookup),
                     'outcome': 'clean_miss'})
     for m in net_err:
         if m in seen:
-            continue
+            raise ValueError('duplicate net_error outcome')
         seen.add(m)
         out.append({'model': m, 'canonicalKey': _key_of(m, brand_lookup),
                     'outcome': 'net_error'})
@@ -593,20 +630,22 @@ def _completed_payload(*, idx, base, results, got, clean_miss, net_err, revived,
                        review_evidence, pre_tracking, pre_black, post_tracking,
                        post_black, brand_lookup):
     effects = compute_effects(pre_tracking, pre_black, post_tracking, post_black)
+    outcomes = _merge_outcomes(got, clean_miss, net_err, revived, results,
+                               brand_lookup, review_evidence)
     return {
         'status': 'completed',
         'idx': idx,
         'baseSnapshot': base,
         'snapshot': results,
-        'outcomes': _merge_outcomes(got, clean_miss, net_err, revived, results, brand_lookup),
-        'counters': {'got': len(got) + len(revived),
-                     'cleanMiss': len(clean_miss), 'netErrors': len(net_err)},
+        'outcomes': outcomes,
+        'counters': {'got': sum(1 for o in outcomes if o['outcome'] == 'priced'),
+                     'cleanMiss': sum(1 for o in outcomes if o['outcome'] == 'clean_miss'),
+                     'netErrors': sum(1 for o in outcomes if o['outcome'] == 'net_error')},
         'blacklistReview': {'quotaIndex': idx, 'reviewed': review_evidence},
         'preState': _state_hashes(pre_tracking, pre_black),
         'postState': _state_hashes(post_tracking, post_black),
         'effects': effects,
     }
-
 
 def blacklist_review_slice(idx, blacklist=None):
     """黑名單復核 quota 切片（同 workload／cap 計數共用同一定義）。"""

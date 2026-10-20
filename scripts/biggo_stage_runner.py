@@ -328,8 +328,13 @@ def _write_status(status_out, record):
         pass
 
 
-def _write_review_evidence(status_out, staged):
-    """needs_review 時保留 staged snapshot（公開價格資料、無 secrets）。"""
+def _write_review_evidence(status_out, staged, stage_result=None):
+    """Persist a whitelisted, reconstructable staged packet (no secrets).
+
+    The legacy top-level keys remain for existing consumers; new fields make the
+    base/new snapshot, review, effects, pre/post images and stage result
+    recoverable.  Arbitrary staged keys (including credentials) are ignored.
+    """
     if not status_out or not isinstance(staged, dict):
         return
     try:
@@ -337,14 +342,28 @@ def _write_review_evidence(status_out, staged):
         out_dir = os.path.join(base_dir, 'biggo-review')
         os.makedirs(out_dir, exist_ok=True)
         payload = {
+            'schemaVersion': 2,
+            'kind': 'aircon-biggo-review-stage-snapshot',
             'status': staged.get('status'),
+            'idx': staged.get('idx'),
+            'baseSnapshot': staged.get('baseSnapshot'),
             'snapshot': staged.get('snapshot'),
             'outcomes': staged.get('outcomes'),
             'counters': staged.get('counters'),
+            'blacklistReview': staged.get('blacklistReview'),
+            'effects': staged.get('effects'),
+            'preState': staged.get('preState'),
+            'postState': staged.get('postState'),
+            'metaFields': staged.get('metaFields'),
+            'manifestFields': staged.get('manifestFields'),
         }
+        if stage_result is not None:
+            payload['stageResult'] = stage_result
+            payload['stageResultHash'] = sha256_id(canonical_json_bytes(stage_result))
         tmp = os.path.join(out_dir, 'stage-snapshot.json.tmp')
         with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
-            json.dump(payload, f, ensure_ascii=False)
+            json.dump(payload, f, ensure_ascii=False, sort_keys=True, indent=2)
+            f.flush(); os.fsync(f.fileno())
         os.replace(tmp, os.path.join(out_dir, 'stage-snapshot.json'))
     except OSError:
         pass
@@ -748,6 +767,8 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
                 'commit': env.get('GITHUB_SHA') or env.get('AIRCON_COMMIT') or 'unknown',
                 'publishedAt': coord_mod.utc_stamp(now_fn()),
             }
+            # Persist the complete safe packet before the first immutable PUT.
+            _write_review_evidence(status_out, batch_result, stage_result=stage_result)
             try:
                 published = client.publish_bundle(
                     batch_result['baseSnapshot'], batch_result['snapshot'],
