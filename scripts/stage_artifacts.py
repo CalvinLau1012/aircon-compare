@@ -30,7 +30,7 @@ RUNTIME_STATE = {
     'emsd_空調能源標籤.csv', 'emsd_receipt.json', 'emsd_raw_receipt.json',
     'metadata.json', 'new_models.json', 'update_queue.json',
     'official_specs.json', 'shew_official.json', 'rasonic_official.json',
-    'carrier_official.json', 'general_official.json', 'specs.json', 'mecan_official.json',
+    'carrier_official.json', 'general_official.json', 'specs.json', 'mecan_official.json', 'gilman_official.json',
     'official_batch_status.json', 'biggo_completed_sync.json',
     'biggo_prices.json', 'prices.json', 'prices_meta.json', 'gemini_prices.json',
     'model_blacklist.json', 'model_status.json',

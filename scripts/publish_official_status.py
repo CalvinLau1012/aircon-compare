@@ -27,7 +27,9 @@ EXPECTED_OUTPUTS = {
     2: ('carrier_official.json', 'general_official.json', 'specs.json'),
 }
 SHA_RE = __import__('re').compile(r'^sha256:[0-9a-f]{64}$')
-ALL_OUTPUTS = frozenset(set().union(*EXPECTED_OUTPUTS.values()) | {'mecan_official.json'})
+ALL_OUTPUTS = frozenset(set().union(*EXPECTED_OUTPUTS.values()) | {'mecan_official.json', 'gilman_official.json'})
+SOURCE_OUTPUTS = {'fetch_mecan.py': 'mecan_official.json',
+                  'fetch_gilman.py': 'gilman_official.json'}
 
 
 def _sha(value):
@@ -51,6 +53,21 @@ def _valid_time(value):
     return dt.tzinfo is not None and dt.utcoffset() == _dt.timedelta(0)
 
 
+
+def _selected_outputs_from_routes(receipt):
+    routing = receipt.get('sourceRouting')
+    if not isinstance(routing, dict) or not routing:
+        return None
+    expected = set()
+    for route in routing.values():
+        if not isinstance(route, dict) or route.get('supported') is not True:
+            continue
+        source = route.get('source')
+        if source in SOURCE_OUTPUTS:
+            expected.add(SOURCE_OUTPUTS[source])
+    return expected
+
+
 def _manifest_errors(receipt):
     errors = []
     stage = receipt.get('stage')
@@ -68,6 +85,9 @@ def _manifest_errors(receipt):
                 or len(selected) != len(set(selected)) \
                 or any(x not in ALL_OUTPUTS for x in selected):
             return errors + ['target-scoped selectedOutputs 唔合法']
+        route_expected = _selected_outputs_from_routes(receipt)
+        if route_expected is None or set(selected) != route_expected:
+            return errors + ['target-scoped selectedOutputs 同可信 route/profile 唔一致']
         expected = set(selected)
     else:
         expected = set(EXPECTED_OUTPUTS[stage])
@@ -159,7 +179,13 @@ def main(argv=None):
                   + '；'.join(manifest_errors), file=sys.stderr)
             return 1
         snapshot_hash = receipt['outputManifest']['manifestHash']
-        last_success = receipt['finishedAt']
+        if receipt.get('targetScoped') is True:
+            # A cache replay must retain the real official acquisition time; the
+            # batch finish time is not an acquisition witness.
+            source_time = receipt.get('sourceAcquiredAt')
+            last_success = source_time if _valid_time(source_time) else None
+        else:
+            last_success = receipt['finishedAt']
         snapshot_id = 'official-' + str(receipt['stage']) + '-' + snapshot_hash[-12:]
         output_manifest = receipt['outputManifest']
     else:

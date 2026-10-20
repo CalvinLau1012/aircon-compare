@@ -1,0 +1,107 @@
+{
+ "_catalog": {
+  "schemaVersion": 1,
+  "kind": "gilman-official-catalogue-scan",
+  "brands": {
+   "GREE": {
+    "source": "GILMAN GROUP official agent catalogue",
+    "url": "https://www.gilman-group.com/zh-hk/brand/%E6%A0%BC%E5%8A%9B",
+    "pages": [
+     {
+      "page": 1,
+      "url": "https://www.gilman-group.com/zh-hk/brand/%E6%A0%BC%E5%8A%9B",
+      "fetchedAt": "2026-10-20T11:20:46Z",
+      "rawSha256": "ea19123929ac8cd155196033586ee77c6eeff41c79abddf1623fa02897eea18c",
+      "bytes": 4408023,
+      "targetsFound": []
+     },
+     {
+      "page": 2,
+      "url": "https://www.gilman-group.com/zh-hk/brand/%E6%A0%BC%E5%8A%9B?page=2",
+      "fetchedAt": "2026-10-20T11:20:46Z",
+      "rawSha256": "2aa805e69ff119d4070db564eb0bf9be95999f6689591227bb7feac6cf9348c7",
+      "bytes": 4437775,
+      "targetsFound": []
+     },
+     {
+      "page": 3,
+      "url": "https://www.gilman-group.com/zh-hk/brand/%E6%A0%BC%E5%8A%9B?page=3",
+      "fetchedAt": "2026-10-20T11:20:46Z",
+      "rawSha256": "173cde2f96a8c36b970c4a61ca3531f7be5846f6d1226fa6b58da4c3980fc43d",
+      "bytes": 4401214,
+      "targetsFound": []
+     },
+     {
+      "page": 4,
+      "url": "https://www.gilman-group.com/zh-hk/brand/%E6%A0%BC%E5%8A%9B?page=4",
+      "fetchedAt": "2026-10-20T11:20:46Z",
+      "rawSha256": "940d78749ba0c508063b2d4cbd7c1fa639c63d630ac40eebf5cf282a90ab0f8b",
+      "bytes": 4408084,
+      "targetsFound": []
+     },
+     {
+      "page": 5,
+      "url": "https://www.gilman-group.com/zh-hk/brand/%E6%A0%BC%E5%8A%9B?page=5",
+      "fetchedAt": "2026-10-20T11:20:46Z",
+      "rawSha256": "263db9c038e767fc824a6e2793ef0ab4ca22c6985c89c829cac45ccef96d6839",
+      "bytes": 4372938,
+      "targetsFound": []
+     },
+     {
+      "page": 6,
+      "url": "https://www.gilman-group.com/zh-hk/brand/%E6%A0%BC%E5%8A%9B?page=6",
+      "fetchedAt": "2026-10-20T11:20:47Z",
+      "rawSha256": "c6e19ff042c324edaf0b3e07d1200aaa593d76eb157af671702790de03d5190c",
+      "bytes": 4379727,
+      "targetsFound": []
+     },
+     {
+      "page": 7,
+      "url": "https://www.gilman-group.com/zh-hk/brand/%E6%A0%BC%E5%8A%9B?page=7",
+      "fetchedAt": "2026-10-20T11:20:47Z",
+      "rawSha256": "f97a8a03731ca2683b7587b4578b35a46af58c2796bc8519a46150eb84f8fdd9",
+      "bytes": 4368400,
+      "targetsFound": []
+     }
+    ],
+    "targets": [
+     "GEH63ZE/GEH63ZC",
+     "GWT07ES",
+     "GWT09ES",
+     "GWT12ES"
+    ]
+   },
+   "MITSUBISHIHEAVY": {
+    "source": "GILMAN GROUP official agent catalogue",
+    "url": "https://www.gilman-group.com/zh-hk/brand/%E4%B8%89%E8%8F%B1%E9%87%8D%E5%B7%A5",
+    "pages": [
+     {
+      "page": 1,
+      "url": "https://www.gilman-group.com/zh-hk/brand/%E4%B8%89%E8%8F%B1%E9%87%8D%E5%B7%A5",
+      "fetchedAt": "2026-10-20T11:20:46Z",
+      "rawSha256": "a793f6fb68ba652d7a665ac444d56c8dad2f08282b3b4046c665ef47eae88b1f",
+      "bytes": 4409277,
+      "targetsFound": []
+     },
+     {
+      "page": 2,
+      "url": "https://www.gilman-group.com/zh-hk/brand/%E4%B8%89%E8%8F%B1%E9%87%8D%E5%B7%A5?page=2",
+      "fetchedAt": "2026-10-20T11:20:46Z",
+      "rawSha256": "c7721ebee0327013317557ddf93949447b9ff5cb9c1ae735111b912525ff6ebf",
+      "bytes": 4348422,
+      "targetsFound": []
+     }
+    ],
+    "targets": [
+     "WRK07MIZH1",
+     "WRK09MIZH1",
+     "WRK18MIZH1"
+    ]
+   }
+  },
+  "targetsFound": [],
+  "completedTargets": [],
+  "status": "no-exact-target-found",
+  "reason": "targets require a separately verified product detail page"
+ }
+}

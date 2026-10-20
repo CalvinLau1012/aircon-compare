@@ -840,3 +840,11 @@ Existing BigGo status identity is now compared to the current run/head/event, no
 - 官網 batch 的 target-scoped receipt 現攜帶 `selectedOutputs`；publisher/health 只接受 receipt 所列、已 promote 且在允許集合內的 outputs，不接受任意 remote 文件或空 manifest。pending coverage 不宣稱新 snapshot。
 - 加入 active price-cycle 保留測試：stage2 advance 在 2026-10 已啟動 cycle／idx 5 時只清 queue，不重寫 `prices_meta`，不觸發 provider。
 - 未改 BigGo 四檔、coordinator/lease/budget/cooldown/grant 或正式 runtime；本輪沒有 BigGo 呼叫。
+
+## 2026-10-20 官網 coverage R3（append-only；更正 R2 過度聲稱）
+
+- R2 的 `alreadyVerified` 不能只因 `rawSha256` 是 64 hex 就成立；R3 新增 cache 核實：exact model、官方 URL/host、非未來 `fetchedAt`、required fields 與 `sourceEvidence.fields`/entry 一致。證據不足會重新抓取，離線失敗則明確 integrity/transport failure，不獲 covers。
+- R2 曾把 cache replay 的 batch `finishedAt` 當 lastSuccess；R3 由 `fetch_mecan` receipt 的 `sourceAcquiredAt`（actual source fetch time，最新可信值）沿 batch→publisher→source_status 傳遞。沒有可信原時時不再用 now/finishedAt 冒充；純 cache 不刷新 acquisition。
+- target-scoped `selectedOutputs` 由 receipt 的 `sourceRouting`/supported route profile 驗證；publisher 與 health 使用同一 MECAN/Gilman allowed output 映射，不再一層接受跨 stage 任意檔。
+- 新增 Gilman 官方代理 catalogue route（GREE/MHI）；官方 raw 目錄已遍歷 GREE 7 頁/82 products、MHI 2 頁/22 products，首輪沒有 exact targets，仍保留 pending，不將 catalogue page 當產品規格完成。
+- 私人 missing8 只作本端 evidence 核對；不以 public queue 差集宣稱完成。

@@ -91,7 +91,7 @@ def _official_manifest_errors(official_doc, official, repo):
     if official_doc.get('stage') != stage:
         errors.append('official:status-stage-mismatch')
     files = manifest.get('files')
-    allowed = set(OFFICIAL_OUTPUTS[stage]) | {'mecan_official.json'}
+    allowed = set(OFFICIAL_OUTPUTS[stage]) | {'mecan_official.json', 'gilman_official.json'}
     selected = official_doc.get('selectedOutputs')
     if selected is not None:
         if not isinstance(selected, list) or not selected \

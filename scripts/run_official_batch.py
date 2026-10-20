@@ -49,7 +49,8 @@ STAGES = {
     },
 }
 RECEIPT_MARKER = 'AIRCON_FETCH_RECEIPT '
-TARGET_ADAPTERS = {'fetch_mecan.py': 'mecan_official.json'}
+TARGET_ADAPTERS = {'fetch_mecan.py': 'mecan_official.json',
+                   'fetch_gilman.py': 'gilman_official.json'}
 
 # Machine-readable routing for queue entries that have no matching stage/source
 # target.  This is diagnostic only: it never removes a queue entry and never
@@ -57,11 +58,11 @@ TARGET_ADAPTERS = {'fetch_mecan.py': 'mecan_official.json'}
 # source scripts rather than asserting that a model does not exist.
 ROUTE_RULES = (
     ('MITSUBISHIHEAVY', r'^(?:WRK07MIZH1|WRK09MIZH1|WRK18MIZH1)$',
-     None, None, 'brand-source-not-configured'),
+     1, 'fetch_gilman.py', None),
     ('MECAN', r'^(?:MC07WVRQW|MC09WVRQW|MC07VXH|MC09VXH|MC12VXH|MC18VXH|MC24VXH)$',
      1, 'fetch_mecan.py', None),
     ('GREE', r'^(?:GEH63ZE/GEH63ZC|GWT07ES|GWT09ES|GWT12ES)$',
-     None, None, 'brand-source-not-configured'),
+     1, 'fetch_gilman.py', None),
     ('COMFEE', r'^CWV-24CRFN9-AD5$', 1, 'fetch_official.py',
      'target-not-in-configured-comfee-list'),
 )
@@ -95,8 +96,8 @@ def target_scoped_plan(plan, models):
     keep = [i for i, script in enumerate(plan['scripts']) if script in wanted]
     scripts = [plan['scripts'][i] for i in keep]
     outputs = [plan['outputs'][i] for i in keep]
-    for source in sorted(wanted - set(plan['scripts'])):
-        if source in TARGET_ADAPTERS:
+    for source in TARGET_ADAPTERS:
+        if source in wanted and source not in plan['scripts']:
             scripts.append(source)
             outputs.append(TARGET_ADAPTERS[source])
     return {'scripts': scripts, 'outputs': outputs}
@@ -484,6 +485,20 @@ def verify_receipt_outputs(receipt):
     return errors
 
 
+
+def _trusted_source_time(value):
+    if not isinstance(value, str) or not value.endswith('Z'):
+        return None
+    try:
+        import datetime as _dt
+        dt = _dt.datetime.fromisoformat(value.replace('Z', '+00:00'))
+        if dt > _dt.datetime.now(_dt.timezone.utc) + _dt.timedelta(minutes=5):
+            return None
+        return value
+    except ValueError:
+        return None
+
+
 def main(argv=None):
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, 'reconfigure'):
@@ -626,6 +641,16 @@ def main(argv=None):
             if not ok:
                 failures.append(f'{rel}：{reason}')
 
+        source_times = []
+        for entry in receipt['scripts']:
+            marker = entry.get('receipt')
+            if isinstance(marker, dict) and entry.get('markerValid') is True:
+                source_time = _trusted_source_time(marker.get('sourceAcquiredAt'))
+                if source_time:
+                    source_times.append(source_time)
+        if source_times:
+            receipt['sourceAcquiredAt'] = max(source_times)
+            receipt['sourceAcquiredAtKind'] = 'verified-official-fetch'
         missing_coverage = [m for m in target_models if norm_model(m) not in covers_norm]
         script_pending_norm = set(coverage_pending_norm)
         coverage_pending = bool(missing_coverage or script_pending_norm)

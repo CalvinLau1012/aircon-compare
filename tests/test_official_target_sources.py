@@ -14,12 +14,12 @@ import run_official_batch as rob
 def test_target_scoped_plan_skips_unrelated_legacy_catalogues():
     public = rob.target_scoped_plan(
         rob.STAGES[1], ['WRK07MIZH1', 'MC07VXH', 'GEH63ZE/GEH63ZC'])
-    assert public == {'scripts': ['fetch_mecan.py'],
-                      'outputs': ['mecan_official.json']}
+    assert public == {'scripts': ['fetch_mecan.py', 'fetch_gilman.py'],
+                      'outputs': ['mecan_official.json', 'gilman_official.json']}
     private = rob.target_scoped_plan(
         rob.STAGES[2], ['MC18VXH', 'GWT07ES', 'CWV-24CRFN9-AD5'])
-    assert private == {'scripts': ['fetch_mecan.py'],
-                       'outputs': ['mecan_official.json']}
+    assert private == {'scripts': ['fetch_mecan.py', 'fetch_gilman.py'],
+                       'outputs': ['mecan_official.json', 'gilman_official.json']}
 
 
 def test_mecan_adapter_extracts_exact_model_and_writes_safe_evidence(tmp_path, monkeypatch):

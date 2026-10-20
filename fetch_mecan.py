@@ -36,6 +36,7 @@ TARGETS = {
 ALLOWED_HOSTS = frozenset({'mecanhk.com', 'www.mecanhk.com'})
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/148.0 Safari/537.36'
 URL_MARKER = b'\n__AIRCON_EFFECTIVE_URL__'
+REQUIRED_FIELDS = ('size', 'weight', 'btu', 'energy', 'gas', 'hp', 'wifi', 'remote', 'warranty')
 
 
 class OfficialIntegrityError(RuntimeError):
@@ -144,6 +145,55 @@ def _reason(exc):
     return 'transport-error'
 
 
+
+def _valid_utc(value, *, now=None):
+    if not isinstance(value, str) or not value.endswith('Z'):
+        return False
+    try:
+        dt = _dt.datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except ValueError:
+        return False
+    now = now or _dt.datetime.now(_dt.timezone.utc)
+    return dt <= now + _dt.timedelta(minutes=5)
+
+
+def _cache_trusted(item, model):
+    """Validate a reusable cache entry without trusting rawSha256 alone."""
+    if not isinstance(item, dict):
+        return False
+    ev = item.get('sourceEvidence')
+    if not isinstance(ev, dict):
+        return False
+    target_url = TARGETS.get(model)
+    if ev.get('model') != model or not target_url:
+        return False
+    url = ev.get('url')
+    if not isinstance(url, str) or url != target_url or item.get('url') != url:
+        return False
+    if urllib.parse.urlparse(url).hostname not in ALLOWED_HOSTS \
+            or not urllib.parse.urlparse(url).path.startswith('/product/'):
+        return False
+    if ev.get('host') not in ALLOWED_HOSTS or ev.get('source') != 'MECAN AIRCONDITIONING (HONG KONG) LIMITED':
+        return False
+    if not _valid_utc(ev.get('fetchedAt')):
+        return False
+    if not re.fullmatch(r'[0-9a-f]{64}', str(ev.get('rawSha256', ''))):
+        return False
+    fields = ev.get('fields')
+    if not isinstance(fields, dict):
+        return False
+    for key in REQUIRED_FIELDS:
+        if key not in item or key not in fields or item.get(key) != fields.get(key):
+            return False
+    if not all(item.get(k) for k in ('size', 'weight', 'btu', 'energy', 'gas')):
+        return False
+    title = item.get('title')
+    if not isinstance(title, str) or not re.search(
+            r'(?<![A-Z0-9])' + re.escape(model) + r'(?![A-Z0-9])', title, re.I):
+        return False
+    return True
+
+
 def fetch_targets(existing=None, *, raw_dir=None):
     existing = dict(existing or {})
     results = {}
@@ -153,9 +203,15 @@ def fetch_targets(existing=None, *, raw_dir=None):
     attempted = 0
     for model, url in TARGETS.items():
         old = existing.get(model)
-        if isinstance(old, dict) and isinstance(old.get('sourceEvidence'), dict) \
-                and re.fullmatch(r'[0-9a-f]{64}',
-                                 str(old['sourceEvidence'].get('rawSha256', ''))):
+        if _cache_trusted(old, model):
+            if raw_dir:
+                raw_path = os.path.join(raw_dir, f'{model}.html')
+                if os.path.isfile(raw_path):
+                    raw = open(raw_path, 'rb').read()
+                    if hashlib.sha256(raw).hexdigest() != old['sourceEvidence']['rawSha256']:
+                        failed.append(model)
+                        failure_reasons[model] = 'integrity-error'
+                        continue
             already.append(model)
             continue
         attempted += 1
@@ -208,11 +264,22 @@ def main(argv=None):
         existing, raw_dir=args.raw_dir)
     succeeded = list(results)
     covers = sorted(set(succeeded) | set(already))
+    times = []
+    for model in covers:
+        item = results.get(model) or existing.get(model)
+        try:
+            ev = item.get('sourceEvidence') if isinstance(item, dict) else None
+            if isinstance(ev, dict) and _valid_utc(ev.get('fetchedAt')):
+                times.append(ev['fetchedAt'])
+        except (TypeError, AttributeError):
+            pass
+    extra = ({'sourceAcquiredAt': max(times), 'sourceAcquiredAtKind': 'verified-official-fetch'}
+             if times else None)
     emit_fetch_receipt(
         'fetch_mecan.py', attempted, len(succeeded), len(failed),
         succeeded_models=succeeded, already_verified=already,
         failed_models=failed, covers=covers, skipped=len(already),
-        failure_reasons=reasons)
+        failure_reasons=reasons, extra=extra if times else None)
     if failed:
         print(f'❌ MECAN {len(failed)}/{attempted} 個官方目標失敗；保留既有快照',
               file=sys.stderr)
