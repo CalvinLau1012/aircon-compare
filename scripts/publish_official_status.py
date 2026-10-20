@@ -29,7 +29,13 @@ EXPECTED_OUTPUTS = {
 SHA_RE = __import__('re').compile(r'^sha256:[0-9a-f]{64}$')
 ALL_OUTPUTS = frozenset(set().union(*EXPECTED_OUTPUTS.values()) | {'mecan_official.json', 'gilman_official.json'})
 SOURCE_OUTPUTS = {'fetch_mecan.py': 'mecan_official.json',
-                  'fetch_gilman.py': 'gilman_official.json'}
+                  'fetch_gilman.py': 'gilman_official.json',
+                  'fetch_official.py': 'official_specs.json',
+                  'fetch_shew.py': 'shew_official.json',
+                  'fetch_rasonic.py': 'rasonic_official.json',
+                  'fetch_carrier.py': 'carrier_official.json',
+                  'fetch_general.py': 'general_official.json',
+                  'fetch_specs.py': 'specs.json'}
 
 
 def _sha(value):
@@ -55,16 +61,27 @@ def _valid_time(value):
 
 
 def _selected_outputs_from_routes(receipt):
-    routing = receipt.get('sourceRouting')
-    if not isinstance(routing, dict) or not routing:
+    # Recompute the route from actual targetModels; never trust a forged
+    # sourceRouting dictionary in a receipt.
+    targets = receipt.get('targetModels')
+    if not isinstance(targets, list) or not targets \
+            or len(targets) != len(set(targets)) \
+            or any(not isinstance(x, str) or not x for x in targets):
+        return None
+    try:
+        from run_official_batch import route_for_model
+    except Exception:
         return None
     expected = set()
-    for route in routing.values():
-        if not isinstance(route, dict) or route.get('supported') is not True:
-            continue
-        source = route.get('source')
-        if source in SOURCE_OUTPUTS:
-            expected.add(SOURCE_OUTPUTS[source])
+    recomputed = {}
+    for model in targets:
+        route = route_for_model(model)
+        recomputed[model] = route
+        if route.get('supported') is True and route.get('source') in SOURCE_OUTPUTS:
+            expected.add(SOURCE_OUTPUTS[route['source']])
+    reported = receipt.get('sourceRouting')
+    if reported not in (None, {}) and reported != recomputed:
+        return None
     return expected
 
 
@@ -221,6 +238,8 @@ def main(argv=None):
     }
     if decision == 'advanced' and receipt.get('targetScoped') is True:
         status['selectedOutputs'] = list(receipt.get('selectedOutputs') or [])
+        status['targetModels'] = list(receipt.get('targetModels') or [])
+        status['sourceRouting'] = dict(receipt.get('sourceRouting') or {})
     out = os.path.abspath(args.out)
     tmp = out + '.tmp'
     try:

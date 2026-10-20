@@ -59,3 +59,20 @@ def test_mecan_adapter_rejects_wrong_page_model(tmp_path, monkeypatch):
     out = tmp_path / 'mecan_official.json'
     assert fetch_mecan.main(['--out', str(out)]) == 1
     assert not out.exists()
+
+def test_legacy_stage_adapters_remain_reachable_under_target_scoped_mode():
+    assert rob.target_scoped_plan(rob.STAGES[1], ['CW-SUL70BA']) == {
+        'scripts': ['fetch_official.py'], 'outputs': ['official_specs.json']}
+    assert rob.target_scoped_plan(rob.STAGES[2], ['CHK07LNE']) == {
+        'scripts': ['fetch_carrier.py'], 'outputs': ['carrier_official.json']}
+    assert rob.target_scoped_plan(rob.STAGES[2], ['W09R5A']) == {
+        'scripts': ['fetch_specs.py'], 'outputs': ['specs.json']}
+
+
+def test_mixed_legacy_and_adapter_and_unsupported_targets():
+    mixed = rob.target_scoped_plan(
+        rob.STAGES[1], ['CW-SUL70BA', 'MC07VXH', 'UNKNOWN-TARGET'])
+    assert set(mixed['scripts']) == {'fetch_official.py', 'fetch_mecan.py'}
+    assert set(mixed['outputs']) == {'official_specs.json', 'mecan_official.json'}
+    assert rob.target_scoped_plan(rob.STAGES[1], ['UNKNOWN-TARGET']) == {
+        'scripts': [], 'outputs': []}

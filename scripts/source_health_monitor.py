@@ -94,6 +94,28 @@ def _official_manifest_errors(official_doc, official, repo):
     allowed = set(OFFICIAL_OUTPUTS[stage]) | {'mecan_official.json', 'gilman_official.json'}
     selected = official_doc.get('selectedOutputs')
     if selected is not None:
+        targets = official_doc.get('targetModels')
+        if not isinstance(targets, list) or not targets \
+                or len(targets) != len(set(targets)) \
+                or any(not isinstance(x, str) or not x for x in targets):
+            errors.append('official:target-profile-invalid')
+            return errors
+        try:
+            from run_official_batch import route_for_model
+            from publish_official_status import SOURCE_OUTPUTS
+        except Exception:
+            errors.append('official:target-profile-unavailable')
+            return errors
+        recomputed = {m: route_for_model(m) for m in targets}
+        expected = {SOURCE_OUTPUTS[r['source']] for r in recomputed.values()
+                    if r.get('supported') is True and r.get('source') in SOURCE_OUTPUTS}
+        if set(selected) != expected:
+            errors.append('official:selected-outputs-target-mismatch')
+            return errors
+        reported = official_doc.get('sourceRouting')
+        if reported not in (None, {}) and reported != recomputed:
+            errors.append('official:source-routing-profile-mismatch')
+            return errors
         if not isinstance(selected, list) or not selected \
                 or len(selected) != len(set(selected)) \
                 or any(x not in allowed for x in selected):

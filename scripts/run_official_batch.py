@@ -51,6 +51,10 @@ STAGES = {
 RECEIPT_MARKER = 'AIRCON_FETCH_RECEIPT '
 TARGET_ADAPTERS = {'fetch_mecan.py': 'mecan_official.json',
                    'fetch_gilman.py': 'gilman_official.json'}
+try:
+    from fetch_specs import CORE_MODELS as SPEC_MODELS
+except Exception:  # pragma: no cover
+    SPEC_MODELS = ()
 
 # Machine-readable routing for queue entries that have no matching stage/source
 # target.  This is diagnostic only: it never removes a queue entry and never
@@ -63,6 +67,12 @@ ROUTE_RULES = (
      1, 'fetch_mecan.py', None),
     ('GREE', r'^(?:GEH63ZE/GEH63ZC|GWT07ES|GWT09ES|GWT12ES)$',
      1, 'fetch_gilman.py', None),
+    ('PANASONIC', r'^(?:CW-|RA-|RAW-)', 1, 'fetch_official.py', None),
+    ('COMFEE-LEGACY', r'^(?:CWF-|CFW-|CAF|CFS-)', 1, 'fetch_official.py', None),
+    ('SHEW', r'^(?:RC-(?:SUL|HZ|SU|N))', 1, 'fetch_shew.py', None),
+    ('RASONIC', r'^(?:FR-KS|RC-(?:XG|TS))', 1, 'fetch_rasonic.py', None),
+    ('CARRIER', r'^(?:CHK|CKM|TA|CAK|CAR)', 2, 'fetch_carrier.py', None),
+    ('GENERAL', r'^(?:AKW|AMW|AFW|ALW)', 2, 'fetch_general.py', None),
     ('COMFEE', r'^CWV-24CRFN9-AD5$', 1, 'fetch_official.py',
      'target-not-in-configured-comfee-list'),
 )
@@ -77,6 +87,9 @@ def route_for_model(model):
             return {'brand': brand, 'stage': stage, 'source': source,
                     'reason': reason,
                     'supported': bool(source and reason is None)}
+    if text in SPEC_MODELS:
+        return {'brand': 'CORE-SPECS', 'stage': 2, 'source': 'fetch_specs.py',
+                'reason': None, 'supported': True}
     return {'brand': None, 'stage': None, 'source': None,
             'reason': 'source-route-not-configured', 'supported': False}
 
