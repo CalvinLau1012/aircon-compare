@@ -1011,3 +1011,8 @@
 ### 2026-10-18T20:16:08.492536Z Root Stage3 pre-deploy source closure correction (append-only)
 
 Root independently reproduced that the production Pages `check_generated_source_binding` accepted changed `report_common.py` and `frontend/public/status.js` because its old six-file list omitted new transitive inputs. The pre-deploy guard now consumes the same explicit `REPRO_CODE_PATHS` as post-deploy PDF reproduction, plus report Markdown and requirements. Real local Git fixtures cover the unchanged positive case and changed/missing rejection for every input: 31 pass; the two original failing counterexamples are retained in Root evidence. Existing post-deploy and exact PDF checks are unchanged. This source candidate is still isolated; full gates on the corrected final commit and trusted artifact rebuild remain required. No provider, data, quota, or deployment change.
+
+## Unreleased — 2026-10-20 daily test clock and failure receipts
+
+- Fixed test-only fixed-date/wall-clock drift in the health producer-consumer chain; added 48h/future/multi-year/tamper regression.
+- Added run-bound upstream-blocked sync receipt and separate BigGo upstream/provider-unknown receipts with fail-closed alert handling. No release/data/provider operation.

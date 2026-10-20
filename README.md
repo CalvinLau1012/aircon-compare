@@ -787,3 +787,11 @@ python fetch_rasonic.py        # 樂信官方網店價格
 - HTML/CSS/JS assets are split by responsibility, including private collections/notes/import-export and private EMSD status extension. The assembled template remains byte-identical to the pre-split Stage2 template.
 - Every asset plus `frontend_assets.py` is in PDF repro and snapshot-rebuild source guards, including stale cached assembled-template rejection.
 - Current detail: `docs/architecture/2026-10-19-stage3-frontend.md`. Private pin stays private.
+
+## 2026-10-20 daily repair: test clock and failure finalizers（append-only）
+
+- Health producer/consumer chain tests now use one explicit fixture clock; the 48h/future/tamper assertions remain strict and production `max_age_hours` is unchanged.
+- If the completed-receive step was skipped because an earlier workflow step failed, the always finalizer writes a run/head/event-bound `sync-completed` receipt with `ok=false`, `applied=false`, `postStateVerified=false`, `notAttempted=true`, `reason=upstream-blocked`; it does not invent hashes or success times. Existing valid reports stay authoritative; corrupt/actual attempted missing reports remain red.
+- If the BigGo phase never started because upstream failed, a separate `blocked-upstream` receipt records `providerPhaseEntered=false`, `leaseAcquired=false`, requests 0 and `failureScope=upstream-workflow`. If the provider phase failed but its status is missing/invalid, `blocked-provider-unknown` records provider/lease/requests as UNKNOWN. Legal repair/rebuild skip receipts are not produced after an upstream failure.
+- BigGo alert now reads a run-bound receipt and reports upstream workflow failure separately from provider 429/quota; missing or corrupt artifacts remain fail-closed. No provider/coordinator/grant/lease/data operation was performed by this candidate.
+- Test/clock regression also covers the private price-health fixture's fixed-date drift. Detail/evidence: private/work run delivery.

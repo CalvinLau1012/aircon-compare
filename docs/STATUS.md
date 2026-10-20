@@ -1731,3 +1731,7 @@ Root independently reproduced that the production Pages `check_generated_source_
 ### 2026-10-18T20:24:56.311425Z Root Pages fixture follow-up (append-only)
 
 The first full run of the strengthened Pages pre-deploy guard rejected two legacy positive fixtures because they still created only the original six inputs. The fixture now creates the complete reproduction source set and nested asset directories. All existing assertions rejecting generator drift, docs-only attempts to bypass drift, missing input, malformed commit and data/metadata mismatch remain unchanged. Failed full-run evidence is preserved; this is not a reason to relax the production guard. Final clean-commit full acceptance is rerun before release.
+
+## 2026-10-20 daily test-clock／early-failure repair（append-only）
+
+The health producer-consumer test chain now shares one explicit fixture clock; strict 48h/future/tamper and production max-age behavior remain unchanged. Completed receive and BigGo skipped/failed phases now have separate run-bound failure receipts and alert semantics, without claiming provider request counts or success when not proven. Isolated candidate only; Root must run final full gates/browser and perform formal integration.
