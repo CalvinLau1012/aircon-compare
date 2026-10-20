@@ -856,3 +856,8 @@ Root found that the target-scoped legacy route still excluded verified RC-HU / R
 
 
 2026-10-20 Root R4 cache replay supplement（追加）：explicit Gilman cache-manifest mode now fails on a missing page without making a live HTTP fallback. The missing-page contract records zero source requests; normal live scans retain their existing behavior.
+
+
+### 2026-10-20 Root MECAN dimension-order correction（追加）
+
+The original verified MECAN pages label dimensions W×H×D, while the site uses H×W×D for existing models. Earlier raw-field equality proved parsing consistency but missed this axis mismatch. The adapter now validates the declared axes and normalises W×H×D to H×W×D; the seven stored entries are corrected from the same raw evidence, retaining their original fetch times and raw hashes. Unknown axes fail parsing. No new source/provider request or price/lifecycle change is involved.

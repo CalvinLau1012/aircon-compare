@@ -116,6 +116,16 @@ def _extract(html, model):
         raise ValueError('official specification table lacks required fields')
     if not re.match(r'^[0-9.]+\s*[x×]\s*[0-9.]+\s*[x×]\s*[0-9.]+$', size):
         raise ValueError('official size field is not parseable')
+    # The site uses H×W×D.  The MECAN table declares W×H×D; preserve
+    # that source fact while normalising its axes before applying to the site.
+    axes = first(r'尺寸\s*\(([^)]*)\)\s*毫米')
+    axes = re.sub(r'\s+', '', axes).replace('x', '×').upper()
+    dimensions = re.split(r'\s*[x×]\s*', size)
+    if axes in ('闊×高×深', 'W×H×D'):
+        dimensions = [dimensions[1], dimensions[0], dimensions[2]]
+    elif axes not in ('高×闊×深', 'H×W×D'):
+        raise ValueError('official size axes are unknown')
+    size = '×'.join(dimensions)
     wm = re.search(r'全機\s*([0-9]+年)\s*.*?壓縮機\s*([0-9]+年)', region, re.I | re.S)
     title_hp = re.search(r'[（(]\s*([0-9./]+)\s*匹\s*[）)]', title)
     return {

@@ -5,7 +5,7 @@
   "gas": "R32",
   "hp": "3/4",
   "remote": true,
-  "size": "450×350×640",
+  "size": "350×450×640",
   "sourceEvidence": {
    "fetchedAt": "2026-10-20T09:33:30Z",
    "fields": {
@@ -14,7 +14,7 @@
     "gas": "R32",
     "hp": "3/4",
     "remote": true,
-    "size": "450×350×640",
+    "size": "350×450×640",
     "warranty": "3年/5年",
     "weight": "27kg",
     "wifi": true
@@ -37,7 +37,7 @@
   "gas": "R32",
   "hp": "3/4",
   "remote": true,
-  "size": "450×350×678",
+  "size": "350×450×678",
   "sourceEvidence": {
    "fetchedAt": "2026-10-20T09:33:23Z",
    "fields": {
@@ -46,7 +46,7 @@
     "gas": "R32",
     "hp": "3/4",
     "remote": true,
-    "size": "450×350×678",
+    "size": "350×450×678",
     "warranty": "3年/5年",
     "weight": "27.5kg",
     "wifi": true
@@ -69,7 +69,7 @@
   "gas": "R32",
   "hp": "1",
   "remote": true,
-  "size": "450×350×640",
+  "size": "350×450×640",
   "sourceEvidence": {
    "fetchedAt": "2026-10-20T09:33:34Z",
    "fields": {
@@ -78,7 +78,7 @@
     "gas": "R32",
     "hp": "1",
     "remote": true,
-    "size": "450×350×640",
+    "size": "350×450×640",
     "warranty": "3年/5年",
     "weight": "27kg",
     "wifi": true
@@ -101,7 +101,7 @@
   "gas": "R32",
   "hp": "1",
   "remote": true,
-  "size": "450×350×678",
+  "size": "350×450×678",
   "sourceEvidence": {
    "fetchedAt": "2026-10-20T09:33:27Z",
    "fields": {
@@ -110,7 +110,7 @@
     "gas": "R32",
     "hp": "1",
     "remote": true,
-    "size": "450×350×678",
+    "size": "350×450×678",
     "warranty": "3年/5年",
     "weight": "27.5kg",
     "wifi": true
@@ -133,7 +133,7 @@
   "gas": "R32",
   "hp": "1.5",
   "remote": true,
-  "size": "560×350×655",
+  "size": "350×560×655",
   "sourceEvidence": {
    "fetchedAt": "2026-10-20T09:33:37Z",
    "fields": {
@@ -142,7 +142,7 @@
     "gas": "R32",
     "hp": "1.5",
     "remote": true,
-    "size": "560×350×655",
+    "size": "350×560×655",
     "warranty": "3年/5年",
     "weight": "33kg",
     "wifi": true
@@ -165,7 +165,7 @@
   "gas": "R32",
   "hp": "2",
   "remote": true,
-  "size": "660×428×773",
+  "size": "428×660×773",
   "sourceEvidence": {
    "fetchedAt": "2026-10-20T09:33:43Z",
    "fields": {
@@ -174,7 +174,7 @@
     "gas": "R32",
     "hp": "2",
     "remote": true,
-    "size": "660×428×773",
+    "size": "428×660×773",
     "warranty": "3年/5年",
     "weight": "49.5kg",
     "wifi": true
@@ -197,7 +197,7 @@
   "gas": "R32",
   "hp": "2.5",
   "remote": true,
-  "size": "660×428×773",
+  "size": "428×660×773",
   "sourceEvidence": {
    "fetchedAt": "2026-10-20T09:33:49Z",
    "fields": {
@@ -206,7 +206,7 @@
     "gas": "R32",
     "hp": "2.5",
     "remote": true,
-    "size": "660×428×773",
+    "size": "428×660×773",
     "warranty": "3年/5年",
     "weight": "54.5kg",
     "wifi": true

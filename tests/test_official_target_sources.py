@@ -40,7 +40,7 @@ def test_mecan_adapter_extracts_exact_model_and_writes_safe_evidence(tmp_path, m
     assert fetch_mecan.main(['--out', str(out), '--raw-dir', str(raw)]) == 0
     data = json.loads(out.read_text())
     item = data['MC07VXH']
-    assert item['size'] == '450×350×640'
+    assert item['size'] == '350×450×640'
     assert item['weight'] == '27kg'
     assert item['btu'] == '7,500'
     assert item['energy'] == '1級'
