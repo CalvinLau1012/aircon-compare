@@ -417,6 +417,11 @@ def build_recovery(evidence, publication_time=None):
     return packet
 
 
+def finalize_recovery(evidence, publication_time):
+    """Pure Root-facing finalize entry; no write/apply is performed."""
+    return build_recovery(evidence, publication_time=publication_time)
+
+
 def _atomic_exclusive(path, data):
     if os.path.lexists(path):
         raise RecoveryError(f'output exists: {Path(path).name}')
