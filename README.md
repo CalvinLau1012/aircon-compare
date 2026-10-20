@@ -803,3 +803,7 @@ Historical Stage2 receipts whose `createdAt`/`observedAt` were future-labelled r
 ### 2026-10-20 R2 receipt-identity and shell-matrix correction（append-only）
 
 R1 is superseded as an acceptance candidate. R2 adds strict previously-bound identity checks, runner-compatible existing BigGo status validation, validated zero-fact alert messages, and executed workflow-shell failure fixtures. Actual daily order (official after completed receive, BigGo afterward) is now represented correctly. R1 evidence is retained; no wholesale redesign.
+
+### 2026-10-20 R3 existing-identity correction（append-only）
+
+Existing BigGo status identity is now compared to the current run/head/event, not merely shape-validated. Foreign/partial/type-bad identity is rejected before preserve/unknown writes with bytes unchanged. R2 wording that all existing identities were already current is superseded; R2 evidence remains.

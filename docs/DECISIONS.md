@@ -1380,3 +1380,7 @@ R1 was not accepted. Its finalizer tests were mostly helper/static checks, and i
 - executes the actual YAML shell finalizer blocks with fixture history for test/browser/gov/EMSD (pre-receive), official-after-receive, receive absent/corrupt, provider skipped/unknown, legal repair/rebuild, preservation and atomic-write failures.
 
 R1 evidence remains historical; no live/data/provider operation. Root full gates/browser are still pending.
+
+## 2026-10-20 · R3 existing-status identity correction（append-only）
+
+R2 checked the *shape* of an existing BigGo status identity but did not compare it with the current CLI run/head/event before the valid-preserve branch. R3 adds that exact tuple check for both upstream-skipped and provider-phase-unknown: any foreign, partial or wrongly typed identity returns nonzero with the original status bytes untouched and no `.invalid` conversion. Same-identity preservation, genuinely unbound old-runner evidence and idempotent provider-unknown handling remain unchanged. No consumer/global status-registry redesign, no provider/data/live operation. R2 documents remain historical.
