@@ -93,6 +93,7 @@ _OFFICIAL_BRAND_DEFAULT = {
     'pana_official.json': 'Panasonic',
     'midea_official.json': 'Midea',
     'carrier_official.json': 'Carrier',
+    'mecan_official.json': 'MECAN',
     'general_official.json': 'General',
     'shew_official.json': 'Rasonic',
 }

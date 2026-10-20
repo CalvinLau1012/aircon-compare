@@ -165,7 +165,7 @@ def validate(base=BASE_DEFAULT):
     # 4) 核心/官網 JSON：型別 + 唔可以變空
     for name in ('specs.json', 'official_specs.json', 'rasonic_official.json',
                  'shew_official.json', 'pana_official.json', 'carrier_official.json',
-                 'general_official.json', 'midea_official.json'):
+                 'general_official.json', 'midea_official.json', 'mecan_official.json'):
         d = load_json(name)
         if d is None:
             continue

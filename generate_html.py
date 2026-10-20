@@ -122,7 +122,7 @@ SPECS_OVERRIDE = {
 def load_official():
     """載入品牌官網核實數據（多個 JSON 逐欄位合併，互不覆蓋）"""
     out = {}
-    for fname in ('official_specs.json', 'rasonic_official.json', 'pana_official.json', 'midea_official.json', 'shew_official.json', 'general_official.json', 'carrier_official.json'):
+    for fname in ('official_specs.json', 'rasonic_official.json', 'pana_official.json', 'midea_official.json', 'shew_official.json', 'general_official.json', 'carrier_official.json', 'mecan_official.json'):
         p = os.path.join(BASE, fname)
         if not os.path.exists(p):
             continue

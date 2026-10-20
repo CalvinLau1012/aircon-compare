@@ -91,7 +91,17 @@ def _official_manifest_errors(official_doc, official, repo):
     if official_doc.get('stage') != stage:
         errors.append('official:status-stage-mismatch')
     files = manifest.get('files')
-    expected = set(OFFICIAL_OUTPUTS[stage])
+    allowed = set(OFFICIAL_OUTPUTS[stage]) | {'mecan_official.json'}
+    selected = official_doc.get('selectedOutputs')
+    if selected is not None:
+        if not isinstance(selected, list) or not selected \
+                or len(selected) != len(set(selected)) \
+                or any(x not in allowed for x in selected):
+            errors.append('official:selected-outputs-invalid')
+            return errors
+        expected = set(selected)
+    else:
+        expected = set(OFFICIAL_OUTPUTS[stage])
     if not isinstance(files, dict) or set(files) != expected:
         errors.append('official:manifest-output-set-mismatch')
         return errors

@@ -341,7 +341,7 @@ jobs:
           AIRCON_OFFICIAL_RECEIPT: ${{ runner.temp }}/aircon-official-receipt.json
         run: |
           set +e
-          python scripts/run_official_batch.py --stage 1 --degraded-exit-zero
+          python scripts/run_official_batch.py --stage 1 --target-scoped --degraded-exit-zero
           rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           exit "$rc"
@@ -355,7 +355,7 @@ jobs:
           AIRCON_OFFICIAL_RECEIPT: ${{ runner.temp }}/aircon-official-receipt.json
         run: |
           set +e
-          python scripts/run_official_batch.py --stage 2 --degraded-exit-zero
+          python scripts/run_official_batch.py --stage 2 --target-scoped --degraded-exit-zero
           rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           exit "$rc"

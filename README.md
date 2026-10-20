@@ -831,3 +831,12 @@ Existing BigGo status identity is now compared to the current run/head/event, no
 - A verified current recovery receiver keeps `acquiredAt=null` and marks `timeProvenance=unknown`; source status does not fall back to prior stage, BigGo old time, publication, apply or generation time. An unverified/general marker cannot clear an existing trusted time.
 - Normal bundles and the accepted-baseline path keep their existing acquisition semantics. UI/PDF wording shows unknown acquisition rather than inventing one.
 - The offline end-to-end regression finalizes the real recovery packet with two publication intents through apply/verify/source-status, and keeps price/effects/source bound unchanged.
+
+## 2026-10-20 官網 coverage R2（append-only）
+
+- 新增 target-aware official routing：只有 queue target 有明確、已支持 route 才執行對應 adapter；未解 target 保留 pending coverage，不再盲跑無關舊品牌全量 catalog。原 `--stage` 全量模式不變；workflow 使用 `--target-scoped`。
+- 新增 MECAN 官方產品頁 adapter：七個 exact model 由 `mecanhk.com/product/...` 驗證，保存 full response SHA-256、取得時間、effective HTTPS URL、規格表提取欄位；不接受 related products／footer 作 current product 證據。原始 HTML 只留私人 evidence，公開輸出不含 raw/token。
+- `mecan_official.json` 已由真實七頁重建；MECAN route 由 `brand-source-not-configured` 改為已配置 adapter。MHI/GREE/COMFEE 仍逐型號列未完成原因，沒有偽造 alias、沒有把 EMSD 當官網、沒有把 404 當「不存在」。
+- 官網 batch 的 target-scoped receipt 現攜帶 `selectedOutputs`；publisher/health 只接受 receipt 所列、已 promote 且在允許集合內的 outputs，不接受任意 remote 文件或空 manifest。pending coverage 不宣稱新 snapshot。
+- 加入 active price-cycle 保留測試：stage2 advance 在 2026-10 已啟動 cycle／idx 5 時只清 queue，不重寫 `prices_meta`，不觸發 provider。
+- 未改 BigGo 四檔、coordinator/lease/budget/cooldown/grant 或正式 runtime；本輪沒有 BigGo 呼叫。

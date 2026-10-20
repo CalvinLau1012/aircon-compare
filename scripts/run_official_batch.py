@@ -39,14 +39,17 @@ from biggo_canonical import canonical_json_bytes, sha256_id  # noqa: E402
 STAGES = {
     1: {
         'scripts': ['fetch_official.py', 'fetch_shew.py', 'fetch_rasonic.py'],
-        'outputs': ['official_specs.json', 'shew_official.json', 'rasonic_official.json'],
+        'outputs': ['official_specs.json', 'shew_official.json',
+                    'rasonic_official.json'],
     },
     2: {
         'scripts': ['fetch_carrier.py', 'fetch_general.py', 'fetch_specs.py'],
-        'outputs': ['carrier_official.json', 'general_official.json', 'specs.json'],
+        'outputs': ['carrier_official.json', 'general_official.json',
+                    'specs.json'],
     },
 }
 RECEIPT_MARKER = 'AIRCON_FETCH_RECEIPT '
+TARGET_ADAPTERS = {'fetch_mecan.py': 'mecan_official.json'}
 
 # Machine-readable routing for queue entries that have no matching stage/source
 # target.  This is diagnostic only: it never removes a queue entry and never
@@ -56,7 +59,7 @@ ROUTE_RULES = (
     ('MITSUBISHIHEAVY', r'^(?:WRK07MIZH1|WRK09MIZH1|WRK18MIZH1)$',
      None, None, 'brand-source-not-configured'),
     ('MECAN', r'^(?:MC07WVRQW|MC09WVRQW|MC07VXH|MC09VXH|MC12VXH|MC18VXH|MC24VXH)$',
-     None, None, 'brand-source-not-configured'),
+     1, 'fetch_mecan.py', None),
     ('GREE', r'^(?:GEH63ZE/GEH63ZC|GWT07ES|GWT09ES|GWT12ES)$',
      None, None, 'brand-source-not-configured'),
     ('COMFEE', r'^CWV-24CRFN9-AD5$', 1, 'fetch_official.py',
@@ -75,6 +78,28 @@ def route_for_model(model):
                     'supported': bool(source and reason is None)}
     return {'brand': None, 'stage': None, 'source': None,
             'reason': 'source-route-not-configured', 'supported': False}
+
+
+def target_scoped_plan(plan, models):
+    """Select only scripts with an explicit route for the requested targets.
+
+    Unknown/unsupported targets contribute no script and remain missing
+    coverage; they never cause an unrelated legacy catalogue to run.
+    """
+    wanted = set()
+    for model in models:
+        route = route_for_model(model)
+        source = route.get('source')
+        if route.get('supported') and source:
+            wanted.add(source)
+    keep = [i for i, script in enumerate(plan['scripts']) if script in wanted]
+    scripts = [plan['scripts'][i] for i in keep]
+    outputs = [plan['outputs'][i] for i in keep]
+    for source in sorted(wanted - set(plan['scripts'])):
+        if source in TARGET_ADAPTERS:
+            scripts.append(source)
+            outputs.append(TARGET_ADAPTERS[source])
+    return {'scripts': scripts, 'outputs': outputs}
 
 
 def queue_stage():
@@ -471,6 +496,8 @@ def main(argv=None):
     ap.add_argument('--degraded-exit-zero', action='store_true',
                     help='safe source failure (old outputs/queue intact) returns 0 with degraded receipt; '
                          'integrity/transaction failure still returns 1')
+    ap.add_argument('--target-scoped', action='store_true',
+                    help='run only stage scripts that have an explicit route for a queue target')
     args = ap.parse_args(argv)
 
     queue_path = os.path.join(BASE, 'update_queue.json')
@@ -500,6 +527,7 @@ def main(argv=None):
         os.path.join(tempfile.gettempdir(), 'aircon-official-receipt.json'))
 
     plan = STAGES[stage]
+    selected_plan = target_scoped_plan(plan, target_models) if args.target_scoped else plan
     failures = []
     integrity_failure = False
     receipt = {
@@ -508,6 +536,9 @@ def main(argv=None):
         'queuePath': 'update_queue.json',
         'queueHashBefore': queue_hash_before,
         'targetModels': target_models,
+        'targetScoped': bool(args.target_scoped),
+        'selectedScripts': list(selected_plan['scripts']),
+        'selectedOutputs': list(selected_plan['outputs']),
         'startedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
         'scripts': [],
         'outputs': [],
@@ -522,9 +553,9 @@ def main(argv=None):
         staging_tmp, staging_repo = _make_staging_copy(BASE)
         staging_queue = os.path.join(staging_repo, 'update_queue.json')
         staging_queue_before = _sha256_file(staging_queue)
-        for idx, script in enumerate(plan['scripts']):
+        for idx, script in enumerate(selected_plan['scripts']):
             path = os.path.join(staging_repo, script)
-            output_rel = plan['outputs'][idx]
+            output_rel = selected_plan['outputs'][idx]
             original_output = os.path.join(BASE, output_rel)
             staged_output = os.path.join(staging_repo, output_rel)
             print(f'▶️ [{stage}] {script}（isolated staging）', flush=True)
@@ -586,7 +617,7 @@ def main(argv=None):
                     coverage_pending_reasons[norm_model(m)] = reason
 
         staged_outputs = []
-        for rel in plan['outputs']:
+        for rel in selected_plan['outputs']:
             p = os.path.join(staging_repo, rel)
             ok, reason = validate_output(p)
             staged_outputs.append({'output': rel, 'ok': ok, 'reason': reason,
@@ -605,7 +636,7 @@ def main(argv=None):
         if not failures and not coverage_pending:
             try:
                 _promoted, before, after = _promote_outputs(
-                    BASE, staging_repo, plan['outputs'])
+                    BASE, staging_repo, selected_plan['outputs'])
                 promoted = True
                 for entry in staged_outputs:
                     rel = entry['output']
@@ -629,14 +660,14 @@ def main(argv=None):
         receipt['staging'] = {'used': True, 'promoted': promoted}
         if promoted:
             try:
-                manifest = _output_manifest(BASE, stage, plan['outputs'])
+                manifest = _output_manifest(BASE, stage, selected_plan['outputs'])
             except (OSError, ValueError) as e:
                 failures.append(f'output manifest 失敗：{e}')
                 integrity_failure = True
             else:
                 receipt['outputManifest'] = manifest
                 # Re-read every file and prove the manifest identity after promotion.
-                recheck = _output_manifest(BASE, stage, plan['outputs'])
+                recheck = _output_manifest(BASE, stage, selected_plan['outputs'])
                 if recheck != manifest:
                     failures.append('output manifest 寫入後 bytes 不一致')
                     integrity_failure = True

@@ -482,7 +482,7 @@ def protected_models():
     brand_lookup = load_brand_lookup()
     for fname in ('official_specs.json', 'rasonic_official.json', 'pana_official.json',
                   'midea_official.json', 'shew_official.json', 'general_official.json',
-                  'carrier_official.json'):
+                  'carrier_official.json', 'mecan_official.json'):
         p = os.path.join(BASE, fname)
         if not os.path.exists(p):
             continue

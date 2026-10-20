@@ -66,6 +66,7 @@ REQUIRED_PRESERVED = (
     # generate_html.load_official() 會讀嘅品牌官網資料
     'official_specs.json', 'shew_official.json', 'rasonic_official.json',
     'carrier_official.json', 'general_official.json', 'pana_official.json',
+    'mecan_official.json',
     'midea_official.json',
     # 其餘規格／價格輸入
     'specs.json', 'specs_emsd.json', 'gemini_prices.json', 'prices.json',

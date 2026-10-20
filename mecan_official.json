@@ -1,0 +1,226 @@
+{
+ "MC07VXH": {
+  "btu": "7,500",
+  "energy": "1級",
+  "gas": "R32",
+  "hp": "3/4",
+  "remote": true,
+  "size": "450×350×640",
+  "sourceEvidence": {
+   "fetchedAt": "2026-10-20T09:33:30Z",
+   "fields": {
+    "btu": "7,500",
+    "energy": "1級",
+    "gas": "R32",
+    "hp": "3/4",
+    "remote": true,
+    "size": "450×350×640",
+    "warranty": "3年/5年",
+    "weight": "27kg",
+    "wifi": true
+   },
+   "host": "mecanhk.com",
+   "model": "MC07VXH",
+   "rawSha256": "84d8eeea8d7b76fbaf939cb4f83839e516877475e1adaf9c95dff4b1738a0ba1",
+   "source": "MECAN AIRCONDITIONING (HONG KONG) LIMITED",
+   "url": "https://mecanhk.com/product/mc07vxh-3-4-inverter-window-aircon/"
+  },
+  "title": "MC07VXH &#8211; R32變頻淨冷型窗口式冷氣機（3/4匹）[VXH系列] &#8211; 美佳冷氣",
+  "url": "https://mecanhk.com/product/mc07vxh-3-4-inverter-window-aircon/",
+  "warranty": "3年/5年",
+  "weight": "27kg",
+  "wifi": true
+ },
+ "MC07WVRQW": {
+  "btu": "7,700",
+  "energy": "1級",
+  "gas": "R32",
+  "hp": "3/4",
+  "remote": true,
+  "size": "450×350×678",
+  "sourceEvidence": {
+   "fetchedAt": "2026-10-20T09:33:23Z",
+   "fields": {
+    "btu": "7,700",
+    "energy": "1級",
+    "gas": "R32",
+    "hp": "3/4",
+    "remote": true,
+    "size": "450×350×678",
+    "warranty": "3年/5年",
+    "weight": "27.5kg",
+    "wifi": true
+   },
+   "host": "mecanhk.com",
+   "model": "MC07WVRQW",
+   "rawSha256": "d0ba2a77da4a9fc0d47b583ce6ef5303578ed2a0d35016e310a86589813987c4",
+   "source": "MECAN AIRCONDITIONING (HONG KONG) LIMITED",
+   "url": "https://mecanhk.com/product/mc07wvrqw-3-4-inverter-window-aircon/"
+  },
+  "title": "MC07WVRQW &#8211; R32變頻淨冷型窗口式冷氣機（3/4匹）[WVR系列] &#8211; 美佳冷氣",
+  "url": "https://mecanhk.com/product/mc07wvrqw-3-4-inverter-window-aircon/",
+  "warranty": "3年/5年",
+  "weight": "27.5kg",
+  "wifi": true
+ },
+ "MC09VXH": {
+  "btu": "9,000",
+  "energy": "1級",
+  "gas": "R32",
+  "hp": "1",
+  "remote": true,
+  "size": "450×350×640",
+  "sourceEvidence": {
+   "fetchedAt": "2026-10-20T09:33:34Z",
+   "fields": {
+    "btu": "9,000",
+    "energy": "1級",
+    "gas": "R32",
+    "hp": "1",
+    "remote": true,
+    "size": "450×350×640",
+    "warranty": "3年/5年",
+    "weight": "27kg",
+    "wifi": true
+   },
+   "host": "mecanhk.com",
+   "model": "MC09VXH",
+   "rawSha256": "db10dc082c15c60d3689076b1eedbda8fc5d2d7d2673994e78b73057cd00c8a9",
+   "source": "MECAN AIRCONDITIONING (HONG KONG) LIMITED",
+   "url": "https://mecanhk.com/product/mc09vxh-1-inverter-window-aircon/"
+  },
+  "title": "MC09VXH &#8211; R32變頻淨冷型窗口式冷氣機（1匹）[VXH系列] &#8211; 美佳冷氣",
+  "url": "https://mecanhk.com/product/mc09vxh-1-inverter-window-aircon/",
+  "warranty": "3年/5年",
+  "weight": "27kg",
+  "wifi": true
+ },
+ "MC09WVRQW": {
+  "btu": "9,000",
+  "energy": "1級",
+  "gas": "R32",
+  "hp": "1",
+  "remote": true,
+  "size": "450×350×678",
+  "sourceEvidence": {
+   "fetchedAt": "2026-10-20T09:33:27Z",
+   "fields": {
+    "btu": "9,000",
+    "energy": "1級",
+    "gas": "R32",
+    "hp": "1",
+    "remote": true,
+    "size": "450×350×678",
+    "warranty": "3年/5年",
+    "weight": "27.5kg",
+    "wifi": true
+   },
+   "host": "mecanhk.com",
+   "model": "MC09WVRQW",
+   "rawSha256": "ba16163a0223a3673463e6137b4ef4fe8811d580ec93fe9f2a4dbc8a7df885ad",
+   "source": "MECAN AIRCONDITIONING (HONG KONG) LIMITED",
+   "url": "https://mecanhk.com/product/mc09wvrqw-1-inverter-window-aircon/"
+  },
+  "title": "MC09WVRQW &#8211; R32變頻淨冷型窗口式冷氣機（1匹）[WVR系列] &#8211; 美佳冷氣",
+  "url": "https://mecanhk.com/product/mc09wvrqw-1-inverter-window-aircon/",
+  "warranty": "3年/5年",
+  "weight": "27.5kg",
+  "wifi": true
+ },
+ "MC12VXH": {
+  "btu": "11,900",
+  "energy": "1級",
+  "gas": "R32",
+  "hp": "1.5",
+  "remote": true,
+  "size": "560×350×655",
+  "sourceEvidence": {
+   "fetchedAt": "2026-10-20T09:33:37Z",
+   "fields": {
+    "btu": "11,900",
+    "energy": "1級",
+    "gas": "R32",
+    "hp": "1.5",
+    "remote": true,
+    "size": "560×350×655",
+    "warranty": "3年/5年",
+    "weight": "33kg",
+    "wifi": true
+   },
+   "host": "mecanhk.com",
+   "model": "MC12VXH",
+   "rawSha256": "999010506ababf7aaaa01e6b1ab7102566887d57d2c3c7bc8f030bd193fee8e3",
+   "source": "MECAN AIRCONDITIONING (HONG KONG) LIMITED",
+   "url": "https://mecanhk.com/product/mc12vxh-1-5-inverter-window-aircon/"
+  },
+  "title": "MC12VXH &#8211; R32變頻淨冷型窗口式冷氣機（1.5匹）[VXH系列] &#8211; 美佳冷氣",
+  "url": "https://mecanhk.com/product/mc12vxh-1-5-inverter-window-aircon/",
+  "warranty": "3年/5年",
+  "weight": "33kg",
+  "wifi": true
+ },
+ "MC18VXH": {
+  "btu": "18,000",
+  "energy": "1級",
+  "gas": "R32",
+  "hp": "2",
+  "remote": true,
+  "size": "660×428×773",
+  "sourceEvidence": {
+   "fetchedAt": "2026-10-20T09:33:43Z",
+   "fields": {
+    "btu": "18,000",
+    "energy": "1級",
+    "gas": "R32",
+    "hp": "2",
+    "remote": true,
+    "size": "660×428×773",
+    "warranty": "3年/5年",
+    "weight": "49.5kg",
+    "wifi": true
+   },
+   "host": "mecanhk.com",
+   "model": "MC18VXH",
+   "rawSha256": "777836b2631fe2dd9adb9873e552a87b29b6f7b7f479de04e17d28c21b863780",
+   "source": "MECAN AIRCONDITIONING (HONG KONG) LIMITED",
+   "url": "https://mecanhk.com/product/mc18vxh-2-inverter-window-aircon/"
+  },
+  "title": "MC18VXH &#8211; R32變頻淨冷型窗口式冷氣機（2匹）[VXH系列] &#8211; 美佳冷氣",
+  "url": "https://mecanhk.com/product/mc18vxh-2-inverter-window-aircon/",
+  "warranty": "3年/5年",
+  "weight": "49.5kg",
+  "wifi": true
+ },
+ "MC24VXH": {
+  "btu": "24,000",
+  "energy": "1級",
+  "gas": "R32",
+  "hp": "2.5",
+  "remote": true,
+  "size": "660×428×773",
+  "sourceEvidence": {
+   "fetchedAt": "2026-10-20T09:33:49Z",
+   "fields": {
+    "btu": "24,000",
+    "energy": "1級",
+    "gas": "R32",
+    "hp": "2.5",
+    "remote": true,
+    "size": "660×428×773",
+    "warranty": "3年/5年",
+    "weight": "54.5kg",
+    "wifi": true
+   },
+   "host": "mecanhk.com",
+   "model": "MC24VXH",
+   "rawSha256": "e734234b8ef44702d99e5449f7a6eeda63aca53a665bd2cd551c2866d67dfc07",
+   "source": "MECAN AIRCONDITIONING (HONG KONG) LIMITED",
+   "url": "https://mecanhk.com/product/mc24vxh-2-5-inverter-window-aircon/"
+  },
+  "title": "MC24VXH &#8211; R32變頻淨冷型窗口式冷氣機（2.5匹）[VXH系列] &#8211; 美佳冷氣",
+  "url": "https://mecanhk.com/product/mc24vxh-2-5-inverter-window-aircon/",
+  "warranty": "3年/5年",
+  "weight": "54.5kg",
+  "wifi": true
+ }
+}

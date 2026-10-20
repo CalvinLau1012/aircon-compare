@@ -27,6 +27,7 @@ EXPECTED_OUTPUTS = {
     2: ('carrier_official.json', 'general_official.json', 'specs.json'),
 }
 SHA_RE = __import__('re').compile(r'^sha256:[0-9a-f]{64}$')
+ALL_OUTPUTS = frozenset(set().union(*EXPECTED_OUTPUTS.values()) | {'mecan_official.json'})
 
 
 def _sha(value):
@@ -61,7 +62,15 @@ def _manifest_errors(receipt):
     if manifest.get('stage') != stage:
         errors.append('outputManifest.stage 同 receipt.stage 唔一致')
     files = manifest.get('files')
-    expected = set(EXPECTED_OUTPUTS[stage])
+    if receipt.get('targetScoped') is True:
+        selected = receipt.get('selectedOutputs')
+        if not isinstance(selected, list) or not selected \
+                or len(selected) != len(set(selected)) \
+                or any(x not in ALL_OUTPUTS for x in selected):
+            return errors + ['target-scoped selectedOutputs 唔合法']
+        expected = set(selected)
+    else:
+        expected = set(EXPECTED_OUTPUTS[stage])
     if not isinstance(files, dict) or set(files) != expected:
         return errors + ['outputManifest.files 必須恰好包含指定 outputs']
     for name, meta in files.items():
@@ -184,6 +193,8 @@ def main(argv=None):
         'generatedAt': receipt.get('finishedAt') or receipt.get('startedAt'),
         'source': 'run_official_batch.py',
     }
+    if decision == 'advanced' and receipt.get('targetScoped') is True:
+        status['selectedOutputs'] = list(receipt.get('selectedOutputs') or [])
     out = os.path.abspath(args.out)
     tmp = out + '.tmp'
     try:
