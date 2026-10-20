@@ -174,11 +174,12 @@ def main(argv=None):
         if args.apply and not args.expect_repair_id and not args.force:
             raise RepairError('--apply 必須同時提供 --expect-repair-id（或明示 --force）')
         out_path = os.path.abspath(args.out)
-        if args.apply and os.path.exists(out_path):
+        if os.path.exists(out_path):
             # Reuse the already-written immutable receipt (its createdAt may
             # differ from this invocation); core identity must still match.
             existing, _ = _read_json(out_path, 'repair receipt')
             if isinstance(existing, dict) and apply_mod.repair_id_for(existing) == receipt['repairId'] \
+                    and existing.get('repairId') == receipt['repairId'] \
                     and existing.get('originalBundleHash') == receipt['originalBundleHash']:
                 receipt = existing
         action = _write_immutable(out_path, receipt)

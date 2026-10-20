@@ -353,7 +353,7 @@ def test_meta_target_is_validated_before_any_write(tmp_path):
         assert open(os.path.join(tmp_path, n), 'rb').read() == data, n
 
 
-def test_repair_cli_receipt_binds_original_bundle_and_is_tamper_evident(tmp_path):
+def test_repair_cli_receipt_binds_original_bundle_and_is_tamper_evident(tmp_path, monkeypatch):
     bundle, pre_t, post_t, pre_b, post_b = _repair_bundle(tmp_path)
     _seed(tmp_path, snapshot=bundle['baseSnapshot'], tracking=pre_t,
           blacklist=pre_b, meta={'price_batch_start': '2026-10-10',
@@ -371,6 +371,8 @@ def test_repair_cli_receipt_binds_original_bundle_and_is_tamper_evident(tmp_path
     cli = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cli)
     receipt_path = tmp_path / 'repair.json'
+    clock = [1792490000]
+    monkeypatch.setattr(cli.time, 'time', lambda: clock[0])
     rc = cli.main(['--bundle-dir', str(bdir), '--repo', str(tmp_path),
                    '--out', str(receipt_path)])
     assert rc == 0
@@ -380,6 +382,7 @@ def test_repair_cli_receipt_binds_original_bundle_and_is_tamper_evident(tmp_path
     # A second run must be byte-identical (immutable receipt), and applying
     # with the wrong expected id must fail closed.
     before = receipt_path.read_bytes()
+    clock[0] += 3600  # Real repeat invocations cross wall-clock seconds.
     assert cli.main(['--bundle-dir', str(bdir), '--repo', str(tmp_path),
                      '--out', str(receipt_path)]) == 0
     assert receipt_path.read_bytes() == before
