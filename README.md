@@ -799,3 +799,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 ### 2026-10-20 timestamp correction（append-only）
 
 Historical Stage2 receipts whose `createdAt`/`observedAt` were future-labelled remain unchanged and are not trusted UTC evidence. Root's actual observation time governs; this daily-repair candidate uses actual UTC and does not alter the checked Stage2 source/hash identities.
+
+### 2026-10-20 R2 receipt-identity and shell-matrix correction（append-only）
+
+R1 is superseded as an acceptance candidate. R2 adds strict previously-bound identity checks, runner-compatible existing BigGo status validation, validated zero-fact alert messages, and executed workflow-shell failure fixtures. Actual daily order (official after completed receive, BigGo afterward) is now represented correctly. R1 evidence is retained; no wholesale redesign.

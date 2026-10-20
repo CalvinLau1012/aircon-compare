@@ -1370,3 +1370,13 @@ The first full run of the strengthened Pages pre-deploy guard rejected two legac
 ## 2026-10-20 · Historical timestamp correction（append-only）
 
 Stage2 delivery `IDENTITY.createdAt=2026-10-19T00:15:00Z` and private pin `observedAt=2026-10-19T00:00:00Z` were future-labelled at creation and are retained as historical bytes. They are not trusted UTC clock evidence. Root's actual Stage2 acceptance/observation time is authoritative; new daily-repair receipts and reports use actual UTC timestamps. This correction does not invalidate the independently checked Stage2 hashes/commits and does not require a new price lookup.
+
+## 2026-10-20 · R2 receipt identity / shell-matrix correction（append-only）
+
+R1 was not accepted. Its finalizer tests were mostly helper/static checks, and its matrix wrongly described official failure as before receive; actual daily order is test/gates→EMSD→completed receive→official→BigGo. This R2 narrow fix:
+- refuses relabelling a sync report that already carries any foreign/invalid sourceRunId/headSha/sourceEvent; valid current identity is idempotent, truly unbound schema2 reports bind once, bytes stay unchanged on rejection;
+- validates existing BigGo status against a small runner-compatible schema (schemaVersion/status/alert/request types/known status and optional identity), refusing arbitrary objects for upstream fallback; provider-corrupt evidence can become explicit UNKNOWN while original bytes are preserved as `.invalid`, never a zero-request success;
+- validates the complete upstream/unknown receipt and expected run/head before printing trusted zero-request facts or UNKNOWN;
+- executes the actual YAML shell finalizer blocks with fixture history for test/browser/gov/EMSD (pre-receive), official-after-receive, receive absent/corrupt, provider skipped/unknown, legal repair/rebuild, preservation and atomic-write failures.
+
+R1 evidence remains historical; no live/data/provider operation. Root full gates/browser are still pending.
