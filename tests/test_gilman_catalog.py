@@ -99,3 +99,16 @@ def test_missing_page_keeps_existing_output(tmp_path, monkeypatch):
     old = out.read_bytes()
     assert g.main(['--cache-manifest', str(manifest), '--out', str(out)]) != 0
     assert out.read_bytes() == old
+
+
+def test_explicit_cache_manifest_never_falls_back_to_live_http(tmp_path, monkeypatch):
+    monkeypatch.setattr(g, 'BRANDS', {'GREE': g.BRANDS['GREE']})
+    manifest = _manifest(tmp_path, [(1, _html(1, 2, 2), None)])
+    requests = []
+    def unexpected_fetch(url):
+        requests.append(url)
+        raise RuntimeError('network must remain unused in explicit cache replay')
+    monkeypatch.setattr(g, '_curl', unexpected_fetch)
+    _, _, _, failures, _ = g.scan(cache_manifest=str(manifest))
+    assert failures
+    assert requests == [], 'a missing cache page must fail without live fallback'

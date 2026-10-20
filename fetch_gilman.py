@@ -215,7 +215,7 @@ def scan(cache_dir=None, cache_manifest=None):
                 if cached:
                     raw, stamp = _cache_page(cache, url)
                     effective = url
-                elif cache_dir:
+                elif cache_dir or cache_manifest:
                     raise RuntimeError('cache manifest lacks page')
                 else:
                     raw, effective = _curl(url)
