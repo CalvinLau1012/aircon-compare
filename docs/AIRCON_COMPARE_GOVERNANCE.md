@@ -2338,3 +2338,8 @@ Root supplied the final narrow patch: strict integer schema, healthy codes empty
 ### 2026-10-18 · served-snapshot acquisition provenance (append-only)
 
 A pending stage5/remote-not-completed receive lost the previously served stage4 acquisition time. This candidate adds a separate optional prior BigGo metadata input plus bounded read-only committed metadata history fallback. It accepts lastAcquiredAt only when prior sourceStatus schema is valid, snapshotHash/id and lastAppliedAt exactly match current prices_meta, the actual snapshot, UTC/calendar is valid, acquisition is not future and not after apply. Prior metadata never feeds EMSD facts. No status/reason promotion; current pending/degraded remains. CLI/workflow pass prior metadata and explicitly enable at most 32 local git commits; no checkout/fetch/network. No live operation.
+
+
+### 2026-10-20 · Root correction: real recovery metadata producer contract (append-only)
+
+Formal zero-provider repair run 39393716967 received and verified stage5 locally but correctly stopped before commit/publication: the strict metadata Schema rejects public sourceStatus.biggo.timeProvenance. R3 UI/helper tests missed the actual core CLI. Root adds a real-evidence apply→verify→status→gen-metadata core CLI regression, first reproducing this exact failure. Public summary retains the existing schema contract: lastAcquiredAt=null and displayed unknown; full acquiredAtProvenance/evidence stays in the verified receiver receipt. The new internal unknown guard still prevents old-stage/publication/apply/now fallback. No Schema weakening, no edits to historical blocks, no provider/coordinator rewrite. R3 claims about public timeProvenance emission are superseded by this correction; source evidence itself is unchanged.

@@ -133,7 +133,7 @@ def test_two_publication_intents_preserve_unknown_acquisition(tmp_path, publicat
     b = status['biggo']
     assert b['status'] == 'ok'
     assert b['lastAcquiredAt'] is None
-    assert b['timeProvenance'] == 'unknown'
+    assert 'timeProvenance' not in b
     assert b['lastAppliedAt'] == applied_at
     assert b['lastAcquiredAt'] != publication
     assert b['lastAcquiredAt'] != applied_at
@@ -175,7 +175,7 @@ def test_repeat_receive_is_noop_and_unknown_time_stays_unknown(tmp_path):
     status = _status(meta2, verified2, prior_metadata=_old_prior(meta2))
     assert status['biggo']['lastAcquiredAt'] is None
     assert status['biggo']['lastAppliedAt'] == '2026-10-20T08:00:00Z'
-    assert status['biggo']['timeProvenance'] == 'unknown'
+    assert 'timeProvenance' not in status['biggo']
 
 
 def test_pending_and_tampered_recovery_evidence_is_rejected(tmp_path):
@@ -232,3 +232,37 @@ def test_unverified_unknown_marker_does_not_clear_trusted_prior_time(tmp_path):
         prior_metadata=_old_prior(meta), now=NOW)
     assert status['biggo']['lastAcquiredAt'] == OLD_STAGE4
     assert status['biggo'].get('timeProvenance') != 'unknown'
+
+
+def test_real_recovery_status_passes_formal_metadata_cli(tmp_path):
+    """Exercise the actual daily core CLI, not only Python status/UI helpers."""
+    import subprocess
+    packet = _packet('2026-10-20T07:50:00Z')
+    root = _root(tmp_path)
+    _, meta, verified, _ = _apply(packet, root, '2026-10-20T08:00:00Z')
+    status = _status(meta, verified, prior_metadata=_old_prior(meta))
+    status_file = tmp_path / 'source-status.json'
+    status_file.write_text(json.dumps(status))
+    existing = json.loads((BASE / 'metadata.json').read_text())
+    output = tmp_path / 'metadata.core.json'
+    args = [sys.executable, str(BASE / 'scripts/gen-metadata.py'),
+            '--stage', 'core', '--force', '--out', str(output),
+            '--version', existing['version'], '--build', 'Brecovery-schema-contract',
+            '--commit', existing['commit'], '--workflow-run-id', 'recovery-schema-contract',
+            '--emsd-receipt', str(BASE / 'emsd_receipt.json'),
+            '--dataset-csv', str(BASE / 'emsd_空調能源標籤.csv'),
+            '--dataset-hash', existing['datasetHash'],
+            '--record-count', str(existing['recordCount']),
+            '--source-status', str(status_file)]
+    for key, flag in [('modelCount', '--model-count'),
+                      ('registrationCount', '--registration-count'),
+                      ('rawRecordCount', '--raw-record-count')]:
+        if key in existing:
+            args.extend([flag, str(existing[key])])
+    result = subprocess.run(args, capture_output=True, text=True, cwd=BASE)
+    assert result.returncode == 0, result.stdout + result.stderr
+    emitted = json.loads(output.read_text())['sourceStatus']['biggo']
+    assert emitted['lastAcquiredAt'] is None
+    assert verified['acquiredAtProvenance'] == 'unknown'
+    assert verified['recoveryTimeEvidenceHash']
+    assert 'timeProvenance' not in emitted

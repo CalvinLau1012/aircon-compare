@@ -1735,3 +1735,8 @@ The first full run of the strengthened Pages pre-deploy guard rejected two legac
 ## 2026-10-20 daily test-clock／early-failure repair（append-only）
 
 The health producer-consumer test chain now shares one explicit fixture clock; strict 48h/future/tamper and production max-age behavior remain unchanged. Completed receive and BigGo skipped/failed phases now have separate run-bound failure receipts and alert semantics, without claiming provider request counts or success when not proven. Isolated candidate only; Root must run final full gates/browser and perform formal integration.
+
+
+### 2026-10-20 · Root correction: real recovery metadata producer contract (append-only)
+
+Formal zero-provider repair run 39393716967 received and verified stage5 locally but correctly stopped before commit/publication: the strict metadata Schema rejects public sourceStatus.biggo.timeProvenance. R3 UI/helper tests missed the actual core CLI. Root adds a real-evidence apply→verify→status→gen-metadata core CLI regression, first reproducing this exact failure. Public summary retains the existing schema contract: lastAcquiredAt=null and displayed unknown; full acquiredAtProvenance/evidence stays in the verified receiver receipt. The new internal unknown guard still prevents old-stage/publication/apply/now fallback. No Schema weakening, no edits to historical blocks, no provider/coordinator rewrite. R3 claims about public timeProvenance emission are superseded by this correction; source evidence itself is unchanged.

@@ -573,7 +573,6 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
         snapshot_hash=actual_snapshot,
         safe_reason=breason,
         extra={'cycleId': cycle, 'stage': stage} if cycle is not None or stage is not None else None,
-        time_provenance=('unknown' if recovery_unknown else None),
     )
     decision = official.get('decision')
     now_dt = _dt.datetime.fromtimestamp(now if now is not None else time.time(),
