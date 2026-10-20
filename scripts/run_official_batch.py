@@ -712,10 +712,9 @@ def main(argv=None):
         receipt['missingCanonicalModels'] = sorted({norm_model(m) for m in missing_coverage})
         receipt['coveragePendingFromScripts'] = sorted(script_pending_norm)
         missing_reasons = {}
-        route_map = {}
+        route_map = {m: route_for_model(m) for m in target_models}
         for m in missing_coverage:
-            route = route_for_model(m)
-            route_map[m] = route
+            route = route_map[m]
             # A script's explicit failure/coverage reason wins; routing only
             # explains otherwise-unexplained queue gaps.
             coverage_pending_reasons.setdefault(
