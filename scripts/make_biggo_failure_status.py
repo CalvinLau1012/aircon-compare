@@ -67,6 +67,27 @@ def _validate_bound_identity(data):
     return True, 'bound'
 
 
+def _existing_identity_matches(data, run_id, head, event):
+    if not isinstance(data, dict):
+        return True, 'no-identity'
+    present = [k for k in ('sourceRunId', 'headSha', 'sourceEvent') if k in data]
+    if not present:
+        return True, 'unbound'
+    if len(present) != 3:
+        return False, 'partial-identity'
+    run_id_value, head_value, event_value = (
+        data.get('sourceRunId'), data.get('headSha'), data.get('sourceEvent'))
+    if type(run_id_value) is not int or run_id_value <= 0:
+        return False, 'run-id-type'
+    if not isinstance(head_value, str) or not _HEAD_RE.fullmatch(head_value):
+        return False, 'head-type'
+    if event_value not in _EVENTS:
+        return False, 'event-type'
+    if run_id_value != int(run_id) or head_value != head or event_value != event:
+        return False, 'identity-mismatch'
+    return True, 'same-identity'
+
+
 def validate_existing_status(data):
     """Return (ok, reason) for a producer-compatible existing BigGo status.
 
@@ -228,6 +249,12 @@ def main(argv=None):
             existing = json.loads(raw.decode('utf-8'))
         except (OSError, ValueError, UnicodeDecodeError):
             existing = None
+        identity_ok, identity_why = _existing_identity_matches(
+            existing, a.run_id, a.head, a.event)
+        if not identity_ok:
+            print(f'❌ existing status identity is not current ({identity_why}); refusing',
+                  file=sys.stderr)
+            return 2
         valid, why = validate_existing_status(existing)
         if valid:
             # Existing genuine producer evidence is authoritative.
