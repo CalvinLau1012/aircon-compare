@@ -328,19 +328,31 @@ def _write_status(status_out, record):
         pass
 
 
-def _write_review_evidence(status_out, staged, stage_result=None):
+def _write_review_evidence(status_out, staged, stage_result=None, manifest_fields=None):
     """Persist a whitelisted, reconstructable staged packet (no secrets).
 
     The legacy top-level keys remain for existing consumers; new fields make the
     base/new snapshot, review, effects, pre/post images and stage result
     recoverable.  Arbitrary staged keys (including credentials) are ignored.
     """
-    if not status_out or not isinstance(staged, dict):
-        return
+    if not status_out:
+        return True
+    if not isinstance(staged, dict):
+        return False
     try:
         base_dir = os.path.dirname(os.path.abspath(status_out))
         out_dir = os.path.join(base_dir, 'biggo-review')
         os.makedirs(out_dir, exist_ok=True)
+        target = os.path.join(out_dir, 'stage-snapshot.json')
+        previous = None
+        if os.path.isfile(target) and not os.path.islink(target):
+            try:
+                with open(target, encoding='utf-8') as f:
+                    candidate = json.load(f)
+                if isinstance(candidate, dict):
+                    previous = candidate
+            except (OSError, ValueError):
+                previous = None
         payload = {
             'schemaVersion': 2,
             'kind': 'aircon-biggo-review-stage-snapshot',
@@ -355,8 +367,26 @@ def _write_review_evidence(status_out, staged, stage_result=None):
             'preState': staged.get('preState'),
             'postState': staged.get('postState'),
             'metaFields': staged.get('metaFields'),
-            'manifestFields': staged.get('manifestFields'),
+            'manifestFields': manifest_fields if manifest_fields is not None
+                              else staged.get('manifestFields'),
         }
+        if previous:
+            # A weaker callback must never erase a stronger packet, and a
+            # packet from a different cycle/stage must never be merged blindly.
+            previous_scope = previous.get('manifestFields') or previous.get('stageResult') or {}
+            current_scope = (manifest_fields if manifest_fields is not None
+                             else staged.get('manifestFields')) or stage_result or {}
+            if previous_scope.get('cycleId') and current_scope.get('cycleId') \
+                    and previous_scope.get('cycleId') != current_scope.get('cycleId'):
+                previous = None
+            elif previous_scope.get('stage') is not None \
+                    and current_scope.get('stage') is not None \
+                    and previous_scope.get('stage') != current_scope.get('stage'):
+                previous = None
+        if previous:
+            for key in ('stageResult', 'stageResultHash', 'manifestFields'):
+                if payload.get(key) is None and previous.get(key) is not None:
+                    payload[key] = previous[key]
         if stage_result is not None:
             payload['stageResult'] = stage_result
             payload['stageResultHash'] = sha256_id(canonical_json_bytes(stage_result))
@@ -364,9 +394,10 @@ def _write_review_evidence(status_out, staged, stage_result=None):
         with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
             json.dump(payload, f, ensure_ascii=False, sort_keys=True, indent=2)
             f.flush(); os.fsync(f.fileno())
-        os.replace(tmp, os.path.join(out_dir, 'stage-snapshot.json'))
+        os.replace(tmp, target)
+        return True
     except OSError:
-        pass
+        return False
 
 
 def _build_stage_result(*, cycle_id, stage_no, mode, client, now_fn, staged):
@@ -768,13 +799,20 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
                 'publishedAt': coord_mod.utc_stamp(now_fn()),
             }
             # Persist the complete safe packet before the first immutable PUT.
-            _write_review_evidence(status_out, batch_result, stage_result=stage_result)
+            if not _write_review_evidence(status_out, batch_result, stage_result=stage_result,
+                                          manifest_fields=manifest_fields):
+                _needs_review(client, emit, cycle_id, stage='prepublish-evidence',
+                              reason='review-evidence-write-failed',
+                              lease_lost=heartbeat.lost)
+                return 0
             try:
                 published = client.publish_bundle(
                     batch_result['baseSnapshot'], batch_result['snapshot'],
                     stage_result, manifest_fields)
             except coord_mod.CoordinatorError as e:
-                _write_review_evidence(status_out, batch_result)
+                if not _write_review_evidence(status_out, batch_result, stage_result=stage_result,
+                                              manifest_fields=manifest_fields):
+                    emit('review-evidence-write-failed', stage='publish')
                 _needs_review(client, emit, cycle_id, stage='publish',
                               reason='publish-uncertain', lease_lost=heartbeat.lost,
                               extra={'error': type(e).__name__})
@@ -787,7 +825,9 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
                               stage_result_path=published['stageResultPath'],
                               bundle_hash=published['bundleHash'])
             except coord_mod.CoordinatorError as e:
-                _write_review_evidence(status_out, batch_result)
+                if not _write_review_evidence(status_out, batch_result, stage_result=stage_result,
+                                              manifest_fields=manifest_fields):
+                    emit('review-evidence-write-failed', stage='commit')
                 _needs_review(client, emit, cycle_id, stage='commit',
                               reason='commit-uncertain', lease_lost=heartbeat.lost,
                               extra={'error': type(e).__name__})

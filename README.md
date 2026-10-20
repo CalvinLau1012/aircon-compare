@@ -813,3 +813,12 @@ Existing BigGo status identity is now compared to the current run/head/event, no
 - Canonical revived review outcomes now retain the exact raw model/price and `BRAND|MODEL` key; counter/outcome/snapshot identity is exact.
 - Review evidence retains complete safe reconstruction fields before publish, without secrets or arbitrary staged keys.
 - Read-only recovery preparation validates the original artifact/input hashes and reconstructs a candidate stage result/effects/bundle for Root review. It makes no provider or coordinator calls and does not apply; unprovable confirmed-review details and exact acquisition times are explicitly marked.
+
+### 2026-10-20 R2 recovery-binding correction（append-only）
+
+- R1 remains preserved as historical evidence; R2 is a new candidate, not a rewrite of R1.
+- Failure callbacks now retain the exact published stage result and safe manifest fields (cycle/stage/mode/writer/commit/time); a weaker callback cannot erase a stronger packet, and packets from another cycle/stage are never merged.
+- Recovery verification now reproduces the complete packet from trusted evidence and compares every emitted base/new/stage-result/manifest/prices-meta/review-evidence document, including schemas, hashes, source identity and cross-references.
+- Artifact-derived status/review bytes are read directly from the hash-verified original ZIP; duplicate, traversal and symlink members are rejected. All five original input files require declared hash and size.
+- The revived key is fixed to the unique `CARRIER|CHK18FBVX` evidence; the 39 confirmed details and exact acquisition sub-second time remain explicitly unproven.
+- Prepared output is publication-pending: source completion time is retained as a derived bound, never used as recovery publication time. Root may finalize with an explicit fixed publication intent; manifest/bundle/prices-meta hashes are then recomputed deterministically.
