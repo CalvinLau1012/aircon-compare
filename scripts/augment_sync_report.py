@@ -32,6 +32,24 @@ def _upstream_report(run_id, head, event, generated_at):
             'sourceEvent': event}
 
 
+def _existing_identity_matches(data, run_id, head, event):
+    present = [k for k in ('sourceRunId', 'headSha', 'sourceEvent') if k in data]
+    if not present:
+        return True, 'unbound'
+    if len(present) != 3:
+        return False, 'partial-identity'
+    rid = data.get('sourceRunId')
+    if type(rid) is not int or rid <= 0:
+        return False, 'run-id-type'
+    if not isinstance(data.get('headSha'), str) or not re.fullmatch(r'[0-9a-f]{40}', data['headSha']):
+        return False, 'head-type'
+    if data.get('sourceEvent') not in ('schedule', 'workflow_dispatch'):
+        return False, 'event-type'
+    if rid != int(run_id) or data['headSha'] != head or data['sourceEvent'] != event:
+        return False, 'identity-mismatch'
+    return True, 'bound'
+
+
 def _atomic_write(path, data):
     tmp = path + '.tmp'
     with open(tmp, 'w', encoding='utf-8', newline='\n') as f:
@@ -69,8 +87,13 @@ def main(argv=None):
         except (OSError, ValueError):
             data = None
     if data is not None:
-        data.update({'sourceRunId': int(args.run_id), 'sourceEvent': args.event,
-                     'headSha': args.head})
+        ok, why = _existing_identity_matches(data, args.run_id, args.head, args.event)
+        if not ok:
+            print(f'❌ sync report identity is not trusted ({why}); refusing', file=sys.stderr)
+            return 2
+        if why == 'unbound':
+            data.update({'sourceRunId': int(args.run_id), 'sourceEvent': args.event,
+                         'headSha': args.head})
         try:
             _atomic_write(args.report, data)
         except OSError as e:

@@ -107,7 +107,8 @@ def test_biggo_upstream_and_unknown_facts_are_distinct(tmp_path):
 
 def test_biggo_existing_valid_status_is_not_overwritten(tmp_path):
     path = tmp_path / 'status.json'
-    original = {'status': 'needs-review', 'alert': True, 'requests': {'token': 1, 'search': 0},
+    original = {'schemaVersion': 1, 'status': 'needs-review', 'alert': True,
+                'requests': {'token': 1, 'search': 0},
                 'providerPhaseEntered': True, 'leaseAcquired': True}
     path.write_text(json.dumps(original), encoding='utf-8')
     assert biggo.main(['--out', str(path), '--kind', 'provider-phase-unknown',

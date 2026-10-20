@@ -21,6 +21,10 @@ import json
 import os
 import subprocess
 import sys
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
+import make_biggo_failure_status as failure_status
 
 PATHS = ['biggo_prices.json', 'prices_meta.json', 'model_blacklist.json',
          'model_status.json']
@@ -142,10 +146,22 @@ def run_alert(status_path, expected_run_id=None, expected_head=None):
         print(f'::error::BigGo provider-skip receipt invalid：{why}')
         return 1
     if status.get('status') == 'blocked-upstream':
+        ok, why = failure_status.validate_upstream_receipt(
+            status, expected_run_id, expected_head)
+        if not ok:
+            print(f'::error::BigGo upstream receipt is invalid/untrusted ({why}); '
+                  'no zero-request claim is trusted')
+            return 1
         print('::error::BigGo provider phase was not started because an upstream workflow step failed; '
               'requests=0, lease=false, providerPhaseEntered=false; this is not a provider 429')
         return 1
     if status.get('status') == 'blocked-provider-unknown':
+        ok, why = failure_status.validate_provider_unknown_receipt(
+            status, expected_run_id, expected_head)
+        if not ok:
+            print(f'::error::BigGo provider-unknown receipt is invalid/untrusted ({why}); '
+                  'facts remain UNKNOWN')
+            return 1
         print('::error::BigGo provider phase outcome is UNKNOWN (status missing/invalid); '
               'cannot claim zero requests or success')
         return 1
