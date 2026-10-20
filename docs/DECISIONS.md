@@ -1366,3 +1366,7 @@ The first full run of the strengthened Pages pre-deploy guard rejected two legac
 - A skipped BigGo provider phase gets a separate `blocked-upstream` receipt (zero requests only when never started), while a provider-phase failure with missing/invalid status gets `blocked-provider-unknown` (provider/lease/requests unknown). Legal repair/rebuild skip receipts are suppressed after an upstream failure. Alert messages distinguish upstream workflow failure from provider/quota/429 and missing artifacts remain red.
 - The daily control-flow review retained the existing gates, unique BigGo runner/lease/cooldown/budget/intent, source-status/metadata/PDF binding, exact Pages/source-run checks, and push-fail-closed. No production data/metadata/provider/coordinator operation or formal deployment in this isolated candidate.
 - Historical Stage2 timestamps labelled in the future remain unchanged bytes and are not trusted clock evidence; Root’s actual acceptance/time observation is authoritative. This round’s receipts use actual UTC.
+
+## 2026-10-20 · Historical timestamp correction（append-only）
+
+Stage2 delivery `IDENTITY.createdAt=2026-10-19T00:15:00Z` and private pin `observedAt=2026-10-19T00:00:00Z` were future-labelled at creation and are retained as historical bytes. They are not trusted UTC clock evidence. Root's actual Stage2 acceptance/observation time is authoritative; new daily-repair receipts and reports use actual UTC timestamps. This correction does not invalidate the independently checked Stage2 hashes/commits and does not require a new price lookup.

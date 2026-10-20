@@ -795,3 +795,7 @@ python fetch_rasonic.py        # 樂信官方網店價格
 - If the BigGo phase never started because upstream failed, a separate `blocked-upstream` receipt records `providerPhaseEntered=false`, `leaseAcquired=false`, requests 0 and `failureScope=upstream-workflow`. If the provider phase failed but its status is missing/invalid, `blocked-provider-unknown` records provider/lease/requests as UNKNOWN. Legal repair/rebuild skip receipts are not produced after an upstream failure.
 - BigGo alert now reads a run-bound receipt and reports upstream workflow failure separately from provider 429/quota; missing or corrupt artifacts remain fail-closed. No provider/coordinator/grant/lease/data operation was performed by this candidate.
 - Test/clock regression also covers the private price-health fixture's fixed-date drift. Detail/evidence: private/work run delivery.
+
+### 2026-10-20 timestamp correction（append-only）
+
+Historical Stage2 receipts whose `createdAt`/`observedAt` were future-labelled remain unchanged and are not trusted UTC evidence. Root's actual observation time governs; this daily-repair candidate uses actual UTC and does not alter the checked Stage2 source/hash identities.
