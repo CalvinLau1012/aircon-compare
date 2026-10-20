@@ -79,6 +79,17 @@ def validate_existing_status(data):
     if type(data.get('schemaVersion')) is not int or data.get('schemaVersion') != 1:
         return False, 'schema'
     status = data.get('status')
+    if status == 'blocked-provider-unknown':
+        if data.get('mode') != 'provider-phase-failure' \
+                or data.get('failureScope') != 'provider-phase' \
+                or data.get('alert') is not True:
+            return False, 'unknown-receipt'
+        if (data.get('providerPhaseEntered') is not None
+                or data.get('leaseAcquired') is not None
+                or data.get('requests') is not None):
+            return False, 'unknown-facts'
+        ok, why = _validate_bound_identity(data)
+        return (True, 'ok') if ok else (False, why)
     if not isinstance(status, str) or status not in _KNOWN_STATUSES:
         return False, 'status'
     if type(data.get('alert')) is not bool:
