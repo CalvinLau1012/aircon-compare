@@ -76,7 +76,8 @@ def _valid_date(value):
 
 def _source_block(status='unknown', *, last_attempt_at=None, last_acquired_at=None,
                   last_applied_at=None, last_applied_date=None, snapshot_id=None,
-                  snapshot_hash=None, safe_reason='legacy-unknown', extra=None):
+                  snapshot_hash=None, safe_reason='legacy-unknown', extra=None,
+                  time_provenance=None):
     block = {
         'status': status if status in STATUSES else 'unknown',
         'lastAttemptAt': last_attempt_at if _valid_ts(last_attempt_at) else None,
@@ -88,6 +89,8 @@ def _source_block(status='unknown', *, last_attempt_at=None, last_acquired_at=No
                         and SHA_RE.match(snapshot_hash) else None,
         'safeReason': safe_reason if safe_reason in SAFE_REASONS else 'legacy-unknown',
     }
+    if time_provenance in ('recorded', 'unknown', 'baseline'):
+        block['timeProvenance'] = time_provenance
     if extra:
         for k, v in extra.items():
             if k in ('cycleId', 'stage', 'mode') and (
@@ -231,6 +234,9 @@ def validate_status(status):
         for field in ('snapshotId',):
             if block.get(field) is not None and not isinstance(block[field], str):
                 errors.append(f'sourceStatus.{name}.{field} 必須係 string 或 null')
+        if block.get('timeProvenance') is not None \
+                and block.get('timeProvenance') not in ('recorded', 'unknown', 'baseline'):
+            errors.append(f'sourceStatus.{name}.timeProvenance 唔合法')
         for field in ('cycleId',):
             if block.get(field) is not None and not isinstance(block[field], str):
                 errors.append(f'sourceStatus.{name}.{field} 必須係 string 或 null')
@@ -380,6 +386,26 @@ def _history_acquisition(repo_root, prices_meta, actual_snapshot, applied_at,
     return None
 
 
+def _recovery_unknown_receiver(receiver):
+    """True only for a verified current receiver that explicitly proves unknown acquisition."""
+    if not isinstance(receiver, dict):
+        return False
+    if receiver.get('acquiredAt') is not None \
+            or receiver.get('acquiredAtProvenance') != 'unknown':
+        return False
+    if not _is_sha(receiver.get('recoveryTimeEvidenceHash')):
+        return False
+    if receiver.get('sourceCompletionBound') != '2026-10-20T07:19:53Z' \
+            or receiver.get('logWindowStart') != '2026-10-20T07:13:40Z':
+        return False
+    if receiver.get('sourceRunId') != 39384334727 \
+            or receiver.get('sourceHead') != '743a929a284adf7ae3f4321d4683b01d40e99981' \
+            or receiver.get('artifactSha256') != ('sha256:0fbfd6b6a7837a73bf72c803c8a727e'
+                                                   '1833f57872bba3b423ad90a9ce42a1ef5'):
+        return False
+    return True
+
+
 def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
                  biggo_status=None, official_status=None, deployment_receipt=None,
                  biggo_snapshot_hash=None, completed_sync=None, now=None,
@@ -514,9 +540,14 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
             # inactive/skipped.
             bstatus_ui, breason = 'ok', 'applied'
     baseline_current = bool(baseline_info and baseline_info.get('current'))
+    recovery_unknown = _recovery_unknown_receiver(receiver)
     acquired_at = None
     if baseline_verified:
         acquired_at = baseline_info['source'].get('acquiredAt')
+    elif recovery_unknown:
+        # A verified current recovery explicitly proves that exact acquisition
+        # time is unknown.  Never borrow old stage4, report, publish or now.
+        acquired_at = None
     else:
         # The report generation clock is not a price acquisition witness.
         acquired_at = receiver.get('acquiredAt') if receiver else None
@@ -535,6 +566,7 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
         snapshot_hash=actual_snapshot,
         safe_reason=breason,
         extra={'cycleId': cycle, 'stage': stage} if cycle is not None or stage is not None else None,
+        time_provenance=('unknown' if recovery_unknown else None),
     )
     decision = official.get('decision')
     now_dt = _dt.datetime.fromtimestamp(now if now is not None else time.time(),

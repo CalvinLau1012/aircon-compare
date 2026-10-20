@@ -251,9 +251,10 @@ def verify_local_post(bundle, meta, root, repair=None):
         if meta.get('appliedSnapshotId') != identity['appliedSnapshotId']:
             raise SyncError('prices_meta appliedSnapshotId does not match verified bundle')
         baseline_id = None
+    marker = biggo_apply.recovery_time_evidence(bundle)
     acquired_at = (baseline['source'].get('acquiredAt') if baseline is not None
                    else manifest.get('publishedAt'))
-    return {
+    result = {
         'biggo_prices.json': actual['biggo_prices.json'],
         'model_status.json': actual['model_status.json'],
         'model_blacklist.json': actual['model_blacklist.json'],
@@ -266,6 +267,18 @@ def verify_local_post(bundle, meta, root, repair=None):
         'baselineAcceptanceId': baseline_id,
         'repairId': (repair or {}).get('repairId'),
     }
+    if marker is not None:
+        result.update({
+            'acquiredAt': None,
+            'acquiredAtProvenance': 'unknown',
+            'recoveryTimeEvidenceHash': biggo_apply._canonical_hash(marker),
+            'sourceCompletionBound': marker['sourceCompletionBound'],
+            'logWindowStart': marker['logWindowStart'],
+            'sourceRunId': marker['sourceRunId'],
+            'sourceHead': marker['sourceHead'],
+            'artifactSha256': marker['artifactSha256'],
+        })
+    return result
 
 
 def _write_report(path, report):

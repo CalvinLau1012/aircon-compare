@@ -51,6 +51,7 @@ EXPECTED_ZIP_MEMBERS = ('biggo-stage-status.json', 'biggo-review/stage-snapshot.
 EXPECTED_REVIVED_KEY = 'CARRIER|CHK18FBVX'
 EXPECTED_REVIVED_MODEL = 'CHK18FBVX'
 SOURCE_COMPLETION_BOUND = '2026-10-20T07:19:53Z'
+SOURCE_LOG_WINDOW_START = '2026-10-20T07:13:40Z'
 OUTPUT_FILES = (
     ('base-biggo_prices.json', 'baseSnapshot'),
     ('biggo_prices.json', 'newSnapshot'),
@@ -346,12 +347,34 @@ def build_recovery(evidence, publication_time=None):
     if sha256_json(apply_mod._apply_blacklist(pre_black, effects)) != stage['postState']['blacklistHash']:
         raise RecoveryError('blacklist effects do not reproduce postState')
     cyc = coord.cycle_slug(stage['cycleId'])
+    time_evidence = {
+        'schemaVersion': 1,
+        'kind': 'biggo-recovery-source-time-v1',
+        'sourceRunId': EXPECTED_RUN_ID,
+        'sourceHead': input_manifest['sourceHead'],
+        'artifactSha256': _hash_value(artifact_receipt.get('sha256'), 'artifact'),
+        'sourceCompletionBound': status['at'],
+        'logWindowStart': SOURCE_LOG_WINDOW_START,
+        'sourceCycleId': stage['cycleId'],
+        'sourceStage': stage['stage'],
+        'newSnapshotHash': sha256_json(new),
+        'stageResultHash': sha256_json(stage),
+        'acquiredAt': None,
+        'timeProvenance': 'unknown',
+        'reason': 'exact-acquisition-time-not-recorded',
+    }
+    time_evidence_hash = sha256_json(time_evidence)
     manifest_doc = {
         'cycleId': stage['cycleId'], 'stage': 5, 'mode': 'price-batch',
         'writer': 'root-recovery', 'writerKind': 'self-host',
         'commit': input_manifest.get('sourceHead'),
         'publishedAt': None,
         'publicationStatus': 'pending',
+        'recovery': {
+            'schemaVersion': 1, 'kind': 'biggo-recovery-bundle-v1',
+            'timeEvidenceHash': time_evidence_hash,
+        },
+        'recoveryTimeEvidence': time_evidence,
         'schemaVersion': coord.BUNDLE_MANIFEST_SCHEMA_VERSION,
         'snapshotSchemaVersion': coord.SNAPSHOT_SCHEMA_VERSION,
         'stageResultSchemaVersion': coord.STAGE_RESULT_SCHEMA_VERSION,

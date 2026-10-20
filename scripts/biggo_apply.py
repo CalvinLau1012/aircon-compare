@@ -334,6 +334,93 @@ def _target_meta(meta, sr, manifest, now, applied_at=None):
     return new_meta
 
 
+RECOVERY_EVIDENCE_KIND = 'biggo-recovery-source-time-v1'
+RECOVERY_MARKER_KIND = 'biggo-recovery-bundle-v1'
+RECOVERY_SOURCE_RUN_ID = 39384334727
+RECOVERY_SOURCE_HEAD = '743a929a284adf7ae3f4321d4683b01d40e99981'
+RECOVERY_ARTIFACT_SHA256 = ('sha256:0fbfd6b6a7837a73bf72c803c8a727e1833f57872bba3b423ad90a9ce42a1ef5')
+RECOVERY_SOURCE_COMPLETION = '2026-10-20T07:19:53Z'
+RECOVERY_LOG_WINDOW_START = '2026-10-20T07:13:40Z'
+
+
+def _valid_utc_z(value):
+    if not isinstance(value, str) or not value.endswith('Z'):
+        return False
+    try:
+        _dt.datetime.strptime(value, '%Y-%m-%dT%H:%M:%SZ')
+        return True
+    except ValueError:
+        return False
+
+
+def recovery_time_evidence(bundle):
+    """Validate the optional recovery source-time marker; return its evidence.
+
+    A normal bundle has neither marker nor evidence.  A recovery bundle must
+    have both, bound to the bundle/stage-result facts, and must never claim an
+    exact acquisition instant.  Pending publication is not applyable.
+    """
+    manifest = bundle.get('manifest')
+    sr = bundle.get('stageResult')
+    if not isinstance(manifest, dict) or not isinstance(sr, dict):
+        return None
+    marker = manifest.get('recovery')
+    evidence = manifest.get('recoveryTimeEvidence')
+    if marker is None and evidence is None:
+        return None
+    if not isinstance(marker, dict) or not isinstance(evidence, dict):
+        raise ApplyError('recovery source-time marker/evidence missing')
+    if marker.get('schemaVersion') != 1 or marker.get('kind') != RECOVERY_MARKER_KIND:
+        raise ApplyError('recovery marker schema/kind invalid')
+    expected_marker = {'schemaVersion', 'kind', 'timeEvidenceHash'}
+    if set(marker) != expected_marker:
+        raise ApplyError('recovery marker has unexpected fields')
+    expected_keys = {
+        'schemaVersion', 'kind', 'sourceRunId', 'sourceHead', 'artifactSha256',
+        'sourceCompletionBound', 'logWindowStart', 'sourceCycleId', 'sourceStage',
+        'newSnapshotHash', 'stageResultHash', 'acquiredAt', 'timeProvenance',
+        'reason',
+    }
+    if set(evidence) != expected_keys:
+        raise ApplyError('recovery time evidence has missing/unexpected fields')
+    if evidence.get('schemaVersion') != 1 or evidence.get('kind') != RECOVERY_EVIDENCE_KIND:
+        raise ApplyError('recovery time evidence schema/kind invalid')
+    if marker.get('timeEvidenceHash') != _canonical_hash(evidence):
+        raise ApplyError('recovery marker timeEvidenceHash mismatch')
+    if manifest.get('publishedAt') is None or not _valid_utc_z(manifest.get('publishedAt')):
+        raise ApplyError('pending/invalid recovery publication is not applyable')
+    if manifest.get('publishedAt') <= evidence.get('sourceCompletionBound', ''):
+        raise ApplyError('recovery publication is not after source completion')
+    if evidence.get('sourceRunId') != RECOVERY_SOURCE_RUN_ID \
+            or evidence.get('sourceHead') != RECOVERY_SOURCE_HEAD \
+            or manifest.get('commit') != RECOVERY_SOURCE_HEAD:
+        raise ApplyError('recovery source run/head mismatch')
+    if evidence.get('artifactSha256') != RECOVERY_ARTIFACT_SHA256:
+        raise ApplyError('recovery artifact hash mismatch')
+    if evidence.get('sourceCompletionBound') != RECOVERY_SOURCE_COMPLETION \
+            or evidence.get('sourceCompletionBound') != sr.get('generatedAt'):
+        raise ApplyError('recovery source completion bound mismatch')
+    if evidence.get('logWindowStart') != RECOVERY_LOG_WINDOW_START \
+            or evidence.get('logWindowStart') >= evidence.get('sourceCompletionBound'):
+        raise ApplyError('recovery acquisition window invalid')
+    if evidence.get('sourceCycleId') != manifest.get('cycleId') \
+            or evidence.get('sourceCycleId') != sr.get('cycleId') \
+            or evidence.get('sourceStage') != manifest.get('stage') \
+            or evidence.get('sourceStage') != sr.get('stage'):
+        raise ApplyError('recovery cycle/stage mismatch')
+    if evidence.get('newSnapshotHash') != bundle.get('newSnapshotHash') \
+            or evidence.get('newSnapshotHash') != manifest.get('newSnapshotHash'):
+        raise ApplyError('recovery snapshot hash mismatch')
+    if evidence.get('stageResultHash') != bundle.get('stageResultHash') \
+            or evidence.get('stageResultHash') != manifest.get('stageResultHash'):
+        raise ApplyError('recovery stage-result hash mismatch')
+    if evidence.get('acquiredAt') is not None or evidence.get('timeProvenance') != 'unknown':
+        raise ApplyError('recovery acquisition time cannot be claimed')
+    if evidence.get('reason') != 'exact-acquisition-time-not-recorded':
+        raise ApplyError('recovery time provenance reason invalid')
+    return dict(evidence)
+
+
 def _validate_bundle(bundle):
     manifest = bundle.get('manifest')
     sr = bundle.get('stageResult')
@@ -349,6 +436,7 @@ def _validate_bundle(bundle):
         raise ApplyError('effectsHash 唔一致')
     if _canonical_hash(new_snapshot) != bundle.get('newSnapshotHash'):
         raise ApplyError('newSnapshotHash 唔一致')
+    recovery_time_evidence(bundle)
     for key in ('trackingHash', 'blacklistHash'):
         value = (sr.get('preState') or {}).get(key)
         if not isinstance(value, str) or not value.startswith('sha256:'):

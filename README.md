@@ -822,3 +822,12 @@ Existing BigGo status identity is now compared to the current run/head/event, no
 - Artifact-derived status/review bytes are read directly from the hash-verified original ZIP; duplicate, traversal and symlink members are rejected. All five original input files require declared hash and size.
 - The revived key is fixed to the unique `CARRIER|CHK18FBVX` evidence; the 39 confirmed details and exact acquisition sub-second time remain explicitly unproven.
 - Prepared output is publication-pending: source completion time is retained as a derived bound, never used as recovery publication time. Root may finalize with an explicit fixed publication intent; manifest/bundle/prices-meta hashes are then recomputed deterministically.
+
+## 2026-10-20 R3 recovery source-time provenance（append-only）
+
+- R2 remains historical. R3 narrows the receiver/source-time contract only.
+- A recovery bundle now carries a bundleHash-bound, versioned source-time marker: original run/head, artifact SHA-256, source completion bound and log-window start. It explicitly records that the exact acquisition time is unknown; recovery/publication/apply/report/now timestamps are never substituted.
+- Recovery apply and completed-sync verification require both the marker and its evidence, validate every cross-reference against stageResult/bundle/manifest/run identities, and reject pending, missing, corrupt, contradictory or incomplete publication evidence.
+- A verified current recovery receiver keeps `acquiredAt=null` and marks `timeProvenance=unknown`; source status does not fall back to prior stage, BigGo old time, publication, apply or generation time. An unverified/general marker cannot clear an existing trusted time.
+- Normal bundles and the accepted-baseline path keep their existing acquisition semantics. UI/PDF wording shows unknown acquisition rather than inventing one.
+- The offline end-to-end regression finalizes the real recovery packet with two publication intents through apply/verify/source-status, and keeps price/effects/source bound unchanged.
