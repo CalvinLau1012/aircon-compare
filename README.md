@@ -807,3 +807,9 @@ R1 is superseded as an acceptance candidate. R2 adds strict previously-bound ide
 ### 2026-10-20 R3 existing-identity correction（append-only）
 
 Existing BigGo status identity is now compared to the current run/head/event, not merely shape-validated. Foreign/partial/type-bad identity is rejected before preserve/unknown writes with bytes unchanged. R2 wording that all existing identities were already current is superseded; R2 evidence remains.
+
+## 2026-10-20 BigGo revival recovery candidate（append-only）
+
+- Canonical revived review outcomes now retain the exact raw model/price and `BRAND|MODEL` key; counter/outcome/snapshot identity is exact.
+- Review evidence retains complete safe reconstruction fields before publish, without secrets or arbitrary staged keys.
+- Read-only recovery preparation validates the original artifact/input hashes and reconstructs a candidate stage result/effects/bundle for Root review. It makes no provider or coordinator calls and does not apply; unprovable confirmed-review details and exact acquisition times are explicitly marked.
