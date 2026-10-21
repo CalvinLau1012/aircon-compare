@@ -636,12 +636,12 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
             oreason = ('official-snapshot-untrusted' if not hash_ok or not id_ok
                        else 'official-success-unverified')
     elif decision == 'queue-kept-pending-coverage':
-        try:
-            import source_health_contract
-            source_health_contract.coverage_pending_proof(official)
-            ostatus, oreason = 'pending', 'coverage-pending'
-        except (ValueError, ImportError):
-            ostatus, oreason = 'degraded', 'official-coverage-pending-untrusted'
+        # Auxiliary partial/warning framework is not a completion path.  The
+        # real current receipt has no complete prior manifest/partial identity,
+        # so the production source status stays visibly degraded.  Do not turn
+        # missing official coverage into a warning without a verified partial
+        # identity.
+        ostatus, oreason = 'degraded', 'sources-degraded'
     elif decision == 'queue-kept-fail-closed':
         ostatus, oreason = 'degraded', 'official-source-failed'
     else:

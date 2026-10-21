@@ -1,3 +1,11 @@
+## Unreleased — 2026-10-21 Root correction (append-only)
+
+- Corrected the partial/warning overreach: production source status keeps the current 8-target official gap `degraded`; the auxiliary partial contract is synthetic-only and the real pending receipt (null manifest) remains fail-closed. No fabricated complete snapshot is used as acceptance.
+- Official source investigation: MHI current window category/search, historical Wokeehong catalogues, Gilman official MDM (170 GREE model prefixes), GREE global, Comfee HK current catalogue and Toshiba HK official 340-document download index were checked. No exact brand/agent full-spec original was found for the eight targets; only EMSD exact label/energy raw exists, so queue remains pending with concrete source blockers.
+- Earlier `curl -k` exploratory bytes are marked TLS-unverified and excluded from evidence/manifests/source-success times. Strict TLS was re-established for adopted sources (including a verified MHI Sectigo intermediate via AIA).
+- Fixed curl rc60+`000` -> tls-error, rc28 timeout, rc63 size, rc22 HTTP; hard stale/postdeploy/source axes now override partial warning in issue titles; runtime candidate uses the current official base and build-ARG private commit instead of the old 786f1c2 revision.
+- Earlier integration JUnit files were overwritten by repeated worktree reuse; this is recorded honestly; no old JUnit was recreated.
+
 ## Unreleased — 2026-10-21 health-time / acquisition-witness candidate
 
 - Added the shared `biggo_acquisition.py` provider-result witness: valid priced/clean outcomes are timestamped after response validation, bound into the immutable stage-result (cycle/stage/base/new snapshot/result hash), validated by the coordinator/import/receiver, and carried to `sourceStatus`. Publication, apply, deploy and rebuild clocks never become acquisition times; legacy bundles and baselines stay unknown.

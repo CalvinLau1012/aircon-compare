@@ -329,3 +329,24 @@ def test_winner_local_receiver_survives_pre_provider_not_completed(tmp_path):
     assert status['biggo']['status'] == 'ok'
     assert status['biggo']['lastAcquiredAt'] == '2026-10-20T16:37:40Z'
     assert status['biggo']['lastAppliedAt'] == '2026-10-20T16:37:43Z'
+
+
+def test_stage_result_builder_emits_block_and_binds_snapshot():
+    sr, base, new = stage_result(include_block=False)
+    staged = {'counters': sr['counters'], 'outcomes': sr['outcomes'],
+              'blacklistReview': sr['blacklistReview'], 'effects': sr['effects'],
+              'preState': sr['preState'], 'postState': sr['postState'],
+              'baseSnapshot': base, 'snapshot': new,
+              'acquisitionWindow': {'startedAt': '2026-10-20T16:37:30Z',
+                                    'finishedAt': '2026-10-20T16:37:43Z'}}
+    client = type('C', (), {'state': {'requestAttempts': {'token': 0, 'search': 1},
+                                      'responseStatusCounts': {'200': 1}}})()
+    import biggo_stage_runner as runner
+    built = runner._build_stage_result(
+        cycle_id='2026-10-20:6/7', stage_no=6, mode='price-batch',
+        client=client, now_fn=lambda: 1793000000.0, staged=staged)
+    assert built['acquisition']['lastValidResultAt'] == '2026-10-20T16:37:40Z'
+    assert built['acquisition']['newSnapshotHash'] == H(new)
+    assert built['acquisition']['pricedCount'] == 1
+    coord.validate_stage_result(built, base, new, cycle_id='2026-10-20:6/7',
+                                stage=6, mode='price-batch')

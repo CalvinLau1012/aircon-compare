@@ -29,13 +29,19 @@ TITLE = '[MONITOR] 資料新鮮度、部署與來源健康警報'
 
 
 def _title_for(result):
-    """Name the issue by the real failing/warning axis."""
-    if result.get('healthSummaryPartial') is True:
-        return '[MONITOR] 官網規格待核（warning；非資料過期）'
+    """Name the issue by the hardest real failing axis first.
+
+    A pending coverage warning must never hide true staleness, postdeploy
+    mismatch or a hard source-health failure.
+    """
     if result.get('stale') is True or result.get('ok') is not True:
         return '[MONITOR] 資料過期／取得時間警報'
     if result.get('postdeployOk') is False or result.get('deploymentMismatch') is True:
         return '[MONITOR] 部署一致性警報'
+    if result.get('healthSummaryOk') is False:
+        return '[MONITOR] 來源健康警報'
+    if result.get('healthSummaryPartial') is True:
+        return '[MONITOR] 官網規格待核（warning；非資料過期）'
     return '[MONITOR] 來源健康警報'
 
 

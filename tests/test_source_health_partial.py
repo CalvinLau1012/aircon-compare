@@ -89,6 +89,12 @@ def _fixture(tmp_path, *, bad_output=False, bad_receipt=False):
         now=_now().timestamp())
     if bad_output:
         output.unlink()
+    # Synthetic contract fixture only: manufacture a pending status block to
+    # exercise the auxiliary partial validator.  It is NOT the real current
+    # receipt (the real receipt has outputManifest=null and remains degraded;
+    # see Root recheck evidence).  Production source_status no longer emits
+    # this pending block.
+    status['official'].update({'status': 'pending', 'safeReason': 'coverage-pending'})
     return status, doc, receipt, price
 
 
@@ -240,3 +246,19 @@ def test_monitor_cli_writes_partial_summary_and_public_client_accepts(tmp_path):
     # full producer fixture above covers that.  This CLI assertion focuses on
     # the partial summary contract itself.
     assert summary['sources']['official']['safeReason'] == 'coverage-pending'
+
+
+def test_title_hard_axes_override_pending_warning():
+    base = {'ok': True, 'stale': False, 'postdeployOk': True,
+            'deploymentMismatch': False, 'healthSummaryOk': True,
+            'healthSummaryPartial': True, 'healthPendingCount': 1}
+    assert 'warning' in freshness_issue._title_for(base)
+    stale = dict(base, stale=True)
+    assert 'warning' not in freshness_issue._title_for(stale)
+    assert '資料過期' in freshness_issue._title_for(stale)
+    deploy = dict(base, postdeployOk=False, deploymentMismatch=True)
+    assert 'warning' not in freshness_issue._title_for(deploy)
+    assert '部署' in freshness_issue._title_for(deploy)
+    hard = dict(base, healthSummaryOk=False)
+    assert 'warning' not in freshness_issue._title_for(hard)
+    assert '來源' in freshness_issue._title_for(hard)

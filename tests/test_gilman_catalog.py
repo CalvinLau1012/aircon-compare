@@ -129,3 +129,17 @@ def test_live_no_cache_adapter_uses_transport_entry_and_keeps_exact_pages(tmp_pa
     assert targets == {'GWT07ES'}
     assert catalog['GREE']['pages'][0]['rawSha256'].startswith('sha256:')
     assert catalog['GREE']['pages'][0]['fetchedAt'].endswith('Z')
+
+
+def test_exact_target_hits_handle_pair_and_spacing_without_substrings():
+    def item(model, name=''):
+        return {'attributes': {'model_number': model,
+                               'display_model_number': model,
+                               'name_en': name, 'name_tc': '',
+                               'name_sc': '', 'slug': model.lower()}}
+    assert g._target_hits([item('GEH63ZE', 'GREE GEH63ZE / GEH63ZC pair')],
+                          {'GEH63ZE/GEH63ZC'}) == {'GEH63ZE/GEH63ZC'}
+    assert g._target_hits([item('GEH63ZE', 'GREE GEH63ZE/GEH63ZC pair')],
+                          {'GEH63ZE/GEH63ZC'}) == {'GEH63ZE/GEH63ZC'}
+    assert g._target_hits([item('GWT07ESX')], {'GWT07ES'}) == set()
+    assert g._target_hits([item('GWT07ES')], {'GWT07ES'}) == {'GWT07ES'}

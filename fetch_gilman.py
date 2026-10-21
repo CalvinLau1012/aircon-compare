@@ -20,7 +20,7 @@ import time
 import urllib.parse
 from collections import Counter
 
-from crawl_utils import emit_fetch_receipt, save_json
+from crawl_utils import emit_fetch_receipt, norm_model, save_json
 import official_http
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -125,6 +125,12 @@ def _page_meta(html, expected_url):
 
 
 def _target_hits(items, target_models):
+    """Exact alphanumeric-token matching, including indoor/outdoor pairs.
+
+    Separators/spaces must not make an exact target permanently unmatchable.
+    Substring matching is deliberately avoided (GWT07ES must not match a
+    longer GWT07ESX model).
+    """
     hits = set()
     for item in items:
         attrs = item.get('attributes') if isinstance(item, dict) else None
@@ -133,8 +139,20 @@ def _target_hits(items, target_models):
         haystack = ' '.join(str(attrs.get(k, '')) for k in
                             ('model_number', 'display_model_number',
                              'name_en', 'name_tc', 'name_sc', 'slug'))
+        tokens = {norm_model(t) for t in re.findall(r'[A-Za-z0-9]+', haystack)}
+        tokens.discard('')
         for model in target_models:
-            if model.replace('/', '') in haystack.replace('/', ''):
+            parts = [norm_model(p) for p in str(model).split('/') if norm_model(p)]
+            combined = norm_model(model)
+            if not parts:
+                continue
+            if len(parts) == 1:
+                matched = parts[0] in tokens
+            else:
+                # Accept both "GEH63ZE / GEH63ZC" and the slug-style
+                # "GEH63ZEGEH63ZC" without accepting a single approximation.
+                matched = all(p in tokens for p in parts) or combined in tokens
+            if matched:
                 hits.add(model)
     return hits
 

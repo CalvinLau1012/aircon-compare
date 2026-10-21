@@ -37,6 +37,32 @@ def test_transport_requires_strict_tls_host_and_effective_url():
     assert e.value.reason == 'integrity-error'
 
 
+def test_transport_classifies_real_writeout_tls_timeout_and_http():
+    marker = official_http.MARKER + b'000 https://www.gilman-group.com/zh-hk/brand/x'
+    with pytest.raises(official_http.OfficialTransportError) as e:
+        official_http.curl_bytes(
+            'https://www.gilman-group.com/zh-hk/brand/x',
+            allowed_hosts={'www.gilman-group.com'},
+            path_prefixes=('/zh-hk/brand/',),
+            runner=lambda *a, **k: _proc(marker, b'SSL certificate problem', 60))
+    assert e.value.reason == 'tls-error'
+    with pytest.raises(official_http.OfficialTransportError) as e:
+        official_http.curl_bytes(
+            'https://www.gilman-group.com/zh-hk/brand/x',
+            allowed_hosts={'www.gilman-group.com'},
+            path_prefixes=('/zh-hk/brand/',),
+            runner=lambda *a, **k: _proc(marker, b'Operation timed out', 28))
+    assert e.value.reason == 'timeout'
+    bad404 = official_http.MARKER + b'404 https://www.gilman-group.com/zh-hk/brand/x'
+    with pytest.raises(official_http.OfficialTransportError) as e:
+        official_http.curl_bytes(
+            'https://www.gilman-group.com/zh-hk/brand/x',
+            allowed_hosts={'www.gilman-group.com'},
+            path_prefixes=('/zh-hk/brand/',),
+            runner=lambda *a, **k: _proc(b'gone' + bad404, b'', 22))
+    assert e.value.reason == 'http-404'
+
+
 def test_transport_classifies_missing_executable_tls_http_and_size():
     with pytest.raises(official_http.OfficialTransportError) as e:
         official_http.curl_bytes(

@@ -1,5 +1,8 @@
 # ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fcalvinlau1012.github.io%2Faircon-compare%2Fmetadata.json&query=%24.version&label=version&prefix=v&color=2ea44f)
 
+> **2026-10-21 Root 糾偏追加**：partial／warning 不是本輪完成路徑；正式 source status 對當前 8 項待核保持 degraded，沒有用自造 manifest 假裝已解。官方來源已逐項查 MHI 現站／歷史目錄、Gilman 官方 MDM、GREE global、Comfee HK 及 Toshiba HK 下載索引，仍無 exact 品牌／代理 full-spec 原件；只保留 EMSD exact label/energy raw，queue 續 pending，並如實列外部阻擋。先前 `curl -k` 線索已標記 TLS 未驗、不進證據／manifest；實碼已修 curl rc60/28/63 分類、hard 軸 title 優先及 runtime base／final SHA 綁定。較早 integration JUnit 被覆蓋一事已如實記錄。
+
+
 > **2026-10-21 追加（時間鏈／來源依賴／待核分類）**：正常 BigGo 批次現在可在 immutable stage-result 携帶 provider 結果取得見證；有見證時 Hero 顯示「最近成功取得」，只有套用時間時明確顯示「最近成功套用」及原始取得時間未記錄。舊 bundle／baseline 不會用 publication／deploy 時間補造取得時間。私人 runtime 的 curl／CA 依賴已列為 image build＋no-network preflight 必要條件；官方 catalogue receipt 失敗會帶真實 failed 數及安全原因。純官網 coverage pending 只在完整 hash-bound receipt＋舊 manifest＋部署／新鮮度證據下分類為 partial warning，其餘來源故障仍 error／非零。8 個待核型號已補 EMSD exact raw evidence，但 configured 品牌／代理來源仍無完整尺寸 spec，queue 保持 pending。詳見 `docs/DECISIONS.md` D38；本輪未部署、未呼叫新 provider。
 
 

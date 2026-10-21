@@ -72,27 +72,49 @@ def curl_bytes(url, *, allowed_hosts, path_prefixes=(), timeout=40,
         raise OfficialTransportError('transport-error', type(exc).__name__) from exc
     stdout = proc.stdout or b''
     stderr = (proc.stderr or b'').decode('utf-8', 'replace').lower()
-    if MARKER not in stdout:
-        if 'ssl' in stderr or 'certificate' in stderr or 'tls' in stderr:
-            raise OfficialTransportError('tls-error')
-        if proc.returncode == 63:
-            raise OfficialTransportError('size-limit')
-        raise OfficialTransportError('transport-error', f'rc={proc.returncode}')
-    body, meta = stdout.rsplit(MARKER, 1)
-    try:
-        status_text, effective = meta.decode('utf-8', 'replace').strip().split(' ', 1)
-        status = int(status_text)
-        _validate(effective, allowed_hosts, path_prefixes)
-    except (ValueError, OfficialTransportError) as exc:
-        raise OfficialTransportError('integrity-error', 'effective URL/status invalid') from exc
+    rc = proc.returncode
+    body = b''
+    status = None
+    effective = None
+    if MARKER in stdout:
+        body, meta = stdout.rsplit(MARKER, 1)
+        try:
+            status_text, effective = meta.decode('utf-8', 'replace').strip().split(' ', 1)
+            status = int(status_text)
+        except ValueError:
+            status = None
+            effective = None
+    tls_text = ('ssl' in stderr or 'certificate' in stderr or 'tls' in stderr
+                or 'schannel' in stderr)
+    # Real curl --write-out still emits the marker on transport/TLS failure
+    # (e.g. rc60 + "000 https://host/...").  Classify by return code before
+    # treating status 000 as an HTTP response.
+    if tls_text or rc in (35, 51, 58, 59, 60, 77):
+        raise OfficialTransportError('tls-error', f'rc={rc}')
+    if rc == 28:
+        raise OfficialTransportError('timeout', f'rc={rc}')
+    if rc == 63:
+        raise OfficialTransportError('size-limit', f'rc={rc}')
+    if rc == 22:
+        if status in (404, 410):
+            raise OfficialTransportError(f'http-{status}', 'http status')
+        if status is not None and 400 <= status < 600:
+            raise OfficialTransportError(f'http-{status}', 'http status')
+        raise OfficialTransportError('transport-error', f'rc={rc}')
+    if rc != 0:
+        raise OfficialTransportError('transport-error', f'rc={rc}')
+    if status is None or effective is None:
+        raise OfficialTransportError('transport-error', 'missing status/effective URL')
+    if effective:
+        try:
+            _validate(effective, allowed_hosts, path_prefixes)
+        except OfficialTransportError as exc:
+            raise OfficialTransportError('integrity-error',
+                                         'effective URL invalid') from exc
     if status < 200 or status >= 300:
         raise OfficialTransportError(f'http-{status}', 'http status')
     if len(body) > max_bytes:
         raise OfficialTransportError('size-limit')
-    if proc.returncode != 0:
-        if 'ssl' in stderr or 'certificate' in stderr or 'tls' in stderr:
-            raise OfficialTransportError('tls-error')
-        raise OfficialTransportError('transport-error', f'rc={proc.returncode}')
     return body, effective
 
 
