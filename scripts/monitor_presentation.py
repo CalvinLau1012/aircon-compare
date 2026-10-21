@@ -66,6 +66,9 @@ _REASON_LABEL = {
     'completed-sync-missing-history': '缺少完成歷史',
     'completed-sync-unavailable': '完成 bundle 暫時不可用',
     'completed-sync-invalid': '完成 bundle 無效',
+    'coverage-pending': '官網規格待核（已驗證來源收據；舊快照保留）',
+    'official-coverage-pending-untrusted': '官網待核收據未通過驗證',
+    'official-source-failed': '官網來源失敗',
     'legacy-unknown': '歷史狀態未確認', 'unknown': '未確認',
 }
 
@@ -199,6 +202,10 @@ def _source_axis(result):
     health = _safe_bool(result.get('healthSummaryOk'))
     if health is False and result.get('healthKnown') is False:
         return 'unknown', '未確認（缺少或無效的來源健康收據）'
+    if health is True and result.get('healthSummaryPartial') is True:
+        count = result.get('healthPendingCount')
+        count = count if type(count) is int and count > 0 else 'unknown'
+        return 'warn', f'官網規格待核 {count} 個（已驗證收據；非資料過期）'
     if health is True:
         return 'no', '來源健康；沒有來源失敗'
     if health is False:
@@ -208,6 +215,11 @@ def _source_axis(result):
 
 def _health_details(result):
     if result.get('healthSummaryOk') is True:
+        if result.get('healthSummaryPartial') is True:
+            count = result.get('healthPendingCount')
+            count = count if type(count) is int and count > 0 else 'unknown'
+            return [f'官網規格待核 {count} 個：來源收據／舊 manifest 已驗證，'
+                    'queue 保留，不是資料過期或來源硬失敗']
         return []
     tokens = _health_tokens(result.get('healthReason'))
     return [_HEALTH_LABELS[t] for t in tokens] or ['來源健康狀態 unknown']
@@ -249,6 +261,7 @@ def render_issue_body(result, fingerprint):
         f'- 待發布版本未上線／部署核對 (postdeploy): {d}\n'
         f'- postdeploy failure: {d}\n'
         f'- 來源部分失敗 (source health): {s}\n'
+        f'- 官網規格待核 (warning): {_safe_bool(result.get("healthSummaryPartial"))}\n'
         f'- freshness detail: {fd}\n'
         f'- deployment detail: {dd}\n'
         f'- source health detail: {sd}\n'

@@ -278,12 +278,12 @@ def test_format_status_labels_emsd_and_biggo_hkt_without_ambiguous_success():
     }
     line1, line2 = generate_html.format_status(meta, models_data.VERSION)
     assert 'EMSD 資料日期 2026-10-18' in line1
-    assert 'BigGo 最近成功更新 2026-10-18 00:38 HKT' in line2
-    assert '已套用 2026-10-18 00:39 HKT' in line2
+    assert 'BigGo 最近成功取得 2026-10-18 00:38 HKT' in line2
+    assert '最近成功套用 2026-10-18 00:39 HKT' in line2
     bad = dict(meta)
     bad['sourceStatus'] = {'biggo': {
         'status': 'degraded', 'lastAcquiredAt': '2026-10-17T16:38:58Z',
         'lastAppliedAt': '2026-10-17T16:39:08Z'}}
     _, line2b = generate_html.format_status(bad, models_data.VERSION)
-    assert '最近成功更新' not in line2b
+    assert '最近成功取得' not in line2b
     assert '價格更新未完成，沿用先前已驗證快照' in line2b

@@ -112,6 +112,10 @@ def fingerprint(result):
         reason = str(result.get('healthReason') or 'unknown')
         safe = re.sub(r'[^a-z0-9_.:+-]', '_', reason.lower())[:64]
         fp += ':source_health_failed:' + safe
+    elif result.get('healthSummaryPartial') is True:
+        count = result.get('healthPendingCount')
+        count = count if type(count) is int and count > 0 else 'unknown'
+        fp += f':official_pending_warning:{count}'
     return fp
 
 
@@ -120,12 +124,18 @@ def issue_body(result, fp):
 
 
 def plan_issue(existing_issue, result):
-    """合用 health 去重：fingerprint 穩定（唔含 ageSeconds），狀態改變才 update，
-    完全恢復（freshness + postdeploy 都好）才 close 一次。existing_issue 係 dict 或 None。"""
+    """合用 health 去重：fingerprint 穩定（唔含 ageSeconds），狀態改變才 update。
+
+    A proved pure coverage-pending warning keeps/opens one issue and updates only
+    when the fingerprint changes; it is not treated as recovery and it never
+    closes the pending work.  Full recovery (freshness + postdeploy + no warning
+    + no hard source failure) closes once.
+    """
     freshness_bad, post_bad, health_bad = combined_health(result)
     unhealthy = freshness_bad or post_bad or health_bad
+    warning = bool(result.get('healthSummaryPartial')) and not unhealthy
     fp = fingerprint(result)
-    if not unhealthy:
+    if not unhealthy and not warning:
         if existing_issue:
             return {'action': 'close', 'reason': 'recovered', 'fingerprint': fp}
         return {'action': 'noop', 'reason': 'fresh', 'fingerprint': fp}

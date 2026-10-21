@@ -462,6 +462,15 @@ def official_ssl_context(cafile=None, *, reviewed_intermediates=None,
     trust store 做完整鏈驗證，最後才在記憶體加入 context。任何失敗 fail closed。
     """
     ctx = ssl.create_default_context(cafile=cafile)
+    # Some minimal runtimes expose only the bundle (not the hashed capath), so
+    # an empty default context must explicitly load the system bundle rather
+    # than silently running without trust anchors.
+    if cafile is None and not ctx.get_ca_certs():
+        for candidate in ('/etc/ssl/certs/ca-certificates.crt',
+                          '/etc/pki/tls/certs/ca-bundle.crt'):
+            if os.path.isfile(candidate):
+                ctx.load_verify_locations(cafile=candidate)
+                break
     ctx.check_hostname = True
     ctx.verify_mode = ssl.CERT_REQUIRED
     for spec in reviewed_intermediates or ():

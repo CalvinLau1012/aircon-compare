@@ -18,8 +18,10 @@ import subprocess
 import sys
 import time
 import urllib.parse
+from collections import Counter
 
 from crawl_utils import emit_fetch_receipt, save_json
+import official_http
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUTPUT = os.path.join(BASE, 'gilman_official.json')
@@ -51,20 +53,9 @@ def _validate_url(url):
 
 def _curl(url):
     _validate_url(url)
-    proc = subprocess.run(
-        ['curl', '--fail', '--silent', '--show-error', '--location',
-         '--proto', '=https', '--proto-redir', '=https', '--max-redirs', '3',
-         '--max-time', '40', '--max-filesize', '25000000',
-         '--user-agent', UA, '--write-out', '\n__AIRCON_EFFECTIVE_URL__%{url_effective}', url],
-        capture_output=True, timeout=50)
-    if proc.returncode != 0:
-        raise RuntimeError(f'curl rc={proc.returncode}: {proc.stderr[:120].decode("utf-8", "replace")}')
-    if MARKER not in proc.stdout:
-        raise RuntimeError('curl did not return an effective URL')
-    body, eff = proc.stdout.rsplit(MARKER, 1)
-    effective = eff.decode('utf-8', 'replace').strip()
-    _validate_url(effective)
-    return body, effective
+    return official_http.curl_bytes(
+        url, allowed_hosts={ALLOWED_HOST}, path_prefixes=('/zh-hk/brand/',),
+        timeout=40, user_agent=UA)
 
 
 def _decode_nuxt(html):
@@ -240,7 +231,8 @@ def scan(cache_dir=None, cache_manifest=None):
                 targets.update(rows[-1]['targetsFound'])
             except Exception as e:  # noqa: BLE001
                 failures.append(f'{brand}:page{page}')
-                reasons[f'{brand}:page{page}'] = ('integrity-error' if isinstance(e, ValueError) else 'transport-error')
+                reason = official_http.safe_reason(e)
+                reasons[f'{brand}:page{page}'] = reason
                 break
         catalog[brand] = {'source': 'GILMAN GROUP official agent catalogue',
                           'url': spec['url'], 'pages': rows,
@@ -267,18 +259,41 @@ def main(argv=None):
     }}
     if not failures:
         save_json(args.out, out, indent=1)
-    emit_fetch_receipt('fetch_gilman.py', 0, 0, 0,
-                       succeeded_models=[], already_verified=[], failed_models=[],
-                       covers=[], skipped=0, failure_reasons={},
-                       extra={'catalogPages': attempted,
-                              'pageCounts': {b: v.get('pageCount') for b, v in catalog.items()},
-                              'targetsFound': sorted(targets),
-                              'sourceAcquiredAt': None,
-                              'sourceAcquiredAtKind': 'catalogue-only'})
+    failure_counts = Counter(reasons.values())
+    extra = {'catalogPages': attempted,
+             'cataloguePagesAttempted': attempted,
+             'cataloguePagesFailed': len(failures),
+             'catalogueFailureReasons': dict(sorted(failure_counts.items())),
+             'pageCounts': {b: v.get('pageCount') for b, v in catalog.items()},
+             'targetsFound': sorted(targets),
+             'sourceAcquiredAt': None,
+             'sourceAcquiredAtKind': 'catalogue-only'}
     if failures:
-        print(f'❌ Gilman catalogue {len(failures)} pages failed; existing output retained',
+        # A catalogue page failure means no target from that brand can be
+        # verified this run.  Report real attempted/failed target counts and a
+        # distinct safe cause; the old output and queue are preserved, and a
+        # missing executable/TLS/HTTP failure is never disguised as coverage
+        # pending.
+        failed_brands = sorted({f.split(':', 1)[0] for f in failures})
+        failed_targets = sorted({m for b in failed_brands for m in BRANDS[b]['models']})
+        brand_reason = {}
+        for brand in failed_brands:
+            values = [reasons[k] for k in reasons if k.startswith(brand + ':')]
+            brand_reason[brand] = values[0] if values else 'transport-error'
+        model_reasons = {m: 'catalogue-' + brand_reason[b]
+                         for b in failed_brands for m in BRANDS[b]['models']}
+        emit_fetch_receipt('fetch_gilman.py', len(failed_targets), 0,
+                           len(failed_targets),
+                           succeeded_models=[], already_verified=[],
+                           failed_models=failed_targets, covers=[], skipped=0,
+                           failure_reasons=model_reasons, extra=extra)
+        print(f'❌ Gilman catalogue {len(failures)} page(s) failed '
+              f'({", ".join(sorted(failure_counts))}); existing output retained',
               file=sys.stderr)
         return 1
+    emit_fetch_receipt('fetch_gilman.py', 0, 0, 0,
+                       succeeded_models=[], already_verified=[], failed_models=[],
+                       covers=[], skipped=0, failure_reasons={}, extra=extra)
     print(f'Gilman catalogue scanned: pages={attempted} exact_targets={sorted(targets)}')
     return 0
 

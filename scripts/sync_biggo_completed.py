@@ -24,6 +24,7 @@ sys.path.insert(0, BASE)
 sys.path.insert(0, os.path.join(BASE, 'scripts'))
 import batch_utils  # noqa: E402
 import biggo_apply  # noqa: E402
+import biggo_acquisition  # noqa: E402
 import biggo_coordinator as coord  # noqa: E402
 
 
@@ -187,8 +188,11 @@ def _baseline_current(meta, bundle):
             or source.get('stage') != manifest.get('stage')
             or source.get('newSnapshotHash') != bundle['newSnapshotHash']):
         raise SyncError('baseline acceptance does not bind the current bundle')
-    if source.get('acquiredAt') != manifest.get('publishedAt'):
-        raise SyncError('baseline acquiredAt does not match verified bundle publication')
+    if source.get('acquisitionProvenance') == 'recorded':
+        try:
+            biggo_acquisition.baseline_acquisition(source)
+        except biggo_acquisition.AcquisitionError as exc:
+            raise SyncError(f'baseline acquisition witness invalid: {exc}') from exc
     expected_id = ('biggo-baseline-' + str(source['cycleId']) + '-stage'
                    + str(source['stage']) + '-' + str(source['newSnapshotHash'])[-12:])
     if meta.get('appliedSnapshotId') != expected_id:
@@ -252,8 +256,27 @@ def verify_local_post(bundle, meta, root, repair=None):
             raise SyncError('prices_meta appliedSnapshotId does not match verified bundle')
         baseline_id = None
     marker = biggo_apply.recovery_time_evidence(bundle)
-    acquired_at = (baseline['source'].get('acquiredAt') if baseline is not None
-                   else manifest.get('publishedAt'))
+    # A verified witness lives in the immutable stage-result.  Publication time
+    # is never an acquisition time; a legacy bundle without a witness stays
+    # unknown, and a baseline without explicit recorded provenance stays
+    # unknown too (its historical manifest publication is not evidence).
+    if baseline is not None:
+        try:
+            baseline_acq = biggo_acquisition.baseline_acquisition(baseline['source'])
+        except biggo_acquisition.AcquisitionError as exc:
+            raise SyncError(f'baseline acquisition witness invalid: {exc}') from exc
+        acquired_at = baseline_acq['acquiredAt']
+        provenance = baseline_acq['provenance']
+        acquisition_hash = baseline_acq['blockHash']
+    else:
+        try:
+            witness = biggo_acquisition.from_stage_result(
+                bundle['stageResult'], now=time.time())
+        except biggo_acquisition.AcquisitionError as exc:
+            raise SyncError(f'acquisition witness invalid: {exc}') from exc
+        acquired_at = witness['acquiredAt']
+        provenance = witness['provenance']
+        acquisition_hash = witness['blockHash']
     result = {
         'biggo_prices.json': actual['biggo_prices.json'],
         'model_status.json': actual['model_status.json'],
@@ -264,6 +287,8 @@ def verify_local_post(bundle, meta, root, repair=None):
         'stage': manifest.get('stage'),
         'snapshotHash': bundle['newSnapshotHash'],
         'acquiredAt': acquired_at,
+        'acquiredAtProvenance': provenance,
+        'acquisitionHash': acquisition_hash,
         'baselineAcceptanceId': baseline_id,
         'repairId': (repair or {}).get('repairId'),
     }
@@ -271,6 +296,7 @@ def verify_local_post(bundle, meta, root, repair=None):
         result.update({
             'acquiredAt': None,
             'acquiredAtProvenance': 'unknown',
+            'acquisitionHash': None,
             'recoveryTimeEvidenceHash': biggo_apply._canonical_hash(marker),
             'sourceCompletionBound': marker['sourceCompletionBound'],
             'logWindowStart': marker['logWindowStart'],

@@ -40,6 +40,7 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 from biggo_canonical import canonical_json_bytes, sha256_id, sha256_json  # noqa: E402
+import biggo_acquisition  # noqa: E402
 
 STATE_PATH_DEFAULT = 'coordinator/biggo-state.json'
 SNAPSHOT_DIR_DEFAULT = 'coordinator/snapshots'
@@ -495,6 +496,20 @@ def validate_stage_result(stage_result, base_snapshot, new_snapshot, *, cycle_id
         raise CoordinatorStateError('preState/postState hash 唔合法')
     if stage_result['effectsHash'] != sha256_id(canonical_json_bytes(effects)):
         raise CoordinatorStateError('effectsHash 同 effects 唔一致')
+    # Optional acquisition witness (backward compatible).  When present it must
+    # bind this exact cycle/stage, base/new snapshots and every valid outcome;
+    # an invalid/partial/tampered block fails closed.  Legacy bundles without
+    # the field remain importable and their acquisition time stays unknown.
+    if 'acquisition' in stage_result:
+        try:
+            biggo_acquisition.validate_block(
+                stage_result['acquisition'], outcomes=outcomes,
+                cycle_id=cycle_id if cycle_id is not None else stage_result['cycleId'],
+                stage=stage if stage is not None else stage_result['stage'],
+                base_snapshot=base_snapshot, new_snapshot=new_snapshot,
+                generated_at=stage_result['generatedAt'])
+        except biggo_acquisition.AcquisitionError as exc:
+            raise CoordinatorStateError(f'acquisition witness invalid: {exc}') from exc
     return stage_result
 
 

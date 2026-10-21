@@ -39,7 +39,8 @@ SAFE_REASONS = {
     'official-no-verified-snapshot', 'completed-sync-missing-history',
     'completed-sync-unavailable', 'completed-sync-invalid',
     'completed-sync-remote-not-completed',
-    'baseline-accepted',
+    'baseline-accepted', 'coverage-pending',
+    'official-coverage-pending-untrusted', 'official-source-failed',
 }
 SHA_RE = re.compile(r'^sha256:[0-9a-f]{64}$')
 UTC_RE = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$')
@@ -144,9 +145,14 @@ def _baseline_info(prices_meta):
                 and bool(source.get('cycleId'))
                 and isinstance(source.get('stage'), int)
                 and not isinstance(source.get('stage'), bool)
-                and _valid_ts(source.get('acquiredAt'))
-                and source.get('acquiredAt') is not None
+                and (source.get('acquiredAt') is None
+                     or _valid_ts(source.get('acquiredAt')))
             )
+            try:
+                import biggo_acquisition
+                biggo_acquisition.baseline_acquisition(source)
+            except (ValueError, ImportError):
+                source_ok = False
             expected_id = ('biggo-baseline-' + str(source.get('cycleId'))
                            + '-stage' + str(source.get('stage')) + '-'
                            + str(source.get('newSnapshotHash'))[-12:])
@@ -203,7 +209,11 @@ def _verified_receiver(report, *, baseline=None, actual_snapshot=None,
             return None
         if verified.get('biggo_prices.json') != source.get('newSnapshotHash'):
             return None
-    return verified
+    out = dict(verified)
+    out['acquiredAt'] = report.get('acquiredAt')
+    out['acquiredAtProvenance'] = report.get('acquiredAtProvenance')
+    out['acquisitionHash'] = report.get('acquisitionHash')
+    return out
 
 
 def validate_status(status):
@@ -479,12 +489,19 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
         bstatus_ui, breason = 'degraded', 'price-snapshot-preserved'
     # A failed/incoherent completed receive must be visible even when the
     # provider stage itself is inactive/skipped.  Snapshot bytes are preserved.
+    completed_now = bstatus in ('completed', 'completed-idempotent-applied',
+                                'completed-recovered')
+    sync_reason = None
     if isinstance(completed_sync, dict) and completed_sync.get('ok') is not True:
         sync_reason = str(completed_sync.get('reason') or (completed_sync.get('plan') or {}).get('reason') or 'unknown')
         if sync_reason == 'already-applied':
             pass
         elif sync_reason == 'remote-not-completed':
-            bstatus_ui, breason = 'pending', 'completed-sync-remote-not-completed'
+            # The pre-provider receive may see an idle/remote-not-completed
+            # state; a successful provider stage later in the same run is newer
+            # evidence and must not be downgraded by that earlier observation.
+            if not completed_now:
+                bstatus_ui, breason = 'pending', 'completed-sync-remote-not-completed'
         elif sync_reason in ('missing-local-history', 'missing-intermediate-stage',
                              'cycle-mismatch', 'local-stage-invalid', 'stage-not-ahead'):
             bstatus_ui, breason = 'degraded', 'completed-sync-missing-history'
@@ -521,7 +538,10 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
         'completed-sync-missing-history', 'completed-sync-unavailable',
         'completed-sync-invalid', 'blocked-diagnostic-pending',
     }
-    sync_failure = isinstance(completed_sync, dict) and completed_sync.get('ok') is not True
+    sync_failure = (isinstance(completed_sync, dict)
+                    and completed_sync.get('ok') is not True
+                    and not (completed_now and sync_reason in
+                             ('remote-not-completed', 'already-applied')))
     base_failure = (bstatus_ui == 'blocked' or biggo.get('alert') is True
                     or bstatus in failure_statuses or sync_failure)
     receiver = None
@@ -531,6 +551,12 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
             baseline=(baseline_info['baseline'] if baseline_info and baseline_info.get('current') and baseline_info.get('valid') else None),
             actual_snapshot=actual_snapshot,
             prices_meta=prices_meta)
+        if receiver is None and isinstance(biggo.get('localReceiver'), dict):
+            receiver = _verified_receiver(
+                biggo.get('localReceiver'),
+                baseline=(baseline_info['baseline'] if baseline_info and baseline_info.get('current') and baseline_info.get('valid') else None),
+                actual_snapshot=actual_snapshot,
+                prices_meta=prices_meta)
         if baseline_info and baseline_info.get('current'):
             if not baseline_info.get('valid'):
                 bstatus_ui, breason = 'degraded', 'receipt-invalid'
@@ -550,18 +576,25 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
     recovery_unknown = _recovery_unknown_receiver(receiver)
     acquired_at = None
     if baseline_verified:
-        acquired_at = baseline_info['source'].get('acquiredAt')
+        try:
+            import biggo_acquisition
+            acquired_at = biggo_acquisition.baseline_acquisition(
+                baseline_info['source'])['acquiredAt']
+        except (ValueError, ImportError):
+            acquired_at = None
     elif recovery_unknown:
         # A verified current recovery explicitly proves that exact acquisition
         # time is unknown.  Never borrow old stage4, report, publish or now.
         acquired_at = None
     else:
-        # The report generation clock is not a price acquisition witness.
-        acquired_at = receiver.get('acquiredAt') if receiver else None
-        if not acquired_at and bstatus in ('completed', 'completed-idempotent-applied', 'completed-recovered') \
-                and biggo.get('snapshotHash') == actual_snapshot:
-            acquired_at = _past_ts(biggo.get('acquiredAt'), now_dt)
-        if not acquired_at:
+        # The report/stage/publication/apply clocks are not acquisition
+        # witnesses.  Only a recorded receiver witness (or the bounded same-
+        # snapshot prior-history fallback) may produce a time.
+        if receiver is not None and receiver.get('acquiredAtProvenance') == 'recorded':
+            acquired_at = _past_ts(receiver.get('acquiredAt'), now_dt)
+        elif receiver is not None and receiver.get('acquiredAtProvenance') == 'unknown':
+            acquired_at = prior_acquired
+        else:
             acquired_at = prior_acquired
     biggo_block = _source_block(
         bstatus_ui,
@@ -603,9 +636,14 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
             oreason = ('official-snapshot-untrusted' if not hash_ok or not id_ok
                        else 'official-success-unverified')
     elif decision == 'queue-kept-pending-coverage':
-        ostatus, oreason = 'degraded', 'sources-degraded'
+        try:
+            import source_health_contract
+            source_health_contract.coverage_pending_proof(official)
+            ostatus, oreason = 'pending', 'coverage-pending'
+        except (ValueError, ImportError):
+            ostatus, oreason = 'degraded', 'official-coverage-pending-untrusted'
     elif decision == 'queue-kept-fail-closed':
-        ostatus, oreason = 'degraded', 'sources-degraded'
+        ostatus, oreason = 'degraded', 'official-source-failed'
     else:
         ostatus, oreason = 'unknown', 'legacy-unknown'
     # Failed/pending attempts may keep a previously verified snapshot; never

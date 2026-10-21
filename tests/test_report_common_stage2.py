@@ -40,7 +40,7 @@ def test_status_and_pdf_wrapper_do_not_mutate_or_overclaim():
         lines = render(meta, 'fallback')
         text = '\n'.join(lines)
         assert '2026-10-18 00:38' in text
-        assert '已套用 2026-10-18 00:39' in text
+        assert '最近成功套用 2026-10-18 00:39' in text
         assert '最後封裝' in text
     assert meta == before
     for status in ('pending', 'degraded', 'blocked'):
@@ -52,7 +52,7 @@ def test_status_and_pdf_wrapper_do_not_mutate_or_overclaim():
     missing = copy.deepcopy(meta)
     missing['sourceStatus']['biggo']['lastAcquiredAt'] = None
     text = '\n'.join(report_common.format_status(missing, 'fallback'))
-    assert '取得時間未確認' in text and '最近成功更新' not in text
+    assert '原始取得時間未記錄' in text and '最近成功取得' not in text
 
 
 def test_script_safe_json_round_trip_and_wrapper():

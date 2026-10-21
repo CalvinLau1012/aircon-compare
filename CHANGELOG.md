@@ -1,3 +1,12 @@
+## Unreleased — 2026-10-21 health-time / acquisition-witness candidate
+
+- Added the shared `biggo_acquisition.py` provider-result witness: valid priced/clean outcomes are timestamped after response validation, bound into the immutable stage-result (cycle/stage/base/new snapshot/result hash), validated by the coordinator/import/receiver, and carried to `sourceStatus`. Publication, apply, deploy and rebuild clocks never become acquisition times; legacy bundles and baselines stay unknown.
+- Completed receiver no longer maps `manifest.publishedAt` to `acquiredAt`; legacy stage-5 recovery remains explicitly unknown. Winner status carries a verified local-receiver projection for source status, and a pre-provider `remote-not-completed` observation no longer downgrades a later successful provider stage.
+- Hero/PDF wording distinguishes 「最近成功取得」 from 「最近成功套用；原始取得時間未記錄」; public metadata Schema remains backward compatible.
+- Added build-time curl+CA runtime dependency and no-network preflight candidate; Gilman/MECAN use one strict transport module and report real attempted/failed targets with safe dependency/TLS/HTTP/parse/pagination/integrity reasons while preserving old outputs/queue.
+- Monitoring now accepts a proved schema-v2 `partial` (pure official coverage pending) as a visible warning only with receipt/route/manifest/deployment/freshness evidence; hard source failures, missing/tampered/future receipts, old v1 summaries, BigGo alerts and true 72h staleness remain errors. Pending issues stay open until real recovery.
+- Added 8-model EMSD exact raw evidence; configured brand/agent catalogues still lack exact dimensions, so queue remains pending. No new BigGo provider calls, coordinator writes, formal deployment or live issue action in this candidate.
+
 # Changelog
 
 本文件記錄 aircon-compare 的所有顯著變更（Keep a Changelog 風格）。

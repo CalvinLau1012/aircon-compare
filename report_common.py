@@ -74,12 +74,12 @@ def _biggo_text(source):
         acquired = utc_to_hkt(b.get('lastAcquiredAt'))
         applied = utc_to_hkt(b.get('lastAppliedAt'))
         if status == 'ok' and acquired:
-            biggo_text = f'🛒 BigGo 最近成功更新 {acquired} HKT（分批快照）'
+            biggo_text = f'🛒 BigGo 最近成功取得 {acquired} HKT（分批快照）'
             if applied:
-                biggo_text += f'；已套用 {applied} HKT'
+                biggo_text += f'；最近成功套用 {applied} HKT'
         elif status == 'ok' and applied:
-            biggo_text = (f'🛒 BigGo 取得時間未確認；已套用 {applied} HKT'
-                          '（分批快照，非全部同時查價）')
+            biggo_text = (f'🛒 BigGo 最近成功套用 {applied} HKT'
+                          '（分批價格快照；原始取得時間未記錄）')
         elif status in ('degraded', 'blocked', 'pending'):
             prefix = {'degraded': '⚠️ BigGo 價格來源降級',
                       'blocked': '⛔ BigGo 價格來源受阻',
@@ -87,10 +87,13 @@ def _biggo_text(source):
             if acquired:
                 prefix += f'；先前快照取得 {acquired} HKT'
             elif applied:
-                prefix += f'；已套用 {applied} HKT（取得時間未確認）'
+                prefix += f'；最近成功套用 {applied} HKT（原始取得時間未記錄）'
             biggo_text = prefix + ' · 價格更新未完成，沿用先前已驗證快照'
-        elif acquired or applied:
-            biggo_text = f'🛒 BigGo 更新時間 {acquired or applied} HKT（分批快照）'
+        elif acquired:
+            biggo_text = f'🛒 BigGo 最近成功取得 {acquired} HKT（分批快照）'
+        elif applied:
+            biggo_text = (f'🛒 BigGo 最近成功套用 {applied} HKT'
+                          '（分批價格快照；原始取得時間未記錄）')
     except (AttributeError, TypeError):
         pass
     return biggo_text

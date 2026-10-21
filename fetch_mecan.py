@@ -21,6 +21,7 @@ import urllib.error
 import urllib.parse
 
 from crawl_utils import emit_fetch_receipt, html_to_text, save_json
+import official_http
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUTPUT = os.path.join(BASE, 'mecan_official.json')
@@ -63,21 +64,9 @@ def _curl_bytes(url):
     same public host with full certificate and hostname verification.
     """
     _validate_url(url)
-    proc = subprocess.run(
-        ['curl', '--fail', '--silent', '--show-error', '--location',
-         '--proto', '=https', '--proto-redir', '=https', '--max-redirs', '3',
-         '--max-time', '20', '--user-agent', UA,
-         '--write-out', '\n__AIRCON_EFFECTIVE_URL__%{url_effective}', url],
-        capture_output=True, timeout=30)
-    if proc.returncode != 0:
-        detail = proc.stderr[:160].decode('utf-8', 'replace').strip()
-        raise RuntimeError(f'curl rc={proc.returncode}: {detail}')
-    if URL_MARKER not in proc.stdout:
-        raise OfficialIntegrityError('curl did not return an effective URL')
-    body, effective = proc.stdout.rsplit(URL_MARKER, 1)
-    effective = effective.decode('utf-8', 'replace').strip()
-    _validate_url(effective)
-    return body, effective
+    return official_http.curl_bytes(
+        url, allowed_hosts=ALLOWED_HOSTS, path_prefixes=('/product/',),
+        timeout=20, user_agent=UA)
 
 
 def _get_bytes(url):
@@ -147,12 +136,9 @@ def _reason(exc):
         return f'http-{exc.code}'
     if isinstance(exc, OfficialIntegrityError):
         return 'integrity-error'
-    text = f'{type(exc).__name__}: {exc}'
     if isinstance(exc, ValueError):
         return 'parse-error'
-    if 'SSL' in text or 'certificate' in text.lower() or 'TLS' in text:
-        return 'tls-error'
-    return 'transport-error'
+    return official_http.safe_reason(exc)
 
 
 

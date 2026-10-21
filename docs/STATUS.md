@@ -1740,3 +1740,9 @@ The health producer-consumer test chain now shares one explicit fixture clock; s
 ### 2026-10-20 · Root correction: real recovery metadata producer contract (append-only)
 
 Formal zero-provider repair run 39393716967 received and verified stage5 locally but correctly stopped before commit/publication: the strict metadata Schema rejects public sourceStatus.biggo.timeProvenance. R3 UI/helper tests missed the actual core CLI. Root adds a real-evidence apply→verify→status→gen-metadata core CLI regression, first reproducing this exact failure. Public summary retains the existing schema contract: lastAcquiredAt=null and displayed unknown; full acquiredAtProvenance/evidence stays in the verified receiver receipt. The new internal unknown guard still prevents old-stage/publication/apply/now fallback. No Schema weakening, no edits to historical blocks, no provider/coordinator rewrite. R3 claims about public timeProvenance emission are superseded by this correction; source evidence itself is unchanged.
+
+## 2026-10-21 · health-time candidate status (append-only)
+
+- Normal BigGo acquisition provenance is now a candidate: valid provider outcomes get a UTC witness in the immutable stage-result, and receiver/status/Hero distinguish acquired vs applied. The live cycle 6/7 data remains without a historical witness; it is not back-filled.
+- Private runtime curl/CA dependency, Gilman/MECAN safe failure receipts, and the proved coverage-pending `partial` warning are candidate code only. Docker build, live official read, full browser gates and deployment are NOT yet verified by this candidate.
+- Eight remaining official targets have exact EMSD raw evidence but not complete brand/agent dimensions; queue remains pending. No new BigGo provider call, coordinator write, formal deployment or live Issue action in this round.

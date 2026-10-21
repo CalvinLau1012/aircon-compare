@@ -34,6 +34,7 @@ from model_lifecycle import (load_blacklist, filter_active, plan_record_results,
                              plan_revive, compute_effects)
 from biggo_canonical import canonical_json_bytes, sha256_json
 from biggo_limiter import BigGoLimitExceeded, RequestLimiter
+import biggo_acquisition
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT_PATH = os.path.join(BASE, 'biggo_prices.json')
@@ -54,6 +55,9 @@ _TOKEN = {'value': None, 'expires': 0.0}
 _TOKEN_LOCK = threading.Lock()
 # REQUEST_STATS 由多個 worker 更新；加鎖避免 lost update（bundle 計數要準確）。
 _STATS_LOCK = threading.Lock()
+# Per-model provider-result acquisition witness for the current process.
+_ACQUISITIONS = {}
+_ACQUISITION_LOCK = threading.Lock()
 
 # ===== approved design C：兩次 attempt、403／429 即停、離線 guard、可審計計數 =====
 # 每個 model 最多 2 次 attempt；403／429 唔會即刻 retry（honour Retry-After，否則項目
@@ -499,16 +503,46 @@ def protected_models():
     return protected
 
 
+def _record_acquisition(model, result):
+    """Record the instant a validated provider result became available."""
+    stamp = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+    entry = {'acquiredAt': stamp,
+             'resultHash': biggo_acquisition.result_hash(result)}
+    with _ACQUISITION_LOCK:
+        _ACQUISITIONS[model] = entry
+
+
+def reset_acquisitions():
+    with _ACQUISITION_LOCK:
+        _ACQUISITIONS.clear()
+
+
+def _acquisition_of(model, result):
+    with _ACQUISITION_LOCK:
+        entry = dict(_ACQUISITIONS.get(model) or {})
+    if not entry:
+        return {}
+    expected = biggo_acquisition.result_hash(result)
+    if entry.get('resultHash') != expected:
+        return {}
+    return entry
+
+
 def _search_tri_state(model):
     """三態搜尋（force batch 同 price batch 共用）：
     回 (model, result_or_None, ok)
       ok=True   → API 正常回覆（result 可能有價，可能係乾淨無匹配）
       ok=False  → 網絡/限流/認證錯誤（唔計入淘汰統計）
+
+    A valid result is time-stamped only after response reception and payload
+    validation.  Failed/skipped/smoke-only paths never create a witness.
     """
     data, reachable = _api_search(model)
     if not reachable:
         return model, None, False
-    return model, _extract_price(data, model), True
+    result = _extract_price(data, model)
+    _record_acquisition(model, result)
+    return model, result, True
 
 
 def _brand_of(brand_lookup):
@@ -592,17 +626,23 @@ def _merge_outcomes(got, clean_miss, net_err, revived, results, brand_lookup,
         entry = results.get(m)
         if entry is None:
             raise ValueError('priced outcome missing result')
-        out.append({'model': m, 'canonicalKey': _key_of(m, brand_lookup),
-                    'outcome': 'priced', 'price': entry})
+        item = {'model': m, 'canonicalKey': _key_of(m, brand_lookup),
+                'outcome': 'priced', 'price': entry}
+        item.update(_acquisition_of(m, entry))
+        out.append(item)
     for model, key, price in revived_specs:
-        out.append({'model': model, 'canonicalKey': key,
-                    'outcome': 'priced', 'price': price})
+        item = {'model': model, 'canonicalKey': key,
+                'outcome': 'priced', 'price': price}
+        item.update(_acquisition_of(model, price))
+        out.append(item)
     for m in clean_miss:
         if m in seen:
             raise ValueError('duplicate clean_miss outcome')
         seen.add(m)
-        out.append({'model': m, 'canonicalKey': _key_of(m, brand_lookup),
-                    'outcome': 'clean_miss'})
+        item = {'model': m, 'canonicalKey': _key_of(m, brand_lookup),
+                'outcome': 'clean_miss'}
+        item.update(_acquisition_of(m, None))
+        out.append(item)
     for m in net_err:
         if m in seen:
             raise ValueError('duplicate net_error outcome')
@@ -793,6 +833,7 @@ def review_blacklist_batch(idx):
 
 
 def run_force_batch(limit=None, *, smoke=True, should_abort=None, exit_on_fail=True):
+    reset_acquisitions()
     """一次性強行全量批次（受 coordinator 約束嘅 force intent）：唔分 7 日。
 
     P0 交易語義：網絡階段零本地寫入（唔再寫 biggo_prices.json／prices_meta.json／
@@ -928,12 +969,17 @@ def run_force_batch(limit=None, *, smoke=True, should_abort=None, exit_on_fail=T
         brand_lookup=brand_lookup)
     payload['metaFields'] = {'last_force_batch': time.strftime('%Y-%m-%d %H:%M:%S')}
     el = time.time() - t0
+    payload['acquisitionWindow'] = {
+        'startedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(t0)),
+        'finishedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+    }
     print(f'\n🏁 強行全量批次完成（{el:.0f}s）')
     print(f'  ✅ 得價：{len(got)} ｜ 📭 乾淨無報價：{len(clean_miss)} ｜ ⚠️ 網絡錯誤：{len(net_err)}')
     return payload
 
 
 def run_price_batch(should_abort=None):
+    reset_acquisitions()
     """執行當日 BigGo 價錢批次（每月一次、分 7 日；切片由 batch_utils 共用）。
 
     P0 交易語義：網絡階段**零本地寫入**；只有 coordinator CAS completed 之後，
@@ -1060,12 +1106,17 @@ def run_price_batch(should_abort=None):
                                 net_err, brand_lookup, idx=idx,
                                 reviewNetErrors=len(review['netErrors']))
 
-    return _completed_payload(
+    payload = _completed_payload(
         idx=idx, base=base, results=review['results'], got=got, clean_miss=clean_miss,
         net_err=net_err, revived=review['revived'], review_evidence=review['reviewed'],
         pre_tracking=pre_tracking, pre_black=pre_black,
         post_tracking=review['tracking'], post_black=review['blacklist'],
         brand_lookup=brand_lookup)
+    payload['acquisitionWindow'] = {
+        'startedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(t0)),
+        'finishedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+    }
+    return payload
 
 
 # ===== BigGo smoke 候選（集中管理；只喺 API 連線測試用）=====

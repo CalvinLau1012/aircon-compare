@@ -27,6 +27,7 @@ for _p in (BASE, SCRIPTS):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 import source_status  # noqa: E402
+import source_health_contract  # noqa: E402
 from biggo_canonical import sha256_json  # noqa: E402
 
 OFFICIAL_OUTPUTS = {
@@ -187,9 +188,11 @@ def _official_manifest_errors(official_doc, official, repo):
 
 def evaluate(*, status, repo, now=None, max_age_hours=36, schedule_hkt='00:30',
              require_deployed=False, deployment_receipt=None, metadata=None, web_root=None,
-             official_status_doc=None):
+             official_status_doc=None, official_receipt=None):
     now = now or _dt.datetime.now(_dt.timezone.utc)
     failures = []
+    warnings = []
+    partial_proof = None
     if not isinstance(status, dict):
         return {'ok': False, 'fingerprint': 'receipt:invalid',
                 'failures': ['receipt:not-object'], 'delayMinutes': None}
@@ -218,9 +221,22 @@ def evaluate(*, status, repo, now=None, max_age_hours=36, schedule_hkt='00:30',
         elif _sha256_file(csv_path) != emsd['snapshotHash']:
             failures.append('binding:emsd-csv-hash-mismatch')
     official = status.get('official') or {}
+    # A pending official source is only a warning when the private receipt and
+    # status prove pure coverage pending.  Everything else remains an error.
+    if official.get('status') == 'pending' \
+            and official.get('safeReason') == 'coverage-pending':
+        try:
+            partial_proof = source_health_contract.coverage_pending_proof(
+                official_status_doc, receipt=official_receipt,
+                require_receipt=True)
+        except (source_health_contract.ContractError, ValueError) as exc:
+            failures.append('official:coverage-pending-untrusted')
+            warnings.append(f'official:coverage-pending-proof:{type(exc).__name__}')
+            official = dict(official)
+            official['status'] = 'degraded'
     for name, block in (('emsd', emsd), ('biggo', biggo), ('official', official)):
         st = block.get('status')
-        if st != 'ok':
+        if st != 'ok' and not (name == 'official' and partial_proof is not None):
             failures.append(f'{name}:{st}:{block.get("safeReason")}')
         if st == 'ok':
             h = block.get('snapshotHash')
@@ -275,9 +291,19 @@ def evaluate(*, status, repo, now=None, max_age_hours=36, schedule_hkt='00:30',
                                 minute=int(schedule_hkt.split(':')[1]),
                                 second=0, microsecond=0)
         delay_minutes = round((hkt - scheduled).total_seconds() / 60, 1)
-    fp = 'ok' if not failures else 'unhealthy:' + ','.join(sorted(set(f.split(':')[0] for f in failures)))
-    return {'ok': not failures, 'fingerprint': fp,
-            'failures': failures[:20], 'delayMinutes': delay_minutes,
+    partial = bool(partial_proof is not None and not failures)
+    if partial:
+        count = len(partial_proof.get('missingModels') or [])
+        warnings.append(f'{source_health_contract.PARTIAL_REASON}:{count}')
+        fp = f'partial:official-coverage-pending:{count}'
+    elif failures:
+        fp = 'unhealthy:' + ','.join(sorted(set(f.split(':')[0] for f in failures)))
+    else:
+        fp = 'ok'
+    return {'ok': not failures, 'partial': partial,
+            'fingerprint': fp, 'failures': failures[:20],
+            'warnings': warnings[:20], 'pendingProof': partial_proof,
+            'delayMinutes': delay_minutes,
             'schedule': {'planned': schedule_hkt + ' HKT',
                          'actualDeployedAt': (status.get('publish') or {}).get('deployedAt'),
                          'delayIsInformationalOnly': True}}
@@ -289,10 +315,19 @@ def plan_dedup(state, result, now):
     state = state if isinstance(state, dict) else {}
     active = bool(state.get('active'))
     fp = result.get('fingerprint')
-    if result.get('ok'):
+    if result.get('ok') and not result.get('partial'):
         action = 'recovered' if active else 'noop'
         return {'action': action, 'active': False, 'fingerprint': fp,
                 'firstSeenAt': None, 'lastSeenAt': now_s}, action
+    if result.get('ok') and result.get('partial'):
+        if active and state.get('fingerprint') == fp:
+            return {'action': 'noop', 'active': True, 'fingerprint': fp,
+                    'firstSeenAt': state.get('firstSeenAt') or now_s,
+                    'lastSeenAt': now_s}, 'noop'
+        action = 'update' if active else 'alert'
+        return {'action': action, 'active': True, 'fingerprint': fp,
+                'firstSeenAt': state.get('firstSeenAt') if active else now_s,
+                'lastSeenAt': now_s}, action
     if active and state.get('fingerprint') == fp:
         return {'action': 'noop', 'active': True, 'fingerprint': fp,
                 'firstSeenAt': state.get('firstSeenAt') or now_s,
@@ -320,6 +355,7 @@ def main(argv=None):
     ap.add_argument('--metadata', default=None)
     ap.add_argument('--web-root', default=None)
     ap.add_argument('--official-status-file', default=None)
+    ap.add_argument('--official-receipt', default=None)
     ap.add_argument('--now', default=None, help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
     if args.now:
@@ -348,6 +384,7 @@ def main(argv=None):
             receipt = _load(args.deployment_receipt) if args.deployment_receipt else None
             metadata = _load(args.metadata) if args.metadata else None
             official_doc = _load(args.official_status_file) if args.official_status_file else None
+            official_receipt = _load(args.official_receipt) if args.official_receipt else None
         except (OSError, ValueError) as e:
             result = {'ok': False, 'fingerprint': 'receipt:invalid',
                       'failures': [f'receipt-aux:{type(e).__name__}'],
@@ -358,7 +395,8 @@ def main(argv=None):
                           schedule_hkt=args.schedule_hkt,
                           require_deployed=args.require_deployed,
                               deployment_receipt=receipt, metadata=metadata,
-                              web_root=args.web_root, official_status_doc=official_doc)
+                              web_root=args.web_root, official_status_doc=official_doc,
+                              official_receipt=official_receipt)
     try:
         state = _load(args.state)
     except (OSError, ValueError):
@@ -375,13 +413,23 @@ def main(argv=None):
             official_doc = _load(args.official_status_file)
     except (OSError, ValueError):
         official_doc = None
+    partial = result.get('partial') is True and result.get('ok') is True
+    pending = result.get('pendingProof') if partial else None
     summary = {
-        'schemaVersion': 1,
-        'kind': 'aircon-source-health-summary',
+        'schemaVersion': source_health_contract.SUMMARY_SCHEMA_VERSION,
+        'kind': source_health_contract.SUMMARY_KIND,
         'checkedAt': report['checkedAt'],
-        'ok': result.get('ok') is True,
-        'status': 'healthy' if result.get('ok') is True else 'unhealthy',
+        'ok': (result.get('ok') is True) and (not result.get('failures')),
+        'status': ('partial' if partial else
+                   ('healthy' if result.get('ok') is True else 'unhealthy')),
+        'partial': partial,
+        'classification': ('partial' if partial else
+                           ('healthy' if result.get('ok') is True else 'unhealthy')),
         'failures': list(result.get('failures') or [])[:20],
+        'warnings': list(result.get('warnings') or [])[:20] if partial else [],
+        'pending': pending,
+        'pendingEvidenceHash': (source_health_contract.proof_hash(pending)
+                                if pending is not None else None),
         'reason': result.get('reason'),
         'sourceStatusHash': sha256_json(status) if isinstance(status, dict) else None,
         'sourceStatusGeneratedAt': status.get('generatedAt') if isinstance(status, dict) else None,

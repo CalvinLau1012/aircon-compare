@@ -420,7 +420,7 @@ def test_biggo_applied_full_timestamp_and_snapshot_identity_from_meta():
     assert source_status.validate_status(s) == []
 
 
-def _baseline_meta(stage=3, adopt='2026-10-17T18:30:00Z'):
+def _baseline_meta(stage=3, adopt='2026-10-17T18:30:00Z', provenance='legacy'):
     cycle = '2026-10-10:3/7'
     snap = 'sha256:' + ('b' if stage == 3 else 'd') * 64
     bundle = 'sha256:' + ('e' if stage == 3 else 'f') * 64
@@ -429,6 +429,9 @@ def _baseline_meta(stage=3, adopt='2026-10-17T18:30:00Z'):
     source = {'bundleHash': bundle, 'cycleId': cycle, 'stage': stage,
               'newSnapshotHash': snap, 'acquiredAt': '2026-10-11T16:37:28Z',
               'repairId': 'sha256:' + '3' * 64}
+    if provenance == 'recorded':
+        source['acquisitionProvenance'] = 'recorded'
+        source['acquisitionHash'] = 'sha256:' + '7' * 64
     active = {'biggo_prices.json': snap, 'model_status.json': tracking,
               'model_blacklist.json': blacklist}
     acceptance = {'schemaVersion': 1, 'kind': 'accepted-shared-baseline-v1',
@@ -468,9 +471,19 @@ def test_accepted_shared_baseline_is_explicit_and_not_missing_history():
     s = _build(meta, report, snapshot=meta['appliedSnapshotHash'])
     assert s['biggo']['status'] == 'ok'
     assert s['biggo']['safeReason'] == 'baseline-accepted'
-    assert s['biggo']['lastAcquiredAt'] == '2026-10-11T16:37:28Z'
+    # Legacy baseline stored manifest.publishedAt; it is not an acquisition
+    # witness, so the truthful value is unknown.
+    assert s['biggo']['lastAcquiredAt'] is None
     assert s['biggo']['lastAppliedAt'] == '2026-10-17T18:30:00Z'
     assert s['biggo']['snapshotId'].startswith('biggo-baseline-')
+    assert source_status.validate_status(s) == []
+
+
+def test_baseline_with_recorded_acquisition_witness_keeps_time():
+    meta, report = _baseline_meta(provenance='recorded')
+    s = _build(meta, report, snapshot=meta['appliedSnapshotHash'])
+    assert s['biggo']['status'] == 'ok'
+    assert s['biggo']['lastAcquiredAt'] == '2026-10-11T16:37:28Z'
     assert source_status.validate_status(s) == []
 
 
@@ -516,10 +529,11 @@ def test_stage4_success_is_normal_applied_not_baseline_acceptance():
     report = {'ok': True, 'postStateVerified': True, 'reason': 'applied',
               'cycleId': '2026-10-10:4/7', 'stage': 4,
               'bundleHash': stage4['appliedBundleHash'],
+              'acquiredAt': '2026-10-17T16:37:28Z',
+              'acquiredAtProvenance': 'recorded',
               'verifiedPost': {'biggo_prices.json': stage4['appliedSnapshotHash'],
                                'model_status.json': 'sha256:' + '4' * 64,
-                               'model_blacklist.json': 'sha256:' + '5' * 64,
-                               'acquiredAt': '2026-10-17T16:37:28Z'}}
+                               'model_blacklist.json': 'sha256:' + '5' * 64}}
     s = _build(stage4, report, snapshot=stage4['appliedSnapshotHash'])
     assert s['biggo']['status'] == 'ok'
     assert s['biggo']['safeReason'] == 'applied'

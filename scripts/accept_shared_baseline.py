@@ -29,7 +29,8 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE)
 sys.path.insert(0, os.path.join(BASE, 'scripts'))
 import batch_utils  # noqa: E402
-import biggo_apply  # noqa: E402
+import biggo_apply
+import biggo_acquisition  # noqa: E402
 import repair_biggo_apply as repair_mod  # noqa: E402
 from biggo_canonical import canonical_json_bytes, sha256_json  # noqa: E402
 
@@ -224,8 +225,14 @@ def _expected(bundle_dir, repair_path, source_pre, source_post, github_pre,
     cycle = bundle['manifest']['cycleId']
     date = cycle.split(':', 1)[0]
     stage = bundle['manifest']['stage']
-    acquired_at = _utc(bundle['manifest'].get('publishedAt'),
-                       'manifest publishedAt / source acquiredAt')
+    # Publication time is not an acquisition witness.  Only the immutable
+    # stage-result witness (if any) may supply a time; legacy bundles stay
+    # unknown and are recorded as such.
+    try:
+        witness = biggo_acquisition.from_stage_result(bundle['stageResult'])
+    except biggo_acquisition.AcquisitionError as exc:
+        raise BaselineError(f'acquisition witness invalid: {exc}') from exc
+    acquired_at = witness['acquiredAt']
     meta = copy.deepcopy(post_meta)
     # Replace any historical apply fact with an explicit local adoption fact.
     meta.update({
@@ -259,6 +266,8 @@ def _expected(bundle_dir, repair_path, source_pre, source_post, github_pre,
             'newSnapshotHash': bundle['newSnapshotHash'],
             'stageResultHash': bundle['stageResultHash'],
             'acquiredAt': acquired_at,
+            'acquisitionProvenance': witness['provenance'],
+            'acquisitionHash': witness['blockHash'],
             'sourceEvidence': source_evidence,
             'sourcePre': _file_hashes(source_pre),
             'sourcePost': expected_hash,

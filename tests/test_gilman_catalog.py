@@ -88,7 +88,7 @@ def test_wrong_page_and_changed_page_count_are_integrity_failures(tmp_path, monk
         (2, _html(2, 3, 3), None),
     ])
     _, _, _, failures, reasons = g.scan(cache_manifest=str(m2))
-    assert failures and reasons['GREE:page2'] == 'integrity-error'
+    assert failures and reasons['GREE:page2'] == 'pagination-error'
 
 
 def test_missing_page_keeps_existing_output(tmp_path, monkeypatch):
@@ -112,3 +112,20 @@ def test_explicit_cache_manifest_never_falls_back_to_live_http(tmp_path, monkeyp
     _, _, _, failures, _ = g.scan(cache_manifest=str(manifest))
     assert failures
     assert requests == [], 'a missing cache page must fail without live fallback'
+
+
+def test_live_no_cache_adapter_uses_transport_entry_and_keeps_exact_pages(tmp_path, monkeypatch):
+    """No cache: the real scan() path must call the network adapter."""
+    monkeypatch.setattr(g, 'BRANDS', {'GREE': g.BRANDS['GREE']})
+    calls = []
+
+    def live(url):
+        calls.append(url)
+        return _html(1, 1, 2, ('GWT07ES', 'OTHER')).encode('utf-8'), url
+
+    monkeypatch.setattr(g, '_curl', live)
+    catalog, targets, attempted, failures, reasons = g.scan()
+    assert calls and attempted == 1 and failures == []
+    assert targets == {'GWT07ES'}
+    assert catalog['GREE']['pages'][0]['rawSha256'].startswith('sha256:')
+    assert catalog['GREE']['pages'][0]['fetchedAt'].endswith('Z')

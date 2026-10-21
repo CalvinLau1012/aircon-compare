@@ -51,6 +51,8 @@ import batch_utils as _batch_utils  # noqa: E402
 import fetch_biggo as _fetch_biggo  # noqa: E402
 import biggo_coordinator as coord_mod  # noqa: E402
 import biggo_apply as _apply_mod  # noqa: E402
+import biggo_acquisition  # noqa: E402
+import sync_biggo_completed as _sync_completed  # noqa: E402
 from biggo_canonical import canonical_json_bytes, sha256_id  # noqa: E402
 from biggo_limiter import RequestLimiter  # noqa: E402
 import biggo_candidate as candidate_mod  # noqa: E402
@@ -230,6 +232,33 @@ def _load_repair_receipt(env, repo_root, bundle_hash):
     return None
 
 
+def _local_receiver(bundle, batch_mod, repo_root):
+    """Build a verified local receiver projection from the immutable bundle.
+
+    This is not a runner clock: the acquisition time only comes from the stage-
+    result witness; the report is accepted by source_status only when every
+    post-image/meta/snapshot hash still matches the current local state.
+    """
+    try:
+        meta_after = batch_mod.load_meta()
+        verified = _sync_completed.verify_local_post(bundle, meta_after, repo_root)
+    except Exception as exc:  # noqa: BLE001 - caller turns this into an alert
+        raise _apply_mod.ApplyError(f'local receiver verification failed: {exc}') from exc
+    manifest = bundle['manifest']
+    return {
+        'ok': True,
+        'postStateVerified': True,
+        'reason': 'applied',
+        'cycleId': manifest.get('cycleId'),
+        'stage': manifest.get('stage'),
+        'bundleHash': bundle['bundleHash'],
+        'verifiedPost': verified,
+        'acquiredAt': verified.get('acquiredAt'),
+        'acquiredAtProvenance': verified.get('acquiredAtProvenance'),
+        'acquisitionHash': verified.get('acquisitionHash'),
+    }
+
+
 def _invoke_apply(apply_fn, bundle, *, repo_root, now, repair, lock_held=False):
     """Call apply_fn with only the optional kwargs its signature supports."""
     try:
@@ -401,12 +430,13 @@ def _write_review_evidence(status_out, staged, stage_result=None, manifest_field
 
 
 def _build_stage_result(*, cycle_id, stage_no, mode, client, now_fn, staged):
+    generated_at = coord_mod.utc_stamp(now_fn())
     stage_result = {
         'schemaVersion': coord_mod.STAGE_RESULT_SCHEMA_VERSION,
         'cycleId': cycle_id,
         'stage': stage_no,
         'mode': mode,
-        'generatedAt': coord_mod.utc_stamp(now_fn()),
+        'generatedAt': generated_at,
         'counters': dict(staged['counters']),
         'requestAttempts': dict(client.state.get('requestAttempts', {'token': 0, 'search': 0})),
         'responseStatusCounts': dict(client.state.get('responseStatusCounts', {})),
@@ -418,6 +448,18 @@ def _build_stage_result(*, cycle_id, stage_no, mode, client, now_fn, staged):
     }
     if mode == 'force':
         stage_result['metaFields'] = dict(staged.get('metaFields') or {})
+    # Optional, backward-compatible provenance: only a complete set of
+    # provider-validated outcome timestamps for this exact stage/snapshot can
+    # produce a witness.  Legacy/mock outcomes stay absent -> unknown.
+    window = staged.get('acquisitionWindow') if isinstance(staged, dict) else None
+    if isinstance(window, dict) and window.get('startedAt') and window.get('finishedAt'):
+        block = biggo_acquisition.build_block(
+            cycle_id=cycle_id, stage=stage_no,
+            base_snapshot=staged['baseSnapshot'], new_snapshot=staged['snapshot'],
+            outcomes=staged.get('outcomes') or [],
+            batch_started_at=window['startedAt'], generated_at=generated_at)
+        if block is not None:
+            stage_result['acquisition'] = block
     stage_result['effectsHash'] = sha256_id(canonical_json_bytes(stage_result['effects']))
     return stage_result
 
@@ -855,10 +897,19 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
                      error=type(e).__name__, published=True,
                      snapshotHash=published['newSnapshotHash'])
                 return 0
+            local_receiver = None
+            if apply_fn is _apply_mod.apply_bundle:
+                try:
+                    local_receiver = _local_receiver(bundle, batch_mod, repo_root)
+                except _apply_mod.ApplyError as e:
+                    emit('completed-apply-failed', cycle=cycle_id, stage=stage_no,
+                         error=type(e).__name__, detail=str(e)[:200], published=True,
+                         snapshotHash=published['newSnapshotHash'])
+                    return 0
             emit('completed', cycle=cycle_id, stage=stage_no,
                  localApply='noop' if apply_report.get('noop') else 'applied',
                  published=True, snapshotHash=published['newSnapshotHash'],
-                 bundleHash=published['bundleHash'],
+                 bundleHash=published['bundleHash'], localReceiver=local_receiver,
                  requests={'token': record['requests']['token'],
                            'search': record['requests']['search']})
             return 0
