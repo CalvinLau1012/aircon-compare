@@ -1,10 +1,10 @@
 {
   "schemaVersion": "1.0.0",
   "version": "1.2.9",
-  "build": "B20261021.178.1",
-  "commit": "c0ca1f8b5cf05c13664bf4342814548b5de5c2d7",
-  "deployTime": "2026-10-21T03:56:25Z",
-  "workflowRunId": "39541006694",
+  "build": "B20261021.180.1",
+  "commit": "a7c5158b4c4367589b6fc871b269d1a4407e53c3",
+  "deployTime": "2026-10-21T07:45:35Z",
+  "workflowRunId": "39563923131",
   "deploymentType": "release",
   "datasetDate": "2026-10-21",
   "datasetDateBasis": "retrieval-date-fallback",
@@ -37,26 +37,26 @@
       "snapshotId": "emsd-2026-10-21-7e132c45ed00",
       "status": "ok"
     },
-    "generatedAt": "2026-10-21T03:56:24Z",
+    "generatedAt": "2026-10-21T07:45:34Z",
     "official": {
       "lastAcquiredAt": null,
       "lastAppliedAt": null,
       "lastAppliedDate": null,
-      "lastAttemptAt": "2026-10-20T20:09:29Z",
-      "safeReason": "sources-degraded",
+      "lastAttemptAt": "2026-10-21T06:54:12Z",
+      "safeReason": "coverage-pending",
       "snapshotHash": null,
       "snapshotId": null,
-      "status": "degraded"
+      "status": "pending"
     },
     "publish": {
-      "build": "B20261021.178.1",
-      "commit": "c0ca1f8b5cf05c13664bf4342814548b5de5c2d7",
+      "build": "B20261021.180.1",
+      "commit": "a7c5158b4c4367589b6fc871b269d1a4407e53c3",
       "deployedAt": null,
       "deploymentReceipt": null,
-      "packagedAt": "2026-10-21T03:56:25Z",
+      "packagedAt": "2026-10-21T07:45:35Z",
       "releasePayloadHash": null
     },
     "schemaVersion": 1
   },
-  "releasePayloadHash": "sha256:7ca7c57efb3553391d0de8aa128ceba2a414bf06197b6717c552a62e3684bae2"
+  "releasePayloadHash": "sha256:b8fa648d3487d7736e7e8a3cbd68393a44219121b63ffa5361e27728b7160f76"
 }
