@@ -459,3 +459,27 @@ def test_corrupt_observation_and_outer_tamper_are_unhealthy(tmp_path, monkeypatc
                      official_status_doc=doc)
     assert r['ok'] is False
     assert any('coverage' in f for f in r['failures'])
+
+
+def test_mecan_cached_source_evidence_remains_required(tmp_path):
+    fields = {'size': '350×450×640', 'weight': '27kg', 'btu': '7,500',
+              'energy': '1級', 'gas': 'R32', 'hp': '3/4', 'wifi': True,
+              'remote': True, 'warranty': '3年/5年'}
+    entry = dict(fields)
+    entry.update({
+        'title': 'MC07VXH 冷氣',
+        'url': 'https://mecanhk.com/product/mc07vxh/',
+        'sourceEvidence': {
+            'model': 'MC07VXH', 'url': 'https://mecanhk.com/product/mc07vxh/',
+            'fetchedAt': '2026-10-20T09:33:30Z', 'rawSha256': 'a' * 64,
+            'fields': dict(fields),
+        },
+    })
+    path = tmp_path / 'mecan.json'
+    _write(path, {'MC07VXH': entry})
+    assert official_coverage._mecan_cache_errors(path, ['MC07VXH']) == []
+    broken = copy.deepcopy(entry)
+    broken.pop('sourceEvidence')
+    _write(path, {'MC07VXH': broken})
+    assert any('sourceEvidence' in e for e in
+               official_coverage._mecan_cache_errors(path, ['MC07VXH']))

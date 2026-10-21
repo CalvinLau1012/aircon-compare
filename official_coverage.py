@@ -317,6 +317,48 @@ def _marker_errors(marker, script, live_models, staged_models):
     return errors
 
 
+
+_MECAN_FIELDS = ('size', 'weight', 'btu', 'energy', 'gas', 'hp', 'wifi', 'remote', 'warranty')
+
+
+def _mecan_cache_errors(path, models):
+    """Cached MECAN entries must still carry their verified source evidence."""
+    errors = []
+    try:
+        data = _load_json(path)
+    except (OSError, ValueError):
+        return ['MECAN cached output 無法讀取']
+    if not isinstance(data, dict):
+        return ['MECAN cached output 必須係 object']
+    for model in models:
+        entry = data.get(model)
+        if not isinstance(entry, dict):
+            errors.append(f'MECAN cached entry 缺失：{model}')
+            continue
+        ev = entry.get('sourceEvidence')
+        if not isinstance(ev, dict):
+            errors.append(f'MECAN cached sourceEvidence 缺失：{model}')
+            continue
+        if ev.get('model') != model or entry.get('url') != ev.get('url'):
+            errors.append(f'MECAN cached sourceEvidence model/url 唔符：{model}')
+        if not _valid_utc(ev.get('fetchedAt')):
+            errors.append(f'MECAN cached sourceEvidence time 無效：{model}')
+        raw = ev.get('rawSha256')
+        if not (isinstance(raw, str) and re.fullmatch(r'[0-9a-f]{64}', raw)):
+            errors.append(f'MECAN cached sourceEvidence rawSha256 無效：{model}')
+        fields = ev.get('fields')
+        if not isinstance(fields, dict):
+            errors.append(f'MECAN cached sourceEvidence fields 缺失：{model}')
+            continue
+        for key in _MECAN_FIELDS:
+            if key not in entry or key not in fields or entry.get(key) != fields.get(key):
+                errors.append(f'MECAN cached field 唔一致：{model}:{key}')
+                break
+        if not all(entry.get(k) for k in ('size', 'weight', 'btu', 'energy', 'gas')):
+            errors.append(f'MECAN cached 必填規格缺失：{model}')
+    return errors
+
+
 def _runtime():
     import run_official_batch
     return run_official_batch
@@ -671,6 +713,8 @@ def build_observation(receipt, *, repo, staging_repo=None, previous_status=None,
         live_models = {norm_model(m) for m in live['evidenceModels']}
         staged_models = {norm_model(m) for m in staged['evidenceModels']}
         marker_errors = _marker_errors(marker, script, live_models, staged_models)
+        if script == 'fetch_mecan.py':
+            marker_errors.extend(_mecan_cache_errors(live_path, marker.get('alreadyVerified') or []))
         if marker_errors:
             raise ObservationError('; '.join(marker_errors))
         if entry.get('stagedOutputHash') not in (None, staged['sha256'], staged['sha256'][7:]):
@@ -809,6 +853,12 @@ def validate_observation(obs, *, repo=None, receipt=None, previous_status=None,
         elif isinstance(emsd, dict) and emsd.get('snapshotHash'):
             if not os.path.isfile(csv_path) or _sha256_file(csv_path) != emsd['snapshotHash']:
                 errors.append('actual EMSD CSV hash 唔一致')
+        for entry in obs.get('scripts') or []:
+            if isinstance(entry, dict) and entry.get('script') == 'fetch_mecan.py':
+                marker = entry.get('marker') or {}
+                errors.extend(_mecan_cache_errors(
+                    os.path.join(repo, entry.get('output') or ''),
+                    marker.get('alreadyVerified') or []))
         for item in obs.get('outputs') or []:
             if not isinstance(item, dict) or not isinstance(item.get('output'), str):
                 continue
