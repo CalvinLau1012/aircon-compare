@@ -433,3 +433,29 @@ def test_legacy_naked_pending_is_never_healthy(tmp_path, monkeypatch):
                      official_status_doc=doc)
     assert r['ok'] is False
     assert any('coverage' in f for f in r['failures'])
+
+
+def test_corrupt_observation_and_outer_tamper_are_unhealthy(tmp_path, monkeypatch):
+    repo = _fixture(tmp_path, monkeypatch)
+    receipt = _run_batch(repo, monkeypatch)
+    doc = _project(repo, receipt)
+    status = _status(repo, doc, monkeypatch)
+    # Corrupt the embedded observation identity: source status degrades.
+    bad_doc = copy.deepcopy(doc)
+    bad_doc['coverageObservation']['identityHash'] = 'sha256:' + '0' * 64
+    _write(repo / 'official_batch_status.json', bad_doc)
+    monkeypatch.setattr(pub, 'BASE', str(repo))
+    bad_status = _status(repo, bad_doc, monkeypatch)
+    assert bad_status['official']['status'] == 'degraded'
+    r = shm.evaluate(status=bad_status, repo=str(repo), now=NOW,
+                     official_status_doc=bad_doc)
+    assert r['ok'] is False
+    # Outer status tampering cannot green a still-pending observation.
+    _write(repo / 'official_batch_status.json', doc)
+    tampered = copy.deepcopy(status)
+    tampered['official']['status'] = 'ok'
+    tampered['official']['safeReason'] = 'applied'
+    r = shm.evaluate(status=tampered, repo=str(repo), now=NOW,
+                     official_status_doc=doc)
+    assert r['ok'] is False
+    assert any('coverage' in f for f in r['failures'])
