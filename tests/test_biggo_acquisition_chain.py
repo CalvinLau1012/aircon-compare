@@ -505,3 +505,38 @@ def test_baseline_with_real_witness_projects_recorded_time(tmp_path):
     assert got['acquiredAt'] == '2026-10-20T16:37:40Z'
     assert got['acquiredAtProvenance'] == 'recorded'
     assert got['acquisitionHash'] == H(sr['acquisition'])
+
+
+def test_sync_main_applied_path_emits_canonical_witness(tmp_path, monkeypatch):
+    sr, base, new = stage_result()
+    bundle = bundle_for(sr, base, new)
+    meta = write_local(tmp_path, bundle)
+    # Put the local state at the base image and a pre-stage meta, so main applies.
+    (tmp_path / 'biggo_prices.json').write_text(json.dumps(base), encoding='utf-8')
+    meta.update({'price_batch_idx': 5, 'appliedBundleHash': None,
+                 'appliedSnapshotHash': None, 'last_applied_cycle': None,
+                 'appliedAt': None,
+                 'appliedSnapshotId': None})
+    (tmp_path / 'prices_meta.json').write_text(json.dumps(meta), encoding='utf-8')
+    rc, report = _sync_main_report(tmp_path, monkeypatch, bundle)
+    assert rc == 0 and report['ok'] is True and report['applied'] is True
+    inner = report['verifiedPost']
+    assert inner['acquiredAt'] == '2026-10-20T16:37:40Z'
+    assert report['acquiredAt'] == inner['acquiredAt']
+    assert report['acquiredAtProvenance'] == 'recorded'
+    assert report['acquisitionHash'] == inner['acquisitionHash']
+
+
+def test_winner_local_receiver_projection_keeps_witness(tmp_path):
+    import biggo_stage_runner as runner
+    sr, base, new = stage_result()
+    bundle = bundle_for(sr, base, new)
+    meta = write_local(tmp_path, bundle)
+    class Batch:
+        @staticmethod
+        def load_meta():
+            return meta
+    local = runner._local_receiver(bundle, Batch, str(tmp_path))
+    assert local['verifiedPost']['acquiredAt'] == '2026-10-20T16:37:40Z'
+    assert local['acquiredAt'] == '2026-10-20T16:37:40Z'
+    assert local['acquiredAtProvenance'] == 'recorded'
