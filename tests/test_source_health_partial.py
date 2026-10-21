@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Three-axis monitoring: proved coverage pending is a warning, not false green.
+"""SYNTHETIC CONTRACT ONLY for the auxiliary partial validator.
+
+This file does not represent the real current pending receipt: production
+source_status keeps the current coverage gap degraded and Root's real receipt
+has outputManifest=null (fail-closed).  The fixture below manufactures a prior
+complete manifest only to test the validator itself; it is not an acceptance
+claim.
 
 The fixture uses a complete prior official manifest + actual output bytes and a
 clean pending receipt.  Missing/tampered evidence, hard source failures and old
