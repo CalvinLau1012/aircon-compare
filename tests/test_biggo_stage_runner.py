@@ -1140,3 +1140,21 @@ def test_new_writer_incomplete_witness_blocks_before_publish(tmp_path):
     state = api.state()
     assert state is not None and state.get('status') == 'needs_review'
     assert state.get('snapshotHash') is None
+
+
+@pytest.mark.parametrize('window', [None, {}, 'invalid',
+    {'startedAt': '2026-10-20T16:37:30Z'},
+    {'finishedAt': '2026-10-20T16:37:43Z'},
+    {'startedAt': 'invalid', 'finishedAt': 'invalid'},
+    {'startedAt': '2026-10-20T16:37:43Z', 'finishedAt': '2026-10-20T16:37:30Z'},
+])
+def test_present_invalid_window_never_publishes_as_legacy(tmp_path, window):
+    api = FakeGitHubApi()
+    fetch = FakeFetch(tmp_path)
+    fetch.batch_payload['acquisitionWindow'] = window
+    code, out, apply_calls, _, api = _run(tmp_path, api=api, fetch=fetch)
+    assert code == 0 and _status(out) == 'needs-review'
+    assert apply_calls == []
+    assert api.state()['status'] == 'needs_review'
+    assert api.state().get('snapshotHash') is None
+    assert set(api.files) == {CONFIG.state_path}, 'no snapshot/manifest publication'

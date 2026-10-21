@@ -540,3 +540,23 @@ def test_winner_local_receiver_projection_keeps_witness(tmp_path):
     assert local['verifiedPost']['acquiredAt'] == '2026-10-20T16:37:40Z'
     assert local['acquiredAt'] == '2026-10-20T16:37:40Z'
     assert local['acquiredAtProvenance'] == 'recorded'
+
+
+@pytest.mark.parametrize('damage', ['hash', 'before-start', 'bad-start', 'empty'])
+def test_strict_new_writer_rejects_all_invalid_witnesses(damage):
+    sr, base, new = stage_result()
+    outcomes = sr['outcomes']
+    started = '2026-10-20T16:37:30Z'
+    if damage == 'hash':
+        outcomes[0]['resultHash'] = 'sha256:' + '0' * 64
+    elif damage == 'before-start':
+        outcomes[0]['acquiredAt'] = '2026-10-20T16:37:29Z'
+    elif damage == 'bad-start':
+        started = 'invalid'
+    else:
+        outcomes = []
+    with pytest.raises(biggo_acquisition.AcquisitionError):
+        biggo_acquisition.build_block(
+            cycle_id=sr['cycleId'], stage=sr['stage'], base_snapshot=base,
+            new_snapshot=new, outcomes=outcomes, batch_started_at=started,
+            generated_at=sr['generatedAt'], require_complete=True)

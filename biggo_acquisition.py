@@ -67,6 +67,20 @@ def result_hash(price):
     return sha256_json(price)
 
 
+def validate_window(window, generated_at):
+    """A present collector marker must have a complete chronological window."""
+    if not isinstance(window, dict):
+        raise AcquisitionError('acquisition window must be an object')
+    started = _parse(window.get('startedAt'))
+    finished = _parse(window.get('finishedAt'))
+    generated = _parse(generated_at)
+    if started is None or finished is None or generated is None:
+        raise AcquisitionError('acquisition window time missing/invalid')
+    if started > finished or finished > generated + _dt.timedelta(minutes=5):
+        raise AcquisitionError('acquisition window chronology invalid')
+    return window
+
+
 def build_block(*, cycle_id, stage, base_snapshot, new_snapshot, outcomes,
                 batch_started_at, generated_at, require_complete=False):
     """Build a witness block, or return None for legacy/incomplete evidence.
@@ -77,22 +91,26 @@ def build_block(*, cycle_id, stage, base_snapshot, new_snapshot, outcomes,
     outcome before the stage result is published.
     """
     from biggo_canonical import sha256_json
+
+    def invalid(reason):
+        if require_complete:
+            raise AcquisitionError(reason)
+        return None
     if not isinstance(cycle_id, str) or not cycle_id:
-        return None
+        return invalid('acquisition cycle invalid')
     if isinstance(stage, bool) or not isinstance(stage, int) or stage < 1:
-        return None
+        return invalid('acquisition stage invalid')
     if not isinstance(outcomes, list) or not outcomes:
-        return None
+        return invalid('acquisition outcomes missing')
     if _parse(batch_started_at) is None or _parse(generated_at) is None:
-        return None
+        return invalid('acquisition batch/generation time invalid')
     started = _parse(batch_started_at)
     generated = _parse(generated_at)
     entries = []
     priced = clean = 0
-    missing = []
     for outcome in outcomes:
         if not isinstance(outcome, dict):
-            return None
+            return invalid('acquisition outcome invalid')
         kind = outcome.get('outcome')
         if kind not in VALID_OUTCOMES:
             continue
@@ -101,32 +119,22 @@ def build_block(*, cycle_id, stage, base_snapshot, new_snapshot, outcomes,
         rhash = outcome.get('resultHash')
         when = _parse(acquired)
         if not isinstance(model, str) or not model.strip() or when is None:
-            missing.append(model if isinstance(model, str) else '?')
-            if require_complete:
-                raise AcquisitionError('valid outcome missing/invalid acquisition timestamp')
-            return None
+            return invalid('valid outcome missing/invalid acquisition timestamp')
         if not is_sha(rhash):
-            missing.append(model)
-            if require_complete:
-                raise AcquisitionError('valid outcome missing/invalid result hash')
-            return None
+            return invalid('valid outcome missing/invalid result hash')
         expected_hash = result_hash(outcome.get('price') if kind == 'priced' else None)
         if rhash != expected_hash:
-            return None
+            return invalid('acquisition result hash mismatch')
         if when < started or when > generated + _dt.timedelta(minutes=5):
-            return None
+            return invalid('acquisition result outside batch window')
         entries.append({'model': model, 'outcome': kind,
                         'resultHash': rhash, 'acquiredAt': acquired})
         if kind == 'priced':
             priced += 1
         else:
             clean += 1
-    if missing and require_complete:
-        raise AcquisitionError('incomplete acquisition witness')
     if not entries:
-        if require_complete:
-            raise AcquisitionError('no valid acquisition outcomes')
-        return None
+        return invalid('no valid acquisition outcomes')
     last = max(entry['acquiredAt'] for entry in entries)
     block = {
         'schemaVersion': SCHEMA_VERSION,

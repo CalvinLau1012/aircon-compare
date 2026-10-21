@@ -1042,3 +1042,8 @@ Root independently reproduced that the production Pages `check_generated_source_
 
 - Fixed test-only fixed-date/wall-clock drift in the health producer-consumer chain; added 48h/future/multi-year/tamper regression.
 - Added run-bound upstream-blocked sync receipt and separate BigGo upstream/provider-unknown receipts with fail-closed alert handling. No release/data/provider operation.
+
+
+### 2026-10-21 Root integration: complete new-writer window guard (append-only)
+
+Root independently reproduced a remaining R2 case: a present null/empty/half-written acquisitionWindow could publish as legacy. The collector marker now requires valid chronological start/end values; strict witness construction raises on every malformed result/hash/time rather than returning null. Real runner regressions prove no snapshot/manifest publication or local apply. Old bundles without a marker retain unknown acquisition. Formal deployment and the eight missing exact official specifications remain uncompleted at this entry. No provider request.

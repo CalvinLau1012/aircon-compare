@@ -452,7 +452,8 @@ def _build_stage_result(*, cycle_id, stage_no, mode, client, now_fn, staged):
     # provider-validated outcome timestamps for this exact stage/snapshot can
     # produce a witness.  Legacy/mock outcomes stay absent -> unknown.
     window = staged.get('acquisitionWindow') if isinstance(staged, dict) else None
-    if isinstance(window, dict) and window.get('startedAt') and window.get('finishedAt'):
+    if 'acquisitionWindow' in staged:
+        biggo_acquisition.validate_window(window, generated_at)
         block = biggo_acquisition.build_block(
             cycle_id=cycle_id, stage=stage_no,
             base_snapshot=staged['baseSnapshot'], new_snapshot=staged['snapshot'],

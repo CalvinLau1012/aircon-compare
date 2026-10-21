@@ -1422,3 +1422,8 @@ Formal zero-provider repair run 39393716967 received and verified stage5 locally
 - 正式 `source_status` 對當前 8 項 coverage gap 保持 `degraded`；不改門檻、不讓 degraded 變 green、不改去重恢復條件。
 - 新增真 producer 回歸：`sync_biggo_completed.main` report 必須帶 canonical top-level `acquiredAt／acquiredAtProvenance／acquisitionHash`，且與 `verifiedPost` 完全一致；outer timestamp 衝突 fail-closed。Baseline recorded time 必須與 immutable stage-result acquisition block 的 stageResultHash／block hash／time 完全一致；legacy baseline 不得靠重算 acceptanceId 自稱 recorded。
 - Provider envelope 只接受合法 `list`（空 list 可為 clean miss）；error envelope／缺 list／錯 type／非 object item 一律 net_error，不記 witness。新 collector window 存在但 witness 不完整時，runner 在 publish/CAS/apply 前 `needs-review` 阻斷；只有完全無 window 的舊 bundle 可走 legacy unknown。
+
+
+### 2026-10-21 Root integration: complete new-writer window guard (append-only)
+
+Root independently reproduced a remaining R2 case: a present null/empty/half-written acquisitionWindow could publish as legacy. The collector marker now requires valid chronological start/end values; strict witness construction raises on every malformed result/hash/time rather than returning null. Real runner regressions prove no snapshot/manifest publication or local apply. Old bundles without a marker retain unknown acquisition. Formal deployment and the eight missing exact official specifications remain uncompleted at this entry. No provider request.
