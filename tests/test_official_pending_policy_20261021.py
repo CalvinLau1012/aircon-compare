@@ -27,7 +27,7 @@ import run_official_batch as rob  # noqa: E402
 import publish_official_status as pub  # noqa: E402
 import check_health_summary as client  # noqa: E402
 
-NOW = dt.datetime(2026, 10, 21, 6, 0, tzinfo=dt.timezone.utc)
+NOW = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
 RETRIEVED = '2026-10-21T04:00:00Z'
 
 
@@ -295,8 +295,9 @@ def test_v1_and_v2_summary_semantics_are_not_silently_mixed(tmp_path, monkeypatc
     assert client.evaluate(failed, now=NOW)['ok'] is False
     # A stale observation cannot be accepted merely because operations look ok.
     stale = copy.deepcopy(summary)
-    stale['coverage']['observation']['observedAt'] = '2026-10-19T00:00:00Z'
-    stale['coverage']['observedAt'] = '2026-10-19T00:00:00Z'
+    stale_ts = (NOW - dt.timedelta(days=2)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    stale['coverage']['observation']['observedAt'] = stale_ts
+    stale['coverage']['observedAt'] = stale_ts
     assert client.evaluate(stale, now=NOW)['ok'] is False
 
 
@@ -305,14 +306,14 @@ def test_future_stale_and_cache_replay_times(tmp_path, monkeypatch):
     receipt = _run_batch(repo, monkeypatch)
     obs = receipt['coverageObservation']
     future = copy.deepcopy(obs)
-    future['observedAt'] = '2026-10-21T07:00:00Z'
+    future['observedAt'] = (NOW + dt.timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
     future['identityHash'] = official_coverage.sha256_id(
         official_coverage.canonical_json_bytes(
             {k: v for k, v in future.items() if k != 'identityHash'}))
     assert any('未來' in e for e in
                official_coverage.validate_observation(future, repo=str(repo)))
     old = copy.deepcopy(obs)
-    old['observedAt'] = '2026-10-19T00:00:00Z'
+    old['observedAt'] = (NOW - dt.timedelta(days=2)).strftime('%Y-%m-%dT%H:%M:%SZ')
     old['identityHash'] = official_coverage.sha256_id(
         official_coverage.canonical_json_bytes(
             {k: v for k, v in old.items() if k != 'identityHash'}))
@@ -349,7 +350,7 @@ def test_pending_does_not_hide_stale_or_deploy_mismatch(tmp_path, monkeypatch):
     _write(repo / 'metadata.json', _metadata(repo))
     dep = _deployment(repo, _metadata(repo))
     stale_meta = _metadata(repo)
-    stale_meta['datasetRetrievedAt'] = '2026-10-18T00:00:00Z'
+    stale_meta['datasetRetrievedAt'] = (NOW - dt.timedelta(days=4)).strftime('%Y-%m-%dT%H:%M:%SZ')
     stale = check_freshness.evaluate(stale_meta, NOW)
     stale.update(postdeployOk=True, healthSummaryOk=True, coveragePending=True)
     assert check_freshness.plan_issue(None, stale)['action'] == 'create'
