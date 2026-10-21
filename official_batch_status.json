@@ -20,14 +20,14 @@
     "GWT12ES"
   ],
   "missingCanonicalModels": [
-    "CWV24CRFN9AD5",
-    "GEH63ZEGEH63ZC",
-    "GWT07ES",
-    "GWT09ES",
-    "GWT12ES",
     "WRK07MIZH1",
     "WRK09MIZH1",
-    "WRK18MIZH1"
+    "WRK18MIZH1",
+    "GEH63ZEGEH63ZC",
+    "CWV24CRFN9AD5",
+    "GWT07ES",
+    "GWT09ES",
+    "GWT12ES"
   ],
   "coveragePendingReasons": {
     "CWV-24CRFN9-AD5": "target-not-in-configured-comfee-list",
@@ -39,6 +39,314 @@
     "WRK09MIZH1": "stage-source-did-not-cover-target",
     "WRK18MIZH1": "stage-source-did-not-cover-target"
   },
-  "generatedAt": "2026-10-20T20:09:29Z",
+  "coverageObservation": {
+    "schemaVersion": 1,
+    "kind": "aircon-official-coverage-observation",
+    "decision": "queue-kept-pending-coverage",
+    "observedAt": "2026-10-21T06:54:12Z",
+    "observedAtKind": "cache-replay",
+    "stage": 1,
+    "targetScoped": true,
+    "queue": {
+      "stage": 1,
+      "models": [
+        "WRK07MIZH1",
+        "WRK09MIZH1",
+        "WRK18MIZH1",
+        "MC07WVRQW",
+        "MC09WVRQW",
+        "MC07VXH",
+        "MC09VXH",
+        "MC12VXH",
+        "GEH63ZE/GEH63ZC",
+        "CWV-24CRFN9-AD5",
+        "GWT07ES",
+        "GWT09ES",
+        "MC18VXH",
+        "MC24VXH",
+        "GWT12ES"
+      ],
+      "canonicalModels": [
+        "WRK07MIZH1",
+        "WRK09MIZH1",
+        "WRK18MIZH1",
+        "MC07WVRQW",
+        "MC09WVRQW",
+        "MC07VXH",
+        "MC09VXH",
+        "MC12VXH",
+        "GEH63ZEGEH63ZC",
+        "CWV24CRFN9AD5",
+        "GWT07ES",
+        "GWT09ES",
+        "MC18VXH",
+        "MC24VXH",
+        "GWT12ES"
+      ],
+      "hash": "sha256:cacfac6130811ede3b0735f944d5a5e904a4ba4f16059e62c8c9ab10bee63818",
+      "missingModels": [
+        "WRK07MIZH1",
+        "WRK09MIZH1",
+        "WRK18MIZH1",
+        "GEH63ZE/GEH63ZC",
+        "CWV-24CRFN9-AD5",
+        "GWT07ES",
+        "GWT09ES",
+        "GWT12ES"
+      ],
+      "missingCanonicalModels": [
+        "WRK07MIZH1",
+        "WRK09MIZH1",
+        "WRK18MIZH1",
+        "GEH63ZEGEH63ZC",
+        "CWV24CRFN9AD5",
+        "GWT07ES",
+        "GWT09ES",
+        "GWT12ES"
+      ],
+      "scriptCoveragePending": [],
+      "reasons": {
+        "CWV-24CRFN9-AD5": "target-not-in-configured-comfee-list",
+        "GEH63ZE/GEH63ZC": "stage-source-did-not-cover-target",
+        "GWT07ES": "stage-source-did-not-cover-target",
+        "GWT09ES": "stage-source-did-not-cover-target",
+        "GWT12ES": "stage-source-did-not-cover-target",
+        "WRK07MIZH1": "stage-source-did-not-cover-target",
+        "WRK09MIZH1": "stage-source-did-not-cover-target",
+        "WRK18MIZH1": "stage-source-did-not-cover-target"
+      }
+    },
+    "emsd": {
+      "input": "emsd_空調能源標籤.csv",
+      "snapshotHash": "sha256:dcbe0ca2d4e9e25f7f62b6fcff54afd40d280cb7679e77a660b67e132c45ed00"
+    },
+    "routes": {
+      "WRK07MIZH1": {
+        "brand": "MITSUBISHIHEAVY",
+        "stage": 1,
+        "source": "fetch_gilman.py",
+        "reason": null,
+        "supported": true
+      },
+      "WRK09MIZH1": {
+        "brand": "MITSUBISHIHEAVY",
+        "stage": 1,
+        "source": "fetch_gilman.py",
+        "reason": null,
+        "supported": true
+      },
+      "WRK18MIZH1": {
+        "brand": "MITSUBISHIHEAVY",
+        "stage": 1,
+        "source": "fetch_gilman.py",
+        "reason": null,
+        "supported": true
+      },
+      "MC07WVRQW": {
+        "brand": "MECAN",
+        "stage": 1,
+        "source": "fetch_mecan.py",
+        "reason": null,
+        "supported": true
+      },
+      "MC09WVRQW": {
+        "brand": "MECAN",
+        "stage": 1,
+        "source": "fetch_mecan.py",
+        "reason": null,
+        "supported": true
+      },
+      "MC07VXH": {
+        "brand": "MECAN",
+        "stage": 1,
+        "source": "fetch_mecan.py",
+        "reason": null,
+        "supported": true
+      },
+      "MC09VXH": {
+        "brand": "MECAN",
+        "stage": 1,
+        "source": "fetch_mecan.py",
+        "reason": null,
+        "supported": true
+      },
+      "MC12VXH": {
+        "brand": "MECAN",
+        "stage": 1,
+        "source": "fetch_mecan.py",
+        "reason": null,
+        "supported": true
+      },
+      "GEH63ZE/GEH63ZC": {
+        "brand": "GREE",
+        "stage": 1,
+        "source": "fetch_gilman.py",
+        "reason": null,
+        "supported": true
+      },
+      "CWV-24CRFN9-AD5": {
+        "brand": "COMFEE",
+        "stage": 1,
+        "source": "fetch_official.py",
+        "reason": "target-not-in-configured-comfee-list",
+        "supported": false
+      },
+      "GWT07ES": {
+        "brand": "GREE",
+        "stage": 1,
+        "source": "fetch_gilman.py",
+        "reason": null,
+        "supported": true
+      },
+      "GWT09ES": {
+        "brand": "GREE",
+        "stage": 1,
+        "source": "fetch_gilman.py",
+        "reason": null,
+        "supported": true
+      },
+      "MC18VXH": {
+        "brand": "MECAN",
+        "stage": 1,
+        "source": "fetch_mecan.py",
+        "reason": null,
+        "supported": true
+      },
+      "MC24VXH": {
+        "brand": "MECAN",
+        "stage": 1,
+        "source": "fetch_mecan.py",
+        "reason": null,
+        "supported": true
+      },
+      "GWT12ES": {
+        "brand": "GREE",
+        "stage": 1,
+        "source": "fetch_gilman.py",
+        "reason": null,
+        "supported": true
+      }
+    },
+    "scripts": [
+      {
+        "script": "fetch_mecan.py",
+        "output": "mecan_official.json",
+        "returncode": 0,
+        "marker": {
+          "schemaVersion": 1,
+          "script": "fetch_mecan.py",
+          "attempted": 0,
+          "succeeded": 0,
+          "failed": 0,
+          "skipped": 7,
+          "succeededModels": [],
+          "failedModels": [],
+          "alreadyVerified": [
+            "MC07VXH",
+            "MC07WVRQW",
+            "MC09VXH",
+            "MC09WVRQW",
+            "MC12VXH",
+            "MC18VXH",
+            "MC24VXH"
+          ],
+          "covers": [
+            "MC07VXH",
+            "MC07WVRQW",
+            "MC09VXH",
+            "MC09WVRQW",
+            "MC12VXH",
+            "MC18VXH",
+            "MC24VXH"
+          ],
+          "failureReasons": {},
+          "sourceAcquiredAt": "2026-10-20T09:33:49Z",
+          "sourceAcquiredAtKind": "verified-official-fetch"
+        },
+        "staged": {
+          "sha256": "sha256:2d1bc002c3fd1093baba1c86ac5e290878d0c9e442a19ad8f92f5ca9798e4518",
+          "size": 6525,
+          "validJson": true,
+          "evidenceModels": [
+            "MC07VXH",
+            "MC07WVRQW",
+            "MC09VXH",
+            "MC09WVRQW",
+            "MC12VXH",
+            "MC18VXH",
+            "MC24VXH"
+          ]
+        }
+      },
+      {
+        "script": "fetch_gilman.py",
+        "output": "gilman_official.json",
+        "returncode": 0,
+        "marker": {
+          "schemaVersion": 1,
+          "script": "fetch_gilman.py",
+          "attempted": 0,
+          "succeeded": 0,
+          "failed": 0,
+          "skipped": 0,
+          "succeededModels": [],
+          "failedModels": [],
+          "alreadyVerified": [],
+          "covers": [],
+          "failureReasons": {},
+          "catalogPages": 9,
+          "cataloguePagesAttempted": 9,
+          "cataloguePagesFailed": 0,
+          "catalogueFailureReasons": {},
+          "pageCounts": {
+            "GREE": 7,
+            "MITSUBISHIHEAVY": 2
+          },
+          "targetsFound": [],
+          "sourceAcquiredAt": null,
+          "sourceAcquiredAtKind": "catalogue-only",
+          "cataloguePagesFromCache": 9,
+          "catalogueObservedAt": "2026-10-21T06:54:12Z"
+        },
+        "staged": {
+          "sha256": "sha256:f76d72462b4272e9e093fc5557d657ca1e3da05777ecd69f928cbe36f3744fbc",
+          "size": 4381,
+          "validJson": true,
+          "evidenceModels": [
+            "CATALOG"
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "output": "mecan_official.json",
+        "sha256": "sha256:2d1bc002c3fd1093baba1c86ac5e290878d0c9e442a19ad8f92f5ca9798e4518",
+        "size": 6525,
+        "validJson": true,
+        "evidenceModels": [
+          "MC07VXH",
+          "MC07WVRQW",
+          "MC09VXH",
+          "MC09WVRQW",
+          "MC12VXH",
+          "MC18VXH",
+          "MC24VXH"
+        ]
+      },
+      {
+        "output": "gilman_official.json",
+        "sha256": "sha256:25f0dbe779a585665325352a4a76a6a89d9d152b4a265956be65c2f07a34ed3c",
+        "size": 4339,
+        "validJson": true,
+        "evidenceModels": [
+          "CATALOG"
+        ]
+      }
+    ],
+    "previousSnapshot": null,
+    "identityHash": "sha256:56ba9a366baab3bbcd0b144a0f7e72ef96ea8d3642ebca3b113bd146afbb4bb1"
+  },
+  "generatedAt": "2026-10-21T06:54:12Z",
   "source": "run_official_batch.py"
 }
