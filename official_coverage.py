@@ -218,6 +218,7 @@ def _safe_marker(marker):
         'catalogPages', 'cataloguePagesAttempted', 'cataloguePagesFailed',
         'catalogueFailureReasons', 'pageCounts', 'targetsFound',
         'sourceAcquiredAt', 'sourceAcquiredAtKind', 'cataloguePagesFromCache',
+        'catalogueObservedAt',
     )
     return {key: marker[key] for key in allowed if key in marker}
 
@@ -230,6 +231,26 @@ def _marker_errors(marker, script, live_models, staged_models):
         errors.append('marker schemaVersion 必須係 1')
     if marker.get('script') != script:
         errors.append('marker script 唔符')
+    if script == 'fetch_gilman.py':
+        pages = marker.get('cataloguePagesAttempted')
+        page_counts = marker.get('pageCounts')
+        cached = marker.get('cataloguePagesFromCache')
+        if type(pages) is not int or pages <= 0:
+            errors.append('catalogue pages attempted 必須係正整數')
+        if type(marker.get('cataloguePagesFailed')) is not int or marker.get('cataloguePagesFailed') != 0:
+            errors.append('catalogue 有失敗頁面')
+        if marker.get('catalogueFailureReasons') != {}:
+            errors.append('catalogue 有硬失敗原因')
+        if marker.get('catalogPages') != pages:
+            errors.append('catalogue pages count 唔一致')
+        if (not isinstance(page_counts, dict) or not page_counts
+                or any(type(v) is not int or v <= 0 for v in page_counts.values())
+                or sum(page_counts.values()) != pages):
+            errors.append('catalogue expected page counts 唔一致')
+        if type(cached) is not int or type(pages) is not int or not 0 <= cached <= pages:
+            errors.append('catalogue cached page count 無效')
+        if not _valid_utc(marker.get('catalogueObservedAt'), now=_utc_now()):
+            errors.append('catalogue 原始觀察時間缺失或無效')
     counts = {}
     for key in ('attempted', 'succeeded', 'failed'):
         value = marker.get(key)
@@ -383,7 +404,12 @@ def _manifest_errors(manifest, stage, repo):
     files = manifest.get('files')
     if not isinstance(files, dict) or not files:
         return errors + ['previous outputManifest files 缺失']
+    rob = _runtime()
+    allowed = set(rob.STAGES[stage]['outputs']) | set(rob.TARGET_ADAPTERS.values())
     for name, meta in files.items():
+        if name not in allowed:
+            errors.append('previous outputManifest 含未批准檔名')
+            continue
         if not isinstance(name, str) or not isinstance(meta, dict):
             errors.append('previous outputManifest file entry 無效')
             continue
@@ -424,11 +450,18 @@ def _previous_snapshot(previous_status, stage, repo):
     manifest = previous_status.get('outputManifest')
     if claimed is None and manifest is None:
         return None
-    if previous_status.get('decision') != 'advanced':
-        raise ObservationError('previous status 有 snapshot 但 decision 唔係 advanced')
+    if previous_status.get('decision') == DECISION:
+        # A subsequent pending round retains the same independently verified
+        # complete snapshot. Validate the prior portable binding before reuse;
+        # its old queue need not equal today's queue.
+        prior = expected_pending(previous_status, repo=None, require_emsd=True)
+        if not prior.get('trusted') or not isinstance(prior.get('previousSnapshot'), dict):
+            raise ObservationError('previous pending snapshot 冇可信觀察綁定')
+    elif previous_status.get('decision') != 'advanced':
+        raise ObservationError('previous status 有 snapshot 但 decision 唔可信')
     if not (isinstance(claimed, str) and SHA_RE.match(claimed)):
         raise ObservationError('previous snapshotHash 唔係 full sha256')
-    errors = _manifest_errors(manifest, stage, repo)
+    errors = _manifest_errors(manifest, manifest.get('stage') if isinstance(manifest, dict) else None, repo)
     if errors:
         raise ObservationError('; '.join(errors))
     if manifest.get('manifestHash') != claimed:
@@ -615,7 +648,7 @@ def _base_structure_errors(obs, *, expected_plan=None, routes_override=None):
                 body = {'schemaVersion': 1, 'stage': manifest.get('stage'),
                         'files': manifest.get('files')}
                 if manifest.get('schemaVersion') != 1 \
-                        or manifest.get('stage') != obs.get('stage') \
+                        or type(manifest.get('stage')) is not int or manifest.get('stage') not in (1, 2) \
                         or manifest.get('manifestHash') != sha256_id(canonical_json_bytes(body)) \
                         or manifest.get('manifestHash') != previous.get('snapshotHash'):
                     errors.append('previousSnapshot manifest 身份唔一致')
@@ -633,8 +666,13 @@ def _base_structure_errors(obs, *, expected_plan=None, routes_override=None):
 
 def validate_observation_structure(obs, *, expected_plan=None, routes_override=None):
     """Validate the portable observation without reading live repo files."""
-    return _base_structure_errors(obs, expected_plan=expected_plan,
-                                  routes_override=routes_override)
+    try:
+        return _base_structure_errors(obs, expected_plan=expected_plan,
+                                      routes_override=routes_override)
+    except (TypeError, ValueError, KeyError, AttributeError):
+        # Invalid JSON shapes must produce an unhealthy receipt, not escape
+        # before the monitor has replaced its previous summary.
+        return ['observation 結構無效']
 
 
 def build_observation(receipt, *, repo, staging_repo=None, previous_status=None,
@@ -749,13 +787,22 @@ def build_observation(receipt, *, repo, staging_repo=None, previous_status=None,
     stamp = observed_at or time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
     if not _valid_utc(stamp, now=now):
         raise ObservationError('observedAt 無效或未來時間')
+    # Observing cached catalogue bytes again does not fetch the source again.
+    # Retain the oldest contributing page time, including on ordinary cache
+    # entrypoints that did not explicitly request --replay-observation.
+    catalogue_times = [s['marker']['catalogueObservedAt'] for s in scripts
+                       if s['script'] == 'fetch_gilman.py']
+    if catalogue_times:
+        stamp = min([stamp] + catalogue_times,
+                    key=lambda value: _dt.datetime.fromisoformat(value.replace('Z', '+00:00')))
+    from_cache = any(s['marker'].get('cataloguePagesFromCache', 0) > 0 for s in scripts)
     canonical = [norm_model(m) for m in targets]
     observation = {
         'schemaVersion': SCHEMA_VERSION,
         'kind': KIND,
         'decision': DECISION,
         'observedAt': stamp,
-        'observedAtKind': 'batch-attempt',
+        'observedAtKind': 'cache-replay' if from_cache else 'batch-attempt',
         'stage': stage,
         'targetScoped': target_scoped,
         'queue': {
@@ -807,9 +854,9 @@ def validate_observation(obs, *, repo=None, receipt=None, previous_status=None,
                          require_emsd=True, enforce_age=False, max_age_hours=36,
                          now=None, expected_plan=None, routes_override=None):
     """Recompute/verify a portable observation against actual local inputs."""
-    errors = _base_structure_errors(obs, expected_plan=expected_plan,
-                                    routes_override=routes_override)
-    if not isinstance(obs, dict):
+    errors = validate_observation_structure(obs, expected_plan=expected_plan,
+                                             routes_override=routes_override)
+    if errors:
         return errors
     now_dt = _utc_now(now)
     if _valid_utc(obs.get('observedAt')):
@@ -873,7 +920,8 @@ def validate_observation(obs, *, repo=None, receipt=None, previous_status=None,
             if facts['evidenceModels'] != item.get('evidenceModels'):
                 errors.append(f"actual output evidence 唔一致：{item['output']}")
         if isinstance(previous, dict):
-            errors.extend(_manifest_errors(previous.get('outputManifest'), stage, repo))
+            errors.extend(_manifest_errors(previous.get('outputManifest'),
+                                            (previous.get('outputManifest') or {}).get('stage'), repo))
             if previous.get('snapshotHash') != (
                     previous.get('outputManifest') or {}).get('manifestHash'):
                 errors.append('previous snapshot hash 同 manifest 唔一致')
@@ -939,6 +987,8 @@ def expected_pending(official_doc, *, repo=None, previous_status=None,
         obs, repo=repo, previous_status=previous_status,
         require_emsd=require_emsd, enforce_age=enforce_age,
         max_age_hours=max_age_hours, now=now)
+    if errors:
+        return {'pending': True, 'trusted': False, 'errors': errors[:20]}
     queue = obs.get('queue') or {}
     previous = obs.get('previousSnapshot')
     if official_doc.get('pendingCoverage') is not True:
@@ -959,7 +1009,8 @@ def expected_pending(official_doc, *, repo=None, previous_status=None,
     if has_previous:
         if official_doc.get('snapshotHash') != previous.get('snapshotHash') \
                 or official_doc.get('snapshotId') != previous.get('snapshotId') \
-                or official_doc.get('outputManifest') != previous.get('outputManifest'):
+                or official_doc.get('outputManifest') != previous.get('outputManifest') \
+                or official_doc.get('lastSuccessAt') != previous.get('lastSuccessAt'):
             errors.append('status previous snapshot 同 observation 唔一致')
     else:
         if official_doc.get('snapshotHash') is not None \

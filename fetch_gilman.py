@@ -278,7 +278,18 @@ def main(argv=None):
     if not failures:
         save_json(args.out, out, indent=1)
     failure_counts = Counter(reasons.values())
-    extra = {'catalogPages': attempted,
+    stamps = [row.get('fetchedAt') for brand in catalog.values()
+              for row in brand.get('pages', [])]
+    observed = None
+    if stamps and all(isinstance(stamp, str) and stamp.endswith('Z') for stamp in stamps):
+        try:
+            observed = min(stamps, key=lambda stamp: _dt.datetime.fromisoformat(
+                stamp.replace('Z', '+00:00')))
+        except ValueError:
+            observed = None
+    extra = {'cataloguePagesFromCache': attempted if (args.cache_dir or args.cache_manifest) else 0,
+             'catalogueObservedAt': observed,
+             'catalogPages': attempted,
              'cataloguePagesAttempted': attempted,
              'cataloguePagesFailed': len(failures),
              'catalogueFailureReasons': dict(sorted(failure_counts.items())),

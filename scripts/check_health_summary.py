@@ -301,11 +301,16 @@ def _evaluate_v2(summary, *, now=None, max_age_hours=48, expected_metadata=None)
 
 def evaluate(summary, *, now=None, max_age_hours=48, expected_metadata=None):
     """Dispatch by explicit schema version; v1 keeps its original strict meaning."""
-    if isinstance(summary, dict) and summary.get('schemaVersion') == 2:
-        return _evaluate_v2(summary, now=now, max_age_hours=max_age_hours,
+    try:
+        if isinstance(summary, dict) and summary.get('schemaVersion') == 2:
+            return _evaluate_v2(summary, now=now, max_age_hours=max_age_hours,
+                                expected_metadata=expected_metadata)
+        return _evaluate_v1(summary, now=now, max_age_hours=max_age_hours,
                             expected_metadata=expected_metadata)
-    return _evaluate_v1(summary, now=now, max_age_hours=max_age_hours,
-                        expected_metadata=expected_metadata)
+    except (TypeError, ValueError, KeyError, AttributeError):
+        return {'ok': False, 'status': 'unhealthy',
+                'failures': ['summary:invalid-structure'],
+                'coveragePending': False, 'sourceStates': {}}
 
 
 def main(argv=None):

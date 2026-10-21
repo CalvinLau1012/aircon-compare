@@ -1438,3 +1438,8 @@ Root independently reproduced a remaining R2 case: a present null/empty/half-wri
 - **健康與顯示**：private summary v2 分 `operations`／`coverage`，可信 pending 時 operations 可 healthy、coverage 仍 pending；public v2 client 驗證 observation identity、時間及 outer bindings，v1 保持原嚴格 all-ok 讀法。source status 用 `pending`＋`coverage-pending`，legacy 裸 pending 不會自動升級。HTML／PDF 以普通「官網規格待補」信息顯示，不用 ⚠️／紅條，不宣稱已全面核實或未上市。
 - **仍 fail-closed**：抓取／TLS／依賴／parser 硬錯、空／壞 marker、queue／CSV／output／manifest race、receipt 缺失／損壞／偽造、EMSD >72h、部署不符、未知 health、BigGo 硬故障全部保留為失敗／告警；不得被 pending 掩蓋。
 - **邊界**：此輪零 BigGo provider／auth／search／smoke／diagnostic、零 coordinator／lease／budget／grant 寫入；不改 GitHub 全局通知設定、不改 00:30 HKT 排程。Pi 只隔離實作及離線測試，正式 Docker／CI／部署由 Root。
+
+
+### 2026-10-21 Root 獨立驗收補正（D39 實作）
+
+Root 反例發現並補正：損壞 observation 結構須產生 unhealthy 收據而非 traceback；Gilman catalogue 的頁面失敗／TLS 原因不可冒充正常缺項；連續兩輪 pending 保留已驗證完整快照；一般 cache 入口沿用最早來源觀察時間，不能靠重跑把舊目錄變新。補上獨立回歸案例；原候選及原測試紀錄保留。純缺規格仍正常待補，真正資料／抓取／部署故障維持阻斷。本條是候選補正紀錄，正式部署事實另行追加。

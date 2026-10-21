@@ -70,7 +70,7 @@ def _parse_utc(value):
         return None
 
 
-def _official_manifest_errors(official_doc, official, repo):
+def _official_manifest_errors(official_doc, official, repo, *, retained_stage=False):
     """Verify the official status manifest against actual output bytes/JSON."""
     if not isinstance(official_doc, dict):
         return ['official:status-doc-missing']
@@ -89,7 +89,7 @@ def _official_manifest_errors(official_doc, official, repo):
     if manifest.get('schemaVersion') != 1 or stage not in OFFICIAL_OUTPUTS:
         errors.append('official:manifest-schema-or-stage-invalid')
         return errors
-    if official_doc.get('stage') != stage:
+    if not retained_stage and official_doc.get('stage') != stage:
         errors.append('official:status-stage-mismatch')
     files = manifest.get('files')
     allowed = set(OFFICIAL_OUTPUTS[stage]) | {'mecan_official.json', 'gilman_official.json'}
@@ -273,7 +273,8 @@ def evaluate(*, status, repo, now=None, max_age_hours=36, schedule_hkt='00:30',
     elif (now - generated).total_seconds() > max_age_hours * 3600:
         failures.append('status:generatedAt-stale')
     if official.get('status') == 'ok' or official.get('snapshotHash'):
-        failures.extend(_official_manifest_errors(official_status_doc, official, repo))
+        failures.extend(_official_manifest_errors(official_status_doc, official, repo,
+                            retained_stage=bool(coverage and coverage.get('trusted'))))
     publish = status.get('publish') or {}
     deployed = _parse_utc(publish.get('deployedAt'))
     if require_deployed:
