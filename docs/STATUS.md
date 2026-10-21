@@ -1746,3 +1746,7 @@ Formal zero-provider repair run 39393716967 received and verified stage5 locally
 - Normal BigGo acquisition provenance is now a candidate: valid provider outcomes get a UTC witness in the immutable stage-result, and receiver/status/Hero distinguish acquired vs applied. The live cycle 6/7 data remains without a historical witness; it is not back-filled.
 - Private runtime curl/CA dependency, Gilman/MECAN safe failure receipts, and the proved coverage-pending `partial` warning are candidate code only. Docker build, live official read, full browser gates and deployment are NOT yet verified by this candidate.
 - Eight remaining official targets have exact EMSD raw evidence but not complete brand/agent dimensions; queue remains pending. No new BigGo provider call, coordinator write, formal deployment or live Issue action in this round.
+
+### 2026-10-21 Root correction (append-only)
+
+Production `source_status` keeps the current 8-target official gap `degraded`; the auxiliary partial contract is synthetic-only and the real pending receipt (`outputManifest=null`) stays fail-closed. Official channels checked (MHI current/historical, Gilman MDM, GREE global, Comfee HK, Toshiba HK download index) still lack exact brand/agent full-spec originals, so the queue remains pending with concrete source blockers. Earlier `curl -k` clues are TLS-unverified and excluded. Final candidate heads and tests are recorded in the private delivery/control evidence.
