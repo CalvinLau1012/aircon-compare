@@ -43,8 +43,8 @@
     "schemaVersion": 1,
     "kind": "aircon-official-coverage-observation",
     "decision": "queue-kept-pending-coverage",
-    "observedAt": "2026-10-21T06:54:12Z",
-    "observedAtKind": "cache-replay",
+    "observedAt": "2026-10-21T20:21:04Z",
+    "observedAtKind": "batch-attempt",
     "stage": 1,
     "targetScoped": true,
     "queue": {
@@ -305,11 +305,11 @@
           "targetsFound": [],
           "sourceAcquiredAt": null,
           "sourceAcquiredAtKind": "catalogue-only",
-          "cataloguePagesFromCache": 9,
-          "catalogueObservedAt": "2026-10-21T06:54:12Z"
+          "cataloguePagesFromCache": 0,
+          "catalogueObservedAt": "2026-10-21T20:21:04Z"
         },
         "staged": {
-          "sha256": "sha256:f76d72462b4272e9e093fc5557d657ca1e3da05777ecd69f928cbe36f3744fbc",
+          "sha256": "sha256:0a84760a2014118d76022e7e2f4591f32ef4c21bc63a3e64e75283f40688079d",
           "size": 4381,
           "validJson": true,
           "evidenceModels": [
@@ -345,8 +345,8 @@
       }
     ],
     "previousSnapshot": null,
-    "identityHash": "sha256:56ba9a366baab3bbcd0b144a0f7e72ef96ea8d3642ebca3b113bd146afbb4bb1"
+    "identityHash": "sha256:e0f06c87caf2de7326a7bdea317b51f7fe4ef088f505bb6e592f080c23d3990a"
   },
-  "generatedAt": "2026-10-21T06:54:12Z",
+  "generatedAt": "2026-10-21T20:21:04Z",
   "source": "run_official_batch.py"
 }
