@@ -387,7 +387,7 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
       </div>
     </div>
     <div class="chint">提示：Gree/TOSOT 保養為零售商規格（交叉核實），其餘品牌為官網核實</div>
-<div class="chint" style="border-left-color:#2EA06E">🆕 最近新上市：格力 GEH63ZE/GEH63ZC（1級） · Comfee' CWV-24CRFN9-AD5（1級） · 格力 GWT07ES（1級） · 格力 GWT09ES（1級） · MECAN MC18VXH（1級） · MECAN MC24VXH（1級） · 格力 GWT12ES（1級） · MECAN MC07WVRQW（1級） 等 15 個（新機偵測自 EMSD 官方資料庫，每日 00:30 自動偵測；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）</div>
+<div class="chint" style="border-left-color:#2EA06E">🆕 最近新上市：格力 GEH63ZE/GEH63ZC（1級） · Comfee' CWV-24CRFN9-AD5（1級） · 格力 GWT07ES（1級） · 格力 GWT09ES（1級） · MECAN MC18VXH（1級） · MECAN MC24VXH（1級） · 格力 GWT12ES（1級） · MECAN MC07WVRQW（1級） 等 20 個（新機偵測自 EMSD 官方資料庫，每日 00:30 自動偵測；GitHub Actions 排程屬預定觸發；高負載可延遲或丟棄，非準時保證）</div>
 <div class="chint" style="border-left-color:var(--warn);color:var(--warn)">⚠️ 官網規格待核：EMSD 官方資料已照常更新，但以下型號未有品牌官網目錄覆蓋，核實隊列原樣保留（WRK07MIZH1、WRK09MIZH1、WRK18MIZH1、GEH63ZE/GEH63ZC、CWV-24CRFN9-AD5 等 8 個）。狀態見 official_batch_status.json。</div>
     <div class="model-list" id="modelList"></div>
     <div class="more-wrap"><button id="btnMore" onclick="showMore()">顯示更多型號</button></div>
@@ -3426,13 +3426,13 @@ window.addEventListener('scroll',()=>{
       const acq = hkt(sb.lastAcquiredAt), app = hkt(sb.lastAppliedAt);
       let biggoText = '🛒 BigGo 更新時間未確認（分批快照）';
       if (sb.status === 'ok' && acq) {
-        biggoText = '🛒 BigGo 最近成功取得 ' + acq + ' HKT（分批快照）' + (app ? ('；最近成功套用 ' + app + ' HKT') : '');
+        biggoText = '🛒 BigGo 最近成功更新 ' + acq + ' HKT（分批快照）' + (app ? ('；已套用 ' + app + ' HKT') : '');
       } else if (sb.status === 'ok' && app) {
-        biggoText = '🛒 BigGo 最近成功套用 ' + app + ' HKT（分批價格快照；原始取得時間未記錄）';
+        biggoText = '🛒 BigGo 取得時間未確認；已套用 ' + app + ' HKT（分批快照，非全部同時查價）';
       } else if (sb.status === 'degraded' || sb.status === 'blocked' || sb.status === 'pending') {
         const head = sb.status === 'degraded' ? '⚠️ BigGo 價格來源降級'
           : (sb.status === 'blocked' ? '⛔ BigGo 價格來源受阻' : '⏳ BigGo 本輪待更新');
-        biggoText = head + (acq ? ('；先前快照取得 ' + acq + ' HKT') : (app ? ('；最近成功套用 ' + app + ' HKT（原始取得時間未記錄）') : ''))
+        biggoText = head + (acq ? ('；先前快照取得 ' + acq + ' HKT') : (app ? ('；已套用 ' + app + ' HKT（取得時間未確認）') : ''))
           + ' · 價格更新未完成，沿用先前已驗證快照';
       } else if (acq || app) {
         biggoText = '🛒 BigGo 更新時間 ' + (acq || app) + ' HKT（分批快照）';
