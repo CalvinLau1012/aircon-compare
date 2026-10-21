@@ -27,6 +27,7 @@ for _p in (BASE, SCRIPTS):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 import source_status  # noqa: E402
+import official_coverage  # noqa: E402
 from biggo_canonical import sha256_json  # noqa: E402
 
 OFFICIAL_OUTPUTS = {
@@ -218,9 +219,32 @@ def evaluate(*, status, repo, now=None, max_age_hours=36, schedule_hkt='00:30',
         elif _sha256_file(csv_path) != emsd['snapshotHash']:
             failures.append('binding:emsd-csv-hash-mismatch')
     official = status.get('official') or {}
+    coverage = None
+    if isinstance(official_status_doc, dict) and \
+            official_status_doc.get('decision') == 'queue-kept-pending-coverage':
+        coverage = official_coverage.expected_pending(
+            official_status_doc, repo=repo, metadata=metadata, now=now,
+            enforce_age=True, max_age_hours=max_age_hours, require_emsd=True)
+        if coverage.get('trusted'):
+            # The source-status projection must be bound to the same
+            # observation; an outer status edit cannot turn it green.
+            if official.get('status') != 'pending' or official.get('safeReason') != 'coverage-pending':
+                failures.append('official:coverage-status-binding-mismatch')
+            if official.get('lastAttemptAt') != coverage.get('observedAt'):
+                failures.append('official:coverage-observation-time-mismatch')
+            if official.get('snapshotHash') != coverage.get('officialSnapshotHash'):
+                failures.append('official:coverage-snapshot-binding-mismatch')
+            if official.get('snapshotId') != ((coverage.get('previousSnapshot') or {}).get('snapshotId')):
+                failures.append('official:coverage-snapshot-id-binding-mismatch')
+        else:
+            failures.append('official:coverage-pending-untrusted')
+            failures.extend('official:coverage-observation-' + e
+                            for e in (coverage.get('errors') or [])[:5])
     for name, block in (('emsd', emsd), ('biggo', biggo), ('official', official)):
         st = block.get('status')
-        if st != 'ok':
+        if name == 'official' and coverage is not None and coverage.get('trusted'):
+            pass
+        elif st != 'ok':
             failures.append(f'{name}:{st}:{block.get("safeReason")}')
         if st == 'ok':
             h = block.get('snapshotHash')
@@ -235,6 +259,12 @@ def evaluate(*, status, repo, now=None, max_age_hours=36, schedule_hkt='00:30',
             if field in ('lastAcquiredAt', 'lastAppliedAt'):
                 if (now - when).total_seconds() > max_age_hours * 3600:
                     failures.append(f'{name}:age>{max_age_hours}h')
+    if coverage is not None and coverage.get('trusted'):
+        observed = _parse_utc(coverage.get('observedAt'))
+        if observed is None:
+            failures.append('official:observation-time-invalid')
+        elif (now - observed).total_seconds() > max_age_hours * 3600:
+            failures.append(f'official:observation-age>{max_age_hours}h')
     generated = _parse_utc(status.get('generatedAt'))
     if generated is None:
         failures.append('status:generatedAt-missing-or-invalid')
@@ -278,6 +308,10 @@ def evaluate(*, status, repo, now=None, max_age_hours=36, schedule_hkt='00:30',
     fp = 'ok' if not failures else 'unhealthy:' + ','.join(sorted(set(f.split(':')[0] for f in failures)))
     return {'ok': not failures, 'fingerprint': fp,
             'failures': failures[:20], 'delayMinutes': delay_minutes,
+            'coverage': coverage,
+            'coveragePending': bool(coverage and coverage.get('trusted')),
+            'coverageMissingCount': (coverage or {}).get('missingCount')
+            if isinstance(coverage, dict) else None,
             'schedule': {'planned': schedule_hkt + ' HKT',
                          'actualDeployedAt': (status.get('publish') or {}).get('deployedAt'),
                          'delayIsInformationalOnly': True}}
@@ -340,6 +374,7 @@ def main(argv=None):
         load_error = f'{type(e).__name__}'
     else:
         load_error = None
+    official_doc = None
     if status is None:
         result = {'ok': False, 'fingerprint': 'receipt:missing-or-corrupt',
                   'failures': [f'receipt:{load_error}'], 'delayMinutes': None}
@@ -369,20 +404,74 @@ def main(argv=None):
               'notifications': {'sent': False, 'adapter': 'none-during-implementation'}}
     # Sanitised summary for the optional GitHub health endpoint.  It is
     # rewritten on every outcome (including corruption), never left as old green.
-    official_doc = None
-    try:
-        if args.official_status_file:
-            official_doc = _load(args.official_status_file)
-    except (OSError, ValueError):
-        official_doc = None
+    coverage = result.get('coverage') if isinstance(result, dict) else None
+    coverage_trusted = bool(isinstance(coverage, dict) and coverage.get('trusted'))
+    official_block = (status.get('official') or {}) if isinstance(status, dict) else {}
+    if coverage_trusted:
+        coverage_status = 'pending'
+    elif official_block.get('status') == 'ok':
+        coverage_status = 'verified'
+    else:
+        coverage_status = 'unavailable'
+    if coverage_trusted:
+        coverage_doc = {
+            'status': 'pending',
+            'pending': True,
+            'expected': True,
+            'missingCount': coverage.get('missingCount'),
+            'missingModels': coverage.get('missingModels') or [],
+            'missingCanonicalModels': coverage.get('missingCanonicalModels') or [],
+            'scriptCoveragePending': coverage.get('scriptCoveragePending') or [],
+            'observation': coverage.get('observation'),
+            'observationHash': coverage.get('observationHash'),
+            'observedAt': coverage.get('observedAt'),
+            'stage': coverage.get('stage'),
+            'targetCount': coverage.get('targetCount'),
+            'queueHash': coverage.get('queueHash'),
+            'emsdSnapshotHash': coverage.get('emsdSnapshotHash'),
+            'officialSnapshotHash': coverage.get('officialSnapshotHash'),
+            'officialManifestHash': coverage.get('officialManifestHash'),
+        }
+        official_snapshot = coverage.get('officialSnapshotHash')
+        official_manifest = coverage.get('officialManifestHash')
+    else:
+        coverage_doc = {
+            'status': coverage_status,
+            'pending': False,
+            'expected': False,
+            'missingCount': None,
+            'missingModels': [],
+            'missingCanonicalModels': [],
+            'scriptCoveragePending': [],
+            'observation': None,
+            'observationHash': None,
+            'observedAt': None,
+            'stage': official_block.get('stage'),
+            'targetCount': None,
+            'queueHash': None,
+            'emsdSnapshotHash': None,
+            'officialSnapshotHash': official_block.get('snapshotHash'),
+            'officialManifestHash': ((official_doc or {}).get('outputManifest') or {}).get('manifestHash') if isinstance(official_doc, dict) else None,
+        }
+        official_snapshot = coverage_doc['officialSnapshotHash']
+        official_manifest = coverage_doc['officialManifestHash']
+    operations_ok = result.get('ok') is True
     summary = {
-        'schemaVersion': 1,
+        'schemaVersion': 2,
         'kind': 'aircon-source-health-summary',
         'checkedAt': report['checkedAt'],
-        'ok': result.get('ok') is True,
-        'status': 'healthy' if result.get('ok') is True else 'unhealthy',
+        'ok': operations_ok,
+        'status': 'healthy' if operations_ok else 'unhealthy',
+        'operations': {
+            'ok': operations_ok,
+            'status': 'healthy' if operations_ok else 'unhealthy',
+            'failures': list(result.get('failures') or [])[:20],
+            'coverageExpectedPending': coverage_trusted,
+        },
+        'coverage': coverage_doc,
         'failures': list(result.get('failures') or [])[:20],
-        'reason': result.get('reason'),
+        'reason': 'coverage-pending' if (operations_ok and coverage_trusted)
+                  else result.get('reason'),
         'sourceStatusHash': sha256_json(status) if isinstance(status, dict) else None,
         'sourceStatusGeneratedAt': status.get('generatedAt') if isinstance(status, dict) else None,
         'build': (status.get('publish') or {}).get('build') if isinstance(status, dict) else None,
@@ -390,8 +479,8 @@ def main(argv=None):
         'deploymentReceipt': (status.get('publish') or {}).get('deploymentReceipt') if isinstance(status, dict) else None,
         'emsdSnapshotHash': (status.get('emsd') or {}).get('snapshotHash') if isinstance(status, dict) else None,
         'biggoSnapshotHash': (status.get('biggo') or {}).get('snapshotHash') if isinstance(status, dict) else None,
-        'officialSnapshotHash': (status.get('official') or {}).get('snapshotHash') if isinstance(status, dict) else None,
-        'officialManifestHash': ((official_doc or {}).get('outputManifest') or {}).get('manifestHash') if isinstance(official_doc, dict) else None,
+        'officialSnapshotHash': official_snapshot,
+        'officialManifestHash': official_manifest,
         'sources': {name: {'status': (status.get(name) or {}).get('status'),
                            'snapshotHash': (status.get(name) or {}).get('snapshotHash'),
                            'safeReason': (status.get(name) or {}).get('safeReason')}

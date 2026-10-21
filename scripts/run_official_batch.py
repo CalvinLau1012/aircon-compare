@@ -35,6 +35,7 @@ if BASE not in sys.path:
 from queue_utils import load_queue, QueueError  # noqa: E402
 from crawl_utils import norm_model, COVERAGE_PENDING_REASONS  # noqa: E402
 from biggo_canonical import canonical_json_bytes, sha256_id  # noqa: E402
+import official_coverage  # noqa: E402
 
 STAGES = {
     1: {
@@ -526,6 +527,8 @@ def main(argv=None):
                          'integrity/transaction failure still returns 1')
     ap.add_argument('--target-scoped', action='store_true',
                     help='run only stage scripts that have an explicit route for a queue target')
+    ap.add_argument('--replay-observation', default=None,
+                    help='cache/build replay: reuse the original observation time only if all evidence is unchanged')
     args = ap.parse_args(argv)
 
     queue_path = os.path.join(BASE, 'update_queue.json')
@@ -739,6 +742,42 @@ def main(argv=None):
             if verify_errors:
                 failures.extend(verify_errors)
                 integrity_failure = True
+        # Preserve a small, portable coverage observation before staging is
+        # deleted.  It binds the actual queue/EMSD inputs, routes, script
+        # markers and live/staged output bytes; it is not a full snapshot.
+        if not failures and (missing_coverage or script_pending_norm):
+            previous_status = None
+            previous_path = os.path.join(BASE, 'official_batch_status.json')
+            if os.path.isfile(previous_path):
+                try:
+                    with open(previous_path, encoding='utf-8') as f:
+                        previous_status = json.load(f)
+                except (OSError, ValueError):
+                    previous_status = None
+            replay = None
+            if args.replay_observation:
+                try:
+                    with open(args.replay_observation, encoding='utf-8') as f:
+                        replay = json.load(f)
+                except (OSError, ValueError) as e:
+                    failures.append(f'replay observation 讀取失敗：{type(e).__name__}')
+                    integrity_failure = True
+            if not failures:
+                # These final fields are written by _finalize below; set the
+                # known-success values provisionally so the observation builder
+                # sees the same state that will be persisted.
+                receipt['failureClass'] = 'none'
+                receipt['safeToContinue'] = True
+                try:
+                    receipt['coverageObservation'] = official_coverage.build_observation(
+                        receipt, repo=BASE, staging_repo=staging_repo,
+                        previous_status=previous_status,
+                        replay_observation=replay,
+                        stages=STAGES, route_fn=route_for_model,
+                        plan_fn=target_scoped_plan)
+                except (official_coverage.ObservationError, OSError, ValueError) as e:
+                    failures.append(f'coverage observation 建立失敗：{e}')
+                    integrity_failure = True
     finally:
         _cleanup_staging(staging_tmp)
 

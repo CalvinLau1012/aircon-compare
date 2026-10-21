@@ -2343,3 +2343,16 @@ A pending stage5/remote-not-completed receive lost the previously served stage4 
 ### 2026-10-20 · Root correction: real recovery metadata producer contract (append-only)
 
 Formal zero-provider repair run 39393716967 received and verified stage5 locally but correctly stopped before commit/publication: the strict metadata Schema rejects public sourceStatus.biggo.timeProvenance. R3 UI/helper tests missed the actual core CLI. Root adds a real-evidence apply→verify→status→gen-metadata core CLI regression, first reproducing this exact failure. Public summary retains the existing schema contract: lastAcquiredAt=null and displayed unknown; full acquiredAtProvenance/evidence stays in the verified receiver receipt. The new internal unknown guard still prevents old-stage/publication/apply/now fallback. No Schema weakening, no edits to historical blocks, no provider/coordinator rewrite. R3 claims about public timeProvenance emission are superseded by this correction; source evidence itself is unchanged.
+
+
+---
+
+## 附錄 I. 2026-10-21 使用者授權：可信官網 coverage pending 正常化（追加；非機器區塊變更）
+
+> 本附錄只追加，**不修改**六個 canonical 規範區塊、Metadata Schema extension、Registry 或成功標準的任何 bytes。舊有「所有 official pending 必須 unhealthy」及「必須先補齊 8 份 full-spec 才可解除告警」的文字保留作歷史，由本節按使用者 2026-10-21 明確決定取代。
+
+- **使用者原話**：「處理好吧，兩邊都是」；「確實沒有官網資料的項目就不要action紅了，email好煩，EMSD是政府數據庫。。。」。
+- **產品判定**：EMSD 登記／供應商聲明、零售 availability、full-spec coverage、operations 是不同事實。已由真實 batch receipt、queue／routes／EMSD input／live outputs／marker／staged evidence 驗證的純 coverage 缺口，保留 `pending` 及缺項追蹤，屬正常 enrichment 待補；不令 daily／monitor 故障紅或故障郵件。不得冒充已核實、猜尺寸／保養／WiFi／上市時間或宣稱未上市。
+- **獨立收據**：新增 `aircon-official-coverage-observation`（schemaVersion 1、identityHash），嵌於 batch receipt 及 `official_batch_status.json`；沒有完整 snapshot 時 snapshot／manifest 如實為 null。此觀察不是 full-spec outputManifest，也不是 source snapshot。驗證層須重算 queue／CSV／outputs／routes／marker；空或壞 marker、catalogue／TLS／HTTP／依賴失敗不得降級為 expected pending。
+- **監控**：private health summary v2 分開 `operations`／`coverage`；可信 pending 時 operations healthy、coverage pending。public client v2 驗證 observation identity／時間／bindings；v1 reader 保持原本嚴格 all-ok 行為。硬故障、EMSD >72h、部署不符、BigGo 故障、缺失／損壞／偽造收據仍失敗；不得被 pending 掩蓋。
+- **時間與邊界**：observation 時間與 deploy／publish／acquisition 分開；cache／build replay 保留原觀察時間，來源取得時間不刷新。本輪零 BigGo provider／coordinator／lease／budget／grant 寫入；不改 GitHub 全局通知設定或 00:30 HKT 排程；正式 Docker／CI／部署及獨立反例驗收由 Root。

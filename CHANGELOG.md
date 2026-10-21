@@ -1047,3 +1047,13 @@ Root independently reproduced that the production Pages `check_generated_source_
 ### 2026-10-21 Root integration: complete new-writer window guard (append-only)
 
 Root independently reproduced a remaining R2 case: a present null/empty/half-written acquisitionWindow could publish as legacy. The collector marker now requires valid chronological start/end values; strict witness construction raises on every malformed result/hash/time rather than returning null. Real runner regressions prove no snapshot/manifest publication or local apply. Old bundles without a marker retain unknown acquisition. Formal deployment and the eight missing exact official specifications remain uncompleted at this entry. No provider request.
+
+
+## Unreleased — 2026-10-21 可信官網 coverage pending 正常化
+
+- 使用者明確授權：經真實驗證的純官網 full-spec coverage 缺口是正常 enrichment 待補，不再令 daily／monitor Actions 紅或產生故障郵件；保留 pending queue、缺項及觀察時間，不冒充已核實、不猜尺寸／保養／WiFi／上市時間、不宣稱未上市。此決定 supersede 先前「所有 official pending 必須 unhealthy」及相反收尾規則；歷史保留。
+- 新增共用純判定 `official_coverage.py` 與版本化 `aircon-official-coverage-observation`：綁定實際 queue／EMSD input／routes／selected scripts／outputs／marker／staged 與 live bytes／previous complete manifest；沒有完整 snapshot 時維持 null，不偽造。
+- `run_official_batch` 在 pending 路徑保存小型觀察並嵌入 receipt；`publish_official_status` 驗證後投影；`source_status` 對可信 pending 用 `pending/coverage-pending`，legacy 裸 pending 仍不健康。
+- Private health summary 升 v2，分開 `operations` 與 `coverage`；public `check_health_summary` v2 驗證 observation identity／時間／outer bindings，v1 reader 保持原嚴格行為。Freshness／deployment／BigGo／EMSD 過期等硬軸不被 pending 覆蓋。
+- UI／PDF 改用普通「官網規格待補」信息；不再以 ⚠️／紅條把純缺項當故障。8 個待補型號及 7 個 MECAN verified 證據／時間不變。
+- 本輪零 BigGo provider／auth／search／coordinator／lease／budget／grant、零 GitHub provider；正式部署由 Root。

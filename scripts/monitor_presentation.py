@@ -50,6 +50,7 @@ _SAFE_REASONS = {
     'official-no-verified-snapshot', 'completed-sync-missing-history',
     'completed-sync-unavailable', 'completed-sync-invalid',
     'completed-sync-remote-not-completed', 'baseline-accepted',
+    'coverage-pending', 'official-coverage-pending-untrusted',
 }
 _PRESERVE_REASONS = {
     # These describe retention, not a current integrity-verification witness.
@@ -66,6 +67,8 @@ _REASON_LABEL = {
     'completed-sync-missing-history': '缺少完成歷史',
     'completed-sync-unavailable': '完成 bundle 暫時不可用',
     'completed-sync-invalid': '完成 bundle 無效',
+    'coverage-pending': '官網規格待補（正常 enrichment）',
+    'official-coverage-pending-untrusted': '官網待補收據未能驗證',
     'legacy-unknown': '歷史狀態未確認', 'unknown': '未確認',
 }
 
@@ -220,6 +223,11 @@ def axes(result):
     d = _deployment_axis(result)
     s = _source_axis(result)
     details = _health_details(result) + _source_state_lines(result)
+    if result.get('coveragePending') is True:
+        count = result.get('coverageMissingCount')
+        suffix = f'（{count} 個已登記型號）' if type(count) is int and count >= 0 else ''
+        details.append('官網規格待補：部分已登記型號的補充規格尚未取得'
+                       + suffix + '；運作健康，不當故障')
     return {'freshness': f, 'postdeploy': d, 'sourceHealth': s,
             'sourceDetails': details}
 
@@ -235,6 +243,11 @@ def render_issue_body(result, fingerprint):
     d, dd = _deployment_axis(result)
     s, sd = _source_axis(result)
     details = _health_details(result) + _source_state_lines(result)
+    if result.get('coveragePending') is True:
+        count = result.get('coverageMissingCount')
+        suffix = f'（{count} 個已登記型號）' if type(count) is int and count >= 0 else ''
+        details.append('官網規格待補：部分已登記型號的補充規格尚未取得'
+                       + suffix + '；運作健康，不當故障')
     fp = _safe_fingerprint(fingerprint)
     failures = result.get('deploymentFailures')
     failure_count = len(failures) if isinstance(failures, list) else 0

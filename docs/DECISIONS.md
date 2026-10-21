@@ -1427,3 +1427,14 @@ Formal zero-provider repair run 39393716967 received and verified stage5 locally
 ### 2026-10-21 Root integration: complete new-writer window guard (append-only)
 
 Root independently reproduced a remaining R2 case: a present null/empty/half-written acquisitionWindow could publish as legacy. The collector marker now requires valid chronological start/end values; strict witness construction raises on every malformed result/hash/time rather than returning null. Real runner regressions prove no snapshot/manifest publication or local apply. Old bundles without a marker retain unknown acquisition. Formal deployment and the eight missing exact official specifications remain uncompleted at this entry. No provider request.
+
+
+## D39 · 2026-10-21：可信官網 coverage pending 正常化（append-only；使用者明確授權）
+
+- **背景與用戶決定**：使用者問及 EMSD 先登記後零售上市的可能，Root 核對官方流程及新取 8 筆 EMSD 後確認供應聲明均為「正供應」，但不能由此證明未上市。使用者原話：「處理好吧，兩邊都是」，及「確實沒有官網資料的項目就不要action紅了，email好煩，EMSD是政府數據庫。。。」。本決定**明確 supersede** 先前把所有 official pending／無完整 spec snapshot 當來源故障、所有 pending 必須 unhealthy、以及必須先補齊 8 份 full-spec 才可解除告警的規則；舊文字全部保留作歷史。
+- **事實分層**：EMSD 登記／供應商聲明（政府權威，可支持能源欄位）、retail availability（未知；不由查不到官網推論未上市）、full-spec coverage（pending 或 verified；缺項保持空）、operations（真正失敗／健康）。新增共用純判定 `official_coverage.py`，batch／publisher／source_status／private monitor／public health client 共用，避免各層自寫寬鬆 pending if。
+- **觀察收據**：`queue-kept-pending-coverage` 的 batch receipt 與 `official_batch_status.json` 可攜帶獨立的 `aircon-official-coverage-observation`（schemaVersion 1、kind、identityHash）。驗證層重算 queue hash／targets、EMSD input hash、routes／selected scripts／outputs、marker counts／covers／pending reasons、live output bytes／JSON／evidence，並在存在舊完整 snapshot 時重驗其 manifest 實際 bytes；若沒有完整 snapshot，snapshot／manifest 保持 null，不偽造。staged 資料只保存小型 hash／size／evidence，不保存 raw HTML；monitor 不讀已刪 staging。
+- **時間**：observation 有獨立 `observedAt`，與 deploy／publish／acquisition 分開；未來／損壞／過期觀察不得當健康。正常 cache／build replay 保留原觀察時間；來源取得時間不因重建刷新。
+- **健康與顯示**：private summary v2 分 `operations`／`coverage`，可信 pending 時 operations 可 healthy、coverage 仍 pending；public v2 client 驗證 observation identity、時間及 outer bindings，v1 保持原嚴格 all-ok 讀法。source status 用 `pending`＋`coverage-pending`，legacy 裸 pending 不會自動升級。HTML／PDF 以普通「官網規格待補」信息顯示，不用 ⚠️／紅條，不宣稱已全面核實或未上市。
+- **仍 fail-closed**：抓取／TLS／依賴／parser 硬錯、空／壞 marker、queue／CSV／output／manifest race、receipt 缺失／損壞／偽造、EMSD >72h、部署不符、未知 health、BigGo 硬故障全部保留為失敗／告警；不得被 pending 掩蓋。
+- **邊界**：此輪零 BigGo provider／auth／search／smoke／diagnostic、零 coordinator／lease／budget／grant 寫入；不改 GitHub 全局通知設定、不改 00:30 HKT 排程。Pi 只隔離實作及離線測試，正式 Docker／CI／部署由 Root。

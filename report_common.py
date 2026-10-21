@@ -99,6 +99,18 @@ def _biggo_text(source):
     return biggo_text
 
 
+
+def _official_coverage_text(source):
+    """Ordinary pending information; never a fault banner or a completion claim."""
+    try:
+        official = (source or {}).get('official') or {}
+        if official.get('status') == 'pending' \
+                and official.get('safeReason') == 'coverage-pending':
+            return 'ℹ️ 官網規格待補（部分已登記型號的補充規格尚未取得）'
+    except AttributeError:
+        pass
+    return ''
+
 def format_status(meta_dict, version, *, schedule_text=None):
     """Pure metadata -> (hero status line, footer status line).
 
@@ -123,9 +135,11 @@ def format_status(meta_dict, version, *, schedule_text=None):
                    else '🔄 每日偵測新機 · 有機先更新')
     line1 = f'{date_text} · v{v} · {deploy_text}'
     biggo_text = _biggo_text(source if isinstance(source, dict) else {})
+    coverage_text = _official_coverage_text(source if isinstance(source, dict) else {})
     line2 = (schedule
              + (f'EMSD 資料日期 {dataset_date}' if dataset_date else 'EMSD 資料日期暫不可用')
              + ' · ' + biggo_text
+             + ((' · ' + coverage_text) if coverage_text else '')
              + ' · 部署時間為封包時間（HKT 顯示）· 價錢為快照僅供參考')
     return line1, line2
 

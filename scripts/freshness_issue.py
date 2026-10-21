@@ -254,12 +254,22 @@ def main(argv=None):
     health_reason = 'health-report-missing'
     health_failures = ['health:missing']
     post_failures = []
+    coverage_pending = False
+    coverage_missing_count = None
     if args.health_report:
         try:
             health = json.load(open(args.health_report, encoding='utf-8'))
             health_ok, health_reason, health_failures, health_known = _health_fact(
                 health, expected_identity)
             health_states = sanitize_source_states(health.get('sourceStates')) if health_known else {}
+            coverage = health.get('coverage') if isinstance(health.get('coverage'), dict) else {}
+            if (health_ok and health.get('coveragePending') is True
+                    and coverage.get('status') == 'pending'
+                    and coverage.get('expected') is True):
+                coverage_pending = True
+                count = coverage.get('missingCount')
+                if type(count) is int and count >= 0:
+                    coverage_missing_count = count
         except (OSError, ValueError, TypeError, AttributeError):
             health_ok = False; health_known = False; health_reason = 'health:invalid'
             health_failures = ['health:invalid']
@@ -299,6 +309,9 @@ def main(argv=None):
     result['healthReason'] = health_reason
     result['healthFailures'] = health_failures
     result['postdeployFailures'] = post_failures
+    if coverage_pending:
+        result['coveragePending'] = True
+        result['coverageMissingCount'] = coverage_missing_count
     # Save the check result before any issue read/mutation.  This report is
     # explicitly pending; it is upgraded only after a successful action.
     pre = {'schemaVersion': 1, 'action': 'pending', 'plannedAction': 'pending',

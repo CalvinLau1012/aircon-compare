@@ -487,10 +487,7 @@ def new_models_hint():
 
 
 def official_pending_hint():
-    """D1-B：官網 enrichment queue 因 coverage 不足而 pending 時，顯示待核狀態。
-
-    只讀 repo 內無絕對路徑嘅公開投影 official_batch_status.json；缺失／壞檔當無 pending。
-    """
+    """顯示正常 enrichment 待補；這不是故障，也不冒充已核實或未上市。"""
     p = os.path.join(BASE, 'official_batch_status.json')
     try:
         with open(p, encoding='utf-8') as f:
@@ -509,9 +506,9 @@ def official_pending_hint():
     sample = '、'.join(str(m) for m in missing[:5]) if missing else \
         ('、'.join(str(m) for m in script_pending[:5]) if script_pending else '見狀態檔')
     more = f' 等 {count} 個' if count > 5 else ''
-    return ('<div class="chint" style="border-left-color:var(--warn);color:var(--warn)">'
-            '⚠️ 官網規格待核：EMSD 官方資料已照常更新，但以下型號未有品牌官網目錄覆蓋，'
-            f'核實隊列原樣保留（{sample}{more}）。狀態見 official_batch_status.json。</div>')
+    return ('<div class="chint" style="border-left-color:var(--primary);color:var(--text)">'
+            'ℹ️ 官網規格待補：EMSD 已登記型號的部分補充規格尚未取得，'
+            f'核實隊列原樣保留（{sample}{more}）；不當故障，亦不推論供應情況。</div>')
 
 def load_emsd_models():
     """讀取 EMSD 官方 CSV，轉為比較器數據（核心 29 型號去重）"""

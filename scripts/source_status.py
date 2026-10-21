@@ -29,6 +29,7 @@ if BASE not in sys.path:
     sys.path.insert(0, BASE)
 
 import biggo_acquisition  # noqa: E402
+import official_coverage  # noqa: E402
 
 SCHEMA_VERSION = 1
 STATUSES = ('ok', 'pending', 'degraded', 'blocked', 'unknown')
@@ -649,6 +650,11 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
     hash_ok = isinstance(snap_hash, str) and bool(SHA_RE.match(snap_hash))
     id_ok = isinstance(snap_id, str) and bool(snap_id.strip())
     success_time_ok = current_success is not None
+    coverage = None
+    if decision == 'queue-kept-pending-coverage':
+        coverage = official_coverage.expected_pending(
+            official, repo=BASE, metadata=metadata, now=now_dt,
+            require_emsd=True)
     if decision == 'advanced':
         if hash_ok and id_ok and success_time_ok:
             ostatus, oreason = 'ok', 'applied'
@@ -657,18 +663,25 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
             oreason = ('official-snapshot-untrusted' if not hash_ok or not id_ok
                        else 'official-success-unverified')
     elif decision == 'queue-kept-pending-coverage':
-        # Auxiliary partial/warning framework is not a completion path.  The
-        # real current receipt has no complete prior manifest/partial identity,
-        # so the production source status stays visibly degraded.  Do not turn
-        # missing official coverage into a warning without a verified partial
-        # identity.
-        ostatus, oreason = 'degraded', 'sources-degraded'
+        if coverage and coverage.get('trusted'):
+            ostatus, oreason = 'pending', 'coverage-pending'
+            prev = coverage.get('previousSnapshot') or {}
+            snap_hash = prev.get('snapshotHash')
+            snap_id = prev.get('snapshotId')
+            last_success = _trusted_ts(prev.get('lastSuccessAt'))
+            attempt_at = _trusted_ts(coverage.get('observedAt')) or attempt_at
+        else:
+            ostatus, oreason = 'degraded', 'official-coverage-pending-untrusted'
+            snap_hash = None
+            snap_id = None
     elif decision == 'queue-kept-fail-closed':
         ostatus, oreason = 'degraded', 'official-source-failed'
     else:
         ostatus, oreason = 'unknown', 'legacy-unknown'
     # Failed/pending attempts may keep a previously verified snapshot; never
     # use this deployment's deployedAt as an official apply fact.
+    hash_ok = isinstance(snap_hash, str) and bool(SHA_RE.match(snap_hash))
+    id_ok = isinstance(snap_id, str) and bool(snap_id.strip())
     selected_hash = snap_hash if hash_ok else None
     selected_id = snap_id if id_ok else None
     official_applied = official.get('lastAppliedAt')
@@ -678,6 +691,8 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
                         and (ostatus == 'ok' or decision != 'advanced') else None)
     if decision == 'advanced':
         official_acquired = current_success if ostatus == 'ok' else None
+    elif decision == 'queue-kept-pending-coverage' and ostatus == 'pending':
+        official_acquired = last_success
     else:
         official_acquired = last_success
     official_block = _source_block(

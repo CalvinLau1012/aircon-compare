@@ -16,6 +16,7 @@ if BASE not in sys.path:
     sys.path.insert(0, BASE)
 
 from biggo_canonical import canonical_json_bytes, sha256_id
+import official_coverage
 
 DECISIONS = {
     'advanced',
@@ -189,6 +190,22 @@ def main(argv=None):
             previous = json.load(f)
     except (OSError, ValueError):
         previous = {}
+    observation = receipt.get('coverageObservation')
+    if observation is not None:
+        if decision != 'queue-kept-pending-coverage':
+            print('❌ coverage observation 只可用於 pending coverage receipt', file=sys.stderr)
+            return 1
+        errors = official_coverage.validate_observation(
+            observation, repo=BASE, receipt=receipt, previous_status=previous)
+        if errors:
+            print('❌ coverage observation 驗證失敗，拒絕投影：'
+                  + '；'.join(errors[:8]), file=sys.stderr)
+            return 1
+        queue = observation['queue']
+        missing = list(queue['missingModels'])
+        canon = list(queue['missingCanonicalModels'])
+        script_pending = list(queue['scriptCoveragePending'])
+        pending_reasons = dict(queue['reasons'])
     if decision == 'advanced':
         manifest_errors = _manifest_errors(receipt)
         if manifest_errors:
@@ -207,13 +224,21 @@ def main(argv=None):
         output_manifest = receipt['outputManifest']
     else:
         # Preserve only a previously verified complete snapshot; the current
-        # partial/staged outputs are NOT advertised as a new snapshot.
-        previous_hash = _sha(previous.get('snapshotHash'))
-        previous_time = previous.get('lastSuccessAt')
-        snapshot_hash = previous_hash if previous_hash and _valid_time(previous_time) else None
-        last_success = previous_time if snapshot_hash else None
-        snapshot_id = previous.get('snapshotId') if snapshot_hash else None
-        output_manifest = previous.get('outputManifest') if snapshot_hash else None
+        # partial/staged outputs are NOT advertised as a new snapshot.  A
+        # trusted observation carries that previous manifest itself.
+        if isinstance(observation, dict):
+            prev = observation.get('previousSnapshot') or {}
+            snapshot_hash = prev.get('snapshotHash')
+            last_success = prev.get('lastSuccessAt')
+            snapshot_id = prev.get('snapshotId')
+            output_manifest = prev.get('outputManifest')
+        else:
+            previous_hash = _sha(previous.get('snapshotHash'))
+            previous_time = previous.get('lastSuccessAt')
+            snapshot_hash = previous_hash if previous_hash and _valid_time(previous_time) else None
+            last_success = previous_time if snapshot_hash else None
+            snapshot_id = previous.get('snapshotId') if snapshot_hash else None
+            output_manifest = previous.get('outputManifest') if snapshot_hash else None
     status = {
         'schemaVersion': 1,
         'decision': decision,
@@ -233,7 +258,9 @@ def main(argv=None):
         'coveragePendingReasons': {
             str(k): str(v) for k, v in pending_reasons.items()
             if isinstance(v, str)},
-        'generatedAt': receipt.get('finishedAt') or receipt.get('startedAt'),
+        'coverageObservation': observation if isinstance(observation, dict) else None,
+        'generatedAt': (observation.get('observedAt') if isinstance(observation, dict)
+                        else receipt.get('finishedAt') or receipt.get('startedAt')),
         'source': 'run_official_batch.py',
     }
     if decision == 'advanced' and receipt.get('targetScoped') is True:

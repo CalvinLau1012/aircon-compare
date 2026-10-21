@@ -875,3 +875,6 @@ The original verified MECAN pages label dimensions W×H×D, while the site uses 
 ### 2026-10-20 Root full-gate finding: immutable repair receipt replay（追加）
 
 A full offline gate exposed a pre-existing intermittent CLI failure: repeating a read-only repair receipt operation across clock seconds rebuilt createdAt and then rejected the existing immutable file. The CLI now reuses an existing receipt in both read-only and apply modes only when its original bundle and complete stable repair identity match, including the stored repairId. A deterministic one-hour clock advance replaces reliance on two calls occurring in the same second. Original immutable bytes and failure checks remain; this is an offline tool fix with zero provider/coordinator operations and does not reapply live BigGo data.
+
+
+> **2026-10-21 官網待補正常化（追加）**：使用者明確授權「確實沒有官網資料的項目就不要action紅了，email好煩，EMSD是政府數據庫。。。」。經本輪真實驗證的純官網 full-spec coverage 缺口，保留 pending 及缺項追蹤，但不再令 daily／monitor Actions 紅或發故障郵件；UI／PDF 以普通「官網規格待補」顯示，不冒充已核實、不猜未知規格、不宣稱未上市。真正抓取／TLS／依賴／parser／收據／hash／queue／manifest／EMSD 過期／部署／BigGo 硬故障仍 fail-closed。此決定取代先前「所有 official pending 必須 unhealthy」的相反規則；歷史文字保留。本輪零 BigGo provider／coordinator 寫入，正式部署由 Root。

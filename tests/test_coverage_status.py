@@ -94,7 +94,8 @@ def test_generate_html_pending_hint_and_placeholder(tmp_path, monkeypatch):
         'pendingCoverage': True, 'missingModels': ['M1', 'M2'],
     }), encoding='utf-8')
     hint = gen.official_pending_hint()
-    assert '官網規格待核' in hint and 'M1' in hint and 'M2' in hint
+    assert '官網規格待補' in hint and 'M1' in hint and 'M2' in hint
+    assert '⚠️' not in hint and '未上市' not in hint and '不推論供應情況' in hint
     assert '__PENDING_HINT__' in gen.HTML_TEMPLATE
 
 
@@ -131,7 +132,8 @@ def test_generate_html_script_pending_hint_lists_script_models(tmp_path, monkeyp
         'missingModels': [], 'scriptCoveragePending': ['FR-KS18'],
     }), encoding='utf-8')
     hint = gen.official_pending_hint()
-    assert '官網規格待核' in hint and 'FR-KS18' in hint
+    assert '官網規格待補' in hint and 'FR-KS18' in hint
+    assert '⚠️' not in hint
 
 
 def test_real_runner_receipt_projects_trusted_manifest_chain(tmp_path, monkeypatch):
