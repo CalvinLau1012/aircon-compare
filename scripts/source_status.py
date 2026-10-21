@@ -28,6 +28,8 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE not in sys.path:
     sys.path.insert(0, BASE)
 
+import biggo_acquisition  # noqa: E402
+
 SCHEMA_VERSION = 1
 STATUSES = ('ok', 'pending', 'degraded', 'blocked', 'unknown')
 SAFE_REASONS = {
@@ -149,9 +151,11 @@ def _baseline_info(prices_meta):
                      or _valid_ts(source.get('acquiredAt')))
             )
             try:
-                import biggo_acquisition
                 biggo_acquisition.baseline_acquisition(source)
-            except (ValueError, ImportError):
+                if source.get('acquisitionProvenance') == 'recorded' \
+                        and not _is_sha(source.get('stageResultHash')):
+                    source_ok = False
+            except ValueError:
                 source_ok = False
             expected_id = ('biggo-baseline-' + str(source.get('cycleId'))
                            + '-stage' + str(source.get('stage')) + '-'
@@ -209,10 +213,17 @@ def _verified_receiver(report, *, baseline=None, actual_snapshot=None,
             return None
         if verified.get('biggo_prices.json') != source.get('newSnapshotHash'):
             return None
+        if source.get('acquisitionProvenance') == 'recorded':
+            if (verified.get('acquiredAt') != source.get('acquiredAt')
+                    or verified.get('acquiredAtProvenance') != 'recorded'
+                    or verified.get('acquisitionHash') != source.get('acquisitionHash')):
+                return None
+        elif source.get('acquisitionProvenance') in (None, 'unknown'):
+            if verified.get('acquiredAt') is not None:
+                return None
+    facts = biggo_acquisition.canonical_receiver_facts(report)
     out = dict(verified)
-    out['acquiredAt'] = report.get('acquiredAt')
-    out['acquiredAtProvenance'] = report.get('acquiredAtProvenance')
-    out['acquisitionHash'] = report.get('acquisitionHash')
+    out.update(facts)
     return out
 
 
@@ -545,22 +556,33 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
     base_failure = (bstatus_ui == 'blocked' or biggo.get('alert') is True
                     or bstatus in failure_statuses or sync_failure)
     receiver = None
+    receipt_invalid = False
     if not base_failure:
-        receiver = _verified_receiver(
-            completed_sync,
-            baseline=(baseline_info['baseline'] if baseline_info and baseline_info.get('current') and baseline_info.get('valid') else None),
-            actual_snapshot=actual_snapshot,
-            prices_meta=prices_meta)
-        if receiver is None and isinstance(biggo.get('localReceiver'), dict):
+        baseline_arg = (baseline_info['baseline']
+                        if baseline_info and baseline_info.get('current')
+                        and baseline_info.get('valid') else None)
+        try:
             receiver = _verified_receiver(
-                biggo.get('localReceiver'),
-                baseline=(baseline_info['baseline'] if baseline_info and baseline_info.get('current') and baseline_info.get('valid') else None),
-                actual_snapshot=actual_snapshot,
-                prices_meta=prices_meta)
-        if baseline_info and baseline_info.get('current'):
+                completed_sync, baseline=baseline_arg,
+                actual_snapshot=actual_snapshot, prices_meta=prices_meta)
+            if receiver is None and isinstance(biggo.get('localReceiver'), dict):
+                receiver = _verified_receiver(
+                    biggo.get('localReceiver'), baseline=baseline_arg,
+                    actual_snapshot=actual_snapshot, prices_meta=prices_meta)
+        except Exception as exc:
+            # A redundant outer field that conflicts with the verified inner
+            # witness, or a malformed witness, must not be silently ignored.
+            if isinstance(exc, (ValueError, biggo_acquisition.AcquisitionError)):
+                receipt_invalid = True
+            else:
+                raise
+        if receipt_invalid:
+            bstatus_ui, breason = 'degraded', 'receipt-invalid'
+        elif baseline_info and baseline_info.get('current'):
             if not baseline_info.get('valid'):
                 bstatus_ui, breason = 'degraded', 'receipt-invalid'
-            elif biggo_snapshot_hash is None                     or biggo_snapshot_hash != baseline_info['source'].get('newSnapshotHash'):
+            elif biggo_snapshot_hash is None \
+                    or biggo_snapshot_hash != baseline_info['source'].get('newSnapshotHash'):
                 bstatus_ui, breason = 'degraded', 'completed-sync-invalid'
             elif receiver is not None:
                 bstatus_ui, breason = 'ok', 'baseline-accepted'
@@ -577,10 +599,9 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
     acquired_at = None
     if baseline_verified:
         try:
-            import biggo_acquisition
             acquired_at = biggo_acquisition.baseline_acquisition(
                 baseline_info['source'])['acquiredAt']
-        except (ValueError, ImportError):
+        except ValueError:
             acquired_at = None
     elif recovery_unknown:
         # A verified current recovery explicitly proves that exact acquisition

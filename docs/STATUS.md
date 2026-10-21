@@ -1750,3 +1750,8 @@ Formal zero-provider repair run 39393716967 received and verified stage5 locally
 ### 2026-10-21 Root correction (append-only)
 
 Production `source_status` keeps the current 8-target official gap `degraded`; the auxiliary partial contract is synthetic-only and the real pending receipt (`outputManifest=null`) stays fail-closed. Official channels checked (MHI current/historical, Gilman MDM, GREE global, Comfee HK, Toshiba HK download index) still lack exact brand/agent full-spec originals, so the queue remains pending with concrete source blockers. Earlier `curl -k` clues are TLS-unverified and excluded. Final candidate heads and tests are recorded in the private delivery/control evidence.
+
+
+### 2026-10-21 R2 correction (append-only)
+
+Partial-summary-v2/warning framework was withdrawn; v1 all-healthy/fail-closed is restored. Production current coverage gap stays degraded. The real sync main producer now emits canonical top-level witness facts, baseline witnesses must match the immutable stage-result, malformed provider envelopes are net errors without witness, and a new incomplete witness blocks before publish. Eight exact models still lack official full-spec originals; queue pending; no deployment.

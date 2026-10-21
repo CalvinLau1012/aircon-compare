@@ -68,7 +68,7 @@ def result_hash(price):
 
 
 def build_block(*, cycle_id, stage, base_snapshot, new_snapshot, outcomes,
-                batch_started_at, generated_at):
+                batch_started_at, generated_at, require_complete=False):
     """Build a witness block, or return None for legacy/incomplete evidence.
 
     Callers may pass mock outcomes without acquisition records (legacy tests or
@@ -89,6 +89,7 @@ def build_block(*, cycle_id, stage, base_snapshot, new_snapshot, outcomes,
     generated = _parse(generated_at)
     entries = []
     priced = clean = 0
+    missing = []
     for outcome in outcomes:
         if not isinstance(outcome, dict):
             return None
@@ -100,8 +101,14 @@ def build_block(*, cycle_id, stage, base_snapshot, new_snapshot, outcomes,
         rhash = outcome.get('resultHash')
         when = _parse(acquired)
         if not isinstance(model, str) or not model.strip() or when is None:
+            missing.append(model if isinstance(model, str) else '?')
+            if require_complete:
+                raise AcquisitionError('valid outcome missing/invalid acquisition timestamp')
             return None
         if not is_sha(rhash):
+            missing.append(model)
+            if require_complete:
+                raise AcquisitionError('valid outcome missing/invalid result hash')
             return None
         expected_hash = result_hash(outcome.get('price') if kind == 'priced' else None)
         if rhash != expected_hash:
@@ -114,7 +121,11 @@ def build_block(*, cycle_id, stage, base_snapshot, new_snapshot, outcomes,
             priced += 1
         else:
             clean += 1
+    if missing and require_complete:
+        raise AcquisitionError('incomplete acquisition witness')
     if not entries:
+        if require_complete:
+            raise AcquisitionError('no valid acquisition outcomes')
         return None
     last = max(entry['acquiredAt'] for entry in entries)
     block = {
@@ -261,14 +272,78 @@ def from_stage_result(stage_result, *, now=None):
     }
 
 
-def baseline_acquisition(source):
-    """Only an explicitly recorded baseline witness may become a time."""
+def baseline_acquisition(source, stage_result=None):
+    """Return a baseline witness only if it matches the immutable bundle.
+
+    ``stage_result`` is optional for format-only callers, but receiver/baseline
+    validation must pass it.  A source cannot invent ``recorded`` without the
+    exact stage-result block/hash/time; a legacy bundle without a block cannot
+    claim a recorded time.
+    """
     if not isinstance(source, dict):
         return {'acquiredAt': None, 'provenance': 'unknown', 'blockHash': None}
-    if source.get('acquisitionProvenance') != 'recorded':
+    provenance = source.get('acquisitionProvenance')
+    block = None
+    if stage_result is not None:
+        block = stage_result.get('acquisition') if isinstance(stage_result, dict) else None
+    if provenance != 'recorded':
+        if provenance not in (None, 'unknown'):
+            raise AcquisitionError('baseline acquisition provenance invalid')
+        if block is not None:
+            raise AcquisitionError('baseline has witness but source claims unknown')
         return {'acquiredAt': None, 'provenance': 'unknown', 'blockHash': None}
     acquired = source.get('acquiredAt')
-    if _parse(acquired) is None or not is_sha(source.get('acquisitionHash')):
+    claimed_hash = source.get('acquisitionHash')
+    if _parse(acquired) is None or not is_sha(claimed_hash):
         raise AcquisitionError('baseline acquisition evidence invalid')
+    if stage_result is None:
+        return {'acquiredAt': acquired, 'provenance': 'recorded',
+                'blockHash': claimed_hash}
+    if not isinstance(block, dict):
+        raise AcquisitionError('baseline claims recorded without immutable witness')
+    try:
+        validate_block(block, outcomes=stage_result.get('outcomes') or [],
+                       cycle_id=stage_result.get('cycleId'),
+                       stage=stage_result.get('stage'),
+                       generated_at=stage_result.get('generatedAt'))
+    except AcquisitionError as exc:
+        raise AcquisitionError(f'baseline immutable witness invalid: {exc}') from exc
+    from biggo_canonical import sha256_json
+    if block.get('lastValidResultAt') != acquired \
+            or sha256_json(block) != claimed_hash:
+        raise AcquisitionError('baseline witness does not match stage-result')
     return {'acquiredAt': acquired, 'provenance': 'recorded',
-            'blockHash': source.get('acquisitionHash')}
+            'blockHash': claimed_hash}
+
+
+def canonical_receiver_facts(report):
+    """Validate/normalize producer receiver facts.
+
+    The verified inner post-image is canonical.  Optional outer redundant
+    fields are accepted only when exactly equal to it; an outer clock can never
+    override a verified inner witness.
+    """
+    if not isinstance(report, dict):
+        raise AcquisitionError('receiver report must be object')
+    verified = report.get('verifiedPost')
+    if not isinstance(verified, dict):
+        raise AcquisitionError('receiver verifiedPost missing')
+    acquired = verified.get('acquiredAt')
+    provenance = verified.get('acquiredAtProvenance')
+    block_hash = verified.get('acquisitionHash')
+    if provenance == 'recorded':
+        if _parse(acquired) is None or not is_sha(block_hash):
+            raise AcquisitionError('receiver recorded witness incomplete')
+    elif provenance == 'unknown':
+        if acquired is not None or block_hash is not None:
+            raise AcquisitionError('receiver unknown witness has time/hash')
+    elif provenance is None:
+        if acquired is not None or block_hash is not None:
+            raise AcquisitionError('receiver witness missing provenance')
+    else:
+        raise AcquisitionError('receiver witness provenance invalid')
+    for field in ('acquiredAt', 'acquiredAtProvenance', 'acquisitionHash'):
+        if field in report and report.get(field) != verified.get(field):
+            raise AcquisitionError(f'receiver outer {field} conflicts with verifiedPost')
+    return {'acquiredAt': acquired, 'acquiredAtProvenance': provenance,
+            'acquisitionHash': block_hash}

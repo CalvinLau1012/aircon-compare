@@ -29,19 +29,11 @@ TITLE = '[MONITOR] 資料新鮮度、部署與來源健康警報'
 
 
 def _title_for(result):
-    """Name the issue by the hardest real failing axis first.
-
-    A pending coverage warning must never hide true staleness, postdeploy
-    mismatch or a hard source-health failure.
-    """
+    """Name the issue by the hardest real failing axis first."""
     if result.get('stale') is True or result.get('ok') is not True:
         return '[MONITOR] 資料過期／取得時間警報'
     if result.get('postdeployOk') is False or result.get('deploymentMismatch') is True:
         return '[MONITOR] 部署一致性警報'
-    if result.get('healthSummaryOk') is False:
-        return '[MONITOR] 來源健康警報'
-    if result.get('healthSummaryPartial') is True:
-        return '[MONITOR] 官網規格待核（warning；非資料過期）'
     return '[MONITOR] 來源健康警報'
 
 
@@ -101,19 +93,10 @@ def _health_fact(health, expected_identity=None):
     skipped = health.get('skipped', False)
     if not isinstance(configured, bool) or not isinstance(skipped, bool):
         return False, 'health:invalid', ['health:invalid'], False
-    if status not in ('healthy', 'partial', 'unhealthy', 'unknown'):
+    if status not in ('healthy', 'unhealthy', 'unknown'):
         return False, 'health:invalid', ['health:invalid'], False
     if ok is True:
-        if status not in ('healthy', 'partial') or configured is not True \
-                or failures or skipped:
-            return False, 'health:invalid', ['health:invalid'], False
-        if status == 'partial':
-            if health.get('partial') is not True \
-                    or not isinstance(health.get('warnings'), list) \
-                    or not health.get('warnings') \
-                    or not isinstance(health.get('pending'), dict):
-                return False, 'health:invalid', ['health:invalid'], False
-        elif health.get('partial') is True or health.get('warnings'):
+        if status != 'healthy' or configured is not True or failures or skipped:
             return False, 'health:invalid', ['health:invalid'], False
     elif ok is False:
         if status != 'unhealthy' or not failures:
@@ -268,8 +251,6 @@ def main(argv=None):
     health_states = {}
     deployment = None
     health_ok = False
-    health_partial = False
-    health_pending_count = None
     health_reason = 'health-report-missing'
     health_failures = ['health:missing']
     post_failures = []
@@ -279,11 +260,6 @@ def main(argv=None):
             health_ok, health_reason, health_failures, health_known = _health_fact(
                 health, expected_identity)
             health_states = sanitize_source_states(health.get('sourceStates')) if health_known else {}
-            health_partial = bool(health_ok and health.get('partial') is True)
-            if health_partial:
-                missing = (health.get('pending') or {}).get('missingModels')
-                if isinstance(missing, list) and missing:
-                    health_pending_count = len(missing)
         except (OSError, ValueError, TypeError, AttributeError):
             health_ok = False; health_known = False; health_reason = 'health:invalid'
             health_failures = ['health:invalid']
@@ -317,8 +293,6 @@ def main(argv=None):
     result['postdeployOk'] = post_ok
     result['postdeployKnown'] = post_known
     result['healthSummaryOk'] = health_ok
-    result['healthSummaryPartial'] = health_partial
-    result['healthPendingCount'] = health_pending_count
     result['healthKnown'] = health_known
     if health_states:
         result['sourceStates'] = health_states

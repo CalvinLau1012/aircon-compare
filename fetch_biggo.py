@@ -528,6 +528,23 @@ def _acquisition_of(model, result):
     return entry
 
 
+def _valid_search_payload(data):
+    """Only the documented successful search shape is a valid no-price result.
+
+    Error envelopes, missing/wrong-typed ``list`` and non-object items are
+    transport/schema failures, not clean misses.  A genuinely empty list is
+    still valid.
+    """
+    if not isinstance(data, dict):
+        return False
+    if data.get('error') is not None:
+        return False
+    items = data.get('list')
+    if not isinstance(items, list):
+        return False
+    return all(isinstance(item, dict) for item in items)
+
+
 def _search_tri_state(model):
     """三態搜尋（force batch 同 price batch 共用）：
     回 (model, result_or_None, ok)
@@ -539,6 +556,8 @@ def _search_tri_state(model):
     """
     data, reachable = _api_search(model)
     if not reachable:
+        return model, None, False
+    if not _valid_search_payload(data):
         return model, None, False
     result = _extract_price(data, model)
     _record_acquisition(model, result)

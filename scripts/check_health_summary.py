@@ -18,7 +18,6 @@ import urllib.request
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(BASE, 'scripts'))
 import source_status  # noqa: E402
-import source_health_contract  # noqa: E402
 from monitor_presentation import sanitize_source_states  # noqa: E402
 
 
@@ -33,35 +32,15 @@ def _load(url=None, path=None, timeout=20):
 
 
 def evaluate(summary, *, now=None, max_age_hours=48, expected_metadata=None):
-    """Validate the sanitised private health summary, not a raw sourceStatus.
-
-    Schema v2 adds a proved ``partial`` (pure official coverage pending) warning.
-    A v1 summary is still accepted only with its original all-healthy semantics
-    and is never upgraded to partial.  Missing/unknown evidence stays fail-closed.
-    """
+    """Validate the sanitised private health summary, not a raw sourceStatus."""
     now = now or dt.datetime.now(dt.timezone.utc)
     if not isinstance(summary, dict) or summary.get('kind') != 'aircon-source-health-summary':
         return {'ok': None, 'status': 'unknown',
                 'reason': 'raw-status-or-unsupported-summary-without-health-check',
                 'failures': ['summary:unsupported-or-missing-health-evidence']}
     failures = []
-    partial = False
-    warnings = []
-    pending = None
-    version = summary.get('schemaVersion')
-    if version not in (1, source_health_contract.SUMMARY_SCHEMA_VERSION):
+    if summary.get('schemaVersion') != 1:
         failures.append('summary:schemaVersion-unsupported')
-    if version == source_health_contract.SUMMARY_SCHEMA_VERSION:
-        if summary.get('status') == 'partial':
-            try:
-                pending = source_health_contract.validate_pending_summary(summary)
-                partial = True
-                warnings = list(summary.get('warnings') or [])
-            except (source_health_contract.ContractError, ValueError) as exc:
-                failures.append('summary:partial-evidence-invalid')
-                warnings.append(f'summary:partial-proof:{type(exc).__name__}')
-        elif summary.get('status') not in ('healthy', 'unhealthy', 'unknown'):
-            failures.append('summary:status-unsupported')
     checked = None
     try:
         checked = dt.datetime.fromisoformat(str(summary.get('checkedAt')).replace('Z', '+00:00'))
@@ -73,15 +52,10 @@ def evaluate(summary, *, now=None, max_age_hours=48, expected_metadata=None):
         failures.append('summary:checkedAt-future')
     elif (now - checked).total_seconds() > max_age_hours * 3600:
         failures.append('summary:checkedAt-stale')
-    if summary.get('ok') is not True or summary.get('status') not in ('healthy', 'partial'):
+    if summary.get('ok') is not True or summary.get('status') != 'healthy':
         failures.append('summary:not-healthy')
     if summary.get('failures'):
         failures.append('summary:contains-failures')
-    if partial and summary.get('ok') is not True:
-        failures.append('summary:partial-not-ok')
-    if not partial and version == source_health_contract.SUMMARY_SCHEMA_VERSION \
-            and summary.get('status') == 'healthy' and summary.get('warnings'):
-        failures.append('summary:healthy-with-warnings')
     if not (isinstance(summary.get('sourceStatusHash'), str)
             and source_status.SHA_RE.match(summary['sourceStatusHash'])):
         failures.append('summary:sourceStatusHash-invalid')
@@ -108,12 +82,8 @@ def evaluate(summary, *, now=None, max_age_hours=48, expected_metadata=None):
     else:
         for name in ('emsd', 'biggo', 'official'):
             block = sources.get(name) or {}
-            expected_status = 'pending' if (partial and name == 'official') else 'ok'
-            if block.get('status') != expected_status:
+            if block.get('status') != 'ok':
                 failures.append(f'summary:{name}-not-ok')
-            if partial and name == 'official' \
-                    and block.get('safeReason') != 'coverage-pending':
-                failures.append('summary:official-pending-reason')
             h = block.get('snapshotHash')
             if not (isinstance(h, str) and source_status.SHA_RE.match(h)):
                 failures.append(f'summary:{name}-snapshotHash-invalid')
@@ -124,16 +94,7 @@ def evaluate(summary, *, now=None, max_age_hours=48, expected_metadata=None):
                            ('emsdSnapshotHash', 'datasetHash')):
             if expected_metadata.get(key) != summary.get(field):
                 failures.append(f'summary:{field}-metadata-binding-mismatch')
-    ok = not failures
-    if ok and partial:
-        status = 'partial'
-    elif ok:
-        status = 'healthy'
-    else:
-        status = 'unhealthy'
-    return {'ok': ok, 'status': status, 'partial': bool(ok and partial),
-            'warnings': warnings if ok and partial else [],
-            'pending': pending if ok and partial else None,
+    return {'ok': not failures, 'status': 'healthy' if not failures else 'unhealthy',
             'failures': failures[:20],
             # Optional presentation-only facts; they never decide `ok`.
             'sourceStates': sanitize_source_states(summary.get('sources')),

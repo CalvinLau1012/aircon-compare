@@ -1,3 +1,12 @@
+## Unreleased — 2026-10-21 R2 receiver contract / partial rollback
+
+- Withdrew the undeployed partial-summary-v2/warning framework and its synthetic tests; restored v1 all-healthy/fail-closed monitoring. Kept hard-axis issue titles, safe reasons, dependency diagnostics, UTC witness and apply-only Hero wording.
+- Fixed the real completed receiver producer contract: `sync_biggo_completed.main` now emits canonical top-level witness fields copied from `verifiedPost`; source_status rejects outer/inner conflicts and no longer overwrites verified inner facts.
+- Baseline recorded time is now bound to the immutable stage-result witness (stageResultHash, block hash, time); legacy/recovery baselines cannot invent recorded provenance by rehashing local metadata.
+- Provider payload contract rejects error envelopes/missing/wrong-typed list/non-object items as net errors without witness; valid empty list remains a clean miss.
+- A new acquisition window with incomplete witness blocks before publish/CAS/apply with needs-review; old bundles without a window remain legacy unknown.
+- Real recovery evidence regression is run with `AIRCON_RECOVERY_EVIDENCE=evidence/biggo-normal-resume-20261020T070551Z` (no skips).
+
 ## Unreleased — 2026-10-21 Root correction (append-only)
 
 - Corrected the partial/warning overreach: production source status keeps the current 8-target official gap `degraded`; the auxiliary partial contract is synthetic-only and the real pending receipt (null manifest) remains fail-closed. No fabricated complete snapshot is used as acceptance.

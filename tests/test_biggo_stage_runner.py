@@ -22,6 +22,7 @@ import batch_utils  # noqa: E402
 import biggo_apply  # noqa: E402
 import biggo_candidate as candidate_mod  # noqa: E402
 import biggo_canonical  # noqa: E402
+import biggo_acquisition  # noqa: E402
 import biggo_coordinator as coord  # noqa: E402
 import biggo_stage_runner as runner  # noqa: E402
 import model_lifecycle  # noqa: E402
@@ -1116,3 +1117,26 @@ def test_winner_smoke_explicit_false_structured_result_needs_review(monkeypatch,
     code, out, apply_calls, fetch, api = _run(tmp_path, fetch=fetch)
     assert code == 0 and _status(out) == 'needs-review'
     assert fetch.batch_calls == 0 and apply_calls == []
+
+
+def test_new_writer_incomplete_witness_blocks_before_publish(tmp_path):
+    """A present new acquisition window with a missing witness is not legacy."""
+    api = FakeGitHubApi()
+    fetch = FakeFetch(tmp_path)
+    payload = completed_payload()
+    payload['acquisitionWindow'] = {
+        'startedAt': '2026-10-20T16:37:30Z',
+        'finishedAt': '2026-10-20T16:37:43Z'}
+    first = payload['outcomes'][0]
+    first.update({'acquiredAt': '2026-10-20T16:37:40Z',
+                  'resultHash': biggo_acquisition.result_hash(first['price'])})
+    payload['outcomes'].append({'model': 'M2', 'canonicalKey': 'BRAND|M2',
+                                'outcome': 'clean_miss'})
+    payload['counters'] = {'got': 1, 'cleanMiss': 1, 'netErrors': 0}
+    fetch.batch_payload = payload
+    code, out, apply_calls, fetch, api = _run(tmp_path, api=api, fetch=fetch)
+    assert code == 0 and _status(out) == 'needs-review'
+    assert apply_calls == []
+    state = api.state()
+    assert state is not None and state.get('status') == 'needs_review'
+    assert state.get('snapshotHash') is None

@@ -140,7 +140,7 @@ def test_two_publication_intents_preserve_unknown_acquisition(tmp_path, publicat
     assert b['lastAcquiredAt'] != dt.datetime.fromtimestamp(
         NOW, dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     text = '\n'.join(report_common.format_status({'sourceStatus': status}, 'vtest'))
-    assert '取得時間未確認' in text
+    assert '原始取得時間未記錄' in text and '最近成功取得' not in text
     assert OLD_STAGE4[:16].replace('T', ' ') not in text
 
 
@@ -230,7 +230,9 @@ def test_unverified_unknown_marker_does_not_clear_trusted_prior_time(tmp_path):
         prices_meta=meta, biggo_status=biggo,
         biggo_snapshot_hash=verified['snapshotHash'], completed_sync=report,
         prior_metadata=_old_prior(meta), now=NOW)
-    assert status['biggo']['lastAcquiredAt'] == OLD_STAGE4
+    # The old stage4 time is not a witness for this stage5 snapshot; the
+    # unverified/unknown marker must stay unknown rather than borrow it.
+    assert status['biggo']['lastAcquiredAt'] is None
     assert status['biggo'].get('timeProvenance') != 'unknown'
 
 

@@ -457,9 +457,9 @@ def _build_stage_result(*, cycle_id, stage_no, mode, client, now_fn, staged):
             cycle_id=cycle_id, stage=stage_no,
             base_snapshot=staged['baseSnapshot'], new_snapshot=staged['snapshot'],
             outcomes=staged.get('outcomes') or [],
-            batch_started_at=window['startedAt'], generated_at=generated_at)
-        if block is not None:
-            stage_result['acquisition'] = block
+            batch_started_at=window['startedAt'], generated_at=generated_at,
+            require_complete=True)
+        stage_result['acquisition'] = block
     stage_result['effectsHash'] = sha256_id(canonical_json_bytes(stage_result['effects']))
     return stage_result
 
@@ -811,9 +811,19 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
                 return 0
 
             # ---- 7. publish bundle → CAS completed → local apply ----
-            stage_result = _build_stage_result(
-                cycle_id=cycle_id, stage_no=stage_no, mode=mode, client=client,
-                now_fn=now_fn, staged=batch_result)
+            try:
+                stage_result = _build_stage_result(
+                    cycle_id=cycle_id, stage_no=stage_no, mode=mode, client=client,
+                    now_fn=now_fn, staged=batch_result)
+            except biggo_acquisition.AcquisitionError as e:
+                # A new collector window exists, so an incomplete/invalid
+                # witness is a hard pre-publish failure (never silently legacy).
+                _write_review_evidence(status_out, batch_result)
+                _needs_review(client, emit, cycle_id, stage='prepublish-acquisition',
+                              reason='acquisition-witness-incomplete',
+                              lease_lost=heartbeat.lost,
+                              extra={'error': str(e)[:160]})
+                return 0
             try:
                 local_lock = _apply_mod._OperationLock(repo_root)
                 local_lock.__enter__()

@@ -188,11 +188,16 @@ def _baseline_current(meta, bundle):
             or source.get('stage') != manifest.get('stage')
             or source.get('newSnapshotHash') != bundle['newSnapshotHash']):
         raise SyncError('baseline acceptance does not bind the current bundle')
-    if source.get('acquisitionProvenance') == 'recorded':
-        try:
-            biggo_acquisition.baseline_acquisition(source)
-        except biggo_acquisition.AcquisitionError as exc:
-            raise SyncError(f'baseline acquisition witness invalid: {exc}') from exc
+    src_sr = source.get('stageResultHash')
+    if src_sr is not None and src_sr != bundle['stageResultHash']:
+        raise SyncError('baseline stageResultHash does not bind current bundle')
+    if source.get('acquisitionProvenance') == 'recorded' \
+            and src_sr != bundle['stageResultHash']:
+        raise SyncError('recorded baseline missing exact stageResultHash')
+    try:
+        biggo_acquisition.baseline_acquisition(source, bundle['stageResult'])
+    except biggo_acquisition.AcquisitionError as exc:
+        raise SyncError(f'baseline acquisition witness invalid: {exc}') from exc
     expected_id = ('biggo-baseline-' + str(source['cycleId']) + '-stage'
                    + str(source['stage']) + '-' + str(source['newSnapshotHash'])[-12:])
     if meta.get('appliedSnapshotId') != expected_id:
@@ -262,7 +267,8 @@ def verify_local_post(bundle, meta, root, repair=None):
     # unknown too (its historical manifest publication is not evidence).
     if baseline is not None:
         try:
-            baseline_acq = biggo_acquisition.baseline_acquisition(baseline['source'])
+            baseline_acq = biggo_acquisition.baseline_acquisition(
+                baseline['source'], bundle['stageResult'])
         except biggo_acquisition.AcquisitionError as exc:
             raise SyncError(f'baseline acquisition witness invalid: {exc}') from exc
         acquired_at = baseline_acq['acquiredAt']
@@ -306,6 +312,16 @@ def verify_local_post(bundle, meta, root, repair=None):
             'recoveryTimeEvidence': dict(marker),
         })
     return result
+
+
+def _attach_receiver_facts(report, verified):
+    facts = biggo_acquisition.canonical_receiver_facts(
+        {'verifiedPost': verified,
+         'acquiredAt': verified.get('acquiredAt'),
+         'acquiredAtProvenance': verified.get('acquiredAtProvenance'),
+         'acquisitionHash': verified.get('acquisitionHash')})
+    report.update(facts)
+    return report
 
 
 def _write_report(path, report):
@@ -437,6 +453,7 @@ def main(argv=None):
             report['newSnapshotHash'] = bundle['newSnapshotHash']
             report.update({'postStateVerified': True, 'verifiedPost': verified,
                            'applied': False, 'noop': True})
+            _attach_receiver_facts(report, verified)
             print(f"sync baseline idle fallback verified: bundle={bundle['bundleHash']}")
             return finish(0, 'already-applied', ok=True)
         print(f"sync skipped: {reason}（零 BigGo／零 lease／零 coordinator write）")
@@ -509,6 +526,7 @@ def main(argv=None):
                           postStateVerified=False, error=type(e).__name__)
         report.update({'postStateVerified': True, 'verifiedPost': verified,
                        'applied': False, 'noop': True})
+        _attach_receiver_facts(report, verified)
         print(f"sync already-applied verified: bundle={bundle['bundleHash']}")
         return finish(0, 'already-applied', ok=True)
     try:
@@ -527,6 +545,7 @@ def main(argv=None):
     report['postStateVerified'] = True
     report['verifiedPost'] = verified
     report['result'] = result
+    _attach_receiver_facts(report, verified)
     print(f"sync applied: noop={result.get('noop')} bundle={bundle['bundleHash']}")
     return finish(0, 'applied', ok=True)
 

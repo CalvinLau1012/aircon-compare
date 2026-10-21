@@ -1,5 +1,8 @@
 # ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fcalvinlau1012.github.io%2Faircon-compare%2Fmetadata.json&query=%24.version&label=version&prefix=v&color=2ea44f)
 
+> **2026-10-21 R2 追加**：撤回未被採納的 partial-summary-v2／warning 框架（保留 v1 all-healthy/fail-closed、hard-axis title、safe reasons、UTC 見證及 apply-only Hero）。修正真正 `sync_biggo_completed.main` producer 的 top-level witness、outer/inner 衝突 fail-closed、baseline 必須綁 immutable stage-result、malformed provider envelope → net_error、以及新 window 不完整 witness 在 publish 前阻斷。8 項官方 full-spec 原件仍未有，queue 保持 pending；未部署。
+
+
 > **2026-10-21 Root 糾偏追加**：partial／warning 不是本輪完成路徑；正式 source status 對當前 8 項待核保持 degraded，沒有用自造 manifest 假裝已解。官方來源已逐項查 MHI 現站／歷史目錄、Gilman 官方 MDM、GREE global、Comfee HK 及 Toshiba HK 下載索引，仍無 exact 品牌／代理 full-spec 原件；只保留 EMSD exact label/energy raw，queue 續 pending，並如實列外部阻擋。先前 `curl -k` 線索已標記 TLS 未驗、不進證據／manifest；實碼已修 curl rc60/28/63 分類、hard 軸 title 優先及 runtime base／final SHA 綁定。較早 integration JUnit 被覆蓋一事已如實記錄。
 
 

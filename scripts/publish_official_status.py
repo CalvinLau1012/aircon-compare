@@ -236,11 +236,10 @@ def main(argv=None):
         'generatedAt': receipt.get('finishedAt') or receipt.get('startedAt'),
         'source': 'run_official_batch.py',
     }
-    if receipt.get('targetScoped') is True:
+    if decision == 'advanced' and receipt.get('targetScoped') is True:
         status['selectedOutputs'] = list(receipt.get('selectedOutputs') or [])
         status['targetModels'] = list(receipt.get('targetModels') or [])
         status['sourceRouting'] = dict(receipt.get('sourceRouting') or {})
-    status['failureClass'] = receipt.get('failureClass')
     out = os.path.abspath(args.out)
     tmp = out + '.tmp'
     try:

@@ -428,6 +428,7 @@ def _baseline_meta(stage=3, adopt='2026-10-17T18:30:00Z', provenance='legacy'):
     blacklist = 'sha256:' + '2' * 64
     source = {'bundleHash': bundle, 'cycleId': cycle, 'stage': stage,
               'newSnapshotHash': snap, 'acquiredAt': '2026-10-11T16:37:28Z',
+              'stageResultHash': 'sha256:' + '4' * 64,
               'repairId': 'sha256:' + '3' * 64}
     if provenance == 'recorded':
         source['acquisitionProvenance'] = 'recorded'
@@ -451,7 +452,13 @@ def _baseline_meta(stage=3, adopt='2026-10-17T18:30:00Z', provenance='legacy'):
               'verifiedPost': {**active, 'bundleHash': bundle, 'cycleId': cycle,
                                'stage': stage, 'snapshotHash': snap,
                                'baselineAcceptanceId': acceptance['acceptanceId'],
-                               'acquiredAt': '2026-10-11T16:37:28Z'}}
+                               'acquiredAt': ('2026-10-11T16:37:28Z'
+                                              if provenance == 'recorded' else None),
+                               'acquiredAtProvenance': ('recorded'
+                                                        if provenance == 'recorded'
+                                                        else 'unknown'),
+                               'acquisitionHash': ('sha256:' + '7' * 64
+                                                   if provenance == 'recorded' else None)}}
     return meta, report
 
 
@@ -531,9 +538,13 @@ def test_stage4_success_is_normal_applied_not_baseline_acceptance():
               'bundleHash': stage4['appliedBundleHash'],
               'acquiredAt': '2026-10-17T16:37:28Z',
               'acquiredAtProvenance': 'recorded',
+              'acquisitionHash': 'sha256:' + '8' * 64,
               'verifiedPost': {'biggo_prices.json': stage4['appliedSnapshotHash'],
                                'model_status.json': 'sha256:' + '4' * 64,
-                               'model_blacklist.json': 'sha256:' + '5' * 64}}
+                               'model_blacklist.json': 'sha256:' + '5' * 64,
+                               'acquiredAt': '2026-10-17T16:37:28Z',
+                               'acquiredAtProvenance': 'recorded',
+                               'acquisitionHash': 'sha256:' + '8' * 64}}
     s = _build(stage4, report, snapshot=stage4['appliedSnapshotHash'])
     assert s['biggo']['status'] == 'ok'
     assert s['biggo']['safeReason'] == 'applied'

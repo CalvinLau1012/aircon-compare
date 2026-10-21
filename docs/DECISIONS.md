@@ -1414,3 +1414,11 @@ Formal zero-provider repair run 39393716967 received and verified stage5 locally
 - **TLS 糾偏**：先前部分探查曾用 `curl -k`，該等 HTML/JS 只標記為 TLS 未驗線索，不進證據表／manifest／來源成功時間。正式採用前必須以系統 CA／該站合法中繼鏈通過 strict TLS；MHI 站以 AIA 取得並核對 Sectigo intermediate 後用 `--cacert` 成功。
 - **實碼返修**：`official_http` 先按 curl return code 分類，rc60+`000`→`tls-error`、rc28→`timeout`、rc63→`size-limit`、rc22+404/410→HTTP；`_title_for` hard stale／postdeploy／source 軸優先於 partial warning；runtime 候選改用現行 `aircon-official-20261020:local` base，並以 build ARG `PRIVATE_COMMIT` 綁定 final private SHA，不再寫死舊 786f1c2。
 - **證據保留**：本輪曾多次重建 integration worktree，導致早期 public 1271 pass／3 fail 及 private 1280 pass／3 fail 的原始 JUnit 被覆蓋；如實記錄，不以重造 JUnit 冒充。Root 的 `original-failure-session-excerpts.json` 保留；日後每個 attempt 用唯一目錄，不再覆蓋。
+
+
+### D38 · 2026-10-21 R2 撤回 partial-summary-v2（append-only）
+
+- Root 驗收確認 partial／warning 不被用戶接受，且現有 source_health_contract 要求完整舊 manifest，真實 pending receipt `outputManifest=null` 永遠 fail-closed。R2 已**撤回** `source_health_contract.py`、schema-v2 partial summary 接受、partial fingerprint／issue warning 及相關 synthetic tests，恢復既有 v1 all-healthy／fail-closed 監控契約；保留 hard-axis issue title、safe failure reasons、依賴診斷、UTC 時間鏈及 apply-only Hero 文案。
+- 正式 `source_status` 對當前 8 項 coverage gap 保持 `degraded`；不改門檻、不讓 degraded 變 green、不改去重恢復條件。
+- 新增真 producer 回歸：`sync_biggo_completed.main` report 必須帶 canonical top-level `acquiredAt／acquiredAtProvenance／acquisitionHash`，且與 `verifiedPost` 完全一致；outer timestamp 衝突 fail-closed。Baseline recorded time 必須與 immutable stage-result acquisition block 的 stageResultHash／block hash／time 完全一致；legacy baseline 不得靠重算 acceptanceId 自稱 recorded。
+- Provider envelope 只接受合法 `list`（空 list 可為 clean miss）；error envelope／缺 list／錯 type／非 object item 一律 net_error，不記 witness。新 collector window 存在但 witness 不完整時，runner 在 publish/CAS/apply 前 `needs-review` 阻斷；只有完全無 window 的舊 bundle 可走 legacy unknown。

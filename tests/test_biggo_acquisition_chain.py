@@ -350,3 +350,158 @@ def test_stage_result_builder_emits_block_and_binds_snapshot():
     assert built['acquisition']['pricedCount'] == 1
     coord.validate_stage_result(built, base, new, cycle_id='2026-10-20:6/7',
                                 stage=6, mode='price-batch')
+
+
+def test_provider_envelope_contract_rejects_invalid_no_price(monkeypatch):
+    fetch_biggo.reset_acquisitions()
+    valid = [({'list': []}, True, True),
+             ({'list': [{'title': 'HITACHI RA-10RF air conditioner',
+                         'price': '2500', 'nindex': 'hk_shop'}]}, True, True),
+             ({'error': 'upstream failure'}, True, False),
+             ({}, True, False),
+             ({'list': {}}, True, False),
+             ({'list': ['not-an-object']}, True, False),
+             ({'error': 'x', 'list': []}, True, False)]
+    for payload, reachable, expected_ok in valid:
+        fetch_biggo.reset_acquisitions()
+        monkeypatch.setattr(fetch_biggo, '_api_search',
+                            lambda model, **kw: (payload, reachable))
+        model, result, ok = fetch_biggo._search_tri_state('RA-10RF')
+        assert ok is expected_ok, payload
+        if expected_ok:
+            assert fetch_biggo._acquisition_of('RA-10RF', result)
+        else:
+            assert fetch_biggo._ACQUISITIONS == {}
+
+
+def test_new_writer_incomplete_witness_fails_before_block():
+    sr, base, new = stage_result()
+    outcomes = [dict(sr['outcomes'][0]), {'model': 'OTHER', 'outcome': 'clean_miss'}]
+    with pytest.raises(biggo_acquisition.AcquisitionError):
+        biggo_acquisition.build_block(
+            cycle_id=sr['cycleId'], stage=sr['stage'],
+            base_snapshot=base, new_snapshot=new, outcomes=outcomes,
+            batch_started_at='2026-10-20T16:37:30Z',
+            generated_at=sr['generatedAt'], require_complete=True)
+    staged = {'counters': sr['counters'], 'outcomes': outcomes,
+              'blacklistReview': sr['blacklistReview'], 'effects': sr['effects'],
+              'preState': sr['preState'], 'postState': sr['postState'],
+              'baseSnapshot': base, 'snapshot': new,
+              'acquisitionWindow': {'startedAt': '2026-10-20T16:37:30Z',
+                                    'finishedAt': '2026-10-20T16:37:43Z'}}
+    client = type('C', (), {'state': {'requestAttempts': {'token': 0, 'search': 2},
+                                      'responseStatusCounts': {'200': 1}}})()
+    import biggo_stage_runner as runner
+    with pytest.raises(biggo_acquisition.AcquisitionError):
+        runner._build_stage_result(
+            cycle_id='2026-10-20:6/7', stage_no=6, mode='price-batch',
+            client=client, now_fn=lambda: 1793000000.0, staged=staged)
+
+
+def _sync_main_report(tmp_path, monkeypatch, bundle):
+    state = {'status': 'completed', 'cycleId': bundle['manifest']['cycleId'],
+             'stage': bundle['manifest']['stage']}
+    class Contents:
+        def __init__(self, *a, **k): pass
+        def read_state(self): return state, 'sha'
+    class Client:
+        def __init__(self, *a, **k): self.state = None
+        def import_bundle(self, cycle, stage): return bundle
+    monkeypatch.setattr(sync.coord.CoordinatorConfig, 'from_env', staticmethod(lambda: object()))
+    monkeypatch.setattr(sync.coord, 'GitHubContentsClient', Contents)
+    monkeypatch.setattr(sync.coord, 'CoordinatorClient', Client)
+    monkeypatch.setattr(sync, 'BASE', str(tmp_path))
+    path = tmp_path / 'sync.json'
+    rc = sync.main(['--apply', '--report', str(path)])
+    return rc, json.loads(path.read_text())
+
+
+def test_sync_main_report_has_canonical_top_level_facts(tmp_path, monkeypatch):
+    sr, base, new = stage_result()
+    bundle = bundle_for(sr, base, new)
+    write_local(tmp_path, bundle)
+    rc, report = _sync_main_report(tmp_path, monkeypatch, bundle)
+    assert rc == 0 and report['ok'] is True and report['applied'] is False
+    assert report['reason'] == 'already-applied'
+    inner = report['verifiedPost']
+    assert inner['acquiredAt'] == '2026-10-20T16:37:40Z'
+    assert inner['acquiredAtProvenance'] == 'recorded'
+    assert report['acquiredAt'] == inner['acquiredAt']
+    assert report['acquiredAtProvenance'] == inner['acquiredAtProvenance']
+    assert report['acquisitionHash'] == inner['acquisitionHash']
+    projected = source_status.build_status(
+        metadata={'datasetDate': '2026-10-20', 'datasetHash': 'sha256:' + 'a' * 64},
+        prices_meta=json.loads((tmp_path / 'prices_meta.json').read_text()),
+        biggo_status={'status': 'skip-not-active'},
+        biggo_snapshot_hash=bundle['newSnapshotHash'],
+        completed_sync=report, now=1_793_000_000)
+    assert projected['biggo']['status'] == 'ok'
+    assert projected['biggo']['lastAcquiredAt'] == '2026-10-20T16:37:40Z'
+    # A forged outer clock cannot override the verified inner witness.
+    forged = dict(report, acquiredAt='2000-01-01T00:00:00Z',
+                  acquiredAtProvenance='recorded', acquisitionHash=None)
+    bad = source_status.build_status(
+        metadata={'datasetDate': '2026-10-20', 'datasetHash': 'sha256:' + 'a' * 64},
+        prices_meta=json.loads((tmp_path / 'prices_meta.json').read_text()),
+        biggo_status={'status': 'skip-not-active'},
+        biggo_snapshot_hash=bundle['newSnapshotHash'],
+        completed_sync=forged, now=1_793_000_000)
+    assert bad['biggo']['lastAcquiredAt'] is None
+    assert bad['biggo']['status'] == 'degraded'
+    assert bad['biggo']['safeReason'] == 'receipt-invalid'
+
+
+def test_legacy_baseline_cannot_invent_recorded_witness(tmp_path):
+    sr, base, new = stage_result(include_block=False)
+    bundle = bundle_for(sr, base, new)
+    meta = write_local(tmp_path, bundle)
+    source = {'bundleHash': bundle['bundleHash'], 'cycleId': bundle['manifest']['cycleId'],
+              'stage': bundle['manifest']['stage'],
+              'newSnapshotHash': bundle['newSnapshotHash'],
+              'stageResultHash': bundle['stageResultHash'],
+              'acquiredAt': '2000-01-01T00:00:00Z',
+              'acquisitionProvenance': 'recorded',
+              'acquisitionHash': 'sha256:' + '0' * 64}
+    active = {'biggo_prices.json': bundle['newSnapshotHash'],
+              'model_status.json': H({}), 'model_blacklist.json': H({})}
+    acc = {'schemaVersion': 1, 'kind': 'accepted-shared-baseline-v1',
+           'adoptedAt': '2026-10-20T16:40:00Z', 'source': source,
+           'activePost': active}
+    acc['acceptanceId'] = 'sha256:' + hashlib.sha256(
+        json.dumps(acc, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+    meta['baselineAcceptance'] = acc
+    meta['appliedSnapshotId'] = ('biggo-baseline-' + bundle['manifest']['cycleId']
+                                 + '-stage' + str(bundle['manifest']['stage']) + '-'
+                                 + bundle['newSnapshotHash'][-12:])
+    (tmp_path / 'prices_meta.json').write_text(json.dumps(meta), encoding='utf-8')
+    with pytest.raises(sync.SyncError):
+        sync.verify_local_post(bundle, meta, tmp_path)
+
+
+def test_baseline_with_real_witness_projects_recorded_time(tmp_path):
+    sr, base, new = stage_result()
+    bundle = bundle_for(sr, base, new)
+    meta = write_local(tmp_path, bundle)
+    active = {'biggo_prices.json': bundle['newSnapshotHash'],
+              'model_status.json': H({}), 'model_blacklist.json': H({})}
+    source = {'bundleHash': bundle['bundleHash'], 'cycleId': bundle['manifest']['cycleId'],
+              'stage': bundle['manifest']['stage'],
+              'newSnapshotHash': bundle['newSnapshotHash'],
+              'stageResultHash': bundle['stageResultHash'],
+              'acquiredAt': sr['acquisition']['lastValidResultAt'],
+              'acquisitionProvenance': 'recorded',
+              'acquisitionHash': H(sr['acquisition'])}
+    acc = {'schemaVersion': 1, 'kind': 'accepted-shared-baseline-v1',
+           'adoptedAt': '2026-10-20T16:40:00Z', 'source': source,
+           'activePost': active}
+    acc['acceptanceId'] = 'sha256:' + hashlib.sha256(
+        json.dumps(acc, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+    meta['baselineAcceptance'] = acc
+    meta['appliedSnapshotId'] = ('biggo-baseline-' + bundle['manifest']['cycleId']
+                                 + '-stage' + str(bundle['manifest']['stage']) + '-'
+                                 + bundle['newSnapshotHash'][-12:])
+    (tmp_path / 'prices_meta.json').write_text(json.dumps(meta), encoding='utf-8')
+    got = sync.verify_local_post(bundle, meta, tmp_path)
+    assert got['acquiredAt'] == '2026-10-20T16:37:40Z'
+    assert got['acquiredAtProvenance'] == 'recorded'
+    assert got['acquisitionHash'] == H(sr['acquisition'])
