@@ -27,13 +27,13 @@
       const acq = hkt(sb.lastAcquiredAt), app = hkt(sb.lastAppliedAt);
       let biggoText = '🛒 BigGo 更新時間未確認（分批快照）';
       if (sb.status === 'ok' && acq) {
-        biggoText = '🛒 BigGo 最近成功更新 ' + acq + ' HKT（分批快照）' + (app ? ('；已套用 ' + app + ' HKT') : '');
+        biggoText = '🛒 BigGo 最近成功取得 ' + acq + ' HKT（分批快照）' + (app ? ('；最近成功套用 ' + app + ' HKT') : '');
       } else if (sb.status === 'ok' && app) {
-        biggoText = '🛒 BigGo 取得時間未確認；已套用 ' + app + ' HKT（分批快照，非全部同時查價）';
+        biggoText = '🛒 BigGo 最近成功套用 ' + app + ' HKT（分批價格快照；原始取得時間未記錄）';
       } else if (sb.status === 'degraded' || sb.status === 'blocked' || sb.status === 'pending') {
         const head = sb.status === 'degraded' ? '⚠️ BigGo 價格來源降級'
           : (sb.status === 'blocked' ? '⛔ BigGo 價格來源受阻' : '⏳ BigGo 本輪待更新');
-        biggoText = head + (acq ? ('；先前快照取得 ' + acq + ' HKT') : (app ? ('；已套用 ' + app + ' HKT（取得時間未確認）') : ''))
+        biggoText = head + (acq ? ('；先前快照取得 ' + acq + ' HKT') : (app ? ('；最近成功套用 ' + app + ' HKT（原始取得時間未記錄）') : ''))
           + ' · 價格更新未完成，沿用先前已驗證快照';
       } else if (acq || app) {
         biggoText = '🛒 BigGo 更新時間 ' + (acq || app) + ' HKT（分批快照）';
