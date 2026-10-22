@@ -2356,3 +2356,57 @@ Formal zero-provider repair run 39393716967 received and verified stage5 locally
 - **獨立收據**：新增 `aircon-official-coverage-observation`（schemaVersion 1、identityHash），嵌於 batch receipt 及 `official_batch_status.json`；沒有完整 snapshot 時 snapshot／manifest 如實為 null。此觀察不是 full-spec outputManifest，也不是 source snapshot。驗證層須重算 queue／CSV／outputs／routes／marker；空或壞 marker、catalogue／TLS／HTTP／依賴失敗不得降級為 expected pending。
 - **監控**：private health summary v2 分開 `operations`／`coverage`；可信 pending 時 operations healthy、coverage pending。public client v2 驗證 observation identity／時間／bindings；v1 reader 保持原本嚴格 all-ok 行為。硬故障、EMSD >72h、部署不符、BigGo 故障、缺失／損壞／偽造收據仍失敗；不得被 pending 掩蓋。
 - **時間與邊界**：observation 時間與 deploy／publish／acquisition 分開；cache／build replay 保留原觀察時間，來源取得時間不刷新。本輪零 BigGo provider／coordinator／lease／budget／grant 寫入；不改 GitHub 全局通知設定或 00:30 HKT 排程；正式 Docker／CI／部署及獨立反例驗收由 Root。
+
+---
+
+## 附錄 J. 2026-10-22 價格狀態收據 schema extension（追加；六個 canonical 區塊 bytes 不變）
+
+> 本附錄只追加，**不修改**六個 canonical 規範區塊、Metadata Schema extension、Registry 或成功標準的任何 bytes。`price-status` 是獨立 runtime sidecar，不是 metadata 的替代；`metadata_schema()` 仍只選 `AIRCON_METADATA_SCHEMA_V1_1`。此 extension 由 `extract_governance.py` 的 `SCHEMA_EXTENSIONS` 明示列出，不作 silent last-block。
+
+<!-- AIRCON:SCHEMA_EXTENSION:PRICE_STATUS_SCHEMA_V1:BEGIN -->
+```json
+{
+  "blockId": "AIRCON_PRICE_STATUS_SCHEMA_V1",
+  "schemaVersion": "1.0.0",
+  "supersedes": "AIRCON_METADATA_SCHEMA_V1",
+  "compatibility": "independent optional sidecar; metadata schema unchanged",
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:aircon-compare:price-status-schema:1.0.0",
+    "type": "object",
+    "required": ["schemaVersion", "kind", "determinedAt", "status", "safeReason", "healthy", "cycleId", "stage", "month", "lastVerifiedProgressAt", "nextEligibleAt", "evidence", "receiptHash"],
+    "additionalProperties": false,
+    "properties": {
+      "schemaVersion": {"const": 1},
+      "kind": {"const": "aircon-price-status"},
+      "determinedAt": {"type": "string", "format": "date-time"},
+      "status": {"enum": ["no-demand", "month-completed", "waiting-eligible", "active", "blocked"]},
+      "safeReason": {"type": "string", "minLength": 1},
+      "healthy": {"type": "boolean"},
+      "cycleId": {"type": ["string", "null"]},
+      "stage": {"type": ["integer", "null"], "minimum": 0, "maximum": 7},
+      "month": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"},
+      "lastVerifiedProgressAt": {"type": ["string", "null"], "format": "date-time"},
+      "nextEligibleAt": {"type": ["string", "null"], "format": "date-time"},
+      "evidence": {
+        "type": "object",
+        "required": ["snapshotHash", "metaHash", "demandHash", "biggoStatusHash", "completedSyncHash", "anchorHash", "bundleHash", "stageResultHash", "pendingDemandCount"],
+        "additionalProperties": false,
+        "properties": {
+          "snapshotHash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "metaHash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "demandHash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "biggoStatusHash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "completedSyncHash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "anchorHash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "bundleHash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "stageResultHash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "pendingDemandCount": {"type": ["integer", "null"], "minimum": 0}
+        }
+      },
+      "receiptHash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+    }
+  }
+}
+```
+<!-- AIRCON:SCHEMA_EXTENSION:PRICE_STATUS_SCHEMA_V1:END -->

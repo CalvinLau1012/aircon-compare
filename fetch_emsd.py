@@ -365,7 +365,17 @@ def plan_new_models(all_rows):
         for a in added:
             if a not in q['models']:
                 q['models'].append(a)
-    return {'new_models': rec, 'queue': q, 'added': added}
+    # 價格需求是獨立交易檔：官網 queue 保留／pending 不會被當成已查價，
+    # 亦不會因 queue 未完成而消失。此處只做純記憶體合併，真正寫入由
+    # commit_dataset 同一 journal／replace 交易完成。
+    try:
+        import price_demand
+        demand_doc = price_demand.merge_new_models(
+            price_demand.load(), rec, now=time.time())
+    except price_demand.DemandError as e:
+        raise ValueError(f'price_demand.json 損毀，唔可以默默重置：{e}')
+    return {'new_models': rec, 'queue': q, 'added': added,
+            'demand': demand_doc}
 
 
 def _build_csv_bytes(header, rows):
@@ -450,6 +460,14 @@ def commit_dataset(header, rows, csv_path, plan):
         (os.path.join(BASE_DIR, 'new_models.json'), _json_bytes(plan['new_models'])),
         (QUEUE_PATH, _json_bytes(plan['queue'])),
     ]
+    # Versioned price demand travels in the same crash-recoverable transaction.
+    # Older callers/plans without this optional key keep the original 3-file
+    # transaction unchanged.
+    if isinstance(plan.get('demand'), dict):
+        import price_demand
+        price_demand.validate(plan['demand'])
+        targets.append((os.path.join(BASE_DIR, 'price_demand.json'),
+                        _json_bytes(plan['demand'])))
     saved = {path: _read_optional(path) for path, _ in targets}
     _write_journal(saved)
     tmps = []

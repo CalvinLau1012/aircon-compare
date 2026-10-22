@@ -1443,3 +1443,14 @@ Root independently reproduced a remaining R2 case: a present null/empty/half-wri
 ### 2026-10-21 Root 獨立驗收補正（D39 實作）
 
 Root 反例發現並補正：損壞 observation 結構須產生 unhealthy 收據而非 traceback；Gilman catalogue 的頁面失敗／TLS 原因不可冒充正常缺項；連續兩輪 pending 保留已驗證完整快照；一般 cache 入口沿用最早來源觀察時間，不能靠重跑把舊目錄變新。補上獨立回歸案例；原候選及原測試紀錄保留。純缺規格仍正常待補，真正資料／抓取／部署故障維持阻斷。本條是候選補正紀錄，正式部署事實另行追加。
+
+## D40 · 2026-10-22：雙端工作流修復（分來源新鮮度、flock、價格需求、共享月度身份、取得時間鏈；append-only）
+
+- **使用者授權**：使用者已明確要求 Implement the proposed plan；本輪由 Pi／deepseek-flash（thinking max）在隔離候選實作及離線驗證，Root 負責 Docker／憑證／GitHub／部署及最終驗收。此授權**取代**先前「所有 pending 故障」「私人服務暫停」「只能人手合併」等相反歷史要求；歷史文字保留。
+- **價格業務政策**：保留「有新機先啟動」。只有存在未處理 EMSD 新機需求、且本月（HKT）未做過，才可開新價格批次；現有 active 繼續；無新機不得變成每月固定重查。批次範圍仍為原本七日 workload，不縮成只查新增，也不擴大 force 範圍。兩端每日 00:30 HKT 各自排程；共享結果接收不等於獲准發起新查價；官網 queue 純 coverage pending 不得阻擋價格入口，也不得靠推進／清 queue 換取啟動。
+- **分來源新鮮度**：EMSD／可信官方觀察／工作流心跳維持 36h；網站 72h 獨立。BigGo 舊 snapshot 的取得或套用 age 不再單獨等於 pipeline 故障；由版本化 price status receipt（schemaVersion 1）按 no-demand／month-completed／waiting-eligible／active／blocked 判定，綁定實際 snapshot／meta／demand／bundle／stage-result／receive 證據。健康摘要升為 v3；v1／v2 讀取保持原嚴格語義，v3 缺／壞／未綁定 receipt 不得默認健康。真 provider failure、hash／queue／deploy 矛盾、EMSD／official 真過期仍然紅。
+- **flock 與日誌**：私人 runtime 由 mkdir 鎖改為持久 volume `.locks/update.lock` 的 `flock`；所有 mode／手動入口共用同一鎖，busy 回 75，缺 flock fail closed；fd 由活躍 worker 持有，父程序 SIGKILL 但子程序仍寫時不得開第二 writer。rsync 保護 `.locks`；舊 mkdir 殘鎖只可由 Root 在維護窗口核 owner／無 writer 後移除，程式不得盲刪。Docker 只為 aircon 加 json-file 10m／3；update.log、update-cron.log、source-health.log 用獨立 flock＋logrotate（daily、10MiB、14 份、delaycompress、rename+create、禁 copytruncate）。
+- **需求與共享批次**：新增 `price_demand.json`（canonical `BRAND|MODEL`），與 CSV／new_models／官方 queue 同一 crash-recoverable 交易提交。`price_demand_entry` 是唯一正常啟動入口；shared mode 成對旗標=1，走既有 `monthly-cycle-v2`＋CAS，混合設定 fail closed。有效 priced／clean_miss 才算已處理；network／rate-limit／error 不算；同一 cycle/stage 的 no-price miss 只記一次。
+- **遷移**：`scripts/price_cycle_migrate.py` 預設唯讀，`--apply` 只寫明確 fixture anchor store，永不寫正式 coordinator。以真實 stage7 manifest/result、新機、兩端 baseline 推導 transition／anchor／history；本月已完成事實保留；缺證據列 blocked；重跑 semantic no-op；source／repo 一端不匹配即停。正式 coordinator CAS 由 Root 在 review 後執行。
+- **取得時間**：沿用既有 `biggo_acquisition.py` witness 鏈，不新增第二套時間。新包由 provider response 驗證後記錄 acquiredAt／resultHash，經 stage-result→manifest→bundle→receiver→source status 傳遞；兩端各自 appliedAt 不同不影響相同 snapshot。legacy 仍 unknown；generatedAt／publishedAt／receivedAt／appliedAt 永不補造 acquisition；重接收不刷新。
+- **驗收邊界**：本輪零 BigGo token／search／smoke／diagnostic／provider，零正式 coordinator／lease／budget／anchor 寫入，零正式服務修改；只使用本地 fixture／fake coordinator／provider。Root 其後在 network-none Docker、live／browser 及正式部署驗收。正式部署次序必須先兼容 reader，再 producer；共享歷史出現後只停新查詢、保留接收，不倒退 coordinator／用量。

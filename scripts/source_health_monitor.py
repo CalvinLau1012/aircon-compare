@@ -49,6 +49,13 @@ def _load(path):
         return json.load(f)
 
 
+def _load_optional(path):
+    """Missing optional receipt is absent; a present corrupt receipt still raises."""
+    if not path or not os.path.exists(path):
+        return None
+    return _load(path)
+
+
 def _atomic_json(path, data):
     path = os.fspath(path)
     os.makedirs(os.path.dirname(os.path.abspath(path)) or '.', exist_ok=True)
@@ -188,7 +195,7 @@ def _official_manifest_errors(official_doc, official, repo, *, retained_stage=Fa
 
 def evaluate(*, status, repo, now=None, max_age_hours=36, schedule_hkt='00:30',
              require_deployed=False, deployment_receipt=None, metadata=None, web_root=None,
-             official_status_doc=None):
+             official_status_doc=None, price_status_doc=None):
     now = now or _dt.datetime.now(_dt.timezone.utc)
     failures = []
     if not isinstance(status, dict):
@@ -219,6 +226,40 @@ def evaluate(*, status, repo, now=None, max_age_hours=36, schedule_hkt='00:30',
         elif _sha256_file(csv_path) != emsd['snapshotHash']:
             failures.append('binding:emsd-csv-hash-mismatch')
     official = status.get('official') or {}
+    price_errors = []
+    price_receipt = None
+    if price_status_doc is not None:
+        try:
+            import price_status as _price_status
+            price_receipt = _price_status.validate_receipt(price_status_doc, now=now)
+        except Exception as e:  # noqa: BLE001 - malformed evidence never green
+            price_errors.append('price:receipt-invalid')
+            price_receipt = None
+        else:
+            ev = price_receipt.get('evidence') or {}
+            live_price = None
+            if os.path.isfile(price_path):
+                try:
+                    live_price = sha256_json(_load(price_path))
+                except (OSError, ValueError):
+                    live_price = None
+            actual = price_receipt.get('status')
+            if actual == 'blocked':
+                price_errors.append('price:' + str(price_receipt.get('safeReason')))
+            elif price_receipt.get('healthy') is not True:
+                price_errors.append('price:' + str(price_receipt.get('safeReason')))
+            if not (isinstance(ev.get('snapshotHash'), str)
+                    and source_status.SHA_RE.match(ev['snapshotHash'])):
+                price_errors.append('price:snapshot-evidence-missing')
+            if live_price is not None and ev.get('snapshotHash') != live_price:
+                price_errors.append('price:snapshot-binding-mismatch')
+            if biggo.get('snapshotHash') and ev.get('snapshotHash') != biggo.get('snapshotHash'):
+                price_errors.append('price:source-status-snapshot-mismatch')
+            determined = _parse_utc(price_receipt.get('determinedAt'))
+            if determined is None:
+                price_errors.append('price:determined-time-invalid')
+            elif (now - determined).total_seconds() > max_age_hours * 3600:
+                price_errors.append('price:receipt-stale')
     coverage = None
     if isinstance(official_status_doc, dict) and \
             official_status_doc.get('decision') == 'queue-kept-pending-coverage':
@@ -257,6 +298,11 @@ def evaluate(*, status, repo, now=None, max_age_hours=36, schedule_hkt='00:30',
             if when > now + _dt.timedelta(minutes=5):
                 failures.append(f'{name}:{field}-future')
             if field in ('lastAcquiredAt', 'lastAppliedAt'):
+                # A verified price receipt replaces the generic price-age
+                # criterion.  EMSD/official/workflow heartbeat freshness and
+                # all real provider failures stay independent and enforced.
+                if name == 'biggo' and price_receipt is not None:
+                    continue
                 if (now - when).total_seconds() > max_age_hours * 3600:
                     failures.append(f'{name}:age>{max_age_hours}h')
     if coverage is not None and coverage.get('trusted'):
@@ -306,6 +352,7 @@ def evaluate(*, status, repo, now=None, max_age_hours=36, schedule_hkt='00:30',
                                 minute=int(schedule_hkt.split(':')[1]),
                                 second=0, microsecond=0)
         delay_minutes = round((hkt - scheduled).total_seconds() / 60, 1)
+    failures.extend(price_errors)
     fp = 'ok' if not failures else 'unhealthy:' + ','.join(sorted(set(f.split(':')[0] for f in failures)))
     return {'ok': not failures, 'fingerprint': fp,
             'failures': failures[:20], 'delayMinutes': delay_minutes,
@@ -355,6 +402,12 @@ def main(argv=None):
     ap.add_argument('--metadata', default=None)
     ap.add_argument('--web-root', default=None)
     ap.add_argument('--official-status-file', default=None)
+    ap.add_argument('--price-demand', default=None)
+    ap.add_argument('--price-status', default=None)
+    ap.add_argument('--price-status-out', default=None)
+    ap.add_argument('--biggo-status', default=None)
+    ap.add_argument('--completed-sync', default=None)
+    ap.add_argument('--anchor-file', default=None)
     ap.add_argument('--now', default=None, help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
     if args.now:
@@ -376,6 +429,66 @@ def main(argv=None):
     else:
         load_error = None
     official_doc = None
+    price_status_doc = None
+    price_mode = False
+    price_demand_path = args.price_demand or os.path.join(args.repo, 'price_demand.json')
+    price_status_path = args.price_status or os.path.join(args.repo, 'price_status.json')
+    price_mode = os.path.exists(price_demand_path) or os.path.exists(price_status_path) \
+        or bool(args.price_status_out)
+    if status is not None and price_mode:
+        try:
+            import price_demand as _demand_mod
+            import price_status as _price_status_mod
+            demand_doc = _demand_mod.load(price_demand_path)
+            biggo_doc = _load(args.biggo_status or os.path.join(
+                args.repo, 'biggo_stage_status.json')) or {}
+            sync_doc = _load_optional(args.completed_sync or os.path.join(
+                args.repo, 'biggo_completed_sync.json')) or {}
+            biggo_path = args.biggo_status or os.path.join(
+                args.repo, 'biggo_stage_status.json')
+            if not os.path.exists(biggo_path):
+                raise FileNotFoundError(biggo_path)
+            snapshot_path = os.path.join(args.repo, 'biggo_prices.json')
+            snapshot_hash = None
+            if os.path.isfile(snapshot_path):
+                try:
+                    snapshot_hash = sha256_json(_load(snapshot_path))
+                except (OSError, ValueError):
+                    snapshot_hash = None
+            anchor_path = args.anchor_file or os.path.join(
+                args.repo, 'price_anchor.json')
+            anchor_doc = None
+            if os.path.exists(anchor_path):
+                cached = _load(anchor_path)
+                if isinstance(cached, dict) and cached.get('kind') == 'aircon-price-anchor-cache':
+                    anchor_doc = cached.get('anchor')
+                else:
+                    anchor_doc = cached
+            ce = os.environ.get('AIRCON_PRICE_CYCLE_ENABLED') == '1'
+            sc = os.environ.get('AIRCON_PRICE_SHARED_CYCLE') == '1'
+            if ce != sc:
+                raise ValueError('price-mode-inconsistent')
+            shared = ce and sc
+            inputs = {
+                'meta': _load(os.path.join(args.repo, 'prices_meta.json')) or {},
+                'demand': demand_doc, 'biggo': biggo_doc,
+                'completed_sync': sync_doc, 'snapshot_hash': snapshot_hash,
+                'anchor': anchor_doc, 'shared': shared,
+            }
+            candidate = _price_status_mod.build_receipt(now=now, **inputs)
+            _price_status_mod.validate_receipt(candidate, now=now)
+            # Re-read the live files and require an identical derivation.  This
+            # is the producer-side guard against a caller-supplied green value.
+            _price_status_mod.verify_receipt(candidate, inputs=inputs, now=now)
+            price_status_doc = candidate
+            _atomic_json(args.price_status_out or price_status_path, candidate)
+        except Exception as e:  # noqa: BLE001 - any evidence failure is red
+            price_status_doc = {'schemaVersion': 1,
+                                'kind': 'aircon-price-status',
+                                'status': 'blocked',
+                                'safeReason': 'invalid-status-input',
+                                'healthy': False,
+                                'errorClass': type(e).__name__}
     if status is None:
         result = {'ok': False, 'fingerprint': 'receipt:missing-or-corrupt',
                   'failures': [f'receipt:{load_error}'], 'delayMinutes': None}
@@ -394,7 +507,8 @@ def main(argv=None):
                           schedule_hkt=args.schedule_hkt,
                           require_deployed=args.require_deployed,
                               deployment_receipt=receipt, metadata=metadata,
-                              web_root=args.web_root, official_status_doc=official_doc)
+                              web_root=args.web_root, official_status_doc=official_doc,
+                              price_status_doc=price_status_doc)
     try:
         state = _load(args.state)
     except (OSError, ValueError):
@@ -458,7 +572,7 @@ def main(argv=None):
         official_manifest = coverage_doc['officialManifestHash']
     operations_ok = result.get('ok') is True
     summary = {
-        'schemaVersion': 2,
+        'schemaVersion': 3 if price_status_doc is not None else 2,
         'kind': 'aircon-source-health-summary',
         'checkedAt': report['checkedAt'],
         'ok': operations_ok,
@@ -489,6 +603,18 @@ def main(argv=None):
         'schedule': {'planned': args.schedule_hkt + ' HKT',
                      'delayIsInformationalOnly': True},
     }
+    if price_status_doc is not None:
+        # v3 requires the actual receipt, not merely a status word.  Missing or
+        # malformed receipt evidence is unhealthy, never default-healthy.
+        summary['price'] = price_status_doc
+        summary['priceHealthy'] = price_status_doc.get('healthy') is True \
+            and price_status_doc.get('status') != 'blocked'
+        summary['operations']['priceHealthy'] = summary['priceHealthy']
+        if not summary['priceHealthy']:
+            summary['operations']['ok'] = False
+            summary['operations']['status'] = 'unhealthy'
+            summary['ok'] = False
+            summary['status'] = 'unhealthy'
     try:
         _atomic_json(args.state, new_state)
         _atomic_json(args.report, report)

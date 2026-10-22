@@ -400,6 +400,35 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
+      # ============ 第 2b 步：新機價格需求／月度 cycle 入口（零 provider） ============
+      # 官網 queue 保持原狀；純 coverage pending 不再阻擋下一輪價格啟動。
+      # 只有「未處理新機 + 本月未做過」才可開新批次；shared mode 只經
+      # monthly-cycle-v2 + coordinator CAS，混用旗標 fail closed。
+      - name: 新機價格需求／月度 cycle 入口（零 provider）
+        id: price_demand
+        if: >
+          github.event.inputs.rebuild_verified_snapshot != 'true' &&
+          github.event.inputs.repair_release != 'true'
+        env:
+          AIRCON_PRICE_CYCLE_ENABLED: ${{ secrets.AIRCON_PRICE_CYCLE_ENABLED }}
+          AIRCON_PRICE_SHARED_CYCLE: ${{ secrets.AIRCON_PRICE_SHARED_CYCLE }}
+          AIRCON_PRICE_SOURCE_REVISION: ${{ github.sha }}
+          AIRCON_PRICE_WRITER: github
+          AIRCON_BIGGO_LEASE_OWNER: ${{ github.run_id }}-monthly-entry
+          AIRCON_BIGGO_COORDINATOR_REPO: ${{ secrets.AIRCON_BIGGO_COORDINATOR_REPO }}
+          AIRCON_BIGGO_COORDINATOR_TOKEN: ${{ secrets.AIRCON_BIGGO_COORDINATOR_TOKEN }}
+          AIRCON_BIGGO_COORDINATOR_BRANCH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_BRANCH }}
+          AIRCON_BIGGO_COORDINATOR_STATE_PATH: ${{ secrets.AIRCON_BIGGO_COORDINATOR_STATE_PATH }}
+          AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR: ${{ secrets.AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR }}
+        run: |
+          python scripts/price_demand_entry.py --apply 2>&1 | tee "$RUNNER_TEMP/price-demand-entry.json"
+          test "${PIPESTATUS[0]}" -eq 0
+          {
+            echo "### 價格需求／月度 cycle"
+            echo "- 入口：demand-gated（零 provider）"
+            echo "- 官網 pending 不阻擋；shared 模式必須成對啟用"
+          } >> "$GITHUB_STEP_SUMMARY" || true
+
       # ============ 第 3 步：價錢快照批次（BigGo 官方 JSON API；approved C coordinator-gated） ============
       # 2026-08-26：改用官方 API api.biggo.com（同被限流嘅網頁版 biggo.hk 唔同 host）
       # Repair #1：呢一步**冇任何**繞過 coordinator lease 嘅路徑。force intent 只可以

@@ -33,7 +33,7 @@ EXPECTED_BLOCKS = [
 ]
 # Independent, explicitly versioned extensions.  They are NOT additional
 # canonical blocks: extract_blocks() still returns exactly the six above.
-SCHEMA_EXTENSIONS = ['AIRCON_METADATA_SCHEMA_V1_1']
+SCHEMA_EXTENSIONS = ['AIRCON_METADATA_SCHEMA_V1_1', 'AIRCON_PRICE_STATUS_SCHEMA_V1']
 
 
 class BlockError(Exception):

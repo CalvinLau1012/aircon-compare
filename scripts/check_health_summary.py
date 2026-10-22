@@ -299,9 +299,90 @@ def _evaluate_v2(summary, *, now=None, max_age_hours=48, expected_metadata=None)
             'checkedAt': summary.get('checkedAt')}
 
 
+def _evaluate_v3(summary, *, now=None, max_age_hours=48, expected_metadata=None):
+    """v3: v2 operations/coverage plus a live-derived price status receipt.
+
+    The price receipt is mandatory.  Its self hash is not sufficient: status,
+    reason, healthy flag, timing and evidence bindings must all be internally
+    consistent and bound to the summary's actual BigGo snapshot.
+    """
+    now = now or dt.datetime.now(dt.timezone.utc)
+    if summary.get('schemaVersion') != 3:
+        return {'ok': False, 'status': 'unhealthy',
+                'failures': ['summary:schemaVersion-unsupported'], 'sourceStates': {}}
+    base = _evaluate_v2(summary, now=now, max_age_hours=max_age_hours,
+                        expected_metadata=expected_metadata)
+    failures = list(base.get('failures') or [])
+    receipt = summary.get('price')
+    if not isinstance(receipt, dict):
+        failures.append('summary:price-receipt-missing')
+    else:
+        try:
+            import price_status
+            price_status.validate_receipt(receipt, now=now)
+        except Exception as e:  # noqa: BLE001
+            failures.append(f'summary:price-receipt-invalid:{type(e).__name__}')
+        else:
+            determined = None
+            try:
+                determined = dt.datetime.fromisoformat(
+                    str(receipt.get('determinedAt')).replace('Z', '+00:00'))
+                if determined.tzinfo is None or determined.utcoffset() != dt.timedelta(0):
+                    raise ValueError
+            except (ValueError, TypeError):
+                failures.append('summary:price-determinedAt-invalid')
+            if determined is not None:
+                if determined > now + dt.timedelta(minutes=5):
+                    failures.append('summary:price-determinedAt-future')
+                elif (now - determined).total_seconds() > max_age_hours * 3600:
+                    failures.append('summary:price-receipt-stale')
+                checked = None
+                try:
+                    checked = dt.datetime.fromisoformat(
+                        str(summary.get('checkedAt')).replace('Z', '+00:00'))
+                except (ValueError, TypeError):
+                    checked = None
+                if checked is not None and determined > checked + dt.timedelta(minutes=5):
+                    failures.append('summary:price-determinedAt-after-check')
+            ev = receipt.get('evidence') or {}
+            sources = summary.get('sources') or {}
+            biggo = sources.get('biggo') or {}
+            if receipt.get('status') == 'blocked' or receipt.get('healthy') is not True:
+                failures.append('summary:price-not-healthy:' + str(receipt.get('safeReason')))
+            if summary.get('priceHealthy') is not True:
+                failures.append('summary:price-healthy-flag-mismatch')
+            if (summary.get('operations') or {}).get('priceHealthy') is not True:
+                failures.append('summary:operations-price-healthy-mismatch')
+            if ev.get('snapshotHash') != summary.get('biggoSnapshotHash'):
+                failures.append('summary:price-snapshot-binding-mismatch')
+            if ev.get('snapshotHash') != biggo.get('snapshotHash'):
+                failures.append('summary:price-source-snapshot-binding-mismatch')
+            if receipt.get('status') == 'active' and receipt.get('healthy') is not True:
+                failures.append('summary:active-price-not-healthy')
+            if receipt.get('status') == 'month-completed' and receipt.get('stage') != 7:
+                failures.append('summary:month-completed-stage-invalid')
+    # De-duplicate while retaining deterministic order.
+    failures = list(dict.fromkeys(failures))
+    return {'ok': not failures, 'status': 'healthy' if not failures else 'unhealthy',
+            'failures': failures[:30],
+            'sourceStates': sanitize_source_states(summary.get('sources')),
+            'coveragePending': bool(base.get('coveragePending')),
+            'coverageExpected': bool(base.get('coverageExpected')),
+            'coverageMissingCount': base.get('coverageMissingCount'),
+            'coverageObservationHash': base.get('coverageObservationHash'),
+            'priceStatus': receipt.get('status') if isinstance(receipt, dict) else None,
+            'priceHealthy': bool(isinstance(receipt, dict)
+                                 and receipt.get('healthy') is True
+                                 and receipt.get('status') != 'blocked'),
+            'checkedAt': summary.get('checkedAt')}
+
+
 def evaluate(summary, *, now=None, max_age_hours=48, expected_metadata=None):
-    """Dispatch by explicit schema version; v1 keeps its original strict meaning."""
+    """Dispatch by explicit schema version; v1/v2 keep their original meaning."""
     try:
+        if isinstance(summary, dict) and summary.get('schemaVersion') == 3:
+            return _evaluate_v3(summary, now=now, max_age_hours=max_age_hours,
+                                expected_metadata=expected_metadata)
         if isinstance(summary, dict) and summary.get('schemaVersion') == 2:
             return _evaluate_v2(summary, now=now, max_age_hours=max_age_hours,
                                 expected_metadata=expected_metadata)

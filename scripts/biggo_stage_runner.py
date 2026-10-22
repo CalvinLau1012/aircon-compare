@@ -337,6 +337,137 @@ def _needs_review(client, emit, cycle_id, *, stage, reason, lease_lost=False,
                 'commitFailed': type(e).__name__}
 
 
+def _shared_preflight(env, meta, cycle_id, stage_no, now_fn=None):
+    """Shared mode: validate transition/anchor before any provider intent."""
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        'scripts', 'price_cycle.py')
+    spec = importlib.util.spec_from_file_location('price_cycle_preflight', path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    try:
+        if mod.shared_mode(env) != 'shared':
+            return None
+    except mod.AnchorError as e:
+        return f'mode-inconsistent:{e}'
+    try:
+        store = mod.CoordinatorAnchorStore.from_env(env)
+        anchor_doc, _sha, transition_doc = mod._read_store(store)
+        import biggo_canonical as _canon
+        snap = json.load(open(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'biggo_prices.json'), encoding='utf-8'))
+        initial_base = env.get('AIRCON_PRICE_INITIAL_BASE_HASH') or _canon.sha256_json(snap)
+        now = now_fn() if now_fn else None
+        state = mod.plan(meta, anchor_doc, transition_doc, now,
+                         actual_source=env.get('AIRCON_PRICE_SOURCE_REVISION'),
+                         initial_base=initial_base,
+                         writer_role=env.get('AIRCON_PRICE_WRITER') or None)
+    except Exception as e:  # noqa: BLE001
+        return f'shared-preflight-error:{type(e).__name__}'
+    if anchor_doc is None:
+        return 'shared-anchor-missing'
+    ok_reasons = ('already-anchored', 'active-batch', 'month-completed')
+    if state.get('reason') not in ok_reasons:
+        return 'shared-cycle-blocked:' + str(state.get('reason'))
+    meta_idx = int(meta.get('price_batch_idx', 0) or 0)
+    if anchor_doc['stage'] < meta_idx:
+        return 'anchor-stage-behind-meta'
+    if anchor_doc['status'] == 'needs-review':
+        return 'anchor-needs-review'
+    return None
+
+
+def _preflight_anchor(env):
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        'scripts', 'price_cycle.py')
+    spec = importlib.util.spec_from_file_location('price_cycle_anchor', path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    store = mod.CoordinatorAnchorStore.from_env(env)
+    anchor_doc, _sha, _t = mod._read_store(store)
+    return anchor_doc
+
+
+def _material_guard(env, meta, anchor_doc, repo_root, now_fn):
+    """Before provider work, prove local four files match the verified chain."""
+    import importlib.util
+    import biggo_canonical as _canon
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        'scripts', 'price_cycle.py')
+    spec = importlib.util.spec_from_file_location('price_cycle_matguard', path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    root = str(repo_root)
+
+    def _price_hash():
+        with open(os.path.join(root, 'biggo_prices.json'), encoding='utf-8') as f:
+            return _canon.sha256_json(json.load(f))
+
+    def _tracking_hash():
+        with open(os.path.join(root, 'model_status.json'), encoding='utf-8') as f:
+            return _canon.sha256_json(json.load(f))
+
+    def _blacklist_hash():
+        with open(os.path.join(root, 'model_blacklist.json'), encoding='utf-8') as f:
+            return _canon.sha256_json((json.load(f) or {}).get('models') or {})
+
+    try:
+        if anchor_doc is None:
+            return 'material-anchor-missing'
+        if anchor_doc['stage'] == 0:
+            if str(meta.get('price_batch_start') or '') != anchor_doc['startedAt']:
+                return 'material-baseline-start-mismatch'
+            if int(meta.get('price_batch_idx', 0) or 0) != 0:
+                return 'material-baseline-idx-mismatch'
+            base = anchor_doc.get('cycleBaseHash') or anchor_doc.get('initialBaseHash')
+            if not base or _price_hash() != base:
+                return 'material-baseline-hash-mismatch'
+            return None
+        contents = mod.CoordinatorAnchorStore.from_env(env).contents
+        now_value = now_fn()
+        client = coord_mod.CoordinatorClient(
+            contents, owner='material-guard',
+            now=lambda: now_value.timestamp() if hasattr(now_value, 'timestamp')
+            else now_value)
+        bundle = client.import_historic_bundle(anchor_doc['cycle'], anchor_doc['stage'])
+        if bundle['bundleHash'] != anchor_doc.get('lastBundleHash'):
+            return 'material-lastbundle-mismatch'
+        if _price_hash() != bundle['newSnapshotHash']:
+            return 'material-price-mismatch'
+        if _tracking_hash() != bundle['stageResult']['postState']['trackingHash']:
+            return 'material-tracking-mismatch'
+        if _blacklist_hash() != bundle['stageResult']['postState']['blacklistHash']:
+            return 'material-blacklist-mismatch'
+        if meta.get('appliedBundleHash') != bundle['bundleHash']:
+            return 'material-meta-bundle-mismatch'
+        if int(meta.get('price_batch_idx', 0) or 0) != anchor_doc['stage']:
+            return 'material-meta-idx-mismatch'
+        return None
+    except Exception as e:  # noqa: BLE001
+        return f'material-guard-error:{type(e).__name__}'
+
+
+def _advance_shared_anchor(env, month, stage, bundle_hash, emit, snapshot_hash=None):
+    """Durably advance the shared anchor after a successful local apply."""
+    if (env or {}).get('AIRCON_PRICE_SHARED_CYCLE') != '1':
+        return
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        'scripts', 'price_cycle.py')
+    spec = importlib.util.spec_from_file_location('price_cycle_runner', path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    try:
+        store = mod.CoordinatorAnchorStore.from_env(env)
+        mod.advance_stage(store, month, stage, bundle_hash,
+                          snapshot_hash=snapshot_hash)
+    except Exception as e:  # noqa: BLE001
+        emit('needs-review', reason='anchor-advance-failed', month=month,
+             stage=stage, error=type(e).__name__)
+
+
 def _write_status(status_out, record):
     """寫 status artifact（best-effort；缺失由 CI guard／alert fail-closed）。"""
     if not status_out:
@@ -525,6 +656,20 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
             mode = 'price-batch'
             queued = workload['queuedModels']
         record.update({'cycle': cycle_id, 'stage': stage_no, 'mode': mode})
+
+        # ---- 1b. shared mode preflight: zero provider before authority checks ----
+        blocked = _shared_preflight(env, meta, cycle_id, stage_no, now_fn)
+        if blocked:
+            emit('needs-review', reason='shared-preflight-blocked', detail=blocked,
+                 cycle=cycle_id, stage=stage_no, rerun='prohibited')
+            return 0
+        if (env or {}).get('AIRCON_PRICE_SHARED_CYCLE') == '1':
+            guard = _material_guard(env, meta, _preflight_anchor(env),
+                                    repo_root, now_fn)
+            if guard:
+                emit('needs-review', reason='material-guard-blocked', detail=guard,
+                     cycle=cycle_id, stage=stage_no, rerun='prohibited')
+                return 0
 
         # ---- 2. Coordinator 配置缺失：保留快照，唔呼叫 BigGo ----
         cfg_status = coord_mod.config_status(env)
@@ -923,6 +1068,9 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
                  bundleHash=published['bundleHash'], localReceiver=local_receiver,
                  requests={'token': record['requests']['token'],
                            'search': record['requests']['search']})
+            _advance_shared_anchor(env, str(cycle_id)[:7], stage_no,
+                                   published['bundleHash'], emit,
+                                   snapshot_hash=published['newSnapshotHash'])
             return 0
         finally:
             if local_lock is not None:
@@ -974,6 +1122,9 @@ def _import_and_apply(client, emit, apply_fn, repo_root, now_fn, cycle_id, stage
     emit(final_status, cycle=cycle_id, stage=stage_no,
          localApply='noop' if report.get('noop') else 'applied', imported=True,
          snapshotHash=bundle['newSnapshotHash'])
+    _advance_shared_anchor(env, str(cycle_id)[:7], stage_no,
+                           bundle['bundleHash'], emit,
+                           snapshot_hash=bundle['newSnapshotHash'])
     return 0
 
 

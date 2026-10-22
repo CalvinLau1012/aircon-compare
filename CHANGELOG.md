@@ -1062,3 +1062,10 @@ Root independently reproduced a remaining R2 case: a present null/empty/half-wri
 ### 2026-10-21 Root 獨立驗收補正（D39 實作）
 
 Root 反例發現並補正：損壞 observation 結構須產生 unhealthy 收據而非 traceback；Gilman catalogue 的頁面失敗／TLS 原因不可冒充正常缺項；連續兩輪 pending 保留已驗證完整快照；一般 cache 入口沿用最早來源觀察時間，不能靠重跑把舊目錄變新。補上獨立回歸案例；原候選及原測試紀錄保留。純缺規格仍正常待補，真正資料／抓取／部署故障維持阻斷。本條是候選補正紀錄，正式部署事實另行追加。
+
+## 2026-10-22 — 雙端工作流修復候選（append-only；未部署）
+
+- Added：分來源 price status receipt（schemaVersion 1）及 health summary v3；`price_demand.py`／`price_demand_entry.py`（新機需求、canonical 去重、priced／clean_miss 證據、network error 不處理）；`scripts/price_cycle_migrate.py`（預設唯讀、fixture-only apply、semantic no-op）。
+- Changed：BigGo snapshot 套用／取得 age 不再以單一 36h 判 pipeline 故障；官網 queue 與價格啟動分離，`advance_queue` 只處理官網隊列；shared mode 使用 monthly-cycle-v2＋CAS，兩旗標必須成對。
+- Fixed：私人 runtime mkdir 鎖改 flock（busy 75、缺 flock fail closed、子程序持 fd）；aircon json-file 10m／3；update.log／update-cron.log／source-health.log 以獨立 flock＋logrotate 10MiB／14 份／delaycompress 輪替。
+- Evidence：新增 price status、demand、migration、true-entry acquisition 全鏈及 v1／v2／v3 相容／反例測試；候選只作離線 fixture／fake provider／fake coordinator 驗證。零正式 provider／coordinator／服務操作。

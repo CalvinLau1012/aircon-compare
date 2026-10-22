@@ -878,3 +878,14 @@ A full offline gate exposed a pre-existing intermittent CLI failure: repeating a
 
 
 > **2026-10-21 官網待補正常化（追加）**：使用者明確授權「確實沒有官網資料的項目就不要action紅了，email好煩，EMSD是政府數據庫。。。」。經本輪真實驗證的純官網 full-spec coverage 缺口，保留 pending 及缺項追蹤，但不再令 daily／monitor Actions 紅或發故障郵件；UI／PDF 以普通「官網規格待補」顯示，不冒充已核實、不猜未知規格、不宣稱未上市。真正抓取／TLS／依賴／parser／收據／hash／queue／manifest／EMSD 過期／部署／BigGo 硬故障仍 fail-closed。此決定取代先前「所有 official pending 必須 unhealthy」的相反規則；歷史文字保留。本輪零 BigGo provider／coordinator 寫入，正式部署由 Root。
+
+## 2026-10-22 追加：雙端工作流修復候選（未部署）
+
+本節只追加，較早的部署與「未部署／暫停」描述屬歷史。使用者已批准實作方案；本輪由 Pi 在隔離候選完成程式、測試及交付，Root 負責正式 Docker、憑證、GitHub、部署及最後驗收。
+
+- **新鮮度分源**：BigGo 舊價格 snapshot 不再被統一 36h 當 pipeline 故障；新增版本化 `price-status` receipt 及 health summary v3（v1／v2 reader 保持嚴格相容）。EMSD／官方觀察／工作流心跳與網站期限仍獨立；真 provider／receipt／hash／部署故障維持紅色。
+- **執行安全**：私人 runtime 改以持久 volume `.locks/update.lock` 的 `flock`（busy＝75、缺 flock fail closed），SIGKILL 後不會因殘留 mkdir 目錄而假成功；三個應用 log 加 10MiB／14 份／delaycompress 輪替，aircon 容器加 json-file 10m／3。
+- **價格需求**：`price_demand.json` 只記錄真正的 EMSD 新機需求及已驗 priced／clean_miss 證據；官網 queue 獨立保留。只有未處理新機且本月未做過才開原有七日批次；無新機不再每月自動全量查價。共享模式使用 monthly-cycle-v2＋CAS，兩個旗標必須成對。
+- **遷移**：提供預設唯讀的 `scripts/price_cycle_migrate.py`，由真實 stage7／兩端 baseline／新機推導 transition、completed anchor、history 及 demand；缺證據 blocked，重跑 no-op，正式 coordinator CAS 只由 Root 執行。
+- **取得時間**：沿用既有 BigGo acquisition witness；新包兩端共享同一取得時間、各自保留真實套用時間；legacy 仍 unknown，重接收不刷新。
+- **邊界**：本輪零 BigGo provider／coordinator／lease／budget／正式資料或服務操作；未宣稱已部署。Root 需先部署兼容 reader、再 producer，並另行驗 network-none Docker、live／browser 及自然下一輪 daily。

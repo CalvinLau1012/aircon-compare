@@ -695,6 +695,26 @@ def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, applied_at=Non
             raise ApplyError(f'prices_meta 目標 schema 唔合格：{e}') from e
         staged_meta_hash = _canonical_hash(staged_meta)
 
+        # Versioned new-model demand evidence is preflighted before any byte is
+        # written.  A malformed demand file blocks the apply instead of being
+        # reset; an absent file with no matching demand stays absent.
+        import price_demand
+        demand_path = os.path.join(root, price_demand.DEFAULT_PATH.rsplit(os.sep, 1)[-1])
+        try:
+            demand_before = price_demand.load(demand_path)
+            demand_after = price_demand.record_bundle(demand_before, bundle, now)
+        except price_demand.DemandError as e:
+            raise ApplyError(f'price_demand.json 契約錯誤（零寫入）：{e}') from e
+        demand_changed = demand_after != demand_before or (
+            os.path.exists(demand_path) and demand_after.get('demands'))
+
+        def _record_demand():
+            if demand_changed:
+                try:
+                    price_demand.save(demand_after, demand_path)
+                except (OSError, price_demand.DemandError) as e:
+                    raise ApplyError(f'price_demand.json 寫入失敗：{e}') from e
+
         all_post = (snapshot_plan[0] == 'post' and tracking_plan[0] == 'post'
                     and blacklist_plan[0] == 'post')
         meta_applied = meta.get('appliedBundleHash') == bundle['bundleHash']
@@ -702,6 +722,7 @@ def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, applied_at=Non
             if not all_post:
                 raise ApplyError('meta 已 applied 但本地檔案唔係 post image'
                                  '（needs manual reconciliation）')
+            _record_demand()
             if journal is not None:
                 _remove_journal(root)
             return {'snapshot': 'post', 'tracking': 'post', 'blacklist': 'post',
@@ -766,6 +787,7 @@ def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, applied_at=Non
             raise ApplyError('prices_meta.json 寫入後 hash 唔等於已驗證目標')
         journal['meta']['state'] = 'written'
         _write_journal(root, journal)
+        _record_demand()
         _remove_journal(root)
         return {
             'snapshot': 'post' if snapshot_plan[0] == 'post' else 'applied',

@@ -49,3 +49,6 @@ _site/
 
 # Local BigGo transaction mutex; never a source artifact
 .aircon-biggo-apply.lock
+
+# runtime shared-anchor cache (never a source artifact)
+price_anchor.json

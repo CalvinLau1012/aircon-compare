@@ -776,6 +776,12 @@ class CoordinatorClient:
         # req.date < rem.date → 舊請求，交由 _guard_regression 回 completed-ahead
         return None
 
+    def read_remote_state(self):
+        """Read-only remote state (no write); used by the shared monthly reconcile."""
+        state, sha = self._contents.read_state()
+        self.state, self._sha = state, sha
+        return state
+
     def acquire(self, cycle_id, stage):
         """CAS 搶／續／接收 lease；回傳 {'result', 'state', 'reason'(?)}。
 
@@ -1322,8 +1328,25 @@ class CoordinatorClient:
         return paths, flags
 
     def import_bundle(self, expected_cycle, expected_stage):
-        """讀取並嚴格驗證 v2 bundle；任何缺檔／hash／binding 唔符即 raise。"""
-        paths, import_flags = self._import_paths(expected_cycle, expected_stage)
+        """Read and strictly validate a v2 bundle bound to terminal state."""
+        return self._import_bundle(expected_cycle, expected_stage, bind_state=True)
+
+    def import_historic_bundle(self, expected_cycle, expected_stage):
+        """Validate an earlier stage bundle without binding to terminal state.
+
+        The shared reconcile validates the complete chain and the final anchor
+        separately; all hash/cycle/stage/effects checks remain enforced here.
+        """
+        return self._import_bundle(expected_cycle, expected_stage, bind_state=False)
+
+    def _import_bundle(self, expected_cycle, expected_stage, bind_state):
+        if bind_state:
+            paths, import_flags = self._import_paths(expected_cycle, expected_stage)
+        else:
+            paths = self._bundle_paths(expected_cycle)
+            import_flags = {'stateRefsPresent': False,
+                            'configuredSnapshotDirMatchesState': None,
+                            'importSource': 'configured-snapshot-dir'}
         man_bytes, _sha = self._contents.read_snapshot(paths['manifest'])
         if man_bytes is None:
             raise SnapshotImportError('coordinator 冇 manifest 可以匯入')
@@ -1369,8 +1392,8 @@ class CoordinatorClient:
                               mode=manifest.get('mode'))
         if manifest.get('recordCount') != len(new_snapshot):
             raise SnapshotImportError('manifest recordCount 唔 match')
-        # state 綁定（completed 時必須一致）
-        if self.state is not None and self.state.get('status') == 'completed':
+        # state 綁定（completed 時必須一致）；historic bundle 由 reconcile 另驗 chain。
+        if bind_state and self.state is not None and self.state.get('status') == 'completed':
             if self.state.get('snapshotHash') != manifest['newSnapshotHash']:
                 raise SnapshotImportError('state.snapshotHash 同 manifest 唔 match')
             if self.state.get('snapshotPath') != paths['snapshot']:
