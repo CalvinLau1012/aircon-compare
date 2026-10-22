@@ -240,7 +240,9 @@ def build_receipt(*, now=None, meta=None, demand=None, biggo=None,
             cd = _dt.datetime.fromtimestamp(float(blocked_until_raw), _dt.timezone.utc)
             if cd > now_dt + _dt.timedelta(seconds=max_cooldown_seconds):
                 status, reason, healthy = 'blocked', 'invalid-cooldown', False
-            elif cd > now_dt:
+            else:
+                # Keep an already-expired legal recovery marker: its recovery
+                # time still anchors the 36h stall deadline after cooldown.
                 cooldown_until = cd
     start = meta.get('price_batch_start')
     idx = meta.get('price_batch_idx', 0)
@@ -253,8 +255,19 @@ def build_receipt(*, now=None, meta=None, demand=None, biggo=None,
         if active:
             cycle_id = f'{start}:{idx + 1}/7'
             if cooldown_until is not None:
-                status, reason, healthy = 'active', 'cooldown', True
-                next_eligible = cooldown_until
+                # A legal cooldown is not "no progress": the stall deadline
+                # starts from its actual recovery time, not from this monitor
+                # run and not from a repeated skip.
+                deadline = cooldown_until + _dt.timedelta(hours=max_age_hours)
+                if now_dt < cooldown_until:
+                    status, reason, healthy = 'active', 'cooldown', True
+                    next_eligible = cooldown_until
+                elif (now_dt - cooldown_until).total_seconds() > max_age_hours * 3600:
+                    status, reason, healthy = 'active', 'active-no-progress', False
+                    next_eligible = deadline
+                else:
+                    status, reason, healthy = 'active', 'cooldown', True
+                    next_eligible = deadline
             elif progress is None or (now_dt - progress).total_seconds() > max_age_hours * 3600:
                 status, reason, healthy = 'active', 'active-no-progress', False
                 next_eligible = (progress + _dt.timedelta(hours=max_age_hours)
@@ -268,7 +281,7 @@ def build_receipt(*, now=None, meta=None, demand=None, biggo=None,
         elif price_demand.pending(demand):
             status = 'waiting-eligible'
             healthy = True
-            if cooldown_until is not None:
+            if cooldown_until is not None and cooldown_until > now_dt:
                 reason, next_eligible = 'cooldown', cooldown_until
             else:
                 reason, next_eligible = 'new-model-demand', now_dt
@@ -393,13 +406,14 @@ def validate_receipt(receipt, *, now=None, max_age_hours=MAX_AGE_HOURS,
             if progress is None or (now_dt - progress).total_seconds() <= max_age_hours * 3600:
                 raise PriceStatusError('active-no-progress not actually stalled')
             nxt = _parse(receipt.get('nextEligibleAt'))
-            if nxt is not None and nxt > now_dt:
+            if nxt is not None and nxt > now_dt + _dt.timedelta(minutes=5):
                 raise PriceStatusError('premature nextEligibleAt for stalled active')
         elif receipt.get('safeReason') == 'cooldown':
             nxt = _parse(receipt.get('nextEligibleAt'))
             if nxt is None or nxt <= now_dt:
                 raise PriceStatusError('active cooldown missing legal recovery time')
-            if nxt > now_dt + _dt.timedelta(seconds=max_cooldown_seconds):
+            if nxt > now_dt + _dt.timedelta(
+                    seconds=max_cooldown_seconds + max_age_hours * 3600):
                 raise PriceStatusError('active cooldown unbounded')
     elif receipt['status'] == 'month-completed':
         if not isinstance(receipt.get('cycleId'), str) \

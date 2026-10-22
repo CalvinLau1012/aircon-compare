@@ -134,6 +134,14 @@ def test_active_no_progress_and_legal_vs_fake_cooldown():
     assert r2['nextEligibleAt'] == price_status._stamp(
         dt.datetime.fromtimestamp(now + 3600, dt.timezone.utc))
     price_status.validate_receipt(r2, now=now)
+    # Shortly after legal recovery, the 36h stall deadline runs from recovery,
+    # not from the ancient last progress.
+    r2b = price_status.build_receipt(now=now + 3600 + 60,
+                                     **dict(inputs, meta=legal_meta))
+    assert r2b['status'] == 'active' and r2b['safeReason'] == 'cooldown'
+    assert r2b['healthy'] is True
+    assert r2b['nextEligibleAt'] == price_status._stamp(
+        dt.datetime.fromtimestamp(now + 3600 + 36 * 3600, dt.timezone.utc))
     # Fake/unbounded future cooldown never becomes a legal wait.
     fake = dict(active_meta, blocked_until=now + price_status.MAX_COOLDOWN_SECONDS + 1)
     r3 = price_status.build_receipt(now=now, **dict(inputs, meta=fake))
