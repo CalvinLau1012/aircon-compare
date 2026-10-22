@@ -42,8 +42,9 @@ def _seed(root):
         'schemaVersion': 1, 'kind': 'aircon-price-demand',
         'updatedAt': '2026-09-30T00:00:00Z',
         'demands': [{'key': 'BRAND|M1', 'brand': 'BRAND', 'model': 'M1',
-                     'firstSeen': '2026-09-30', 'status': 'pending',
-                     'evidence': []}]}))
+                     'firstSeen': '2026-09-30',
+                     'firstSeenAt': '2026-09-30T00:00:00Z',
+                     'status': 'pending', 'evidence': []}]}))
 
 
 
