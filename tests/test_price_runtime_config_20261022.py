@@ -105,6 +105,7 @@ def test_source_pin_survives_data_child_commit_and_rejects_code_drift(tmp_path):
     _git(repo, 'commit', '-qm', 'code')
     rev = _git(repo, 'rev-parse', 'HEAD').stdout.strip()
     assert pin.verify_git(str(repo), rev)['ok'] is True
+    assert pin.verify_configured(str(repo), {'AIRCON_PRICE_SOURCE_REVISION': rev})['mode'] == 'git'
     (repo / 'new_models.json').write_text('{"models":[{"model":"X"}]}', encoding='utf-8')
     _git(repo, 'add', '-A'); _git(repo, 'commit', '-qm', 'data child')
     # The old ack revision remains valid across a pure data commit.
@@ -124,10 +125,24 @@ def test_source_pin_survives_data_child_commit_and_rejects_code_drift(tmp_path):
     with open(repo / 'fetch_biggo.py', 'w', encoding='utf-8') as f:
         f.write((source / 'fetch_biggo.py').read_text())
     assert pin.verify_image(str(repo), str(source), rev)['ok'] is True
+    image_env = {'AIRCON_PRICE_SOURCE_REVISION': rev,
+                 'AIRCON_PRICE_SOURCE_ROOT': str(source)}
+    # Runtime metadata has its own .git history, unrelated to the image commit.
+    # The real entry must use the same image closure as the shell preflight.
+    assert pin.verify_configured(str(repo), image_env)['mode'] == 'image'
+    saved_marker = (source / '.release-commit').read_text()
+    (source / '.release-commit').unlink()
+    try:
+        pin.verify_configured(str(repo), image_env)
+    except ValueError as e:
+        assert 'image-release-revision-missing' in str(e)
+    else:
+        raise AssertionError('explicit image configuration must not fall back to git')
+    (source / '.release-commit').write_text(saved_marker)
     with open(repo / 'fetch_biggo.py', 'a', encoding='utf-8') as f:
         f.write('\n# drift\n')
     try:
-        pin.verify_image(str(repo), str(source), rev)
+        pin.verify_configured(str(repo), image_env)
     except ValueError as e:
         assert 'image-source-mismatch' in str(e)
     else:

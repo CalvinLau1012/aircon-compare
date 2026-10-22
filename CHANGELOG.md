@@ -1088,3 +1088,14 @@ Root 反例發現並補正：損壞 observation 結構須產生 unhealthy 收據
 Root 獨立重現後補正：需求合併必須更新實際 ledger list；需求完成只採有效 acquisition witness，封裝時間不能證明涵蓋較新需求。Legacy 已完成 stage7 可另綁原 run/job/status 的不可變 query-window 收據，只用其下界證明舊登記先於查價，不寫回原包或冒充逐項原始取得時間。六項沒有查價歷史的需求保留 unknown，顯式 retain-unknown-ineligible 處置逐項綁 hash，禁止它們單獨啟動查價；未來有可信建立時間的新需求仍按原批准「有新機、每 HKT 月最多一次、原七日 workload」規則處理。預設 migration 仍對未處置 unknown 顯示不可啟用。
 
 價格 receipt 以獨立 v1.1 Schema extension 正式加入 evidence 欄位並實際驗證；metadata_schema 的選擇不變。新版模式下兩個 sidecar 同時缺失也必須告警，不能退回 legacy 36h 判斷。Private cron 與人工入口共用非秘密價格政策檔，避免 cron 丟失容器 environment 後設定分歧。原始 acquiredAt 缺失仍顯示未確認，不能用查價區間、發布／接收／套用時間補造。原 R1/R2 候選、失敗測試與補正證據保留；正式部署及完整門禁結果另行追加。本修復禁止真 BigGo 請求或補跑 full daily。
+
+
+### 2026-10-22 · 官網 pending 測試時鐘修正（追加）
+
+- 修正健康 fixture 固定來源日期卻使用真實現在時間，超過 36 小時便令 daily 前置測試失敗的缺陷。測試資料及 batch／monitor 共用受控模擬時鐘；覆蓋原日期、跨 36 小時及跨年／月場景。
+- 保留並直接驗證真實過期來源、未來觀察、部署不符及損壞收據的阻斷斷言。正式來源日期、36h／72h 門檻、價格政策及 provider 路徑未變更。
+
+
+### 2026-10-23 · 容器來源驗證一致性（追加）
+
+正常 nightly 的外層 image 驗證通過後，內層 entry 因 runtime 資料自己的 .git 目錄誤選 Git 驗證而中止。明確 AIRCON_PRICE_SOURCE_ROOT 現以 immutable image closure 為準；錯 marker、缺檔或 runtime 程式漂移仍 fail closed，不回退 Git。GitHub 未指定 image root 時仍走 Git 固定 commit 驗證。修正沒有開新價格 cycle、查價或重設協調歷史。
