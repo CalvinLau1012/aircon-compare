@@ -12,6 +12,8 @@ def test_real_demand_ledger_stages_commits_and_survives_checkout(tmp_path):
     repo = tmp_path / 'repo'
     subprocess.run(['git', 'clone', '-q', '--no-hardlinks', BASE, str(repo)],
                    check=True, timeout=120)
+    ledger = repo / 'price_demand.json'
+    parent_bytes = ledger.read_bytes() if ledger.exists() else None
     script = (
         'import sys, json; sys.path.insert(0, %r); import price_demand; '
         'price_demand.register_new_models(%r, {"models": [{"brand": "格力", '
@@ -42,8 +44,15 @@ def test_real_demand_ledger_stages_commits_and_survives_checkout(tmp_path):
     head = subprocess.run(['git', '-C', str(repo), 'rev-parse', 'HEAD'],
                           capture_output=True, text=True, check=True).stdout.strip()
     subprocess.run(['git', '-C', str(repo), 'checkout', '-q', 'HEAD~1'], check=True)
-    assert not (repo / 'price_demand.json').exists()
+    if parent_bytes is None:
+        assert not ledger.exists()
+    else:
+        assert ledger.read_bytes() == parent_bytes
     subprocess.run(['git', '-C', str(repo), 'checkout', '-q', head], check=True)
     doc = json.loads((repo / 'price_demand.json').read_text())
-    assert doc['demands'][0]['key'] == 'GREE|STAGE1'
-    assert doc['demands'][0]['status'] == 'pending'
+    staged = {entry['key']: entry for entry in doc['demands']}
+    assert staged['GREE|STAGE1']['status'] == 'pending'
+    if parent_bytes is not None:
+        previous = json.loads(parent_bytes)
+        for entry in previous['demands']:
+            assert staged[entry['key']] == entry
