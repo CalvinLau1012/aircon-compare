@@ -17,6 +17,7 @@ import check_health_summary as chs  # noqa: E402
 import price_demand  # noqa: E402
 import price_status  # noqa: E402
 import source_health_monitor as shm  # noqa: E402
+from price_demand_entry import run as entry_run  # noqa: E402
 from biggo_canonical import sha256_json  # noqa: E402
 import test_source_health_monitor as tsh  # noqa: E402
 
@@ -39,6 +40,7 @@ def _demand():
     # Leave one unresolved demand so waiting-eligible branches can be exercised.
     doc['demands'].append({'key': 'GREE|NEWMODEL', 'brand': '格力',
                            'model': 'NEWMODEL', 'firstSeen': '2026-10-20',
+                           'firstSeenAt': '2026-10-20T00:00:00Z',
                            'status': 'pending', 'evidence': []})
     doc['updatedAt'] = '2026-10-22T00:00:00Z'
     return price_demand.validate(doc)
@@ -61,10 +63,28 @@ def _biggo(**over):
     return doc
 
 
+POST = {'trackingHash': 'sha256:' + 'c' * 64,
+        'blacklistHash': 'sha256:' + 'd' * 64}
+
+
+def _sync(meta=None, snapshot_hash='sha256:' + 'a' * 64):
+    meta = meta or _meta()
+    return {'ok': True, 'postStateVerified': True, 'reason': 'applied',
+            'cycleId': meta.get('last_applied_cycle'),
+            'stage': meta.get('price_batch_idx'),
+            'bundleHash': meta.get('appliedBundleHash'),
+            'verifiedPost': {'biggo_prices.json': snapshot_hash,
+                             'model_status.json': POST['trackingHash'],
+                             'model_blacklist.json': POST['blacklistHash']}}
+
+
 def _receipt(**over):
-    inputs = {'meta': _meta(), 'demand': _demand(), 'biggo': _biggo(),
-              'completed_sync': {}, 'snapshot_hash': 'sha256:' + 'a' * 64,
-              'anchor': None, 'shared': False}
+    meta = over.get('meta', _meta())
+    snap = over.get('snapshot_hash', 'sha256:' + 'a' * 64)
+    inputs = {'meta': meta, 'demand': _demand(), 'biggo': _biggo(),
+              'completed_sync': _sync(meta, snap),
+              'snapshot_hash': snap, 'anchor': None, 'shared': False,
+              'post_state': POST}
     inputs.update(over)
     return price_status.build_receipt(now=over.pop('now', NOW), **inputs)
 
@@ -118,26 +138,32 @@ def test_provider_failure_visible_even_with_old_snapshot_and_receipt():
 def test_active_no_progress_and_legal_vs_fake_cooldown():
     now = 1792600000  # 2026-10-21T...
     active_meta = _meta(price_batch_start='2026-10-18', price_batch_idx=2,
+                        last_applied_cycle='2026-10-18:2/7',
                         last_price_month='2026-10', appliedAt='2026-10-19T00:00:00Z',
                         appliedBundleHash='sha256:' + 'b' * 64)
     biggo = _biggo(status='completed', at='2026-10-19T00:00:00Z')
     inputs = {'meta': active_meta, 'demand': _demand(), 'biggo': biggo,
               'completed_sync': {}, 'snapshot_hash': 'sha256:' + 'a' * 64,
-              'anchor': None, 'shared': False}
+              'anchor': None, 'shared': False, 'post_state': POST}
     r = price_status.build_receipt(now=now + 3 * 86400, **inputs)
     assert r['status'] == 'active' and r['safeReason'] == 'active-no-progress'
     assert r['healthy'] is False
     # Legal cooldown: waiting measured from its actual recovery time.
     legal_meta = dict(active_meta, blocked_until=now + 3600)
-    r2 = price_status.build_receipt(now=now, **dict(inputs, meta=legal_meta))
+    legal_biggo = _biggo(status='skip-cooldown', cooldownUntil=now + 3600,
+                         at='2026-10-21T00:00:00Z',
+                         cycle='2026-10-18:3/7', stage=2)
+    r2 = price_status.build_receipt(
+        now=now, **dict(inputs, meta=legal_meta, biggo=legal_biggo))
     assert r2['status'] == 'active' and r2['safeReason'] == 'cooldown'
     assert r2['nextEligibleAt'] == price_status._stamp(
         dt.datetime.fromtimestamp(now + 3600, dt.timezone.utc))
     price_status.validate_receipt(r2, now=now)
     # Shortly after legal recovery, the 36h stall deadline runs from recovery,
     # not from the ancient last progress.
-    r2b = price_status.build_receipt(now=now + 3600 + 60,
-                                     **dict(inputs, meta=legal_meta))
+    r2b = price_status.build_receipt(
+        now=now + 3600 + 60,
+        **dict(inputs, meta=legal_meta, biggo=legal_biggo))
     assert r2b['status'] == 'active' and r2b['safeReason'] == 'cooldown'
     assert r2b['healthy'] is True
     assert r2b['nextEligibleAt'] == price_status._stamp(
@@ -151,7 +177,7 @@ def test_active_no_progress_and_legal_vs_fake_cooldown():
     r4 = price_status.build_receipt(now=now + 3 * 86400,
                                     **dict(inputs, biggo=skips))
     assert r4['status'] == 'active' and r4['healthy'] is False
-    assert r4['lastVerifiedProgressAt'] == '2026-10-19T00:00:00Z'
+    assert r4['lastVerifiedProgressAt'] is None
 
 
 def test_waiting_and_no_demand_states():
@@ -160,7 +186,7 @@ def test_waiting_and_no_demand_states():
                  appliedAt='2026-09-20T00:00:00Z')
     inputs = {'meta': meta, 'demand': _demand(), 'biggo': _biggo(),
               'completed_sync': {}, 'snapshot_hash': 'sha256:' + 'a' * 64,
-              'anchor': None, 'shared': False}
+              'anchor': None, 'shared': False, 'post_state': POST}
     r = price_status.build_receipt(now=NOW, **inputs)
     assert r['status'] == 'waiting-eligible' and r['healthy'] is True
     empty = price_demand.empty(NOW)
@@ -255,6 +281,22 @@ def test_source_health_main_emits_v3_and_never_defaults_missing_price_to_green(t
         json.dumps(_meta(appliedSnapshotHash=live_hash)), encoding='utf-8')
     (tmp_path / 'biggo_stage_status.json').write_text(
         json.dumps(_biggo(snapshotHash=live_hash)), encoding='utf-8')
+    (tmp_path / 'model_status.json').write_text('{}', encoding='utf-8')
+    (tmp_path / 'model_blacklist.json').write_text(json.dumps({'models': {}}),
+                                                   encoding='utf-8')
+    tracking = json.load(open(tmp_path / 'model_status.json'))
+    black = json.load(open(tmp_path / 'model_blacklist.json'))
+    post = {'trackingHash': sha256_json(tracking),
+            'blacklistHash': sha256_json(black.get('models') or {})}
+    real_meta = _meta(appliedSnapshotHash=live_hash)
+    sync_doc = {'ok': True, 'postStateVerified': True, 'reason': 'applied',
+                'cycleId': real_meta['last_applied_cycle'], 'stage': 7,
+                'bundleHash': real_meta['appliedBundleHash'],
+                'verifiedPost': {'biggo_prices.json': live_hash,
+                                 'model_status.json': post['trackingHash'],
+                                 'model_blacklist.json': post['blacklistHash']}}
+    (tmp_path / 'biggo_completed_sync.json').write_text(json.dumps(sync_doc),
+                                                       encoding='utf-8')
     out = tmp_path / 'source_health_summary.json'
     args = ['--status', str(tmp_path / 'source_status.json'), '--repo', str(tmp_path),
             '--state', str(tmp_path / 'state.json'),
@@ -279,8 +321,8 @@ def test_v3_consumer_rejects_replayed_old_receipt_with_new_checkedAt():
     old_biggo = _biggo(at='2026-10-19T00:00:00Z')
     old_receipt = price_status.build_receipt(
         now=old_now, meta=old_meta, demand=_demand(), biggo=old_biggo,
-        completed_sync={}, snapshot_hash='sha256:' + 'a' * 64,
-        anchor=None, shared=False)
+        completed_sync=_sync(old_meta), snapshot_hash='sha256:' + 'a' * 64,
+        anchor=None, shared=False, post_state=POST)
     assert old_receipt['status'] == 'month-completed'
     summary = {'schemaVersion': 3, 'kind': 'aircon-source-health-summary',
                'checkedAt': NOW.strftime('%Y-%m-%dT%H:%M:%SZ'),
@@ -309,8 +351,9 @@ def test_v3_consumer_rejects_replayed_old_receipt_with_new_checkedAt():
 def test_forged_self_hash_active_in_progress_with_stale_progress_is_rejected():
     old = price_status.build_receipt(
         now=NOW - dt.timedelta(days=2), meta=_meta(),
-        demand=_demand(), biggo=_biggo(), completed_sync={},
-        snapshot_hash='sha256:' + 'a' * 64, anchor=None, shared=False)
+        demand=_demand(), biggo=_biggo(), completed_sync=_sync(),
+        snapshot_hash='sha256:' + 'a' * 64, anchor=None, shared=False,
+        post_state=POST)
     forged = dict(old)
     forged['status'] = 'active'
     forged['safeReason'] = 'in-progress'
@@ -328,12 +371,145 @@ def test_forged_self_hash_active_in_progress_with_stale_progress_is_rejected():
 
 def test_progress_after_old_cooldown_uses_progress_not_cooldown():
     meta = _meta(price_batch_start='2026-10-18', price_batch_idx=2,
+                 last_applied_cycle='2026-10-18:2/7',
                  blocked_until=1792500000,
                  appliedAt='2026-10-22T00:00:00Z')
-    biggo = _biggo(status='completed', at='2026-10-22T00:00:00Z')
+    biggo = _biggo(status='skip-cooldown', cooldownUntil=1792500000,
+                   at='2026-10-21T00:00:00Z',
+                   cycle='2026-10-18:3/7', stage=2)
     r = price_status.build_receipt(
         now=NOW, meta=meta, demand=_demand(), biggo=biggo,
-        completed_sync={}, snapshot_hash='sha256:' + 'a' * 64,
-        anchor=None, shared=False)
+        completed_sync=_sync(meta), snapshot_hash='sha256:' + 'a' * 64,
+        anchor=None, shared=False, post_state=POST)
     assert r['status'] == 'active' and r['safeReason'] == 'in-progress'
     assert r['healthy'] is True
+
+
+def test_old_cycle_receiver_never_refreshes_active_progress():
+    now = 1792600000
+    meta = _meta(price_batch_start='2026-10-10', price_batch_idx=1,
+                 last_applied_cycle='2026-10-10:1/7',
+                 appliedAt='2026-10-10T16:30:00Z')
+    old_receiver = {'ok': True, 'postStateVerified': True,
+                    'reason': 'already-applied',
+                    'cycleId': '2026-09-10:7/7', 'stage': 7,
+                    'bundleHash': 'sha256:' + 'e' * 64,
+                    'finishedAt': '2026-10-22T04:59:59Z',
+                    'verifiedPost': {'biggo_prices.json': 'sha256:' + 'a' * 64,
+                                     'model_status.json': POST['trackingHash'],
+                                     'model_blacklist.json': POST['blacklistHash']}}
+    r = price_status.build_receipt(
+        now=now + 12 * 86400, meta=meta, demand=_demand(),
+        biggo=_biggo(), completed_sync=old_receiver,
+        snapshot_hash='sha256:' + 'a' * 64, anchor=None, shared=False,
+        post_state=POST)
+    assert r['status'] == 'active' and r['safeReason'] == 'active-no-progress'
+    assert r['healthy'] is False
+    # The current stage's matching receipt is allowed to prove progress.
+    current = _sync(meta)
+    r2 = price_status.build_receipt(
+        now=now + 12 * 86400, meta=meta, demand=_demand(),
+        biggo=_biggo(), completed_sync=current,
+        snapshot_hash='sha256:' + 'a' * 64, anchor=None, shared=False,
+        post_state=POST)
+    assert r2['lastVerifiedProgressAt'] == '2026-10-10T16:30:00Z'
+    assert r2['status'] == 'active' and r2['safeReason'] == 'active-no-progress'
+
+
+def test_completed_requires_current_apply_and_post_state_evidence():
+    base = {'meta': _meta(), 'demand': _demand(), 'biggo': _biggo(),
+            'snapshot_hash': 'sha256:' + 'a' * 64, 'anchor': None,
+            'shared': False, 'post_state': POST}
+    r = price_status.build_receipt(now=NOW, completed_sync={}, **base)
+    assert r['status'] == 'blocked' and r['safeReason'] == 'apply-evidence-missing'
+    r2 = price_status.build_receipt(now=NOW, completed_sync=_sync(),
+                                    **dict(base, post_state=None))
+    assert r2['status'] == 'blocked' and r2['safeReason'] == 'post-state-missing'
+    # Empty/mismatched sync cannot become a green completed month.
+    bad = _sync()
+    bad['verifiedPost']['model_status.json'] = 'sha256:' + 'f' * 64
+    r3 = price_status.build_receipt(now=NOW, completed_sync=bad, **base)
+    assert r3['status'] == 'blocked' and r3['safeReason'] == 'apply-evidence-missing'
+
+
+def _v3_repo(tmp_path):
+    tsh._repo(tmp_path)
+    live_hash = sha256_json(json.load(open(tmp_path / 'biggo_prices.json')))
+    status = tsh._status(tmp_path)
+    status['biggo']['snapshotHash'] = live_hash
+    status['biggo']['lastAppliedAt'] = '2026-10-20T20:15:41Z'
+    status['emsd']['lastAcquiredAt'] = '2026-10-22T20:00:00Z'
+    status['emsd']['lastAppliedAt'] = '2026-10-22T20:00:00Z'
+    status['generatedAt'] = '2026-10-22T20:00:00Z'
+    official = tsh._official(tmp_path)
+    official['generatedAt'] = '2026-10-22T20:00:00Z'
+    official['lastSuccessAt'] = '2026-10-22T20:00:00Z'
+    status['official']['lastAcquiredAt'] = '2026-10-22T20:00:00Z'
+    status['official']['lastAppliedAt'] = '2026-10-22T20:00:00Z'
+    (tmp_path / 'source_status.json').write_text(json.dumps(status), encoding='utf-8')
+    (tmp_path / 'official_batch_status.json').write_text(json.dumps(official), encoding='utf-8')
+    (tmp_path / 'price_demand.json').write_text(json.dumps(_demand()), encoding='utf-8')
+    meta = _meta(appliedSnapshotHash=live_hash)
+    (tmp_path / 'prices_meta.json').write_text(json.dumps(meta), encoding='utf-8')
+    (tmp_path / 'biggo_stage_status.json').write_text(
+        json.dumps(_biggo(snapshotHash=live_hash)), encoding='utf-8')
+    (tmp_path / 'model_status.json').write_text('{}', encoding='utf-8')
+    (tmp_path / 'model_blacklist.json').write_text(json.dumps({'models': {}}),
+                                                   encoding='utf-8')
+    post = {'trackingHash': sha256_json({}),
+            'blacklistHash': sha256_json({})}
+    sync = {'ok': True, 'postStateVerified': True, 'reason': 'applied',
+            'cycleId': meta['last_applied_cycle'], 'stage': 7,
+            'bundleHash': meta['appliedBundleHash'],
+            'verifiedPost': {'biggo_prices.json': live_hash,
+                             'model_status.json': post['trackingHash'],
+                             'model_blacklist.json': post['blacklistHash']}}
+    (tmp_path / 'biggo_completed_sync.json').write_text(json.dumps(sync), encoding='utf-8')
+    return live_hash
+
+
+def _main_args(tmp_path, summary):
+    return ['--status', str(tmp_path / 'source_status.json'), '--repo', str(tmp_path),
+            '--state', str(tmp_path / 'state.json'),
+            '--report', str(tmp_path / 'report.json'), '--summary', str(summary),
+            '--official-status-file', str(tmp_path / 'official_batch_status.json'),
+            '--now', NOW.strftime('%Y-%m-%dT%H:%M:%SZ')]
+
+
+def test_source_health_preserves_old_summary_when_inputs_change_mid_derive(tmp_path, monkeypatch):
+    _v3_repo(tmp_path)
+    summary = tmp_path / 'summary.json'
+    summary.write_text('{"sentinel":"old"}', encoding='utf-8')
+    real = shm._price_inputs
+    calls = {'n': 0}
+
+    def racing(*a, **kw):
+        calls['n'] += 1
+        if calls['n'] == 2:
+            # A different valid demand document appears between derive and
+            # publish; the monitor must not replace the old green summary.
+            doc = _demand()
+            doc['updatedAt'] = '2026-10-23T04:30:06Z'
+            doc['demands'].append({'key': 'GREE|RACE', 'brand': '格力',
+                                   'model': 'RACE', 'firstSeen': '2026-10-22',
+                                   'firstSeenAt': '2026-10-22T00:00:00Z',
+                                   'status': 'pending', 'evidence': []})
+            (tmp_path / 'price_demand.json').write_text(json.dumps(doc), encoding='utf-8')
+        return real(*a, **kw)
+    monkeypatch.setattr(shm, '_price_inputs', racing)
+    assert shm.main(_main_args(tmp_path, summary)) == 1
+    assert summary.read_text(encoding='utf-8') == '{"sentinel":"old"}'
+    report = json.loads((tmp_path / 'report.json').read_text())
+    assert 'price:inputs-busy' in report['check']['failures']
+
+
+def test_missing_demand_is_not_an_empty_no_demand_success(tmp_path):
+    mp = tmp_path / 'prices_meta.json'
+    mp.write_text(json.dumps(_meta(last_price_month='2026-09')), encoding='utf-8')
+    out = entry_run(repo=str(tmp_path), meta_path=str(mp),
+                    demand_path=str(tmp_path / 'missing-demand.json'),
+                    apply=True, now='2026-10-22T16:30:00Z',
+                    env={'AIRCON_PRICE_QUERY_MODE': 'fixture-local',
+                         'AIRCON_PRICE_FIXTURE': '1'})
+    assert out['ok'] is False
+    assert out['reason'] == 'demand-missing-or-invalid'

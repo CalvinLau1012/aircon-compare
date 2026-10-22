@@ -164,34 +164,129 @@ def _meta_basic(meta):
     return None
 
 
-def _verified_progress(meta, biggo, completed_sync, anchor, cycle_start):
-    values = []
-    if isinstance(meta, dict):
-        for field in ('appliedAt',):
-            dt = _parse(meta.get(field))
-            if dt is not None:
-                values.append(dt)
-    if isinstance(biggo, dict) and biggo.get('status') in _ACTIVE_STATUSES:
-        dt = _parse(biggo.get('at'))
-        if dt is not None:
-            values.append(dt)
-    if isinstance(completed_sync, dict) and completed_sync.get('ok') is True \
-            and completed_sync.get('postStateVerified') is True:
-        dt = _parse(completed_sync.get('finishedAt'))
-        if dt is not None:
-            values.append(dt)
-    if isinstance(anchor, dict):
-        dt = _parse(anchor.get('updatedAt'))
-        if dt is not None:
-            values.append(dt)
-    if cycle_start is not None and not values:
-        values.append(cycle_start)
-    return max(values) if values else None
+def _post_state_hashes(post_state):
+    if not isinstance(post_state, dict):
+        return None
+    tracking = post_state.get('trackingHash')
+    blacklist = post_state.get('blacklistHash')
+    if not (_is_sha(tracking) and _is_sha(blacklist)):
+        return None
+    return {'trackingHash': tracking, 'blacklistHash': blacklist}
+
+
+def _matching_apply_receipt(meta, biggo, completed_sync, snapshot_hash,
+                            post_state, cycle_id, stage):
+    """Return only a receipt bound to the exact applied stage/post-state.
+
+    ``finishedAt`` is intentionally not used here.  It is a receive clock, not
+    proof that a new stage advanced.
+    """
+    post = _post_state_hashes(post_state)
+    if not post or not _is_sha(snapshot_hash):
+        return None
+    bundle = meta.get('appliedBundleHash')
+    candidates = []
+    if isinstance(completed_sync, dict) and completed_sync:
+        candidates.append(completed_sync)
+    local = biggo.get('localReceiver') if isinstance(biggo, dict) else None
+    if isinstance(local, dict):
+        candidates.append(local)
+    for receipt in candidates:
+        if receipt.get('ok') is not True \
+                or receipt.get('postStateVerified') is not True:
+            continue
+        if cycle_id is not None and receipt.get('cycleId') != cycle_id:
+            continue
+        if stage is not None and receipt.get('stage') != stage:
+            continue
+        if bundle is not None and receipt.get('bundleHash') != bundle:
+            continue
+        verified = receipt.get('verifiedPost')
+        if not isinstance(verified, dict):
+            continue
+        if verified.get('biggo_prices.json') != snapshot_hash:
+            continue
+        if verified.get('model_status.json') != post['trackingHash']:
+            continue
+        if verified.get('model_blacklist.json') != post['blacklistHash']:
+            continue
+        return receipt
+    return None
+
+
+def _verified_progress(meta, *, snapshot_hash, post_state, apply_receipt,
+                       active, idx, cycle_start):
+    """Only the current applied stage may advance progress.
+
+    meta.appliedAt is the persisted first successful apply time.  A matching
+    apply receipt/post-state is required for that fact; receive finishedAt,
+    monitor readAt, anchor.updatedAt and repeated applies never move it.
+    """
+    if not isinstance(meta, dict):
+        return None
+    if not active and meta.get('last_price_month') is None:
+        return None
+    last_stage = idx
+    if last_stage <= 0:
+        return cycle_start if active else None
+    if active:
+        start = str(meta.get('price_batch_start') or '')
+        expected = f'{start}:{last_stage}/7'
+    else:
+        expected = meta.get('last_applied_cycle')
+    if not isinstance(expected, str) or not re.fullmatch(
+            r'\d{4}-\d{2}-\d{2}:[1-7]/7', expected):
+        return None
+    if expected.rsplit(':', 1)[1] != f'{last_stage}/7':
+        return None
+    if meta.get('last_applied_cycle') != expected:
+        return None
+    if meta.get('appliedSnapshotHash') != snapshot_hash:
+        return None
+    if not _is_sha(meta.get('appliedBundleHash')):
+        return None
+    if apply_receipt is None:
+        return None
+    applied = _parse(meta.get('appliedAt'))
+    if applied is None:
+        return None
+    return applied
+
+
+def _cooldown_witness(meta, biggo, now_dt, cycle_id, stage,
+                      max_cooldown_seconds):
+    """Validate a real skip-cooldown receipt; never trust blocked_until alone."""
+    raw = meta.get('blocked_until')
+    witness_until = None
+    if isinstance(biggo, dict) and biggo.get('status') == 'skip-cooldown':
+        w = biggo.get('cooldownUntil')
+        if isinstance(w, bool) or not isinstance(w, (int, float)) or w <= 0:
+            return None, 'invalid-cooldown'
+        if biggo.get('cycle') != cycle_id or biggo.get('stage') != stage:
+            return None, 'cooldown-cycle-mismatch'
+        observed = _parse(biggo.get('at'))
+        if observed is None or observed > now_dt + _dt.timedelta(minutes=5):
+            return None, 'cooldown-time-invalid'
+        witness_until = _dt.datetime.fromtimestamp(float(w), _dt.timezone.utc)
+    if raw is None and witness_until is None:
+        return None, None
+    if isinstance(raw, bool) or (raw is not None and (
+            not isinstance(raw, (int, float)) or raw < 0)):
+        return None, 'invalid-cooldown'
+    meta_until = (_dt.datetime.fromtimestamp(float(raw), _dt.timezone.utc)
+                  if raw is not None else None)
+    if witness_until is None:
+        return None, 'invalid-cooldown'
+    if meta_until is not None and abs((meta_until - witness_until).total_seconds()) > 300:
+        return None, 'cooldown-conflict'
+    if witness_until > now_dt + _dt.timedelta(seconds=max_cooldown_seconds):
+        return None, 'invalid-cooldown'
+    return witness_until, None
 
 
 def build_receipt(*, now=None, meta=None, demand=None, biggo=None,
                   completed_sync=None, snapshot_hash=None, anchor=None,
-                  shared=False, max_age_hours=MAX_AGE_HOURS,
+                  shared=False, post_state=None, max_age_hours=MAX_AGE_HOURS,
                   max_cooldown_seconds=MAX_COOLDOWN_SECONDS):
     """Derive the price status from actual facts.  Pure and deterministic."""
     now_dt = _utc(now)
@@ -230,28 +325,41 @@ def build_receipt(*, now=None, meta=None, demand=None, biggo=None,
             status, reason, healthy = 'blocked', 'receive-failure', False
         elif str(biggo.get('status') or '').startswith('completed-apply-failed'):
             status, reason, healthy = 'blocked', 'provider-failure', False
-    # Cooldown is validated only after structural facts; an unbounded/fake
-    # future value must never be accepted as a legitimate wait.
-    blocked_until_raw = meta.get('blocked_until')
-    cooldown_until = None
-    if status is None and blocked_until_raw is not None:
-        if isinstance(blocked_until_raw, bool) or not isinstance(
-                blocked_until_raw, (int, float)) or blocked_until_raw < 0:
-            status, reason, healthy = 'blocked', 'invalid-cooldown', False
-        else:
-            cd = _dt.datetime.fromtimestamp(float(blocked_until_raw), _dt.timezone.utc)
-            if cd > now_dt + _dt.timedelta(seconds=max_cooldown_seconds):
-                status, reason, healthy = 'blocked', 'invalid-cooldown', False
-            else:
-                # Keep an already-expired legal recovery marker: its recovery
-                # time still anchors the 36h stall deadline after cooldown.
-                cooldown_until = cd
     start = meta.get('price_batch_start')
     idx = meta.get('price_batch_idx', 0)
     active = bool(start) and isinstance(idx, int) and not isinstance(idx, bool) \
         and 0 <= idx < 7
     cycle_start = _parse_date_hkt(start) if active else None
-    progress = _verified_progress(meta, biggo, completed_sync, anchor, cycle_start)
+    cycle_id = (f'{start}:{idx + 1}/7' if active else
+                (meta.get('last_applied_cycle')
+                 if meta.get('last_price_month') == _month_hkt(now_dt) else None))
+    cooldown_until = None
+    if status is None:
+        cooldown_until, cooldown_error = _cooldown_witness(
+            meta, biggo, now_dt, cycle_id, idx, max_cooldown_seconds)
+        if cooldown_error:
+            status, reason, healthy = 'blocked', cooldown_error, False
+    apply_receipt = None
+    post = _post_state_hashes(post_state)
+    if status is None:
+        last_stage = idx
+        applied_cycle = (f'{start}:{last_stage}/7' if active and last_stage > 0
+                         else (meta.get('last_applied_cycle')
+                               if not active and meta.get('last_price_month')
+                               == _month_hkt(now_dt) else None))
+        if last_stage > 0 or (not active and applied_cycle):
+            apply_receipt = _matching_apply_receipt(
+                meta, biggo, completed_sync, snapshot_hash, post,
+                applied_cycle, last_stage)
+        if post is None and (last_stage > 0 or not active and applied_cycle):
+            status, reason, healthy = 'blocked', 'post-state-missing', False
+        elif (not active and meta.get('last_price_month') == _month_hkt(now_dt)
+              and apply_receipt is None):
+            status, reason, healthy = 'blocked', 'apply-evidence-missing', False
+    progress = _verified_progress(
+        meta, snapshot_hash=snapshot_hash, post_state=post,
+        apply_receipt=apply_receipt, active=active, idx=idx,
+        cycle_start=cycle_start)
     next_eligible = None
     if status is None:
         if active:
@@ -330,7 +438,16 @@ def build_receipt(*, now=None, meta=None, demand=None, biggo=None,
                             or (biggo.get('stageResultHash')
                                 if isinstance(biggo.get('stageResultHash'), str)
                                 else None)),
+        'postStateHash': _hash_doc(post) if post is not None else None,
+        'applyReceiptHash': _hash_doc(apply_receipt)
+        if isinstance(apply_receipt, dict) else None,
+        'cooldownHash': _hash_doc({
+            'status': biggo.get('status'), 'cooldownUntil': biggo.get('cooldownUntil'),
+            'at': biggo.get('at'), 'cycle': biggo.get('cycle'),
+            'stage': biggo.get('stage')}) if cooldown_until is not None else None,
         'pendingDemandCount': len(price_demand.pending(demand))
+        if isinstance(demand, dict) and not status == 'blocked' else None,
+        'unknownDemandCount': len(price_demand.unknown(demand))
         if isinstance(demand, dict) and not status == 'blocked' else None,
     }
     body = {
@@ -462,7 +579,8 @@ def validate_receipt(receipt, *, now=None, max_age_hours=MAX_AGE_HOURS,
         raise PriceStatusError('evidence missing')
     required = {'snapshotHash', 'metaHash', 'demandHash', 'biggoStatusHash',
                 'completedSyncHash', 'anchorHash', 'bundleHash', 'stageResultHash',
-                'pendingDemandCount'}
+                'postStateHash', 'applyReceiptHash', 'cooldownHash',
+                'pendingDemandCount', 'unknownDemandCount'}
     if set(ev) != required:
         raise PriceStatusError('evidence keys invalid')
     for key in ('metaHash', 'demandHash', 'biggoStatusHash'):
@@ -471,14 +589,15 @@ def validate_receipt(receipt, *, now=None, max_age_hours=MAX_AGE_HOURS,
     if receipt['status'] != 'blocked' and not _is_sha(ev.get('snapshotHash')):
         raise PriceStatusError('evidence.snapshotHash required')
     for key in ('snapshotHash', 'completedSyncHash', 'anchorHash', 'bundleHash',
-                'stageResultHash'):
+                'stageResultHash', 'postStateHash', 'applyReceiptHash',
+                'cooldownHash'):
         if ev.get(key) is not None and not _is_sha(ev.get(key)):
             raise PriceStatusError(f'evidence.{key} invalid')
-    if ev.get('pendingDemandCount') is not None and (
-            isinstance(ev['pendingDemandCount'], bool)
-            or not isinstance(ev['pendingDemandCount'], int)
-            or ev['pendingDemandCount'] < 0):
-        raise PriceStatusError('evidence.pendingDemandCount invalid')
+    for field in ('pendingDemandCount', 'unknownDemandCount'):
+        if ev.get(field) is not None and (
+                isinstance(ev[field], bool)
+                or not isinstance(ev[field], int) or ev[field] < 0):
+            raise PriceStatusError(f'evidence.{field} invalid')
     if receipt['status'] in ('no-demand', 'waiting-eligible') \
             and ev.get('pendingDemandCount') is None:
         raise PriceStatusError('demand evidence missing')
@@ -488,11 +607,17 @@ def validate_receipt(receipt, *, now=None, max_age_hours=MAX_AGE_HOURS,
             and not (isinstance(ev.get('pendingDemandCount'), int)
                      and ev['pendingDemandCount'] > 0):
         raise PriceStatusError('waiting without pending demand')
-    if receipt['status'] == 'month-completed' and not _is_sha(ev.get('bundleHash')):
-        raise PriceStatusError('verified progress bundle evidence missing')
+    if receipt['status'] == 'month-completed':
+        if not _is_sha(ev.get('bundleHash')):
+            raise PriceStatusError('verified progress bundle evidence missing')
+        if not _is_sha(ev.get('postStateHash')) \
+                or not _is_sha(ev.get('applyReceiptHash')):
+            raise PriceStatusError('completed apply/post-state evidence missing')
     if receipt['status'] == 'active' and receipt.get('stage', 0) > 0 \
             and not _is_sha(ev.get('bundleHash')):
         raise PriceStatusError('active stage bundle evidence missing')
+    if receipt.get('safeReason') == 'cooldown' and not _is_sha(ev.get('cooldownHash')):
+        raise PriceStatusError('cooldown witness evidence missing')
     body = {k: v for k, v in receipt.items() if k != 'receiptHash'}
     if receipt.get('receiptHash') != sha256_id(canonical_json_bytes(body)):
         raise PriceStatusError('receiptHash mismatch')
@@ -594,10 +719,18 @@ def main(argv=None):
     biggo = _load(biggo_path) or {}
     sync = _load(sync_path) or {}
     anchor = _load(args.anchor) if args.anchor else None
+    tracking = _load(os.path.join(repo, 'model_status.json'))
+    blacklist = _load(os.path.join(repo, 'model_blacklist.json'))
+    models = (blacklist or {}).get('models') if isinstance(blacklist, dict) else None
+    post_state = {
+        'trackingHash': sha256_json(tracking) if isinstance(tracking, dict) else None,
+        'blacklistHash': sha256_json(models) if isinstance(models, dict) else None,
+    }
     inputs = {'meta': meta or {}, 'demand': demand,
               'biggo': biggo, 'completed_sync': sync,
               'snapshot_hash': _snapshot_hash(snapshot_path),
-              'anchor': anchor, 'shared': args.shared}
+              'anchor': anchor, 'shared': args.shared,
+              'post_state': post_state}
     if args.verify:
         receipt = _load(args.verify)
         try:

@@ -51,7 +51,11 @@ def _fixture(tmp_path, *, public_snapshot=None, private_snapshot=None):
             'appliedSnapshotHash': sha256_id(canonical_json_bytes(snap)),
             'appliedBundleHash': sha256_id(canonical_json_bytes(manifest)),
             'appliedAt': '2026-10-21T16:30:05Z'}
+    meta['appliedBundleHash'] = sha256_id(canonical_json_bytes(manifest))
     files = {'biggo_prices.json': snap, 'prices_meta.json': meta,
+             'base-biggo_prices.json': base,
+             'model_status.json': {},
+             'model_blacklist.json': {'models': {}},
              'new_models.json': {'models': [
                  {'brand': '格力', 'model': 'M1', 'first_seen': '2026-10-01'}]}}
     for name, data in files.items():
@@ -77,6 +81,7 @@ def _plan(repo, **over):
                   new_models=str(repo / 'new_models.json'),
                   stage_manifest=str(repo / 'stage7-manifest.json'),
                   stage_result=str(repo / 'stage7-result.json'),
+                  base_snapshot=str(repo / 'base-biggo_prices.json'),
                   public_meta=str(repo / 'public-meta.json'),
                   private_meta=str(repo / 'private-meta.json'),
                   source_public=PUB, source_private=PRIV, at=AT)
@@ -156,6 +161,7 @@ def test_demand_prestate_conflict_blocks_when_anchor_history_not_semantic_noop(t
     doc['demands'][0]['status'] = 'pending'
     doc['demands'][0].pop('processedAt', None)
     doc['demands'][0]['evidence'] = []
+    doc['demands'][0]['firstSeenAt'] = '2026-10-01T00:00:00Z'
     demand.write_text(json.dumps(doc), encoding='utf-8')
     # Make one prestate absent so the early semantic-no-op path is not taken.
     transition.unlink()
@@ -163,3 +169,21 @@ def test_demand_prestate_conflict_blocks_when_anchor_history_not_semantic_noop(t
               history_file=str(history))
     assert r['ok'] is False
     assert 'demand:prestate-conflict' in r['blockedReasons']
+
+
+def test_unknown_legacy_demand_blocks_enable_but_not_terminal_baseline(tmp_path):
+    repo = _fixture(tmp_path)
+    nm = json.loads((repo / 'new_models.json').read_text())
+    nm['models'].append({'brand': '格力', 'model': 'OLD-UNKNOWN',
+                         'first_seen': '2026-09-01'})
+    (repo / 'new_models.json').write_text(json.dumps(nm), encoding='utf-8')
+    r = _plan(repo)
+    assert r['ok'] is True
+    assert r['completedBaselineReady'] is True
+    assert r['priceStartReady'] is False
+    assert r['ready'] is False
+    unknown = [e for e in r['demandEligibility']
+               if e['key'] == 'GREE|OLDUNKNOWN']
+    assert unknown and unknown[0]['eligibility'] == 'unknown-provenance'
+    # Terminal baseline can still be installed in receive-only mode.
+    assert _plan(repo, anchor_file=str(repo / 'anchor.json'))['mode'] == 'applied'

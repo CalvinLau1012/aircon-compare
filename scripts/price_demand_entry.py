@@ -35,6 +35,8 @@ for _p in (BASE, os.path.join(BASE, 'scripts')):
 import batch_utils  # noqa: E402
 import price_cycle  # noqa: E402
 import price_demand  # noqa: E402
+import price_runtime  # noqa: E402
+import verify_price_source_pin  # noqa: E402
 
 
 def _now(value):
@@ -89,9 +91,14 @@ def run(*, repo, meta_path, demand_path, apply=False, now=None, env=None,
         return {'ok': False, 'action': 'blocked', 'reason': 'meta-invalid',
                 'detail': str(e)[:200]}
     try:
-        demand_doc = price_demand.load(demand_path)
+        demand_doc = price_demand.load_required(demand_path)
     except price_demand.DemandError as e:
-        return {'ok': False, 'action': 'blocked', 'reason': 'demand-invalid',
+        return {'ok': False, 'action': 'blocked', 'reason': 'demand-missing-or-invalid',
+                'detail': str(e)[:200]}
+    try:
+        qmode = price_runtime.query_mode(env)
+    except price_runtime.PriceRuntimeError as e:
+        return {'ok': False, 'action': 'blocked', 'reason': 'query-mode-invalid',
                 'detail': str(e)[:200]}
     try:
         mode = price_cycle.shared_mode(env)
@@ -103,6 +110,22 @@ def run(*, repo, meta_path, demand_path, apply=False, now=None, env=None,
             'month': price_cycle.cycle_month(now_dt),
             'demandHash': __import__('biggo_canonical').sha256_id(
                 __import__('biggo_canonical').canonical_json_bytes(demand_doc))}
+    if qmode == 'normal':
+        if mode != 'shared':
+            base.update({'ok': False, 'action': 'blocked',
+                         'reason': 'normal-requires-paired-shared-flags'})
+            return base
+        try:
+            verify_price_source_pin.verify_configured(repo, env)
+        except (ValueError, OSError) as e:
+            base.update({'ok': False, 'action': 'blocked',
+                         'reason': 'source-pin-failed',
+                         'detail': str(e)[:200]})
+            return base
+    elif qmode == 'fixture-local' and mode == 'shared':
+        base.update({'ok': False, 'action': 'blocked',
+                     'reason': 'fixture-local-cannot-use-shared'})
+        return base
     shared_read = False
     shared_anchor_doc = None
     shared_transition_doc = None
@@ -131,6 +154,10 @@ def run(*, repo, meta_path, demand_path, apply=False, now=None, env=None,
             base.update({'ok': False, 'action': 'blocked',
                          'reason': 'blocked-anchor', 'detail': str(e)[:200]})
             return base
+    if qmode == 'receive-only':
+        base.update({'ok': True, 'action': 'skip-receive-only',
+                     'reason': 'receive-only'})
+        return base
     if not pending:
         base.update({'ok': True, 'action': 'no-demand', 'reason': 'no-new-model'})
         return base
@@ -146,7 +173,8 @@ def run(*, repo, meta_path, demand_path, apply=False, now=None, env=None,
             return base
         try:
             started = batch_utils.start_price_batch(
-                now=now_dt.timestamp(), meta_path=meta_path, demand_path=demand_path)
+                now=now_dt.timestamp(), meta_path=meta_path,
+                demand_path=demand_path, env=env)
         except Exception as e:  # noqa: BLE001
             base.update({'ok': False, 'action': 'blocked', 'reason': 'start-failed',
                          'detail': f'{type(e).__name__}:{e}'[:200]})

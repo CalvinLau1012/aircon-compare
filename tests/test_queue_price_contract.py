@@ -181,7 +181,16 @@ def test_meta_save_failure_preserves_old_bytes(tmp_path, monkeypatch):
 def test_start_price_batch_does_not_swallow_bad_meta(tmp_path, monkeypatch):
     p = tmp_path / 'prices_meta.json'
     p.write_text('{broken', encoding='utf-8')
+    demand = tmp_path / 'price_demand.json'
+    demand.write_text(json.dumps({
+        'schemaVersion': 1, 'kind': 'aircon-price-demand',
+        'updatedAt': '2026-10-01T00:00:00Z',
+        'demands': [{'key': 'GREE|X', 'brand': '格力', 'model': 'X',
+                     'firstSeen': '2026-10-01', 'firstSeenAt': '2026-10-01T00:00:00Z',
+                     'status': 'pending', 'evidence': []}]}), encoding='utf-8')
     monkeypatch.setattr(batch_utils, 'META_PATH', str(p))
+    monkeypatch.setenv('AIRCON_PRICE_QUERY_MODE', 'fixture-local')
+    monkeypatch.setenv('AIRCON_PRICE_FIXTURE', '1')
     with pytest.raises(batch_utils.MetaError):
         batch_utils.start_price_batch()
     assert p.read_bytes() == b'{broken'

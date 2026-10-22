@@ -52,6 +52,8 @@ import fetch_biggo as _fetch_biggo  # noqa: E402
 import biggo_coordinator as coord_mod  # noqa: E402
 import biggo_apply as _apply_mod  # noqa: E402
 import biggo_acquisition  # noqa: E402
+import price_runtime  # noqa: E402
+import verify_price_source_pin  # noqa: E402
 import sync_biggo_completed as _sync_completed  # noqa: E402
 from biggo_canonical import canonical_json_bytes, sha256_id  # noqa: E402
 from biggo_limiter import RequestLimiter  # noqa: E402
@@ -626,6 +628,41 @@ def run_stage(*, env=None, batch_mod=None, fetch_mod=None, client_factory=None,
             record['rerun'] = 'prohibited'
         record.update(detail)
         _emit(print_fn, status, **detail)
+
+    try:
+        qmode = price_runtime.query_mode(env)
+    except price_runtime.PriceRuntimeError as e:
+        emit('blocked-query-mode', error=type(e).__name__, detail=str(e)[:200])
+        _write_status(status_out, record)
+        return 2
+    if qmode == 'receive-only':
+        emit('skip-receive-only', reason='receive-only')
+        _write_status(status_out, record)
+        return 0
+    try:
+        shared_enabled = price_runtime.shared_flags(env)
+    except price_runtime.PriceRuntimeError as e:
+        emit('blocked-mode-inconsistent', error=type(e).__name__,
+             detail=str(e)[:200])
+        _write_status(status_out, record)
+        return 2
+    if qmode == 'normal':
+        if not shared_enabled:
+            emit('blocked-normal-without-shared-flags', rerun='prohibited')
+            _write_status(status_out, record)
+            return 2
+        try:
+            verify_price_source_pin.verify_configured(
+                repo_root or BASE, env)
+        except (ValueError, OSError) as e:
+            emit('blocked-source-pin', rerun='prohibited',
+                 detail=str(e)[:200])
+            _write_status(status_out, record)
+            return 2
+    elif shared_enabled:
+        emit('blocked-fixture-with-shared-flags', rerun='prohibited')
+        _write_status(status_out, record)
+        return 2
 
     try:
         # ---- 1. 本地階段先決；inactive（且非 force）唔准碰 coordinator／BigGo ----

@@ -643,7 +643,13 @@ def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, applied_at=Non
     meta_path = os.path.join(root, META)
 
     lock_ctx = contextlib.nullcontext() if lock_held else _OperationLock(root)
-    with lock_ctx:
+    import price_demand
+    demand_path = os.path.join(root, price_demand.DEFAULT_PATH.rsplit(os.sep, 1)[-1])
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(lock_ctx)
+        # The same persistent mutex is used by EMSD commits and direct demand
+        # writers; hold it across prestate, apply and metadata commit.
+        stack.enter_context(price_demand.locked(demand_path))
         journal = _read_journal(root)
         if journal is not None and journal.get('bundleHash') != bundle['bundleHash']:
             raise ApplyError('存在另一個未完成 bundle 的 apply journal（衝突；零寫入）')
@@ -695,25 +701,38 @@ def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, applied_at=Non
             raise ApplyError(f'prices_meta 目標 schema 唔合格：{e}') from e
         staged_meta_hash = _canonical_hash(staged_meta)
 
-        # Versioned new-model demand evidence is preflighted before any byte is
-        # written.  A malformed demand file blocks the apply instead of being
-        # reset; an absent file with no matching demand stays absent.
-        import price_demand
-        demand_path = os.path.join(root, price_demand.DEFAULT_PATH.rsplit(os.sep, 1)[-1])
+        # Versioned new-model demand evidence is part of the recoverable
+        # transaction.  It is written before metadata (metadata remains the
+        # commit point), with explicit pre/post hashes in the apply journal.
         try:
             demand_before = price_demand.load(demand_path)
             demand_after = price_demand.record_bundle(demand_before, bundle, now)
         except price_demand.DemandError as e:
             raise ApplyError(f'price_demand.json 契約錯誤（零寫入）：{e}') from e
-        demand_changed = demand_after != demand_before or (
-            os.path.exists(demand_path) and demand_after.get('demands'))
+        demand_pre_hash = _canonical_hash(demand_before)
+        demand_post_hash = _canonical_hash(demand_after)
+        demand_changed = demand_after != demand_before
+        if demand_pre_hash == demand_post_hash:
+            demand_plan = 'post'
+        elif _canonical_hash(price_demand.load(demand_path)) == demand_pre_hash:
+            demand_plan = 'pre'
+        else:
+            raise ApplyError('price_demand.json pre/post image 唔 match'
+                             '（needs manual reconciliation）')
 
         def _record_demand():
-            if demand_changed:
+            nonlocal demand_plan
+            if demand_plan == 'pre':
                 try:
-                    price_demand.save(demand_after, demand_path)
+                    price_demand.write_locked(demand_after, demand_path)
                 except (OSError, price_demand.DemandError) as e:
                     raise ApplyError(f'price_demand.json 寫入失敗：{e}') from e
+                demand_plan = 'post'
+                if journal is not None:
+                    journal.setdefault('demand', {
+                        'preHash': demand_pre_hash, 'postHash': demand_post_hash})
+                    journal['demand']['state'] = 'post'
+                    _write_journal(root, journal)
 
         all_post = (snapshot_plan[0] == 'post' and tracking_plan[0] == 'post'
                     and blacklist_plan[0] == 'post')
@@ -753,6 +772,8 @@ def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, applied_at=Non
                         'state': blacklist_plan[0]},
                 },
                 'meta': {'postHash': staged_meta_hash, 'state': 'pending'},
+                'demand': {'preHash': demand_pre_hash,
+                           'postHash': demand_post_hash, 'state': demand_plan},
                 'repairId': (repair_meta or {}).get('repairId'),
             }
             _write_journal(root, journal)
@@ -772,6 +793,8 @@ def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, applied_at=Non
             _write_json(blacklist_path, blacklist_plan[1])
             _mark(BLACKLIST, 'post')
 
+        _record_demand()
+
         # ---- meta 最後（recoverable commit point）----
         saver = meta_saver or batch_utils.save_meta
         try:
@@ -787,7 +810,6 @@ def apply_bundle(bundle, *, repo_root, now=None, meta_saver=None, applied_at=Non
             raise ApplyError('prices_meta.json 寫入後 hash 唔等於已驗證目標')
         journal['meta']['state'] = 'written'
         _write_journal(root, journal)
-        _record_demand()
         _remove_journal(root)
         return {
             'snapshot': 'post' if snapshot_plan[0] == 'post' else 'applied',

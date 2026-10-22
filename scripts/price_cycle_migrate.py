@@ -37,6 +37,7 @@ for _p in (BASE, os.path.join(BASE, 'scripts')):
 
 import price_cycle  # noqa: E402
 import price_demand  # noqa: E402
+import biggo_coordinator as coord  # noqa: E402
 from biggo_canonical import canonical_json_bytes, sha256_id  # noqa: E402
 
 SHA_RE = re.compile(r'^sha256:[0-9a-f]{64}$')
@@ -148,7 +149,7 @@ def _validate_stage_result(result, manifest, snapshot):
 def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
          stage_result, public_meta, private_meta, source_public,
          source_private, at=None, anchor_file=None, history_file=None,
-         transition_file=None):
+         transition_file=None, base_snapshot=None):
     if isinstance(at, str):
         at = _dt.datetime.fromisoformat(at.replace('Z', '+00:00'))
     if at is not None and at.tzinfo is None:
@@ -157,12 +158,14 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
     hkt = now.astimezone(_dt.timezone(_dt.timedelta(hours=8)))
     errors = []
     missing_refs = []
+    baseline_errors = []
     try:
         meta = _load(prices_meta)
         snap = _load(snapshot)
         manifest = _load(stage_manifest)
         result = _load(stage_result)
         new_models_doc = _load(new_models)
+        base_doc = _load(base_snapshot) if base_snapshot else None
     except (OSError, ValueError) as e:
         return {'ok': False, 'mode': 'blocked', 'blockedReasons': [
             f'input-unreadable:{type(e).__name__}'], 'missingRefs': []}
@@ -190,6 +193,32 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
         errors.append('manifest-base-hash-invalid')
     bundle_hash = sha256_id(canonical_json_bytes(manifest))
     errors.extend(_validate_stage_result(result, manifest, snap))
+    if base_doc is None:
+        baseline_errors.append('base-snapshot-missing')
+    elif sha256_id(canonical_json_bytes(base_doc)) != manifest.get('baseSnapshotHash'):
+        baseline_errors.append('base-snapshot-hash-mismatch')
+    else:
+        try:
+            coord.validate_stage_result(result, base_doc, snap,
+                                        cycle_id=cycle, stage=7,
+                                        mode=manifest.get('mode'))
+        except Exception as e:  # noqa: BLE001
+            baseline_errors.append('stage7-bundle-invalid:' + type(e).__name__)
+    # Stage-7 post-state must match both actual ends, not just a caller hash.
+    post = result.get('postState') or {}
+    for label, meta_file in (('public', public_meta), ('private', private_meta)):
+        root = os.path.dirname(os.path.abspath(meta_file)) if meta_file else None
+        try:
+            tracking = _load(os.path.join(root, 'model_status.json')) if root else None
+            black = _load(os.path.join(root, 'model_blacklist.json')) if root else None
+            models = (black or {}).get('models') if isinstance(black, dict) else None
+            if not isinstance(tracking, dict) or not isinstance(models, dict):
+                raise ValueError('missing')
+            if sha256_id(canonical_json_bytes(tracking)) != post.get('trackingHash') \
+                    or sha256_id(canonical_json_bytes(models)) != post.get('blacklistHash'):
+                raise ValueError('mismatch')
+        except (OSError, ValueError):
+            errors.append(f'{label}:post-state-mismatch-or-missing')
     errors.extend(_meta_facts(_load(prices_meta) if prices_meta else {}, 'local',
                               snapshot_hash,
                               {'cycle': cycle, 'month': cycle_month},
@@ -254,7 +283,8 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
             demand_doc = price_demand.merge_new_models(
                 price_demand.empty(now), new_models_doc, now=now)
             demand_doc = price_demand.record_outcomes(
-                demand_doc, result, manifest, now=now)
+                demand_doc, result, manifest, now=now,
+                allow_legacy_date=True)
             demand_text = json.dumps(demand_doc, ensure_ascii=False,
                                      sort_keys=True, indent=2) + '\n'
         except (price_demand.DemandError, ValueError) as e:
@@ -263,12 +293,30 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
         missing_refs.append(f'snapshots/2026-10-10-{stage}-7/stage-result.json')
     missing_refs.append('snapshots/2026-10-10-7-7/base-biggo_prices.json')
     missing_refs = [r for r in missing_refs if not _local_ref_exists(repo, r)]
+    completed_baseline_ready = not errors and not baseline_errors
+    unknown_demands = price_demand.unknown(demand_doc) if demand_doc else []
+    pending_demands = price_demand.pending(demand_doc) if demand_doc else []
+    price_start_ready = bool(completed_baseline_ready and not unknown_demands
+                             and pending_demands is not None)
+    demand_eligibility = []
+    for entry in (demand_doc or {}).get('demands', []):
+        demand_eligibility.append({
+            'key': entry['key'], 'status': entry['status'],
+            'eligibility': ('covered' if entry['status'] == 'processed'
+                            else ('eligible-new' if entry['status'] == 'pending'
+                                  else 'unknown-provenance')),
+            'reason': entry.get('unknownReason') or entry['status'],
+        })
     receipt = {
         'schemaVersion': 1,
         'kind': 'aircon-price-cycle-migration-receipt',
         'mode': 'apply' if anchor_file else 'preview',
         'ok': not errors,
-        'ready': not errors,
+        'ready': bool(completed_baseline_ready and price_start_ready),
+        'completedBaselineReady': completed_baseline_ready,
+        'priceStartReady': price_start_ready,
+        'enableReady': bool(completed_baseline_ready and price_start_ready),
+        'baselineBlockedReasons': baseline_errors,
         'blockedReasons': errors,
         'generatedAt': hkt.strftime('%Y-%m-%dT%H:%M:%S+08:00'),
         'cycle': cycle,
@@ -287,6 +335,7 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
         'history': history,
         'historyHash': sha256_id(history_bytes) if history_bytes else None,
         'demand': demand_doc,
+        'demandEligibility': demand_eligibility,
         'demandHash': sha256_id(demand_text.encode('utf-8')) if demand_text else None,
         'missingRefs': missing_refs,
         'notes': [
@@ -297,9 +346,10 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
             'No provider, coordinator or production write is performed here.',
         ],
     }
-    if errors:
+    if errors or not completed_baseline_ready:
         receipt['ok'] = False
         receipt['ready'] = False
+        receipt['blockedReasons'] = errors + baseline_errors
         return receipt
 
     target_anchor = anchor_file or os.path.join(repo, 'fixture-monthly-cycle.json')
@@ -316,7 +366,7 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
         receipt['mode'] = 'no-op'
         receipt['written'] = False
         receipt['ok'] = True
-        receipt['ready'] = True
+        receipt['ready'] = price_start_ready
         return receipt
     pre = _prestate(target_anchor, target_transition, target_history,
                     anchor_bytes, transition_bytes, history_bytes)
@@ -354,7 +404,7 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
         receipt['mode'] = 'no-op'
         receipt['written'] = False
         receipt['ok'] = True
-        receipt['ready'] = True
+        receipt['ready'] = price_start_ready
         return receipt
     demand_path = os.path.join(repo, 'price_demand.json')
     existing_demand = None
@@ -481,6 +531,7 @@ def main(argv=None):
     ap.add_argument('--new-models', default=None)
     ap.add_argument('--stage-manifest', required=True)
     ap.add_argument('--stage-result', required=True)
+    ap.add_argument('--base-snapshot', default=None)
     ap.add_argument('--public-meta', required=True)
     ap.add_argument('--private-meta', required=True)
     ap.add_argument('--source-public', required=True)
@@ -516,6 +567,7 @@ def main(argv=None):
         source_public=args.source_public,
         source_private=args.source_private,
         at=at, anchor_file=args.anchor_file if args.apply else None,
+        base_snapshot=args.base_snapshot,
         transition_file=args.transition_file,
         history_file=args.history_file)
     text = json.dumps(receipt, ensure_ascii=False, sort_keys=True, indent=2) + '\n'

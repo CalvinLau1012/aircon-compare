@@ -169,7 +169,7 @@ def _demand_allows_start(meta, demand_doc, now=None):
     return True, 'waiting-eligible'
 
 
-def _shared_cycle_enabled():
+def _shared_cycle_enabled(env=None):
     """The two flags must agree; mixed values fail closed."""
     import importlib.util
     path = os.path.join(BASE, 'scripts', 'price_cycle.py')
@@ -177,12 +177,12 @@ def _shared_cycle_enabled():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     try:
-        return mod.shared_mode(os.environ) == 'shared'
+        return mod.shared_mode(env or os.environ) == 'shared'
     except mod.AnchorError as e:
         raise MetaError(f'價格 mode 不一致（fail-closed）：{e}')
 
 
-def _ensure_shared_cycle(demand_doc=None, meta_path=None):
+def _ensure_shared_cycle(demand_doc=None, meta_path=None, env=None):
     """Delegate to the single shared monthly identity; never start locally."""
     import importlib.util
     import biggo_coordinator as coord
@@ -192,9 +192,10 @@ def _ensure_shared_cycle(demand_doc=None, meta_path=None):
     spec.loader.exec_module(mod)
     store = mod.CoordinatorAnchorStore.from_env()
     client = None
-    status = coord.config_status(os.environ)
+    env = env or os.environ
+    status = coord.config_status(env)
     if status['configured']:
-        contents = coord.GitHubContentsClient(coord.CoordinatorConfig.from_env(os.environ))
+        contents = coord.GitHubContentsClient(coord.CoordinatorConfig.from_env(env))
         client = coord.CoordinatorClient(contents, owner='monthly-normal-start')
     result = mod.ensure_monthly_cycle(meta_path or META_PATH, allow_write=True,
                                       store=store, client=client, repo_root=BASE,
@@ -210,20 +211,33 @@ def _ensure_shared_cycle(demand_doc=None, meta_path=None):
     raise MetaError(f'共享月度入口 fail-closed：{result.get("reason")} {result.get("detail", "")}')
 
 
-def start_price_batch(now=None, meta_path=None, demand_path=None):
-    """Start a price batch only for pending new-model demand, at most once/month.
-
-    The official-spec queue is intentionally not consulted.  Shared mode
-    delegates to the coordinator anchor identity; legacy mode keeps the local
-    meta but follows the same demand and month rules.
-    """
+def start_price_batch(now=None, meta_path=None, demand_path=None, env=None):
+    """Start only in explicit normal/fixture mode; receive-only never starts."""
+    env = env or os.environ
+    import price_runtime
+    try:
+        qmode = price_runtime.query_mode(env)
+    except price_runtime.PriceRuntimeError as e:
+        raise MetaError(f'price query mode invalid: {e}') from e
+    if not price_runtime.may_start(env):
+        print('💰 價錢更新：receive-only（禁止開新批次）')
+        return False
     meta_path = meta_path or META_PATH
     demand_path = demand_path or os.path.join(
         os.path.dirname(os.path.abspath(meta_path)), 'price_demand.json')
     demand_doc = _load_demand(demand_path)
-    if _shared_cycle_enabled():
-        reason = _ensure_shared_cycle(demand_doc, meta_path)
+    if _shared_cycle_enabled(env):
+        if qmode != 'normal':
+            raise MetaError('shared cycle requires AIRCON_PRICE_QUERY_MODE=normal')
+        import verify_price_source_pin
+        try:
+            verify_price_source_pin.verify_configured(BASE, env)
+        except ValueError as e:
+            raise MetaError(f'price source pin failed: {e}') from e
+        reason = _ensure_shared_cycle(demand_doc, meta_path, env)
         return reason in ('started', 'adopted')
+    if qmode == 'normal':
+        raise MetaError('normal mode requires paired shared flags')
     meta = load_meta(meta_path)
     allowed, reason = _demand_allows_start(meta, demand_doc, now)
     if not allowed:

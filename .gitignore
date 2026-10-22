@@ -52,3 +52,7 @@ _site/
 
 # runtime shared-anchor cache (never a source artifact)
 price_anchor.json
+
+# Price transaction/runtime transients (never source artifacts)
+.locks/
+price_status.json

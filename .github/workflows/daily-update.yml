@@ -404,15 +404,30 @@ jobs:
       # 官網 queue 保持原狀；純 coverage pending 不再阻擋下一輪價格啟動。
       # 只有「未處理新機 + 本月未做過」才可開新批次；shared mode 只經
       # monthly-cycle-v2 + coordinator CAS，混用旗標 fail closed。
+      - name: 價格鏈固定 source pin 驗證（normal 才需要）
+        if: >
+          github.event.inputs.rebuild_verified_snapshot != 'true' &&
+          github.event.inputs.repair_release != 'true'
+        env:
+          AIRCON_PRICE_QUERY_MODE: ${{ secrets.AIRCON_PRICE_QUERY_MODE }}
+          AIRCON_PRICE_SOURCE_REVISION: ${{ secrets.AIRCON_PRICE_SOURCE_REVISION }}
+        run: |
+          if [ "${AIRCON_PRICE_QUERY_MODE:-receive-only}" = "normal" ]; then
+            python scripts/verify_price_source_pin.py --mode git --repo . --rev "$AIRCON_PRICE_SOURCE_REVISION"
+          else
+            echo "source pin skipped: receive-only"
+          fi
+
       - name: 新機價格需求／月度 cycle 入口（零 provider）
         id: price_demand
         if: >
           github.event.inputs.rebuild_verified_snapshot != 'true' &&
           github.event.inputs.repair_release != 'true'
         env:
+          AIRCON_PRICE_QUERY_MODE: ${{ secrets.AIRCON_PRICE_QUERY_MODE || 'receive-only' }}
           AIRCON_PRICE_CYCLE_ENABLED: ${{ secrets.AIRCON_PRICE_CYCLE_ENABLED }}
           AIRCON_PRICE_SHARED_CYCLE: ${{ secrets.AIRCON_PRICE_SHARED_CYCLE }}
-          AIRCON_PRICE_SOURCE_REVISION: ${{ github.sha }}
+          AIRCON_PRICE_SOURCE_REVISION: ${{ secrets.AIRCON_PRICE_SOURCE_REVISION }}
           AIRCON_PRICE_WRITER: github
           AIRCON_BIGGO_LEASE_OWNER: ${{ github.run_id }}-monthly-entry
           AIRCON_BIGGO_COORDINATOR_REPO: ${{ secrets.AIRCON_BIGGO_COORDINATOR_REPO }}
@@ -445,6 +460,11 @@ jobs:
         env:
           BIGGO_CLIENT_ID: ${{ secrets.BIGGO_CLIENT_ID }}
           BIGGO_CLIENT_SECRET: ${{ secrets.BIGGO_CLIENT_SECRET }}
+          AIRCON_PRICE_QUERY_MODE: ${{ secrets.AIRCON_PRICE_QUERY_MODE || 'receive-only' }}
+          AIRCON_PRICE_CYCLE_ENABLED: ${{ secrets.AIRCON_PRICE_CYCLE_ENABLED }}
+          AIRCON_PRICE_SHARED_CYCLE: ${{ secrets.AIRCON_PRICE_SHARED_CYCLE }}
+          AIRCON_PRICE_SOURCE_REVISION: ${{ secrets.AIRCON_PRICE_SOURCE_REVISION }}
+          AIRCON_PRICE_WRITER: github
           # force intent（人手明確一次性）：唔可以直接呼叫 fetch_biggo.py --force-batch；
           # 只可以交由 runner 喺 coordinator lease 之下執行。
           AIRCON_BIGGO_FORCE_STAGE: ${{ github.event.inputs.force_price_batch }}

@@ -18,6 +18,8 @@ import sys
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(BASE, 'scripts'))
 import price_cycle  # noqa: E402
+import price_runtime  # noqa: E402
+import verify_price_source_pin  # noqa: E402
 
 _OK_REASONS = {'started', 'adopted', 'adopted-stage0', 'anchor-synced', 'noop',
                'active-batch', 'month-completed', 'already-anchored'}
@@ -48,28 +50,50 @@ def main(argv=None, store_factory=None, client_factory=None):
     env = os.environ
     try:
         mode = price_cycle.shared_mode(env)
-    except price_cycle.AnchorError as e:
+        qmode = price_runtime.query_mode(env)
+    except (price_cycle.AnchorError, price_runtime.PriceRuntimeError) as e:
         print(json.dumps({'mode': 'apply' if args.apply else 'plan', 'written': False,
                           'reason': 'mode-inconsistent', 'detail': str(e)}, ensure_ascii=False))
         return 2
+    if qmode == 'receive-only':
+        print(json.dumps({'mode': 'apply' if args.apply else 'plan',
+                          'written': False, 'reason': 'skip-receive-only',
+                          'ok': True}, ensure_ascii=False))
+        return 0
+    if qmode == 'normal' and mode != 'shared':
+        print(json.dumps({'mode': 'apply' if args.apply else 'plan',
+                          'written': False,
+                          'reason': 'normal-requires-paired-shared-flags'},
+                         ensure_ascii=False))
+        return 2
+    if qmode == 'fixture-local' and mode == 'shared':
+        print(json.dumps({'mode': 'apply' if args.apply else 'plan',
+                          'written': False,
+                          'reason': 'fixture-local-cannot-use-shared'},
+                         ensure_ascii=False))
+        return 2
+    if qmode == 'normal':
+        repo_for_pin = args.repo_root or os.path.dirname(os.path.abspath(args.meta))
+        try:
+            verify_price_source_pin.verify_configured(repo_for_pin, env)
+        except (ValueError, OSError) as e:
+            print(json.dumps({'mode': 'apply' if args.apply else 'plan',
+                              'written': False, 'reason': 'source-pin-failed',
+                              'detail': str(e)[:200]}, ensure_ascii=False))
+            return 2
     demand_path = args.demand_file or os.path.join(
         os.path.dirname(os.path.abspath(args.meta)), 'price_demand.json')
     demand_doc = None
-    if os.path.exists(demand_path):
-        import price_demand
-        try:
-            demand_doc = price_demand.load(demand_path)
-        except price_demand.DemandError as e:
-            print(json.dumps({'mode': 'apply' if args.apply else 'plan',
-                              'written': False, 'reason': 'demand-invalid',
-                              'detail': str(e)[:200]}, ensure_ascii=False))
-            return 2
-    elif args.apply and args.enable:
-        # A missing demand file is not evidence that a monthly refresh is due.
-        print(json.dumps({'mode': 'apply', 'written': False,
-                          'reason': 'no-demand', 'detail': 'price_demand.json missing'},
-                         ensure_ascii=False))
-        return 0
+    import price_demand
+    try:
+        demand_doc = (price_demand.load_required(demand_path)
+                      if qmode in ('normal', 'receive-only')
+                      else price_demand.load(demand_path))
+    except price_demand.DemandError as e:
+        print(json.dumps({'mode': 'apply' if args.apply else 'plan',
+                          'written': False, 'reason': 'demand-missing-or-invalid',
+                          'detail': str(e)[:200]}, ensure_ascii=False))
+        return 2
     if args.anchor_file:
         store = price_cycle.FileAnchorStore(args.anchor_file)
     elif args.coordinator:

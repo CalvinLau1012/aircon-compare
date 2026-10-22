@@ -126,11 +126,12 @@ def test_advance_requires_evidence_and_sequence(tmp_path):
 def test_cli_plan_and_not_enabled(tmp_path, monkeypatch):
     store = _store(tmp_path)
     meta = _meta(tmp_path, 'm.json')
+    # Default is receive-only: a safe skip, never an implicit local start.
     assert entry.main(['--meta', str(meta), '--anchor-file', str(store.path)]) == 0
-    assert entry.main(['--meta', str(meta), '--anchor-file', str(store.path), '--apply']) == 3
-    monkeypatch.setenv('AIRCON_PRICE_CYCLE_ENABLED', '1')
-    monkeypatch.setenv('AIRCON_PRICE_SHARED_CYCLE', '1')
-    monkeypatch.setenv('AIRCON_PRICE_SOURCE_REVISION', SOURCE)
-    monkeypatch.setenv('AIRCON_PRICE_WRITER', 'github')
     assert entry.main(['--meta', str(meta), '--anchor-file', str(store.path),
-                       '--apply', '--enable']) == 0
+                       '--apply']) == 0
+    monkeypatch.setenv('AIRCON_PRICE_QUERY_MODE', 'fixture-local')
+    monkeypatch.setenv('AIRCON_PRICE_FIXTURE', '1')
+    assert entry.main(['--meta', str(meta), '--anchor-file', str(store.path)]) == 0
+    assert entry.main(['--meta', str(meta), '--anchor-file', str(store.path),
+                       '--apply']) == 3

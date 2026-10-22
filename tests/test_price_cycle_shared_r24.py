@@ -19,7 +19,8 @@ import price_cycle as pc  # noqa: E402
 import test_biggo_stage_runner as T  # noqa: E402
 runner = T.runner
 
-SOURCE = 'c' * 40
+import subprocess
+SOURCE = subprocess.check_output(['git', '-C', str(BASE), 'rev-parse', 'HEAD'], text=True).strip()
 ENV_EXTRA = {'AIRCON_PRICE_SOURCE_REVISION': SOURCE}
 FILES = list(pc.REPO_FILES)
 
@@ -147,7 +148,10 @@ def _stage(root, api, when):
         return coord.CoordinatorClient(contents, owner=owner, now=now_fn)
     fetch = StageFetch(root, root)
     env = dict(T.CONFIGURED_ENV, AIRCON_PRICE_CYCLE_ENABLED='1',
-               AIRCON_PRICE_SHARED_CYCLE='1', **ENV_EXTRA,
+               AIRCON_PRICE_SHARED_CYCLE='1',
+               AIRCON_PRICE_QUERY_MODE='normal',
+               AIRCON_PRICE_SOURCE_REPO=str(BASE),
+               **ENV_EXTRA,
                AIRCON_PRICE_INITIAL_BASE_HASH=_base_hash(root))
     out = []
     code = runner.run_stage(env=env, batch_mod=RepoBatch(root), fetch_mod=fetch,

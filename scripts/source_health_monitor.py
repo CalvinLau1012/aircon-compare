@@ -56,6 +56,63 @@ def _load_optional(path):
     return _load(path)
 
 
+def _raw_token(paths):
+    h = hashlib.sha256()
+    for path in paths:
+        h.update(os.fspath(path).encode('utf-8'))
+        try:
+            with open(path, 'rb') as f:
+                for chunk in iter(lambda: f.read(1 << 20), b''):
+                    h.update(chunk)
+        except OSError:
+            h.update(b'<missing>')
+        h.update(b'\0')
+    return 'sha256:' + h.hexdigest()
+
+
+def _price_inputs(repo, *, demand_path, biggo_path, sync_path, snapshot_path,
+                  anchor_path, meta_path):
+    """Read a fresh, validated price input set plus a raw prestate token."""
+    import price_demand as _demand_mod
+    paths = [meta_path, demand_path, biggo_path, sync_path, snapshot_path,
+             os.path.join(repo, 'model_status.json'),
+             os.path.join(repo, 'model_blacklist.json'), anchor_path]
+    token = _raw_token(paths)
+    demand = _demand_mod.load_required(demand_path)
+    biggo = _load_optional(biggo_path) or {}
+    sync = _load_optional(sync_path) or {}
+    snapshot_hash = None
+    if os.path.isfile(snapshot_path):
+        try:
+            snapshot_hash = sha256_json(_load(snapshot_path))
+        except (OSError, ValueError):
+            snapshot_hash = None
+    anchor_doc = None
+    if os.path.exists(anchor_path):
+        cached = _load(anchor_path)
+        if isinstance(cached, dict) and cached.get('kind') == 'aircon-price-anchor-cache':
+            anchor_doc = cached.get('anchor')
+        else:
+            anchor_doc = cached
+    tracking = _load_optional(os.path.join(repo, 'model_status.json'))
+    blacklist = _load_optional(os.path.join(repo, 'model_blacklist.json'))
+    models = (blacklist or {}).get('models') if isinstance(blacklist, dict) else None
+    post_state = {
+        'trackingHash': sha256_json(tracking) if isinstance(tracking, dict) else None,
+        'blacklistHash': sha256_json(models) if isinstance(models, dict) else None,
+    }
+    ce = os.environ.get('AIRCON_PRICE_CYCLE_ENABLED') == '1'
+    sc = os.environ.get('AIRCON_PRICE_SHARED_CYCLE') == '1'
+    if ce != sc:
+        raise ValueError('price-mode-inconsistent')
+    return {
+        'meta': _load(meta_path), 'demand': demand, 'biggo': biggo,
+        'completed_sync': sync, 'snapshot_hash': snapshot_hash,
+        'anchor': anchor_doc, 'shared': ce and sc,
+        'post_state': post_state,
+    }, token
+
+
 def _atomic_json(path, data):
     path = os.fspath(path)
     os.makedirs(os.path.dirname(os.path.abspath(path)) or '.', exist_ok=True)
@@ -435,53 +492,45 @@ def main(argv=None):
     price_status_path = args.price_status or os.path.join(args.repo, 'price_status.json')
     price_mode = os.path.exists(price_demand_path) or os.path.exists(price_status_path) \
         or bool(args.price_status_out)
+    price_race = False
     if status is not None and price_mode:
         try:
             import price_demand as _demand_mod
             import price_status as _price_status_mod
-            demand_doc = _demand_mod.load(price_demand_path)
-            biggo_doc = _load(args.biggo_status or os.path.join(
-                args.repo, 'biggo_stage_status.json')) or {}
-            sync_doc = _load_optional(args.completed_sync or os.path.join(
-                args.repo, 'biggo_completed_sync.json')) or {}
+            meta_path = os.path.join(args.repo, 'prices_meta.json')
+            demand_path = price_demand_path
             biggo_path = args.biggo_status or os.path.join(
                 args.repo, 'biggo_stage_status.json')
-            if not os.path.exists(biggo_path):
-                raise FileNotFoundError(biggo_path)
+            sync_path = args.completed_sync or os.path.join(
+                args.repo, 'biggo_completed_sync.json')
             snapshot_path = os.path.join(args.repo, 'biggo_prices.json')
-            snapshot_hash = None
-            if os.path.isfile(snapshot_path):
-                try:
-                    snapshot_hash = sha256_json(_load(snapshot_path))
-                except (OSError, ValueError):
-                    snapshot_hash = None
             anchor_path = args.anchor_file or os.path.join(
                 args.repo, 'price_anchor.json')
-            anchor_doc = None
-            if os.path.exists(anchor_path):
-                cached = _load(anchor_path)
-                if isinstance(cached, dict) and cached.get('kind') == 'aircon-price-anchor-cache':
-                    anchor_doc = cached.get('anchor')
-                else:
-                    anchor_doc = cached
-            ce = os.environ.get('AIRCON_PRICE_CYCLE_ENABLED') == '1'
-            sc = os.environ.get('AIRCON_PRICE_SHARED_CYCLE') == '1'
-            if ce != sc:
-                raise ValueError('price-mode-inconsistent')
-            shared = ce and sc
-            inputs = {
-                'meta': _load(os.path.join(args.repo, 'prices_meta.json')) or {},
-                'demand': demand_doc, 'biggo': biggo_doc,
-                'completed_sync': sync_doc, 'snapshot_hash': snapshot_hash,
-                'anchor': anchor_doc, 'shared': shared,
-            }
-            candidate = _price_status_mod.build_receipt(now=now, **inputs)
+            inputs1, token1 = _price_inputs(
+                args.repo, demand_path=demand_path, biggo_path=biggo_path,
+                sync_path=sync_path, snapshot_path=snapshot_path,
+                anchor_path=anchor_path, meta_path=meta_path)
+            candidate = _price_status_mod.build_receipt(now=now, **inputs1)
             _price_status_mod.validate_receipt(candidate, now=now)
-            # Re-read the live files and require an identical derivation.  This
-            # is the producer-side guard against a caller-supplied green value.
-            _price_status_mod.verify_receipt(candidate, inputs=inputs, now=now)
-            price_status_doc = candidate
-            _atomic_json(args.price_status_out or price_status_path, candidate)
+            # Genuine re-read: derive again from a second disk snapshot and
+            # compare both parsed facts and raw bytes before publishing.
+            inputs2, token2 = _price_inputs(
+                args.repo, demand_path=demand_path, biggo_path=biggo_path,
+                sync_path=sync_path, snapshot_path=snapshot_path,
+                anchor_path=anchor_path, meta_path=meta_path)
+            rebuilt = _price_status_mod.build_receipt(now=now, **inputs2)
+            if token1 != token2 or inputs1 != inputs2 or rebuilt != candidate:
+                price_race = True
+                price_status_doc = {'schemaVersion': 1,
+                                    'kind': 'aircon-price-status',
+                                    'status': 'blocked',
+                                    'safeReason': 'invalid-status-input',
+                                    'healthy': False,
+                                    'errorClass': 'inputs-changed'}
+            else:
+                _price_status_mod.verify_receipt(candidate, inputs=inputs2, now=now)
+                price_status_doc = candidate
+                _atomic_json(args.price_status_out or price_status_path, candidate)
         except Exception as e:  # noqa: BLE001 - any evidence failure is red
             price_status_doc = {'schemaVersion': 1,
                                 'kind': 'aircon-price-status',
@@ -509,6 +558,10 @@ def main(argv=None):
                               deployment_receipt=receipt, metadata=metadata,
                               web_root=args.web_root, official_status_doc=official_doc,
                               price_status_doc=price_status_doc)
+            if price_race:
+                result['ok'] = False
+                result['failures'] = list(result.get('failures') or []) + ['price:inputs-busy']
+                result['fingerprint'] = 'unhealthy:price'
     try:
         state = _load(args.state)
     except (OSError, ValueError):
@@ -615,6 +668,16 @@ def main(argv=None):
             summary['operations']['status'] = 'unhealthy'
             summary['ok'] = False
             summary['status'] = 'unhealthy'
+    if price_race:
+        # Do not overwrite a previously valid summary with a half-mixed read.
+        try:
+            _atomic_json(args.state, new_state)
+            _atomic_json(args.report, report)
+        except OSError as e:
+            print(f'❌ source health report/state 寫入失敗：{e}', file=sys.stderr)
+            return 1
+        print('source health: busy (price inputs changed during derive); old summary preserved')
+        return 1
     try:
         _atomic_json(args.state, new_state)
         _atomic_json(args.report, report)
