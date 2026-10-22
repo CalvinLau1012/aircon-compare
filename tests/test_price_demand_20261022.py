@@ -182,3 +182,39 @@ def test_mixed_flags_fail_closed_even_with_demand(tmp_path):
                     env={'AIRCON_PRICE_CYCLE_ENABLED': '1'})
     assert out['ok'] is False and out['reason'] == 'mode-inconsistent'
     assert 'price_batch_start' not in batch_utils.load_meta(mp)
+
+
+def test_shared_no_demand_still_refreshes_anchor_cache(tmp_path):
+    import price_cycle
+    snap = {'A': {'price': '$1起'}}
+    from biggo_canonical import sha256_json
+    snap_hash = sha256_json(snap)
+    meta = {'last_price_month': '2026-10', 'price_batch_idx': 7,
+            'last_applied_cycle': '2026-10-10:7/7',
+            'appliedSnapshotHash': snap_hash,
+            'appliedBundleHash': 'sha256:' + 'b' * 64}
+    (tmp_path / 'prices_meta.json').write_text(json.dumps(meta), encoding='utf-8')
+    (tmp_path / 'price_demand.json').write_text(json.dumps(price_demand.empty(NOW)),
+                                                encoding='utf-8')
+    store = price_cycle.FileAnchorStore(str(tmp_path / 'anchor.json'))
+    transition = price_cycle.transition_ack_bytes('a' * 40, 'b' * 40,
+                                                  snap_hash, snap_hash,
+                                                  at='2026-10-22')
+    (tmp_path / 'anchor.json.transition').write_bytes(transition)
+    anchor = {'formatVersion': 2, 'protocol': price_cycle.PROTOCOL,
+              'month': '2026-10', 'cycle': '2026-10-10:7/7',
+              'startedAt': '2026-10-10', 'stage': 7, 'status': 'completed',
+              'lastBundleHash': 'sha256:' + 'b' * 64,
+              'initialBaseHash': snap_hash,
+              'updatedAt': '2026-10-22T00:00:00+08:00'}
+    store.claim_raw(price_cycle._canonical_bytes(anchor), None)
+    env = {'AIRCON_PRICE_CYCLE_ENABLED': '1', 'AIRCON_PRICE_SHARED_CYCLE': '1',
+           'AIRCON_PRICE_SOURCE_REVISION': 'c' * 40, 'AIRCON_PRICE_WRITER': 'github'}
+    out = entry_run(repo=str(tmp_path), meta_path=str(tmp_path / 'prices_meta.json'),
+                    demand_path=str(tmp_path / 'price_demand.json'), apply=True,
+                    now='2026-10-22T16:30:00Z', env=env, store=store,
+                    client=object())
+    assert out['ok'] is True and out['action'] == 'no-demand'
+    cache = json.loads((tmp_path / 'price_anchor.json').read_text())
+    assert cache['kind'] == 'aircon-price-anchor-cache'
+    assert cache['anchor']['stage'] == 7

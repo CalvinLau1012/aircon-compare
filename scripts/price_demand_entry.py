@@ -103,6 +103,34 @@ def run(*, repo, meta_path, demand_path, apply=False, now=None, env=None,
             'month': price_cycle.cycle_month(now_dt),
             'demandHash': __import__('biggo_canonical').sha256_id(
                 __import__('biggo_canonical').canonical_json_bytes(demand_doc))}
+    shared_read = False
+    shared_anchor_doc = None
+    shared_transition_doc = None
+    if mode == 'shared':
+        # Even a no-demand day must refresh the sanitised anchor cache: the
+        # 15-minute local monitor has no coordinator network path and must not
+        # be left with a missing/stale shared-identity proof.
+        if store is None:
+            try:
+                store = price_cycle.CoordinatorAnchorStore.from_env(env)
+            except Exception as e:  # noqa: BLE001
+                base.update({'ok': False, 'action': 'blocked',
+                             'reason': 'shared-anchor-required',
+                             'detail': type(e).__name__})
+                return base
+        try:
+            shared_anchor_doc, _sha, shared_transition_doc = price_cycle._read_store(store)
+            shared_read = True
+            if apply:
+                try:
+                    _write_anchor_cache(repo, shared_anchor_doc, shared_transition_doc,
+                                        now=now_dt)
+                except OSError:
+                    base['anchorCache'] = 'write-failed'
+        except price_cycle.AnchorError as e:
+            base.update({'ok': False, 'action': 'blocked',
+                         'reason': 'blocked-anchor', 'detail': str(e)[:200]})
+            return base
     if not pending:
         base.update({'ok': True, 'action': 'no-demand', 'reason': 'no-new-model'})
         return base
@@ -130,26 +158,30 @@ def run(*, repo, meta_path, demand_path, apply=False, now=None, env=None,
                      'stage': meta2.get('price_batch_idx', 0)})
         return base
     # Shared mode: one HKT-month identity, CAS anchor, no localtime fallback.
-    if store is None:
+    if shared_read:
+        anchor_doc, transition_doc = shared_anchor_doc, shared_transition_doc
+    else:
+        if store is None:
+            try:
+                store = price_cycle.CoordinatorAnchorStore.from_env(env)
+            except Exception as e:  # noqa: BLE001
+                base.update({'ok': False, 'action': 'blocked',
+                             'reason': 'shared-anchor-required',
+                             'detail': type(e).__name__})
+                return base
         try:
-            store = price_cycle.CoordinatorAnchorStore.from_env(env)
-        except Exception as e:  # noqa: BLE001
-            base.update({'ok': False, 'action': 'blocked',
-                         'reason': 'shared-anchor-required',
-                         'detail': type(e).__name__})
+            anchor_doc, _sha, transition_doc = price_cycle._read_store(store)
+            if apply:
+                try:
+                    _write_anchor_cache(repo, anchor_doc, transition_doc, now=now_dt)
+                except OSError:
+                    base['anchorCache'] = 'write-failed'
+        except price_cycle.AnchorError as e:
+            base.update({'ok': False, 'action': 'blocked', 'reason': 'blocked-anchor',
+                         'detail': str(e)[:200]})
             return base
     if client is None:
         client = _client(env)
-    try:
-        anchor_doc, _sha, transition_doc = price_cycle._read_store(store)
-        try:
-            _write_anchor_cache(repo, anchor_doc, transition_doc, now=now_dt)
-        except OSError:
-            base['anchorCache'] = 'write-failed'
-    except price_cycle.AnchorError as e:
-        base.update({'ok': False, 'action': 'blocked', 'reason': 'blocked-anchor',
-                     'detail': str(e)[:200]})
-        return base
     state = price_cycle.plan(
         meta, anchor_doc, transition_doc, now_dt,
         actual_source=env.get('AIRCON_PRICE_SOURCE_REVISION'),

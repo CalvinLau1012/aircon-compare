@@ -256,7 +256,9 @@ def build_receipt(*, now=None, meta=None, demand=None, biggo=None,
     if status is None:
         if active:
             cycle_id = f'{start}:{idx + 1}/7'
-            if cooldown_until is not None:
+            cooldown_applies = cooldown_until is not None and (
+                progress is None or progress <= cooldown_until)
+            if cooldown_applies:
                 # A legal cooldown is not "no progress": the stall deadline
                 # starts from its actual recovery time, not from this monitor
                 # run and not from a repeated skip.

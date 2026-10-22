@@ -324,3 +324,16 @@ def test_forged_self_hash_active_in_progress_with_stale_progress_is_rejected():
     forged['receiptHash'] = sha256_id(canonical_json_bytes(body))
     with pytest.raises(price_status.PriceStatusError):
         price_status.validate_receipt(forged, now=NOW)
+
+
+def test_progress_after_old_cooldown_uses_progress_not_cooldown():
+    meta = _meta(price_batch_start='2026-10-18', price_batch_idx=2,
+                 blocked_until=1792500000,
+                 appliedAt='2026-10-22T00:00:00Z')
+    biggo = _biggo(status='completed', at='2026-10-22T00:00:00Z')
+    r = price_status.build_receipt(
+        now=NOW, meta=meta, demand=_demand(), biggo=biggo,
+        completed_sync={}, snapshot_hash='sha256:' + 'a' * 64,
+        anchor=None, shared=False)
+    assert r['status'] == 'active' and r['safeReason'] == 'in-progress'
+    assert r['healthy'] is True
