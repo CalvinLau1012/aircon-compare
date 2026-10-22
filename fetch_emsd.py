@@ -371,7 +371,8 @@ def plan_new_models(all_rows):
     try:
         import price_demand
         demand_doc = price_demand.merge_new_models(
-            price_demand.load(), rec, now=time.time())
+            price_demand.load(os.path.join(BASE_DIR, 'price_demand.json')),
+            rec, now=time.time())
     except price_demand.DemandError as e:
         raise ValueError(f'price_demand.json 損毀，唔可以默默重置：{e}')
     return {'new_models': rec, 'queue': q, 'added': added,

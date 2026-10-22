@@ -64,12 +64,14 @@ def _snapshot_hash(path):
     return sha256_id(canonical_json_bytes(_load(path)))
 
 
-def _meta_facts(meta, label, snapshot_hash, month):
+def _meta_facts(meta, label, snapshot_hash, month, bundle_hash=None):
     if not isinstance(meta, dict):
         return [f'{label}:meta-missing']
     errors = []
     if meta.get('appliedSnapshotHash') != snapshot_hash:
         errors.append(f'{label}:applied-snapshot-mismatch')
+    if bundle_hash and meta.get('appliedBundleHash') != bundle_hash:
+        errors.append(f'{label}:applied-bundle-mismatch')
     if meta.get('last_applied_cycle') != month.get('cycle'):
         errors.append(f'{label}:applied-cycle-mismatch')
     if meta.get('last_price_month') != month.get('month'):
@@ -181,6 +183,8 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
         cycle_month = started[:7]
     if manifest.get('stage') != 7:
         errors.append('manifest-stage-not-7')
+    if manifest.get('recordCount') != len(snap):
+        errors.append('manifest-record-count-mismatch')
     if not (isinstance(manifest.get('baseSnapshotHash'), str)
             and SHA_RE.match(manifest['baseSnapshotHash'])):
         errors.append('manifest-base-hash-invalid')
@@ -188,7 +192,8 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
     errors.extend(_validate_stage_result(result, manifest, snap))
     errors.extend(_meta_facts(_load(prices_meta) if prices_meta else {}, 'local',
                               snapshot_hash,
-                              {'cycle': cycle, 'month': cycle_month}))
+                              {'cycle': cycle, 'month': cycle_month},
+                              bundle_hash=bundle_hash))
     for label, path in (('public', public_meta), ('private', private_meta)):
         if not path:
             errors.append(f'{label}:meta-not-supplied')
@@ -199,7 +204,8 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
             errors.append(f'{label}:meta-unreadable')
             continue
         errors.extend(_meta_facts(other, label, snapshot_hash,
-                                  {'cycle': cycle, 'month': cycle_month}))
+                                  {'cycle': cycle, 'month': cycle_month},
+                                  bundle_hash=bundle_hash))
     if not SOURCE_RE.match(str(source_public or '')):
         errors.append('public:source-revision-invalid')
     if not SOURCE_RE.match(str(source_private or '')):
@@ -350,6 +356,24 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
         receipt['ok'] = True
         receipt['ready'] = True
         return receipt
+    demand_path = os.path.join(repo, 'price_demand.json')
+    existing_demand = None
+    if os.path.exists(demand_path):
+        try:
+            existing_demand = price_demand.load(demand_path)
+        except price_demand.DemandError:
+            receipt['ok'] = False
+            receipt['ready'] = False
+            receipt['blockedReasons'] = ['demand-invalid-prestate']
+            return receipt
+        # Strong prestate: never overwrite a demand file that contains facts
+        # different from this derived migration (including newer processed
+        # evidence).  Same facts may keep their original updatedAt.
+        if existing_demand.get('demands') != demand_doc.get('demands'):
+            receipt['ok'] = False
+            receipt['ready'] = False
+            receipt['blockedReasons'] = ['demand:prestate-conflict']
+            return receipt
     try:
         # Transition first: the claim is only meaningful when both writers have
         # acknowledged the old entry has stopped.
@@ -370,8 +394,7 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
                 f.write(history_bytes)
                 f.flush()
                 os.fsync(f.fileno())
-        demand_path = os.path.join(repo, 'price_demand.json')
-        if demand_text is not None:
+        if demand_text is not None and existing_demand is None:
             price_demand.update(demand_path, lambda doc: demand_doc, now)
         receipt['written'] = {
             'anchor': claimed,

@@ -143,3 +143,23 @@ def test_apply_writes_anchor_transition_history_demand_then_noop(tmp_path):
     r3 = _plan(repo, anchor_file=str(anchor), transition_file=str(transition),
                history_file=str(history))
     assert r3['ok'] is False and 'anchor:prestate-conflict' in r3['blockedReasons']
+
+
+def test_demand_prestate_conflict_blocks_when_anchor_history_not_semantic_noop(tmp_path):
+    repo = _fixture(tmp_path)
+    anchor = repo / 'anchor.json'; transition = repo / 'anchor.transition'
+    history = repo / 'history-2026-10.json'
+    assert _plan(repo, anchor_file=str(anchor), transition_file=str(transition),
+                 history_file=str(history))['mode'] == 'applied'
+    demand = repo / 'price_demand.json'
+    doc = json.loads(demand.read_text())
+    doc['demands'][0]['status'] = 'pending'
+    doc['demands'][0].pop('processedAt', None)
+    doc['demands'][0]['evidence'] = []
+    demand.write_text(json.dumps(doc), encoding='utf-8')
+    # Make one prestate absent so the early semantic-no-op path is not taken.
+    transition.unlink()
+    r = _plan(repo, anchor_file=str(anchor), transition_file=str(transition),
+              history_file=str(history))
+    assert r['ok'] is False
+    assert 'demand:prestate-conflict' in r['blockedReasons']

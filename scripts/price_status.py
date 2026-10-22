@@ -147,9 +147,11 @@ def _meta_basic(meta):
     if meta.get('price_batch_start') is not None \
             and _parse_date_hkt(meta.get('price_batch_start')) is None:
         return 'meta-invalid'
-    if meta.get('last_price_month') is not None \
-            and not re.fullmatch(r'\d{4}-\d{2}', str(meta.get('last_price_month'))):
-        return 'meta-invalid'
+    if meta.get('last_price_month') is not None:
+        try:
+            _dt.datetime.strptime(str(meta.get('last_price_month')), '%Y-%m')
+        except ValueError:
+            return 'meta-invalid'
     if meta.get('blocked_until') is not None:
         value = meta.get('blocked_until')
         if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
