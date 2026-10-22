@@ -351,7 +351,7 @@ def build_receipt(*, now=None, meta=None, demand=None, biggo=None,
             apply_receipt = _matching_apply_receipt(
                 meta, biggo, completed_sync, snapshot_hash, post,
                 applied_cycle, last_stage)
-        if post is None and (last_stage > 0 or not active and applied_cycle):
+        if post is None and not active and last_stage > 0:
             status, reason, healthy = 'blocked', 'post-state-missing', False
         elif (not active and meta.get('last_price_month') == _month_hkt(now_dt)
               and apply_receipt is None):
