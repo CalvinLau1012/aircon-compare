@@ -36,6 +36,14 @@ def _seed(root):
     (root / 'prices_meta.json').write_text(json.dumps(
         {'price_batch_idx': 7, 'last_price_month': '2026-09',
          'last_run': '2026-09-15', 'last_full': '2026-09-15'}))
+    # New policy: a monthly start needs a real pending new-model demand.
+    (root / 'price_demand.json').write_text(json.dumps({
+        'schemaVersion': 1, 'kind': 'aircon-price-demand',
+        'updatedAt': '2026-09-30T00:00:00Z',
+        'demands': [{'key': 'BRAND|M1', 'brand': 'BRAND', 'model': 'M1',
+                     'firstSeen': '2026-09-30', 'status': 'pending',
+                     'evidence': []}]}))
+
 
 
 def _hashes(root):
