@@ -1062,3 +1062,29 @@ Root independently reproduced a remaining R2 case: a present null/empty/half-wri
 ### 2026-10-21 Root 獨立驗收補正（D39 實作）
 
 Root 反例發現並補正：損壞 observation 結構須產生 unhealthy 收據而非 traceback；Gilman catalogue 的頁面失敗／TLS 原因不可冒充正常缺項；連續兩輪 pending 保留已驗證完整快照；一般 cache 入口沿用最早來源觀察時間，不能靠重跑把舊目錄變新。補上獨立回歸案例；原候選及原測試紀錄保留。純缺規格仍正常待補，真正資料／抓取／部署故障維持阻斷。本條是候選補正紀錄，正式部署事實另行追加。
+
+## 2026-10-22 — 雙端工作流修復候選（append-only；未部署）
+
+- Added：分來源 price status receipt（schemaVersion 1）及 health summary v3；`price_demand.py`／`price_demand_entry.py`（新機需求、canonical 去重、priced／clean_miss 證據、network error 不處理）；`scripts/price_cycle_migrate.py`（預設唯讀、fixture-only apply、semantic no-op）。
+- Changed：BigGo snapshot 套用／取得 age 不再以單一 36h 判 pipeline 故障；官網 queue 與價格啟動分離，`advance_queue` 只處理官網隊列；shared mode 使用 monthly-cycle-v2＋CAS，兩旗標必須成對。
+- Fixed：私人 runtime mkdir 鎖改 flock（busy 75、缺 flock fail closed、子程序持 fd）；aircon json-file 10m／3；update.log／update-cron.log／source-health.log 以獨立 flock＋logrotate 10MiB／14 份／delaycompress 輪替。
+- Evidence：新增 price status、demand、migration、true-entry acquisition 全鏈及 v1／v2／v3 相容／反例測試；候選只作離線 fixture／fake provider／fake coordinator 驗證。零正式 provider／coordinator／服務操作。
+
+## 2026-10-22 R2 — 真入口、只接收及證據交易返修（append-only；未部署）
+
+- Fixed：demand transient mutex／tmp 精確置於 `.locks/`，真 `stage_artifacts` 不再被 `price_demand.json.lock` 阻斷；ledger 可正常 stage／commit／跨 checkout 保存。
+- Fixed：public workflow price entry 與 provider runner 共用 query mode／flags／source pin／writer；private compose 非秘密配置供 updater／health cron 共用；mixed flags fail closed。
+- Fixed：固定 code revision pin 與精確價格鏈 closure；純資料 child commit 保持有效，程式／workflow 改變要求新 ack。
+- Fixed：completed 進展只採 current cycle/stage/bundle＋實際 post-state；receiver finishedAt／monitor readAt／anchor.updatedAt 不再刷新；completed 缺 apply/post-state 或空 sync 不可 green。
+- Fixed：cooldown 需真 skip-cooldown witness；任意 bounded `blocked_until` 不再令停滯批次健康。
+- Fixed：新 demand 需 `firstSeenAt`，舊結果不得清除；canonicalKey 精確品牌配對；EMSD／apply／direct writer 共用 demand lock；demand 寫入納入 apply journal 且在 metadata 前，journal recovery 保留較新 processed。
+- Fixed：migration 分開 `completedBaselineReady`／`priceStartReady`／`enableReady`；歷史不明列 unknown-provenance，不以 ready=true 冒充可啟用。
+- Fixed：logrotate `daily + maxsize 10M`，日期及大小兩條件生效。
+- Added：`AIRCON_PRICE_QUERY_MODE=receive-only|normal`；正式遷移預設 receive-only，禁止新 cycle／provider／force，保留 completed receive；舊 local 只限 fixture-local。
+
+
+### 2026-10-22 Root 最後整合補正（追加；尚未正式部署）
+
+Root 獨立重現後補正：需求合併必須更新實際 ledger list；需求完成只採有效 acquisition witness，封裝時間不能證明涵蓋較新需求。Legacy 已完成 stage7 可另綁原 run/job/status 的不可變 query-window 收據，只用其下界證明舊登記先於查價，不寫回原包或冒充逐項原始取得時間。六項沒有查價歷史的需求保留 unknown，顯式 retain-unknown-ineligible 處置逐項綁 hash，禁止它們單獨啟動查價；未來有可信建立時間的新需求仍按原批准「有新機、每 HKT 月最多一次、原七日 workload」規則處理。預設 migration 仍對未處置 unknown 顯示不可啟用。
+
+價格 receipt 以獨立 v1.1 Schema extension 正式加入 evidence 欄位並實際驗證；metadata_schema 的選擇不變。新版模式下兩個 sidecar 同時缺失也必須告警，不能退回 legacy 36h 判斷。Private cron 與人工入口共用非秘密價格政策檔，避免 cron 丟失容器 environment 後設定分歧。原始 acquiredAt 缺失仍顯示未確認，不能用查價區間、發布／接收／套用時間補造。原 R1/R2 候選、失敗測試與補正證據保留；正式部署及完整門禁結果另行追加。本修復禁止真 BigGo 請求或補跑 full daily。

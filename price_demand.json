@@ -1,0 +1,511 @@
+{
+  "demands": [
+    {
+      "brand": "格力",
+      "evidence": [],
+      "firstSeen": "2026-09-07",
+      "key": "GREE|GEH53ZEGEH53ZC",
+      "model": "GEH53ZE/GEH53ZC",
+      "status": "unknown",
+      "unknownReason": "missing-creation-time"
+    },
+    {
+      "brand": "格力",
+      "evidence": [],
+      "firstSeen": "2026-09-07",
+      "key": "GREE|GEH35ZEGEH35ZC",
+      "model": "GEH35ZE/GEH35ZC",
+      "status": "unknown",
+      "unknownReason": "missing-creation-time"
+    },
+    {
+      "brand": "格力",
+      "evidence": [],
+      "firstSeen": "2026-09-07",
+      "key": "GREE|GEH26ZEGEH26ZC",
+      "model": "GEH26ZE/GEH26ZC",
+      "status": "unknown",
+      "unknownReason": "missing-creation-time"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-09-15",
+      "key": "MITSUBISHIHEAVY|WRK18MIZC1",
+      "model": "WRK18MIZC1",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-09-15",
+      "key": "MITSUBISHIHEAVY|WRK09MIZC1",
+      "model": "WRK09MIZC1",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-09-15",
+      "key": "MITSUBISHIHEAVY|WRK07MIZC1",
+      "model": "WRK07MIZC1",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-09-15",
+      "key": "MITSUBISHIHEAVY|WRK18MIC1",
+      "model": "WRK18MIC1",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-09-15",
+      "key": "MITSUBISHIHEAVY|WRK09MIC1",
+      "model": "WRK09MIC1",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-09-15",
+      "key": "MITSUBISHIHEAVY|WRK07MIC1",
+      "model": "WRK07MIC1",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "PHILIPS",
+      "evidence": [],
+      "firstSeen": "2026-09-15",
+      "key": "PHILIPS|FAC12VCEB3CBA1H",
+      "model": "FAC12VC-Eb3CBA1H",
+      "status": "unknown",
+      "unknownReason": "missing-creation-time"
+    },
+    {
+      "brand": "PHILIPS",
+      "evidence": [],
+      "firstSeen": "2026-09-15",
+      "key": "PHILIPS|FAC09VCEB3CBA1H",
+      "model": "FAC09VC-Eb3CBA1H",
+      "status": "unknown",
+      "unknownReason": "missing-creation-time"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-09-21",
+      "key": "MITSUBISHIHEAVY|WRK18MIH1",
+      "model": "WRK18MIH1",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-09-21",
+      "key": "MITSUBISHIHEAVY|WRK09MIH1",
+      "model": "WRK09MIH1",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-09-21",
+      "key": "MITSUBISHIHEAVY|WRK07MIH1",
+      "model": "WRK07MIH1",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "MECAN",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-09-21",
+      "key": "MECAN|MC22WVRQW",
+      "model": "MC22WVRQW",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "MECAN",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-09-21",
+      "key": "MECAN|MC18WVRQW",
+      "model": "MC18WVRQW",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-09-29",
+      "key": "MITSUBISHIHEAVY|WRK07MIZH1",
+      "model": "WRK07MIZH1",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-09-29",
+      "key": "MITSUBISHIHEAVY|WRK09MIZH1",
+      "model": "WRK09MIZH1",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-09-29",
+      "key": "MITSUBISHIHEAVY|WRK18MIZH1",
+      "model": "WRK18MIZH1",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "MECAN",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-10-08",
+      "key": "MECAN|MC07WVRQW",
+      "model": "MC07WVRQW",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "MECAN",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-10-08",
+      "key": "MECAN|MC09WVRQW",
+      "model": "MC09WVRQW",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "MECAN",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-10-08",
+      "key": "MECAN|MC07VXH",
+      "model": "MC07VXH",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "MECAN",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-10-08",
+      "key": "MECAN|MC09VXH",
+      "model": "MC09VXH",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "MECAN",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-10-08",
+      "key": "MECAN|MC12VXH",
+      "model": "MC12VXH",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "格力",
+      "evidence": [],
+      "firstSeen": "2026-10-16",
+      "key": "GREE|GEH63ZEGEH63ZC",
+      "model": "GEH63ZE/GEH63ZC",
+      "status": "unknown",
+      "unknownReason": "missing-creation-time"
+    },
+    {
+      "brand": "Comfee'",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-10-16",
+      "key": "COMFEE|CWV24CRFN9AD5",
+      "model": "CWV-24CRFN9-AD5",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "格力",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-10-16",
+      "key": "GREE|GWT07ES",
+      "model": "GWT07ES",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "格力",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-10-16",
+      "key": "GREE|GWT09ES",
+      "model": "GWT09ES",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "MECAN",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-10-16",
+      "key": "MECAN|MC18VXH",
+      "model": "MC18VXH",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "MECAN",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-10-16",
+      "key": "MECAN|MC24VXH",
+      "model": "MC24VXH",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    },
+    {
+      "brand": "格力",
+      "evidence": [
+        {
+          "cycleId": "2026-10-10:7/7",
+          "observedAt": "2026-10-20T20:15:34Z",
+          "outcome": "clean_miss",
+          "queryWindowHash": "sha256:8de2268111cfe771fd839c6a9e9a0ffdbe1dc38a8fb22b9cef4eed41be35c4fa",
+          "resultHash": null,
+          "stage": 7
+        }
+      ],
+      "firstSeen": "2026-10-16",
+      "key": "GREE|GWT12ES",
+      "model": "GWT12ES",
+      "processedAt": "2026-10-20T20:15:34Z",
+      "status": "processed"
+    }
+  ],
+  "kind": "aircon-price-demand",
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-22T06:41:44Z"
+}

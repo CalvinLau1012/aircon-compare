@@ -132,20 +132,123 @@ def detect_mode():
     return 'full' if full_due else 'daily'
 
 
-def start_price_batch():
-    """啟動價錢快照分批更新：有新機且本月未做過先啟動（分 7 日，每日一批）"""
-    meta = load_meta()
-    month = time.strftime('%Y-%m')
+def _load_demand(path=None):
+    """Load the versioned new-model demand; malformed files fail closed."""
+    import price_demand
+    try:
+        return price_demand.load(path)
+    except price_demand.DemandError as e:
+        raise MetaError(f'price_demand.json 契約錯誤（fail-closed）：{e}') from e
+
+
+HKT = datetime.timezone(datetime.timedelta(hours=8))
+
+
+def _hkt_now(now=None):
+    if now is None:
+        return datetime.datetime.now(datetime.timezone.utc).astimezone(HKT)
+    if isinstance(now, (int, float)) and not isinstance(now, bool):
+        return datetime.datetime.fromtimestamp(now, datetime.timezone.utc).astimezone(HKT)
+    if isinstance(now, datetime.datetime):
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=datetime.timezone.utc)
+        return now.astimezone(HKT)
+    raise ValueError('now must be datetime or epoch seconds')
+
+
+def _demand_allows_start(meta, demand_doc, now=None):
+    """New-model-only policy: no pending demand => never start a monthly batch."""
+    import price_demand
+    if not price_demand.pending(demand_doc):
+        return False, 'no-demand'
+    month = _hkt_now(now).strftime('%Y-%m')
     if meta.get('last_price_month') == month:
-        print(f'💰 價錢更新：本月已做過（{month}），等下個月先再更新')
+        return False, 'month-completed'
+    if meta.get('price_batch_start') and int(meta.get('price_batch_idx', 0) or 0) < PRICE_BATCH_DAYS:
+        return False, 'active-batch'
+    return True, 'waiting-eligible'
+
+
+def _shared_cycle_enabled(env=None):
+    """The two flags must agree; mixed values fail closed."""
+    import importlib.util
+    path = os.path.join(BASE, 'scripts', 'price_cycle.py')
+    spec = importlib.util.spec_from_file_location('price_cycle_shared', path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    try:
+        return mod.shared_mode(env or os.environ) == 'shared'
+    except mod.AnchorError as e:
+        raise MetaError(f'價格 mode 不一致（fail-closed）：{e}')
+
+
+def _ensure_shared_cycle(demand_doc=None, meta_path=None, env=None):
+    """Delegate to the single shared monthly identity; never start locally."""
+    import importlib.util
+    import biggo_coordinator as coord
+    path = os.path.join(BASE, 'scripts', 'price_cycle.py')
+    spec = importlib.util.spec_from_file_location('price_cycle_shared', path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    store = mod.CoordinatorAnchorStore.from_env()
+    client = None
+    env = env or os.environ
+    status = coord.config_status(env)
+    if status['configured']:
+        contents = coord.GitHubContentsClient(coord.CoordinatorConfig.from_env(env))
+        client = coord.CoordinatorClient(contents, owner='monthly-normal-start')
+    result = mod.ensure_monthly_cycle(meta_path or META_PATH, allow_write=True,
+                                      store=store, client=client, repo_root=BASE,
+                                      demand_doc=demand_doc,
+                                      demand_path=os.path.join(
+                                          os.path.dirname(os.path.abspath(
+                                              meta_path or META_PATH)),
+                                          'price_demand.json'))
+    if result.get('written') or result.get('reason') in (
+            'active-batch', 'month-completed', 'already-anchored', 'noop',
+            'no-demand', 'waiting-eligible'):
+        return result.get('reason')
+    raise MetaError(f'共享月度入口 fail-closed：{result.get("reason")} {result.get("detail", "")}')
+
+
+def start_price_batch(now=None, meta_path=None, demand_path=None, env=None):
+    """Start only in explicit normal/fixture mode; receive-only never starts."""
+    env = env or os.environ
+    import price_runtime
+    try:
+        qmode = price_runtime.query_mode(env)
+    except price_runtime.PriceRuntimeError as e:
+        raise MetaError(f'price query mode invalid: {e}') from e
+    if not price_runtime.may_start(env):
+        print('💰 價錢更新：receive-only（禁止開新批次）')
         return False
-    if meta.get('price_batch_start') and meta.get('price_batch_idx', 0) < PRICE_BATCH_DAYS:
-        print('💰 價錢更新：分批進行中，唔重複啟動')
+    meta_path = meta_path or META_PATH
+    demand_path = demand_path or os.path.join(
+        os.path.dirname(os.path.abspath(meta_path)), 'price_demand.json')
+    demand_doc = _load_demand(demand_path)
+    if _shared_cycle_enabled(env):
+        if qmode != 'normal':
+            raise MetaError('shared cycle requires AIRCON_PRICE_QUERY_MODE=normal')
+        import verify_price_source_pin
+        try:
+            verify_price_source_pin.verify_configured(BASE, env)
+        except ValueError as e:
+            raise MetaError(f'price source pin failed: {e}') from e
+        reason = _ensure_shared_cycle(demand_doc, meta_path, env)
+        return reason in ('started', 'adopted')
+    if qmode == 'normal':
+        raise MetaError('normal mode requires paired shared flags')
+    meta = load_meta(meta_path)
+    allowed, reason = _demand_allows_start(meta, demand_doc, now)
+    if not allowed:
+        print(f'💰 價錢更新：{reason}，唔啟動')
         return False
-    meta['price_batch_start'] = time.strftime('%Y-%m-%d')
+    hkt_now = _hkt_now(now)
+    month = hkt_now.strftime('%Y-%m')
+    meta['price_batch_start'] = hkt_now.strftime('%Y-%m-%d')
     meta['price_batch_idx'] = 0
     meta['last_price_month'] = month
-    save_meta(meta)
+    save_meta(meta, meta_path)
     print(f'💰 價錢更新已啟動：分 {PRICE_BATCH_DAYS} 日分批進行（本月 {month} 唔再重複）')
     return True
 

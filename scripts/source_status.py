@@ -483,6 +483,11 @@ def build_status(*, metadata=None, emsd_receipt=None, prices_meta=None,
     elif bstatus in ('skip-not-active',):
         bstatus_ui, breason = ('pending' if prices_meta.get('price_batch_start')
                                else 'unknown', 'no-fetch-needed')
+    elif bstatus == 'skip-receive-only':
+        # Explicit receive-only is a legal, zero-provider idle state.  A
+        # verified price receipt still governs freshness; without one the
+        # source-status/health layers fail closed via the missing receipt.
+        bstatus_ui, breason = 'ok', 'no-fetch-needed'
     elif bstatus in ('needs-review', 'blocked-incomplete', 'blocked-needs-review',
                      'blocked-stale', 'blocked-quota-window-unsupported',
                      'blocked-diagnostic-pending'):

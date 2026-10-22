@@ -33,7 +33,7 @@ RUNTIME_STATE = {
     'carrier_official.json', 'general_official.json', 'specs.json', 'mecan_official.json', 'gilman_official.json',
     'official_batch_status.json', 'biggo_completed_sync.json',
     'biggo_prices.json', 'prices.json', 'prices_meta.json', 'gemini_prices.json',
-    'model_blacklist.json', 'model_status.json',
+    'model_blacklist.json', 'model_status.json', 'price_demand.json',
 }
 
 

@@ -29,6 +29,8 @@ import model_lifecycle  # noqa: E402
 
 ACTIVE_META = {'price_batch_start': '2026-10-01', 'price_batch_idx': 0}
 CONFIGURED_ENV = {
+    'AIRCON_PRICE_QUERY_MODE': 'fixture-local',
+    'AIRCON_PRICE_FIXTURE': '1',
     'AIRCON_BIGGO_COORDINATOR_REPO': 'owner/coordinator-repo',
     'AIRCON_BIGGO_COORDINATOR_TOKEN': 'tok',
     'AIRCON_BIGGO_LEASE_OWNER': 'me',
@@ -273,7 +275,9 @@ def test_inactive_stage_zero_coordinator_and_zero_biggo(tmp_path):
 
 def test_active_without_coordinator_config_makes_zero_calls(tmp_path):
     fetch = FakeFetch(tmp_path)
-    code, out, _, fetch, api = _run(tmp_path, meta=ACTIVE_META, env={}, fetch=fetch)
+    code, out, _, fetch, api = _run(tmp_path, meta=ACTIVE_META,
+                                    env={'AIRCON_PRICE_QUERY_MODE': 'fixture-local',
+                                         'AIRCON_PRICE_FIXTURE': '1'}, fetch=fetch)
     assert code == 0 and _status(out) == 'skip-coordinator-not-configured'
     assert api.calls == [] and fetch.smoke_calls == 0 and fetch.batch_calls == 0
 
@@ -688,7 +692,10 @@ def test_force_mode_acquires_lease_and_publishes(tmp_path):
 def test_force_mode_without_coordinator_config_zero_calls(tmp_path):
     fetch = FakeFetch(tmp_path)
     code, out, apply_calls, fetch, api = _run(
-        tmp_path, meta={}, fetch=fetch, env={'AIRCON_BIGGO_FORCE_STAGE': '1'})
+        tmp_path, meta={}, fetch=fetch, env={
+            'AIRCON_PRICE_QUERY_MODE': 'fixture-local',
+            'AIRCON_PRICE_FIXTURE': '1',
+            'AIRCON_BIGGO_FORCE_STAGE': '1'})
     assert code == 0 and _status(out) == 'skip-coordinator-not-configured'
     assert fetch.smoke_calls == 0 and fetch.force_calls == 0
 

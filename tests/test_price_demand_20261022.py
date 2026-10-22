@@ -1,0 +1,348 @@
+# -*- coding: utf-8 -*-
+"""Versioned new-model demand, transaction, concurrency and start policy."""
+import base64
+import json
+import os
+import subprocess
+import sys
+import time
+
+import pytest
+
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path[:0] = [BASE, os.path.join(BASE, 'scripts')]
+
+import batch_utils  # noqa: E402
+import fetch_emsd  # noqa: E402
+import price_demand  # noqa: E402
+from price_demand_entry import run as entry_run  # noqa: E402
+
+NOW = 1792600000
+
+
+def _with_acquisition(packet):
+    import copy
+    import datetime as dt
+    import biggo_acquisition
+    packet = copy.deepcopy(packet)
+    generated = dt.datetime.fromisoformat(packet['generatedAt'].replace('Z', '+00:00'))
+    acquired = (generated - dt.timedelta(seconds=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    for outcome in packet['outcomes']:
+        if outcome['outcome'] in ('priced', 'clean_miss'):
+            outcome['acquiredAt'] = acquired
+            outcome['resultHash'] = biggo_acquisition.result_hash(outcome.get('price'))
+    packet['acquisition'] = biggo_acquisition.build_block(
+        cycle_id=packet['cycleId'], stage=packet['stage'], base_snapshot={},
+        new_snapshot={}, outcomes=packet['outcomes'],
+        batch_started_at=(generated - dt.timedelta(minutes=1)).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        generated_at=packet['generatedAt'], require_complete=True)
+    return packet
+
+
+def _new_models(*items):
+    return {'models': [{'brand': b, 'model': m, 'first_seen': '2026-10-01',
+                        'first_seen_at': '2026-10-01T00:00:00Z'}
+                       for b, m in items]}
+
+
+def test_canonical_aliases_and_duplicate_registrations_collapse():
+    doc = price_demand.merge_new_models(price_demand.empty(NOW), _new_models(
+        ('格力', 'GEH63ZE/GEH63ZC'),
+        ('GREE', 'geh63ze/geh63zc'),
+        ('GREE', 'GEH63ZE/GEH63ZC'),
+        ('三菱重工', 'WRK07MIZH1'),
+        ('MITSUBISHI HEAVY', 'WRK07MIZH1'),
+    ), now=NOW)
+    assert len(doc['demands']) == 2
+    assert {d['key'] for d in doc['demands']} == {
+        'GREE|GEH63ZEGEH63ZC', 'MITSUBISHIHEAVY|WRK07MIZH1'}
+    assert len(doc['demands'][0].get('aliases', [])) >= 1
+
+
+def test_clean_miss_processed_once_and_net_error_never_processed():
+    doc = price_demand.merge_new_models(price_demand.empty(NOW), _new_models(
+        ('格力', 'A1'), ('格力', 'B1')), now=NOW)
+    sr = {'cycleId': '2026-10-10:1/7', 'stage': 1,
+          'generatedAt': '2026-10-10T01:00:00Z',
+          'outcomes': [
+              {'model': 'A1', 'canonicalKey': 'GREE|A1',
+               'outcome': 'clean_miss'},
+              {'model': 'B1', 'canonicalKey': 'GREE|B1',
+               'outcome': 'net_error'}]}
+    sr = _with_acquisition(sr)
+    doc2 = price_demand.record_outcomes(doc, sr, {'cycleId': sr['cycleId'], 'stage': 1},
+                                        now=NOW)
+    by = {d['key']: d for d in doc2['demands']}
+    assert by['GREE|A1']['status'] == 'processed'
+    assert len(by['GREE|A1']['evidence']) == 1
+    assert by['GREE|B1']['status'] == 'pending'
+    doc3 = price_demand.record_outcomes(doc2, sr, {'cycleId': sr['cycleId'], 'stage': 1},
+                                        now=NOW + 100)
+    by3 = {d['key']: d for d in doc3['demands']}
+    assert by3['GREE|A1']['claimed' if False else 'evidence'] == by['GREE|A1']['evidence']
+    assert by3['GREE|A1']['processedAt'] == by['GREE|A1']['processedAt']
+    # A second real stage can append evidence but never removes prior attempts.
+    sr2 = dict(sr, stage=2, cycleId='2026-10-10:2/7',
+               generatedAt='2026-10-11T01:00:00Z')
+    sr2 = _with_acquisition(sr2)
+    doc4 = price_demand.record_outcomes(doc3, sr2, {'cycleId': sr2['cycleId'], 'stage': 2},
+                                        now=NOW + 86400)
+    assert len({d['key']: d for d in doc4['demands']}['GREE|A1']['evidence']) == 1
+
+
+def test_corrupt_demand_fails_closed(tmp_path):
+    path = tmp_path / 'price_demand.json'
+    path.write_text('{broken', encoding='utf-8')
+    with pytest.raises(price_demand.DemandError):
+        price_demand.load(path)
+    # update never resets the corrupt file.
+    with pytest.raises(price_demand.DemandError):
+        price_demand.update(path, lambda d: d)
+    assert path.read_text(encoding='utf-8') == '{broken'
+
+
+def test_concurrent_registration_keeps_both_models(tmp_path):
+    path = tmp_path / 'price_demand.json'
+    script = (
+        'import sys, json; sys.path[:0]=[%r,%r]; '
+        'import price_demand; '
+        'price_demand.register_new_models(%r, {"models":[{"brand":"格力","model":sys.argv[1],"first_seen":"2026-10-01"}]}, now=1792600000)'
+        % (BASE, os.path.join(BASE, 'scripts'), str(path)))
+    procs = [subprocess.Popen([sys.executable, '-c', script, m])
+             for m in ('CONCURRENT-A', 'CONCURRENT-B')]
+    assert [p.wait(timeout=30) for p in procs] == [0, 0]
+    doc = price_demand.load(path)
+    keys = {d['key'] for d in doc['demands']}
+    assert {'GREE|CONCURRENTA', 'GREE|CONCURRENTB'} <= keys
+
+
+def _plan(tmp_path):
+    return {'new_models': {'updated': '2026-10-22', 'models': [
+                {'brand': '格力', 'model': 'NEW-1', 'first_seen': '2026-10-22'}]},
+            'queue': {'stage': 1, 'models': ['NEW-1']},
+            'added': ['NEW-1'],
+            'demand': price_demand.merge_new_models(
+                price_demand.empty(NOW), _new_models(('格力', 'NEW-1')), now=NOW)}
+
+
+def test_emsd_transaction_includes_demand_and_rolls_back(tmp_path, monkeypatch):
+    csv = tmp_path / 'emsd_空調能源標籤.csv'
+    csv.write_bytes(b'OLD-CSV')
+    (tmp_path / 'new_models.json').write_text('{"updated":"old","models":[]}', encoding='utf-8')
+    (tmp_path / 'update_queue.json').write_text('{"stage":0,"models":[]}', encoding='utf-8')
+    demand = tmp_path / 'price_demand.json'
+    demand.write_text(json.dumps(price_demand.empty(NOW)), encoding='utf-8')
+    old = {p.name: p.read_bytes() for p in (csv, demand,
+            tmp_path / 'new_models.json', tmp_path / 'update_queue.json')}
+    plan = _plan(tmp_path)
+    real_replace = os.replace
+    state = {'failed': False}
+
+    def fake_replace(src, dst):
+        d = str(dst)
+        if not state['failed'] and d.endswith('new_models.json') and str(src).endswith('.tmp'):
+            state['failed'] = True
+            raise OSError('inject after csv')
+        return real_replace(src, dst)
+
+    monkeypatch.setattr(fetch_emsd, 'BASE_DIR', str(tmp_path))
+    monkeypatch.setattr(fetch_emsd, 'QUEUE_PATH', str(tmp_path / 'update_queue.json'))
+    monkeypatch.setattr(fetch_emsd.os, 'replace', fake_replace)
+    with pytest.raises(fetch_emsd.DatasetCommitError):
+        fetch_emsd.commit_dataset(['品牌', '型號'], [['格力', 'NEW-1']], str(csv), plan)
+    # New demand must roll back with the other three files.
+    assert demand.read_bytes() == old['price_demand.json']
+    assert (tmp_path / 'new_models.json').read_bytes() == old['new_models.json']
+    assert (tmp_path / 'update_queue.json').read_bytes() == old['update_queue.json']
+
+
+def _repo(tmp_path, meta, demand):
+    (tmp_path / 'prices_meta.json').write_text(json.dumps(meta), encoding='utf-8')
+    path = tmp_path / 'price_demand.json'
+    path.write_text(json.dumps(demand), encoding='utf-8')
+    return str(tmp_path / 'prices_meta.json'), str(path)
+
+
+def test_start_gate_new_model_month_and_official_pending_independence(tmp_path):
+    meta = {'last_price_month': '2026-09', 'price_batch_idx': 7}
+    demand = price_demand.merge_new_models(price_demand.empty(NOW),
+                                           _new_models(('格力', 'NEW-1')), now=NOW)
+    mp, dp = _repo(tmp_path, meta, demand)
+    out = entry_run(repo=str(tmp_path), meta_path=mp, demand_path=dp,
+                    apply=False, now='2026-10-22T16:30:00Z',
+                    env={'AIRCON_PRICE_QUERY_MODE': 'fixture-local', 'AIRCON_PRICE_FIXTURE': '1'})
+    assert out['ok'] and out['action'] == 'waiting-eligible'
+    # Official queue is deliberately not part of the decision.
+    (tmp_path / 'update_queue.json').write_text(
+        json.dumps({'stage': 2, 'models': ['X']}), encoding='utf-8')
+    out = entry_run(repo=str(tmp_path), meta_path=mp, demand_path=dp,
+                    apply=True, now='2026-10-22T16:30:00Z',
+                    env={'AIRCON_PRICE_QUERY_MODE': 'fixture-local', 'AIRCON_PRICE_FIXTURE': '1'})
+    assert out['ok'] and out['action'] == 'started'
+    meta2 = batch_utils.load_meta(mp)
+    assert meta2['last_price_month'] == '2026-10'
+    assert meta2['price_batch_start'] == '2026-10-23'  # HKT date, not UTC 10/22
+    # Same month + pending demand never reopens.
+    out = entry_run(repo=str(tmp_path), meta_path=mp, demand_path=dp,
+                    apply=True, now='2026-10-23T16:30:00Z',
+                    env={'AIRCON_PRICE_QUERY_MODE': 'fixture-local', 'AIRCON_PRICE_FIXTURE': '1'})
+    assert out['ok'] and out['action'] == 'month-completed'
+    # Next month without any new demand stays idle.
+    empty = price_demand.empty(NOW)
+    (tmp_path / 'price_demand.json').write_text(json.dumps(empty), encoding='utf-8')
+    out = entry_run(repo=str(tmp_path), meta_path=mp, demand_path=dp,
+                    apply=True, now='2026-11-22T16:30:00Z',
+                    env={'AIRCON_PRICE_QUERY_MODE': 'fixture-local', 'AIRCON_PRICE_FIXTURE': '1'})
+    assert out['ok'] and out['action'] == 'no-demand'
+    # No new model in a new month must not become a full monthly refresh.
+    assert batch_utils.load_meta(mp)['price_batch_start'] == '2026-10-23'
+
+
+def test_mixed_flags_fail_closed_even_with_demand(tmp_path):
+    meta = {'last_price_month': '2026-09', 'price_batch_idx': 7}
+    demand = price_demand.merge_new_models(price_demand.empty(NOW),
+                                           _new_models(('格力', 'NEW-1')), now=NOW)
+    mp, dp = _repo(tmp_path, meta, demand)
+    out = entry_run(repo=str(tmp_path), meta_path=mp, demand_path=dp,
+                    apply=True, now='2026-10-22T16:30:00Z',
+                    env={'AIRCON_PRICE_CYCLE_ENABLED': '1'})
+    assert out['ok'] is False and out['reason'] == 'mode-inconsistent'
+    assert 'price_batch_start' not in batch_utils.load_meta(mp)
+
+
+def test_shared_no_demand_still_refreshes_anchor_cache(tmp_path):
+    import price_cycle
+    snap = {'A': {'price': '$1起'}}
+    from biggo_canonical import sha256_json
+    snap_hash = sha256_json(snap)
+    meta = {'last_price_month': '2026-10', 'price_batch_idx': 7,
+            'last_applied_cycle': '2026-10-10:7/7',
+            'appliedSnapshotHash': snap_hash,
+            'appliedBundleHash': 'sha256:' + 'b' * 64}
+    (tmp_path / 'prices_meta.json').write_text(json.dumps(meta), encoding='utf-8')
+    (tmp_path / 'price_demand.json').write_text(json.dumps(price_demand.empty(NOW)),
+                                                encoding='utf-8')
+    store = price_cycle.FileAnchorStore(str(tmp_path / 'anchor.json'))
+    transition = price_cycle.transition_ack_bytes('a' * 40, 'b' * 40,
+                                                  snap_hash, snap_hash,
+                                                  at='2026-10-22')
+    (tmp_path / 'anchor.json.transition').write_bytes(transition)
+    anchor = {'formatVersion': 2, 'protocol': price_cycle.PROTOCOL,
+              'month': '2026-10', 'cycle': '2026-10-10:7/7',
+              'startedAt': '2026-10-10', 'stage': 7, 'status': 'completed',
+              'lastBundleHash': 'sha256:' + 'b' * 64,
+              'initialBaseHash': snap_hash,
+              'updatedAt': '2026-10-22T00:00:00+08:00'}
+    store.claim_raw(price_cycle._canonical_bytes(anchor), None)
+    env = {'AIRCON_PRICE_CYCLE_ENABLED': '1', 'AIRCON_PRICE_SHARED_CYCLE': '1',
+           'AIRCON_PRICE_SOURCE_REVISION': 'c' * 40, 'AIRCON_PRICE_WRITER': 'github'}
+    out = entry_run(repo=str(tmp_path), meta_path=str(tmp_path / 'prices_meta.json'),
+                    demand_path=str(tmp_path / 'price_demand.json'), apply=True,
+                    now='2026-10-22T16:30:00Z', env=env, store=store,
+                    client=object())
+    assert out['ok'] is True and out['action'] == 'skip-receive-only'
+    cache = json.loads((tmp_path / 'price_anchor.json').read_text())
+    assert cache['kind'] == 'aircon-price-anchor-cache'
+    assert cache['anchor']['stage'] == 7
+
+
+def test_result_predating_new_demand_does_not_process_it():
+    doc = price_demand.merge_new_models(price_demand.empty(NOW), {'models': [
+        {'brand': '格力', 'model': 'NEW-2', 'first_seen': '2026-10-22',
+         'first_seen_at': '2026-10-22T00:00:00Z'}]}, now=NOW)
+    sr = {'cycleId': '2026-10-10:7/7', 'stage': 7,
+          'generatedAt': '2026-10-20T20:15:34Z',
+          'outcomes': [{'model': 'NEW-2', 'canonicalKey': 'GREE|NEW2',
+                        'outcome': 'clean_miss'}]}
+    out = price_demand.record_outcomes(doc, sr, {'stage': 7}, now=NOW)
+    assert out['demands'][0]['status'] == 'pending'
+    assert not out['demands'][0]['evidence']
+
+
+def test_cross_brand_canonical_key_never_falls_back_to_model():
+    doc = price_demand.merge_new_models(price_demand.empty(NOW),
+                                        _new_models(('美的', 'NEWONE')), now=NOW)
+    assert doc['demands'][0]['key'] == 'MIDEA|NEWONE'
+    sr = {'cycleId': '2026-10-10:1/7', 'stage': 1,
+          'generatedAt': '2026-10-11T00:00:00Z',
+          'outcomes': [{'model': 'NEWONE', 'canonicalKey': 'GREE|NEWONE',
+                        'outcome': 'clean_miss'}]}
+    out = price_demand.record_outcomes(doc, sr, {'stage': 1}, now=NOW)
+    assert out['demands'][0]['status'] == 'pending'
+    assert not out['demands'][0]['evidence']
+
+
+def test_demand_key_brand_model_consistency_is_validated():
+    bad = price_demand.merge_new_models(price_demand.empty(NOW),
+                                        _new_models(('美的', 'NEWONE')), now=NOW)
+    bad['demands'][0]['brand'] = '格力'
+    with pytest.raises(price_demand.DemandError):
+        price_demand.validate(bad)
+
+
+def test_legacy_unknown_never_authorises_start_or_processed():
+    legacy = {'models': [{'brand': '格力', 'model': 'OLD-1',
+                          'first_seen': '2026-09-01'}]}
+    doc = price_demand.merge_new_models(price_demand.empty(NOW), legacy, now=NOW)
+    assert doc['demands'][0]['status'] == 'unknown'
+    assert price_demand.pending(doc) == []
+    sr = {'cycleId': '2026-10-10:7/7', 'stage': 7,
+          'generatedAt': '2026-10-20T20:15:34Z',
+          'outcomes': [{'model': 'OLD-1', 'canonicalKey': 'GREE|OLD1',
+                        'outcome': 'clean_miss'}]}
+    out = price_demand.record_outcomes(doc, sr, {'stage': 7}, now=NOW)
+    assert out['demands'][0]['status'] == 'unknown'
+    # Explicit migration also requires a verified query-time lower bound.
+    migrated = price_demand.record_outcomes(doc, _with_acquisition(sr), {'stage': 7}, now=NOW,
+                                            allow_legacy_date=True)
+    assert migrated['demands'][0]['status'] == 'processed'
+
+
+def _processed_doc():
+    doc = price_demand.merge_new_models(price_demand.empty(NOW), {'models': [
+        {'brand': '格力', 'model': 'KEEP-1', 'first_seen': '2026-10-01',
+         'first_seen_at': '2026-10-01T00:00:00Z'}]}, now=NOW)
+    sr = {'cycleId': '2026-10-10:1/7', 'stage': 1,
+          'generatedAt': '2026-10-11T00:00:00Z',
+          'outcomes': [{'model': 'KEEP-1', 'canonicalKey': 'GREE|KEEP1',
+                        'outcome': 'clean_miss'}]}
+    return price_demand.record_outcomes(doc, _with_acquisition(sr), {'stage': 1}, now=NOW)
+
+
+def test_stale_emsd_plan_cannot_revert_processed_demand(tmp_path, monkeypatch):
+    import base64
+    monkeypatch.setattr(fetch_emsd, 'BASE_DIR', str(tmp_path))
+    monkeypatch.setattr(fetch_emsd, 'QUEUE_PATH', str(tmp_path / 'update_queue.json'))
+    csv = tmp_path / 'emsd_空調能源標籤.csv'
+    csv.write_bytes(b'OLD')
+    (tmp_path / 'new_models.json').write_text('{"models":[]}', encoding='utf-8')
+    (tmp_path / 'update_queue.json').write_text('{"stage":0,"models":[]}', encoding='utf-8')
+    current = _processed_doc()
+    (tmp_path / 'price_demand.json').write_bytes(price_demand._canonical_doc(current))
+    stale = price_demand.merge_new_models(price_demand.empty(NOW), {'models': [
+        {'brand': '格力', 'model': 'KEEP-1', 'first_seen': '2026-10-01',
+         'first_seen_at': '2026-10-01T00:00:00Z'}]}, now=NOW)
+    assert stale['demands'][0]['status'] == 'pending'
+    plan = {'new_models': {'updated': '2026-10-22', 'models': [
+                {'brand': '格力', 'model': 'KEEP-1', 'first_seen': '2026-10-01'}]},
+            'queue': {'stage': 0, 'models': []}, 'added': [],
+            'demand': stale}
+    fetch_emsd.commit_dataset(['品牌', '型號'], [['格力', 'KEEP-1']], str(csv), plan)
+    assert price_demand.load(tmp_path / 'price_demand.json')['demands'][0]['status'] == 'processed'
+
+
+def test_journal_recovery_merges_newer_processed_demand(tmp_path, monkeypatch):
+    import base64
+    monkeypatch.setattr(fetch_emsd, 'BASE_DIR', str(tmp_path))
+    monkeypatch.setattr(fetch_emsd, 'QUEUE_PATH', str(tmp_path / 'update_queue.json'))
+    current = _processed_doc()
+    (tmp_path / 'price_demand.json').write_bytes(price_demand._canonical_doc(current))
+    old = price_demand.merge_new_models(price_demand.empty(NOW), {'models': [
+        {'brand': '格力', 'model': 'KEEP-1', 'first_seen': '2026-10-01',
+         'first_seen_at': '2026-10-01T00:00:00Z'}]}, now=NOW)
+    journal = {'version': 1, 'targets': {
+        str(tmp_path / 'price_demand.json'):
+            base64.b64encode(price_demand._canonical_doc(old)).decode('ascii')}}
+    fetch_emsd._atomic_write_bytes(fetch_emsd._journal_path(), json.dumps(journal).encode())
+    assert fetch_emsd.recover_commit_journal() is True
+    assert price_demand.load(tmp_path / 'price_demand.json')['demands'][0]['status'] == 'processed'

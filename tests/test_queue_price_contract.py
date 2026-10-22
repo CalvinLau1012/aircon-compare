@@ -105,30 +105,21 @@ def test_advance_stage1_to_2(tmp_path, monkeypatch):
     assert json.loads(p.read_text(encoding='utf-8'))['stage'] == 2
 
 
-def test_stage2_price_start_failure_keeps_queue(tmp_path, monkeypatch):
+def test_stage2_clears_queue_without_touching_price_meta(tmp_path, monkeypatch):
     p = _queue(tmp_path, 2, ['A', 'B'])
-    before = p.read_bytes()
     monkeypatch.setattr(advance_queue, 'QUEUE_PATH', str(p))
 
-    def boom():
-        raise batch_utils.MetaError('corrupt meta')
+    def boom(*a, **k):
+        raise AssertionError('advance_queue must not start a price batch')
 
     monkeypatch.setattr(advance_queue, '_start_price_batch_idempotent', boom)
-    assert advance_queue.main() == 1
-    assert p.read_bytes() == before, 'price 啟動失敗唔可以清 queue'
+    assert advance_queue.main() == 0
+    assert json.loads(p.read_text(encoding='utf-8')) == {'stage': 0, 'models': []}
 
 
 def test_stage2_queue_save_failure_then_retry_completes(tmp_path, monkeypatch):
     p = _queue(tmp_path, 2, ['A'])
     monkeypatch.setattr(advance_queue, 'QUEUE_PATH', str(p))
-    state = {'started': False}
-
-    def start():
-        first = not state['started']
-        state['started'] = True
-        return first
-
-    monkeypatch.setattr(advance_queue, '_start_price_batch_idempotent', start)
     real_save = advance_queue.save
 
     def failing_save(q):
@@ -137,7 +128,6 @@ def test_stage2_queue_save_failure_then_retry_completes(tmp_path, monkeypatch):
     monkeypatch.setattr(advance_queue, 'save', failing_save)
     assert advance_queue.main() == 1
     assert json.loads(p.read_text(encoding='utf-8'))['stage'] == 2, 'queue 保持 stage 2'
-    # 重跑：start 已啟動回 False（唔係錯誤），save 恢復正常 → 完成
     monkeypatch.setattr(advance_queue, 'save', real_save)
     assert advance_queue.main() == 0
     assert json.loads(p.read_text(encoding='utf-8')) == {'stage': 0, 'models': []}
@@ -191,7 +181,16 @@ def test_meta_save_failure_preserves_old_bytes(tmp_path, monkeypatch):
 def test_start_price_batch_does_not_swallow_bad_meta(tmp_path, monkeypatch):
     p = tmp_path / 'prices_meta.json'
     p.write_text('{broken', encoding='utf-8')
+    demand = tmp_path / 'price_demand.json'
+    demand.write_text(json.dumps({
+        'schemaVersion': 1, 'kind': 'aircon-price-demand',
+        'updatedAt': '2026-10-01T00:00:00Z',
+        'demands': [{'key': 'GREE|X', 'brand': '格力', 'model': 'X',
+                     'firstSeen': '2026-10-01', 'firstSeenAt': '2026-10-01T00:00:00Z',
+                     'status': 'pending', 'evidence': []}]}), encoding='utf-8')
     monkeypatch.setattr(batch_utils, 'META_PATH', str(p))
+    monkeypatch.setenv('AIRCON_PRICE_QUERY_MODE', 'fixture-local')
+    monkeypatch.setenv('AIRCON_PRICE_FIXTURE', '1')
     with pytest.raises(batch_utils.MetaError):
         batch_utils.start_price_batch()
     assert p.read_bytes() == b'{broken'

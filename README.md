@@ -878,3 +878,34 @@ A full offline gate exposed a pre-existing intermittent CLI failure: repeating a
 
 
 > **2026-10-21 官網待補正常化（追加）**：使用者明確授權「確實沒有官網資料的項目就不要action紅了，email好煩，EMSD是政府數據庫。。。」。經本輪真實驗證的純官網 full-spec coverage 缺口，保留 pending 及缺項追蹤，但不再令 daily／monitor Actions 紅或發故障郵件；UI／PDF 以普通「官網規格待補」顯示，不冒充已核實、不猜未知規格、不宣稱未上市。真正抓取／TLS／依賴／parser／收據／hash／queue／manifest／EMSD 過期／部署／BigGo 硬故障仍 fail-closed。此決定取代先前「所有 official pending 必須 unhealthy」的相反規則；歷史文字保留。本輪零 BigGo provider／coordinator 寫入，正式部署由 Root。
+
+## 2026-10-22 追加：雙端工作流修復候選（未部署）
+
+本節只追加，較早的部署與「未部署／暫停」描述屬歷史。使用者已批准實作方案；本輪由 Pi 在隔離候選完成程式、測試及交付，Root 負責正式 Docker、憑證、GitHub、部署及最後驗收。
+
+- **新鮮度分源**：BigGo 舊價格 snapshot 不再被統一 36h 當 pipeline 故障；新增版本化 `price-status` receipt 及 health summary v3（v1／v2 reader 保持嚴格相容）。EMSD／官方觀察／工作流心跳與網站期限仍獨立；真 provider／receipt／hash／部署故障維持紅色。
+- **執行安全**：私人 runtime 改以持久 volume `.locks/update.lock` 的 `flock`（busy＝75、缺 flock fail closed），SIGKILL 後不會因殘留 mkdir 目錄而假成功；三個應用 log 加 10MiB／14 份／delaycompress 輪替，aircon 容器加 json-file 10m／3。
+- **價格需求**：`price_demand.json` 只記錄真正的 EMSD 新機需求及已驗 priced／clean_miss 證據；官網 queue 獨立保留。只有未處理新機且本月未做過才開原有七日批次；無新機不再每月自動全量查價。共享模式使用 monthly-cycle-v2＋CAS，兩個旗標必須成對。
+- **遷移**：提供預設唯讀的 `scripts/price_cycle_migrate.py`，由真實 stage7／兩端 baseline／新機推導 transition、completed anchor、history 及 demand；缺證據 blocked，重跑 no-op，正式 coordinator CAS 只由 Root 執行。
+- **取得時間**：沿用既有 BigGo acquisition witness；新包兩端共享同一取得時間、各自保留真實套用時間；legacy 仍 unknown，重接收不刷新。
+- **邊界**：本輪零 BigGo provider／coordinator／lease／budget／正式資料或服務操作；未宣稱已部署。Root 需先部署兼容 reader、再 producer，並另行驗 network-none Docker、live／browser 及自然下一輪 daily。
+
+## 2026-10-22 R2 追加：真入口及只接收回退（未部署）
+
+Root 首輪反例後的本輪返修已完成隔離實作：價格需求鎖移入 `.locks/`，真 stage CLI 不再見到 allowlist 外的 lock；public／private 價格入口與 provider runner 使用同一 query mode、paired flags、固定 source pin 及 writer；private compose 的非秘密 flags 由 updater 與 health cron 共用。正式遷移預設 `receive-only`：仍接收已完成結果，但禁止新 cycle／provider／force；舊 local 只限明示 fixture。
+
+completed 價格收據現在要求與當前 cycle/stage/bundle、實際 snapshot／post-state 匹配的持久套用事實；receiver 時間、monitor 時間及 anchor audit 時間不再當進展；cooldown 必須有真 skip-cooldown witness。需求加入可信 `firstSeenAt`、精確 canonical 品牌配對及 shared lock／journal，避免舊包或 stale EMSD plan 倒退 processed 狀態。遷移分開 terminal baseline 可採納與新查價可啟動，歷史不明需求列 unknown-provenance。
+
+本節不宣稱部署；Root 仍需跑 network-none Docker、正式 CAS／部署、live／browser 及自然下一輪 daily。詳見 `docs/DECISIONS.md` D41。
+
+
+### 2026-10-22 Root 最後整合補正（追加；尚未正式部署）
+
+Root 獨立重現後補正：需求合併必須更新實際 ledger list；需求完成只採有效 acquisition witness，封裝時間不能證明涵蓋較新需求。Legacy 已完成 stage7 可另綁原 run/job/status 的不可變 query-window 收據，只用其下界證明舊登記先於查價，不寫回原包或冒充逐項原始取得時間。六項沒有查價歷史的需求保留 unknown，顯式 retain-unknown-ineligible 處置逐項綁 hash，禁止它們單獨啟動查價；未來有可信建立時間的新需求仍按原批准「有新機、每 HKT 月最多一次、原七日 workload」規則處理。預設 migration 仍對未處置 unknown 顯示不可啟用。
+
+價格 receipt 以獨立 v1.1 Schema extension 正式加入 evidence 欄位並實際驗證；metadata_schema 的選擇不變。新版模式下兩個 sidecar 同時缺失也必須告警，不能退回 legacy 36h 判斷。Private cron 與人工入口共用非秘密價格政策檔，避免 cron 丟失容器 environment 後設定分歧。原始 acquiredAt 缺失仍顯示未確認，不能用查價區間、發布／接收／套用時間補造。原 R1/R2 候選、失敗測試與補正證據保留；正式部署及完整門禁結果另行追加。本修復禁止真 BigGo 請求或補跑 full daily。
+
+
+### 2026-10-22 Root 非秘密部署政策設定（追加）
+
+GitHub 管理憑證缺少 Secrets／Variables 管理權限；價格模式、成對旗標及固定程式 revision 並非秘密，改用版本管理的 price-policy.json，由嚴格白名單 loader 寫 GITHUB_ENV，entry 與 provider 共用。缺檔預設 receive-only；normal 必須成對啟用及完整 revision，仍須 source closure、雙端 transition、需求、baseline、lease／budget 等原有 guard。既有 Secrets 可明示覆蓋，並不新增或輸出憑證。政策檔是資料，程式 pin 不因資料 child commit 改變；政策不是取得查價權限的替代證據。回退可獨立把政策改 receive-only，shared usage／history 不倒退。

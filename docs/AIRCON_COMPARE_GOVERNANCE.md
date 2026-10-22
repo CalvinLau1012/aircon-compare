@@ -2356,3 +2356,273 @@ Formal zero-provider repair run 39393716967 received and verified stage5 locally
 - **獨立收據**：新增 `aircon-official-coverage-observation`（schemaVersion 1、identityHash），嵌於 batch receipt 及 `official_batch_status.json`；沒有完整 snapshot 時 snapshot／manifest 如實為 null。此觀察不是 full-spec outputManifest，也不是 source snapshot。驗證層須重算 queue／CSV／outputs／routes／marker；空或壞 marker、catalogue／TLS／HTTP／依賴失敗不得降級為 expected pending。
 - **監控**：private health summary v2 分開 `operations`／`coverage`；可信 pending 時 operations healthy、coverage pending。public client v2 驗證 observation identity／時間／bindings；v1 reader 保持原本嚴格 all-ok 行為。硬故障、EMSD >72h、部署不符、BigGo 故障、缺失／損壞／偽造收據仍失敗；不得被 pending 掩蓋。
 - **時間與邊界**：observation 時間與 deploy／publish／acquisition 分開；cache／build replay 保留原觀察時間，來源取得時間不刷新。本輪零 BigGo provider／coordinator／lease／budget／grant 寫入；不改 GitHub 全局通知設定或 00:30 HKT 排程；正式 Docker／CI／部署及獨立反例驗收由 Root。
+
+---
+
+## 附錄 J. 2026-10-22 價格狀態收據 schema extension（追加；六個 canonical 區塊 bytes 不變）
+
+> 本附錄只追加，**不修改**六個 canonical 規範區塊、Metadata Schema extension、Registry 或成功標準的任何 bytes。`price-status` 是獨立 runtime sidecar，不是 metadata 的替代；`metadata_schema()` 仍只選 `AIRCON_METADATA_SCHEMA_V1_1`。此 extension 由 `extract_governance.py` 的 `SCHEMA_EXTENSIONS` 明示列出，不作 silent last-block。
+
+<!-- AIRCON:SCHEMA_EXTENSION:PRICE_STATUS_SCHEMA_V1:BEGIN -->
+```json
+{
+  "blockId": "AIRCON_PRICE_STATUS_SCHEMA_V1",
+  "schemaVersion": "1.0.0",
+  "supersedes": "AIRCON_METADATA_SCHEMA_V1",
+  "compatibility": "independent optional sidecar; metadata schema unchanged",
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:aircon-compare:price-status-schema:1.0.0",
+    "type": "object",
+    "required": ["schemaVersion", "kind", "determinedAt", "status", "safeReason", "healthy", "cycleId", "stage", "month", "lastVerifiedProgressAt", "nextEligibleAt", "evidence", "receiptHash"],
+    "additionalProperties": false,
+    "properties": {
+      "schemaVersion": {"const": 1},
+      "kind": {"const": "aircon-price-status"},
+      "determinedAt": {"type": "string", "format": "date-time"},
+      "status": {"enum": ["no-demand", "month-completed", "waiting-eligible", "active", "blocked"]},
+      "safeReason": {"type": "string", "minLength": 1},
+      "healthy": {"type": "boolean"},
+      "cycleId": {"type": ["string", "null"]},
+      "stage": {"type": ["integer", "null"], "minimum": 0, "maximum": 7},
+      "month": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"},
+      "lastVerifiedProgressAt": {"type": ["string", "null"], "format": "date-time"},
+      "nextEligibleAt": {"type": ["string", "null"], "format": "date-time"},
+      "evidence": {
+        "type": "object",
+        "required": ["snapshotHash", "metaHash", "demandHash", "biggoStatusHash", "completedSyncHash", "anchorHash", "bundleHash", "stageResultHash", "pendingDemandCount"],
+        "additionalProperties": false,
+        "properties": {
+          "snapshotHash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "metaHash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "demandHash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "biggoStatusHash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+          "completedSyncHash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "anchorHash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "bundleHash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "stageResultHash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+          "pendingDemandCount": {"type": ["integer", "null"], "minimum": 0}
+        }
+      },
+      "receiptHash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+    }
+  }
+}
+```
+<!-- AIRCON:SCHEMA_EXTENSION:PRICE_STATUS_SCHEMA_V1:END -->
+
+## 附錄 K. 2026-10-22 R2 返修：價格入口、只接收及證據交易（追加；非 canonical 區塊變更）
+
+> 本附錄只追加，六個 canonical 區塊及既有 Schema extension bytes 不變。R2 收據在 `evidence` 增加 `postStateHash`、`applyReceiptHash`、`cooldownHash`、`unknownDemandCount` 的 optional／status-dependent 事實；`receiptHash` 仍覆蓋整份 body。
+
+- **R11**：`price_demand` mutex／tmp 只存在精確 ignore 的 `.locks/`；真 `stage_artifacts` 不可見，ledger 仍可正常 stage／commit。白名單與 gitstatus 門禁不降低。
+- **R5**：價格入口、provider runner、health producer 共用非秘密 query mode／paired flags／source revision／writer。Public source pin 用固定 deployment ack revision 逐 bytes 驗價格鏈程式及 workflow closure；private 用 immutable image release 與 `/app`／`/opt/aircon-src` 驗證。純資料提交可沿用 ack，程式變更需新 ack。
+- **R4／R1／R9**：completed／active 進展只接受 current cycle/stage/bundle、實際 snapshot／post-state 匹配的持久 `appliedAt`；receiver finishedAt／monitor readAt／anchor.updatedAt／重複套用不刷新。completed 缺 apply／post-state 或空 sync fail closed。cooldown 只接受 `skip-cooldown` witness 及其合法 recovery time；無 witness 的 bounded `blocked_until` 不可延長。
+- **R2／R3／R7**：新 demand 需 `firstSeenAt`；早於 demand 的結果不可 processed；canonicalKey 精確品牌配對；legacy 無時間列 `unknown`，不授權 start。EMSD／apply／direct demand writer 共用 `.locks/price-demand.lock`；demand 寫入在 apply journal 內、metadata 前；journal recovery 保留較新 processed。
+- **R6**：migration 分開 `completedBaselineReady`、`priceStartReady`、`enableReady`；歷史不明需求列 unknown-provenance，不以 `ready=true` 冒充可啟用。
+- **R8／回退**：logrotate 用 `daily + maxsize 10M`（14 份、delaycompress、rename+create、白名單）。`AIRCON_PRICE_QUERY_MODE=receive-only|normal`；正式遷移預設 receive-only，保留 completed receive 但禁止新 cycle／provider／force；normal 才可開查，舊 local 只限明示 fixture-local。
+
+
+## 附錄 L. 2026-10-22 Root 收據 Schema 與需求涵蓋修正（只追加）
+
+附錄 K 的文字不足以讓原 additionalProperties=false 接受新增欄位；以下明確追加獨立 v1.1 Schema，原六區塊、v1 sidecar 與 metadata extension bytes 保留。實際價格收據同時經 Draft 2020-12／format 及行為約束驗證。新需求只由經驗證 acquisition witness 證明涵蓋，不能以封裝時間代替。歷史需求若採用原執行窗口，須有另存、綁定原 run/head/bundle 的 query-window 收據；不新增或補造原始取得時間。缺新模式資料不回退 v2 健康。
+
+<!-- AIRCON:SCHEMA_EXTENSION:PRICE_STATUS_SCHEMA_V1_1:BEGIN -->
+```json
+{
+  "blockId": "AIRCON_PRICE_STATUS_SCHEMA_V1_1",
+  "schemaVersion": "1.1.0",
+  "supersedes": "AIRCON_PRICE_STATUS_SCHEMA_V1",
+  "compatibility": "optional typed evidence fields; independent sidecar; metadata unchanged",
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:aircon-compare:price-status-schema:1.1.0",
+    "type": "object",
+    "required": [
+      "schemaVersion",
+      "kind",
+      "determinedAt",
+      "status",
+      "safeReason",
+      "healthy",
+      "cycleId",
+      "stage",
+      "month",
+      "lastVerifiedProgressAt",
+      "nextEligibleAt",
+      "evidence",
+      "receiptHash"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "schemaVersion": {
+        "const": 1
+      },
+      "kind": {
+        "const": "aircon-price-status"
+      },
+      "determinedAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "status": {
+        "enum": [
+          "no-demand",
+          "month-completed",
+          "waiting-eligible",
+          "active",
+          "blocked"
+        ]
+      },
+      "safeReason": {
+        "type": "string",
+        "minLength": 1
+      },
+      "healthy": {
+        "type": "boolean"
+      },
+      "cycleId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "stage": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 7
+      },
+      "month": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}$"
+      },
+      "lastVerifiedProgressAt": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "format": "date-time"
+      },
+      "nextEligibleAt": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "format": "date-time"
+      },
+      "evidence": {
+        "type": "object",
+        "required": [
+          "snapshotHash",
+          "metaHash",
+          "demandHash",
+          "biggoStatusHash",
+          "completedSyncHash",
+          "anchorHash",
+          "bundleHash",
+          "stageResultHash",
+          "pendingDemandCount"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "snapshotHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "metaHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "demandHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "biggoStatusHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "completedSyncHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "anchorHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "bundleHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "stageResultHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "pendingDemandCount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "postStateHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "applyReceiptHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "cooldownHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "unknownDemandCount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        }
+      },
+      "receiptHash": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      }
+    }
+  }
+}
+```
+<!-- AIRCON:SCHEMA_EXTENSION:PRICE_STATUS_SCHEMA_V1_1:END -->
+
+
+#### Appendix L · Root legacy demand disposition（2026-10-22 追加）
+
+`price_cycle_migrate --quarantine-unknown` is an explicit, hash-bound `retain-unknown-ineligible` disposition. It retains every unknown ledger entry with no processed evidence and no pending trigger. It permits the verified monthly engine to remain available for genuinely new, timestamped EMSD demand; it never authorises an unknown legacy entry to start a query. Default migration continues to report enableReady=false for undisposed unknowns. A separate reviewed original-run query window may establish only the lower bound for legacy outcome coverage, never a fabricated exact acquisition time. The immutable original bundle and provider usage remain unchanged.

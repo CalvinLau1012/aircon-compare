@@ -299,7 +299,7 @@ def load_queue():
     return _load_queue(QUEUE_PATH)
 
 
-def plan_new_models(all_rows):
+def plan_new_models(all_rows, retrieved_at=None):
     """純讀計畫：比較新舊型號，計出本次新增；**唔寫任何檔**。
 
     回傳 {'new_models': rec, 'queue': q, 'added': [model, ...]}。
@@ -353,6 +353,7 @@ def plan_new_models(all_rows):
             'gas': r[8],
             'type': '變頻' if '是' in str(r[14]) else '定頻',
             'first_seen': today,
+            'first_seen_at': retrieved_at or time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
         })
         known_keys.add(key)
         added.append(model)
@@ -365,7 +366,46 @@ def plan_new_models(all_rows):
         for a in added:
             if a not in q['models']:
                 q['models'].append(a)
-    return {'new_models': rec, 'queue': q, 'added': added}
+    # 價格需求是獨立交易檔：官網 queue 保留／pending 不會被當成已查價，
+    # 亦不會因 queue 未完成而消失。此處只做純記憶體合併，真正寫入由
+    # commit_dataset 同一 journal／replace 交易完成。
+    try:
+        import price_demand
+        demand_doc = price_demand.merge_new_models(
+            price_demand.load(os.path.join(BASE_DIR, 'price_demand.json')),
+            rec, now=time.time(), observed_at=retrieved_at, added=added)
+    except price_demand.DemandError as e:
+        raise ValueError(f'price_demand.json 損毀，唔可以默默重置：{e}')
+    return {'new_models': rec, 'queue': q, 'added': added,
+            'demand': demand_doc}
+
+
+def recover_commit_journal():
+    """Recover under the same demand mutex; never roll a demand ledger back."""
+    import price_demand
+    demand_path = os.path.join(BASE_DIR, 'price_demand.json')
+    with price_demand.locked(demand_path):
+        return _recover_commit_journal_impl()
+
+
+def commit_dataset(header, rows, csv_path, plan):
+    """Commit CSV/new_models/queue/demand under one shared demand mutex."""
+    import price_demand
+    demand_path = os.path.join(BASE_DIR, 'price_demand.json')
+    with price_demand.locked(demand_path):
+        return _commit_dataset_locked(header, rows, csv_path, plan, demand_path)
+
+
+def _commit_dataset_locked(header, rows, csv_path, plan, demand_path):
+    import price_demand
+    # Merge against the latest ledger while holding the writer lock.  A stale
+    # EMSD plan can therefore add new demands but cannot revert another writer's
+    # processed evidence to pending.
+    plan = dict(plan)
+    if isinstance(plan.get('demand'), dict):
+        current = price_demand.load(demand_path)
+        plan['demand'] = price_demand.merge_documents(current, plan['demand'])
+    return _commit_dataset_impl(header, rows, csv_path, plan)
 
 
 def _build_csv_bytes(header, rows):
@@ -407,7 +447,7 @@ def _write_journal(saved):
     _atomic_write_bytes(_journal_path(), json.dumps(payload, ensure_ascii=False).encode('utf-8'))
 
 
-def recover_commit_journal():
+def _recover_commit_journal_impl():
     """啟動時：若上次提交中途 crash，依 journal 還原；回傳是否有恢復。"""
     import base64
     jp = _journal_path()
@@ -423,7 +463,22 @@ def recover_commit_journal():
         raise RuntimeError(f'dataset commit journal 損毀，需人手處理：{e}')
     for path, b64 in targets.items():
         try:
-            if b64 is None:
+            if str(path).endswith('price_demand.json'):
+                import price_demand as _pd
+                old_doc = None
+                if b64 is not None:
+                    old_doc = json.loads(base64.b64decode(b64).decode('utf-8'))
+                    old_doc = _pd.validate(old_doc)
+                current = None
+                if os.path.exists(path):
+                    current = _pd.load(path)
+                if current is None:
+                    if old_doc is not None:
+                        _atomic_write_bytes(path, _pd._canonical_doc(old_doc))
+                else:
+                    merged = _pd.merge_documents(current, old_doc or _pd.empty())
+                    _atomic_write_bytes(path, _pd._canonical_doc(merged))
+            elif b64 is None:
                 if os.path.exists(path):
                     os.remove(path)
             else:
@@ -435,7 +490,7 @@ def recover_commit_journal():
     return True
 
 
-def commit_dataset(header, rows, csv_path, plan):
+def _commit_dataset_impl(header, rows, csv_path, plan):
     """交易式提交 CSV + new_models.json + update_queue.json。
 
     先讀舊 bytes（唯一 FileNotFound 可當 missing）→ 寫 crash journal →
@@ -450,6 +505,14 @@ def commit_dataset(header, rows, csv_path, plan):
         (os.path.join(BASE_DIR, 'new_models.json'), _json_bytes(plan['new_models'])),
         (QUEUE_PATH, _json_bytes(plan['queue'])),
     ]
+    # Versioned price demand travels in the same crash-recoverable transaction.
+    # Older callers/plans without this optional key keep the original 3-file
+    # transaction unchanged.
+    if isinstance(plan.get('demand'), dict):
+        import price_demand
+        price_demand.validate(plan['demand'])
+        targets.append((os.path.join(BASE_DIR, 'price_demand.json'),
+                        price_demand._canonical_doc(plan['demand'])))
     saved = {path: _read_optional(path) for path, _ in targets}
     _write_journal(saved)
     tmps = []
@@ -680,7 +743,7 @@ def main():
     out = os.path.join(BASE_DIR, 'emsd_空調能源標籤.csv')
     # 先純讀計畫（讀舊 CSV／現有 sidecar），失敗即寫失敗收據，唔改任何資料檔。
     try:
-        plan = plan_new_models(all_rows)
+        plan = plan_new_models(all_rows, retrieved_at=retrieved_at)
     except Exception as e:
         outcome.update(success=False, aborted=True, error=f'new-model detection failed: {e}')
         write_receipt(outcome, per_page, retrieved_at=retrieved_at)
