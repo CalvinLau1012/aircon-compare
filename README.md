@@ -904,3 +904,8 @@ completed 價格收據現在要求與當前 cycle/stage/bundle、實際 snapshot
 Root 獨立重現後補正：需求合併必須更新實際 ledger list；需求完成只採有效 acquisition witness，封裝時間不能證明涵蓋較新需求。Legacy 已完成 stage7 可另綁原 run/job/status 的不可變 query-window 收據，只用其下界證明舊登記先於查價，不寫回原包或冒充逐項原始取得時間。六項沒有查價歷史的需求保留 unknown，顯式 retain-unknown-ineligible 處置逐項綁 hash，禁止它們單獨啟動查價；未來有可信建立時間的新需求仍按原批准「有新機、每 HKT 月最多一次、原七日 workload」規則處理。預設 migration 仍對未處置 unknown 顯示不可啟用。
 
 價格 receipt 以獨立 v1.1 Schema extension 正式加入 evidence 欄位並實際驗證；metadata_schema 的選擇不變。新版模式下兩個 sidecar 同時缺失也必須告警，不能退回 legacy 36h 判斷。Private cron 與人工入口共用非秘密價格政策檔，避免 cron 丟失容器 environment 後設定分歧。原始 acquiredAt 缺失仍顯示未確認，不能用查價區間、發布／接收／套用時間補造。原 R1/R2 候選、失敗測試與補正證據保留；正式部署及完整門禁結果另行追加。本修復禁止真 BigGo 請求或補跑 full daily。
+
+
+### 2026-10-22 Root 非秘密部署政策設定（追加）
+
+GitHub 管理憑證缺少 Secrets／Variables 管理權限；價格模式、成對旗標及固定程式 revision 並非秘密，改用版本管理的 price-policy.json，由嚴格白名單 loader 寫 GITHUB_ENV，entry 與 provider 共用。缺檔預設 receive-only；normal 必須成對啟用及完整 revision，仍須 source closure、雙端 transition、需求、baseline、lease／budget 等原有 guard。既有 Secrets 可明示覆蓋，並不新增或輸出憑證。政策檔是資料，程式 pin 不因資料 child commit 改變；政策不是取得查價權限的替代證據。回退可獨立把政策改 receive-only，shared usage／history 不倒退。
