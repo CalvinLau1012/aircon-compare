@@ -12,6 +12,7 @@ import importlib.util
 import json
 import os
 import sys
+import time
 
 import pytest
 
@@ -27,8 +28,41 @@ import run_official_batch as rob  # noqa: E402
 import publish_official_status as pub  # noqa: E402
 import check_health_summary as client  # noqa: E402
 
-NOW = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+NOW = dt.datetime(2026, 10, 21, 4, 30, tzinfo=dt.timezone.utc)
 RETRIEVED = '2026-10-21T04:00:00Z'
+
+
+def _stamp(minutes_ago=0):
+    return (NOW - dt.timedelta(minutes=minutes_ago)).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+@pytest.fixture(autouse=True, params=[
+    '2026-10-21T04:30:00+00:00',
+    '2026-10-23T04:30:00+00:00',  # Beyond the original fixture's 36h expiry.
+    '2030-01-01T00:05:00+00:00',  # Different year/month and UTC/HKT boundary.
+])
+def _policy_clock(request, monkeypatch):
+    """Keep simulated source ages and implicit batch clocks on one timeline.
+
+    Production freshness limits are exercised unchanged.  Wall-clock execution
+    date must not age healthy test inputs or refresh deliberately stale ones.
+    """
+    monkeypatch.setattr(sys.modules[__name__], 'NOW', dt.datetime.fromisoformat(request.param))
+    monkeypatch.setattr(sys.modules[__name__], 'RETRIEVED', _stamp(30))
+
+    class BatchClock:
+        def __getattr__(self, name):
+            return getattr(time, name)
+
+        def gmtime(self, seconds=None):
+            return time.gmtime(NOW.timestamp() if seconds is None else seconds)
+
+    clock = BatchClock()
+    monkeypatch.setattr(rob, 'time', clock)
+    monkeypatch.setattr(official_coverage, 'time', clock)
+    utc_now = official_coverage._utc_now
+    monkeypatch.setattr(official_coverage, '_utc_now',
+                        lambda now=None: utc_now(NOW if now is None else now))
 
 
 def _spec(name, rel):
@@ -90,8 +124,8 @@ def _metadata(repo):
     return {
         'build': 'B-PENDING-TEST', 'releasePayloadHash': 'sha256:' + 'a' * 64,
         'datasetHash': _sha(str(repo / 'emsd_空調能源標籤.csv')),
-        'datasetSnapshotId': 'emsd-test', 'datasetDate': '2026-10-21',
-        'datasetRetrievedAt': RETRIEVED, 'deployTime': '2026-10-21T04:30:00Z',
+        'datasetSnapshotId': 'emsd-test', 'datasetDate': RETRIEVED[:10],
+        'datasetRetrievedAt': RETRIEVED, 'deployTime': _stamp(10),
     }
 
 
@@ -102,7 +136,7 @@ def _deployment(repo, meta):
         if not path.exists():
             path.write_text(name, encoding='utf-8')
     return {
-        'success': True, 'deployedAt': '2026-10-21T04:31:00Z',
+        'success': True, 'deployedAt': _stamp(9),
         'build': meta['build'], 'releasePayloadHash': meta['releasePayloadHash'],
         'receiptId': 'r1',
         'liveHashes': {name: _sha(str(repo / name)) for name in files},
@@ -114,18 +148,18 @@ def _status(repo, official_doc, monkeypatch):
     _write(repo / 'metadata.json', meta)
     dep = _deployment(repo, meta)
     prices = {'A': {'price': '$1起', 'merchants': 1, 'url': 'https://x',
-                    'updated': '2026-10-21'}}
+                    'updated': RETRIEVED[:10]}}
     _write(repo / 'biggo_prices.json', prices)
     monkeypatch.setattr(source_status, 'BASE', str(repo))
     return source_status.build_status(
         metadata=meta,
         emsd_receipt={'success': True, 'aborted': False, 'retrievedAt': RETRIEVED,
                       'datasetHash': meta['datasetHash']},
-        prices_meta={'last_run': '2026-10-21', 'appliedAt': '2026-10-21T04:05:00Z',
+        prices_meta={'last_run': RETRIEVED[:10], 'appliedAt': _stamp(25),
                      'appliedSnapshotHash': __import__('biggo_canonical').sha256_json(prices)},
         biggo_status={'status': 'completed', 'cycle': '2026-10-10:6/7', 'stage': 6,
                       'snapshotHash': __import__('biggo_canonical').sha256_json(prices),
-                      'at': '2026-10-21T04:06:00Z'},
+                      'at': _stamp(24)},
         official_status=official_doc, deployment_receipt=dep,
         now=NOW.timestamp())
 
@@ -365,6 +399,17 @@ def test_pending_does_not_hide_stale_or_deploy_mismatch(tmp_path, monkeypatch):
                      metadata=_metadata(repo), web_root=str(repo),
                      official_status_doc=doc)
     assert r['ok'] is True, r['failures']
+    # The same trusted pending proof cannot hide genuinely aged source inputs.
+    stale_status = copy.deepcopy(status)
+    stale_status['emsd']['lastAcquiredAt'] = _stamp(37 * 60)
+    stale_status['biggo']['lastAppliedAt'] = _stamp(37 * 60)
+    aged = shm.evaluate(status=stale_status, repo=str(repo), now=NOW,
+                        require_deployed=True, deployment_receipt=dep,
+                        metadata=_metadata(repo), web_root=str(repo),
+                        official_status_doc=doc)
+    assert aged['ok'] is False
+    assert 'emsd:age>36h' in aged['failures']
+    assert 'biggo:age>36h' in aged['failures']
     bad_dep = copy.deepcopy(dep)
     bad_dep['liveHashes']['index.html'] = 'sha256:' + '0' * 64
     r = shm.evaluate(status=status, repo=str(repo), now=NOW,
