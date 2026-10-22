@@ -1094,3 +1094,8 @@ Root 獨立重現後補正：需求合併必須更新實際 ledger list；需求
 
 - 修正健康 fixture 固定來源日期卻使用真實現在時間，超過 36 小時便令 daily 前置測試失敗的缺陷。測試資料及 batch／monitor 共用受控模擬時鐘；覆蓋原日期、跨 36 小時及跨年／月場景。
 - 保留並直接驗證真實過期來源、未來觀察、部署不符及損壞收據的阻斷斷言。正式來源日期、36h／72h 門檻、價格政策及 provider 路徑未變更。
+
+
+### 2026-10-23 · 容器來源驗證一致性（追加）
+
+正常 nightly 的外層 image 驗證通過後，內層 entry 因 runtime 資料自己的 .git 目錄誤選 Git 驗證而中止。明確 AIRCON_PRICE_SOURCE_ROOT 現以 immutable image closure 為準；錯 marker、缺檔或 runtime 程式漂移仍 fail closed，不回退 Git。GitHub 未指定 image root 時仍走 Git 固定 commit 驗證。修正沒有開新價格 cycle、查價或重設協調歷史。

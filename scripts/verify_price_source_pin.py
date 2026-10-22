@@ -120,10 +120,16 @@ def verify_configured(repo, env=None):
     if not rev:
         raise ValueError('source-revision-unconfigured')
     repo = env.get('AIRCON_PRICE_SOURCE_REPO') or repo
+    # Private runtime data also has a .git directory for metadata history.
+    # An explicitly configured immutable image root is authoritative; selecting
+    # git merely because that unrelated directory exists rejects valid images.
+    # Image verification errors must propagate without falling back to git.
+    source_root = env.get('AIRCON_PRICE_SOURCE_ROOT')
+    if source_root:
+        return verify_image(repo, source_root, rev)
     if os.path.isdir(os.path.join(repo, '.git')):
         return verify_git(repo, rev)
-    source_root = env.get('AIRCON_PRICE_SOURCE_ROOT') or '/opt/aircon-src'
-    return verify_image(repo, source_root, rev)
+    return verify_image(repo, '/opt/aircon-src', rev)
 
 
 def main(argv=None):
