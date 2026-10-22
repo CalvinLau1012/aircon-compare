@@ -20,6 +20,25 @@ from price_demand_entry import run as entry_run  # noqa: E402
 NOW = 1792600000
 
 
+def _with_acquisition(packet):
+    import copy
+    import datetime as dt
+    import biggo_acquisition
+    packet = copy.deepcopy(packet)
+    generated = dt.datetime.fromisoformat(packet['generatedAt'].replace('Z', '+00:00'))
+    acquired = (generated - dt.timedelta(seconds=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    for outcome in packet['outcomes']:
+        if outcome['outcome'] in ('priced', 'clean_miss'):
+            outcome['acquiredAt'] = acquired
+            outcome['resultHash'] = biggo_acquisition.result_hash(outcome.get('price'))
+    packet['acquisition'] = biggo_acquisition.build_block(
+        cycle_id=packet['cycleId'], stage=packet['stage'], base_snapshot={},
+        new_snapshot={}, outcomes=packet['outcomes'],
+        batch_started_at=(generated - dt.timedelta(minutes=1)).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        generated_at=packet['generatedAt'], require_complete=True)
+    return packet
+
+
 def _new_models(*items):
     return {'models': [{'brand': b, 'model': m, 'first_seen': '2026-10-01',
                         'first_seen_at': '2026-10-01T00:00:00Z'}
@@ -50,6 +69,7 @@ def test_clean_miss_processed_once_and_net_error_never_processed():
                'outcome': 'clean_miss'},
               {'model': 'B1', 'canonicalKey': 'GREE|B1',
                'outcome': 'net_error'}]}
+    sr = _with_acquisition(sr)
     doc2 = price_demand.record_outcomes(doc, sr, {'cycleId': sr['cycleId'], 'stage': 1},
                                         now=NOW)
     by = {d['key']: d for d in doc2['demands']}
@@ -64,6 +84,7 @@ def test_clean_miss_processed_once_and_net_error_never_processed():
     # A second real stage can append evidence but never removes prior attempts.
     sr2 = dict(sr, stage=2, cycleId='2026-10-10:2/7',
                generatedAt='2026-10-11T01:00:00Z')
+    sr2 = _with_acquisition(sr2)
     doc4 = price_demand.record_outcomes(doc3, sr2, {'cycleId': sr2['cycleId'], 'stage': 2},
                                         now=NOW + 86400)
     assert len({d['key']: d for d in doc4['demands']}['GREE|A1']['evidence']) == 1
@@ -271,8 +292,8 @@ def test_legacy_unknown_never_authorises_start_or_processed():
                         'outcome': 'clean_miss'}]}
     out = price_demand.record_outcomes(doc, sr, {'stage': 7}, now=NOW)
     assert out['demands'][0]['status'] == 'unknown'
-    # Explicit migration may use a strictly earlier legacy date as evidence.
-    migrated = price_demand.record_outcomes(doc, sr, {'stage': 7}, now=NOW,
+    # Explicit migration also requires a verified query-time lower bound.
+    migrated = price_demand.record_outcomes(doc, _with_acquisition(sr), {'stage': 7}, now=NOW,
                                             allow_legacy_date=True)
     assert migrated['demands'][0]['status'] == 'processed'
 
@@ -285,7 +306,7 @@ def _processed_doc():
           'generatedAt': '2026-10-11T00:00:00Z',
           'outcomes': [{'model': 'KEEP-1', 'canonicalKey': 'GREE|KEEP1',
                         'outcome': 'clean_miss'}]}
-    return price_demand.record_outcomes(doc, sr, {'stage': 1}, now=NOW)
+    return price_demand.record_outcomes(doc, _with_acquisition(sr), {'stage': 1}, now=NOW)
 
 
 def test_stale_emsd_plan_cannot_revert_processed_demand(tmp_path, monkeypatch):

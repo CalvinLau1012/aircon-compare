@@ -340,7 +340,44 @@ def _match_entry(doc, key):
     return None
 
 
-def record_outcomes(doc, stage_result, manifest, now=None, *, allow_legacy_date=False):
+def _legacy_query_start(window, result, manifest):
+    """Check the Root-reviewed, separately preserved original-run bound.
+
+    The original bundle remains immutable, and no exact acquisition time is
+    manufactured.  Run/job/artifact evidence is preserved outside public data.
+    """
+    from biggo_canonical import sha256_json
+    if not isinstance(window, dict) or window.get('schemaVersion') != 1 \
+            or window.get('kind') != 'aircon-verified-query-window':
+        raise DemandError('legacy query window schema invalid')
+    body = {k: v for k, v in window.items() if k != 'windowHash'}
+    if window.get('windowHash') != sha256_json(body):
+        raise DemandError('legacy query window hash invalid')
+    if (window.get('bundleHash') != sha256_json(manifest)
+            or window.get('stageResultHash') != sha256_json(result)
+            or window.get('cycleId') != result.get('cycleId')
+            or window.get('stage') != result.get('stage')
+            or window.get('sourceHead') != manifest.get('commit')
+            or str(manifest.get('writer', '')).split('-', 1)[0]
+            != str(window.get('sourceRunId'))):
+        raise DemandError('legacy query window identity mismatch')
+    lower = _parse_ts(window.get('notBefore'))
+    upper = _parse_ts(window.get('notAfter'))
+    generated = _parse_ts(result.get('generatedAt'))
+    proofs = window.get('proofHashes')
+    if not isinstance(proofs, dict) or set(proofs) != {
+            'run', 'jobs', 'stageStatus'} or not all(
+                isinstance(v, str) and _SHA_RE.fullmatch(v) for v in proofs.values()):
+        raise DemandError('legacy query window proof identities missing')
+    if lower is None or upper is None or generated is None \
+            or not lower <= generated <= upper \
+            or (upper - lower).total_seconds() > 24 * 3600:
+        raise DemandError('legacy query window interval invalid')
+    return lower
+
+
+def record_outcomes(doc, stage_result, manifest, now=None, *, allow_legacy_date=False,
+                    legacy_query_window=None):
     """Process only demands that provably predate a same-brand outcome."""
     validate(doc)
     if not isinstance(stage_result, dict) or not isinstance(manifest, dict):
@@ -358,6 +395,22 @@ def record_outcomes(doc, stage_result, manifest, now=None, *, allow_legacy_date=
     outcomes = stage_result.get('outcomes')
     if not isinstance(outcomes, list):
         raise DemandError('stage result outcomes missing')
+    # Acquisition witnesses describe when results were actually obtained.
+    # Packet generation may occur later and cannot prove demand coverage.
+    import biggo_acquisition
+    try:
+        witness = biggo_acquisition.from_stage_result(
+            stage_result, now=_parse_ts(_utc(now)).timestamp())
+    except biggo_acquisition.AcquisitionError as exc:
+        raise DemandError('invalid result acquisition witness') from exc
+    acquired = {}
+    if witness.get('provenance') == 'recorded':
+        block = stage_result.get('acquisition') or {}
+        acquired = {(r['model'], r['outcome'], r['resultHash']):
+                    _parse_ts(r['acquiredAt']) for r in block.get('results', [])}
+    legacy_start = None
+    if allow_legacy_date and legacy_query_window is not None:
+        legacy_start = _legacy_query_start(legacy_query_window, stage_result, manifest)
     out = json.loads(json.dumps(doc, ensure_ascii=False))
     changed = False
     for outcome in outcomes:
@@ -373,19 +426,17 @@ def record_outcomes(doc, stage_result, manifest, now=None, *, allow_legacy_date=
         if entry is None or entry.get('status') not in ('pending', 'unknown'):
             continue
         first = _parse_ts(entry.get('firstSeenAt'))
+        obtained = acquired.get((model, outcome['outcome'], outcome.get('resultHash')))
+        result_observed = obtained
         if first is None:
-            if allow_legacy_date:
-                # Explicit migration path: a strictly earlier *date* is the
-                # only orderable fact available.  Same-day legacy data remains
-                # unknown rather than being guessed.
-                if entry.get('firstSeen') and observed.strftime('%Y-%m-%d') > entry['firstSeen']:
-                    pass
-                else:
-                    continue
-            else:
+            # A dated legacy registration needs a separately verified query
+            # lower bound; packet generation is never that lower bound.
+            lower = obtained or legacy_start
+            if not (allow_legacy_date and lower is not None and entry.get('firstSeen')
+                    and lower.strftime('%Y-%m-%d') > entry['firstSeen']):
                 continue
-        elif observed < first:
-            # Historical result predates this demand (R2): never clear it.
+            result_observed = obtained or observed
+        elif obtained is None or obtained < first:
             continue
         token = (cycle, stage, outcome['outcome'])
         existing = {(e.get('cycleId'), e.get('stage'), e.get('outcome'))
@@ -394,15 +445,17 @@ def record_outcomes(doc, stage_result, manifest, now=None, *, allow_legacy_date=
             continue
         ev = {'cycleId': cycle, 'stage': stage,
               'outcome': outcome['outcome'],
-              'observedAt': observed.strftime('%Y-%m-%dT%H:%M:%SZ'),
+              'observedAt': result_observed.strftime('%Y-%m-%dT%H:%M:%SZ'),
               'resultHash': outcome.get('resultHash')}
+        if obtained is None and legacy_start is not None:
+            ev['queryWindowHash'] = legacy_query_window['windowHash']
         if outcome['outcome'] == 'priced' and not (
                 isinstance(ev['resultHash'], str) and _SHA_RE.match(ev['resultHash'])):
             continue
         entry.setdefault('evidence', []).append(ev)
         entry['status'] = 'processed'
         entry.pop('unknownReason', None)
-        entry['processedAt'] = observed.strftime('%Y-%m-%dT%H:%M:%SZ')
+        entry['processedAt'] = result_observed.strftime('%Y-%m-%dT%H:%M:%SZ')
         changed = True
     if changed:
         out['updatedAt'] = _utc(now)
@@ -505,11 +558,13 @@ def merge_documents(current, incoming):
         if cur.get('status') == 'processed':
             continue
         if inc.get('status') == 'processed':
-            by_key[inc['key']] = json.loads(json.dumps(inc, ensure_ascii=False))
+            cur.clear()
+            cur.update(json.loads(json.dumps(inc, ensure_ascii=False)))
             changed = True
             continue
         if cur.get('status') == 'unknown' and inc.get('status') == 'pending':
-            by_key[inc['key']] = json.loads(json.dumps(inc, ensure_ascii=False))
+            cur.clear()
+            cur.update(json.loads(json.dumps(inc, ensure_ascii=False)))
             changed = True
             continue
         # Same/non-processed: retain earliest firstSeen/aliases only.

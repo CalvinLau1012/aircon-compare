@@ -490,8 +490,12 @@ def main(argv=None):
     price_mode = False
     price_demand_path = args.price_demand or os.path.join(args.repo, 'price_demand.json')
     price_status_path = args.price_status or os.path.join(args.repo, 'price_status.json')
-    price_mode = os.path.exists(price_demand_path) or os.path.exists(price_status_path) \
-        or bool(args.price_status_out)
+    price_mode = (bool(os.environ.get('AIRCON_PRICE_QUERY_MODE'))
+                  or os.environ.get('AIRCON_PRICE_CYCLE_ENABLED') == '1'
+                  or os.environ.get('AIRCON_PRICE_SHARED_CYCLE') == '1'
+                  or os.path.exists(price_demand_path)
+                  or os.path.exists(price_status_path)
+                  or bool(args.price_status_out))
     price_race = False
     if status is not None and price_mode:
         try:

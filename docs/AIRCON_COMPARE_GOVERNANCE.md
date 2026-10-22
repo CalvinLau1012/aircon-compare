@@ -2421,3 +2421,208 @@ Formal zero-provider repair run 39393716967 received and verified stage5 locally
 - **R2／R3／R7**：新 demand 需 `firstSeenAt`；早於 demand 的結果不可 processed；canonicalKey 精確品牌配對；legacy 無時間列 `unknown`，不授權 start。EMSD／apply／direct demand writer 共用 `.locks/price-demand.lock`；demand 寫入在 apply journal 內、metadata 前；journal recovery 保留較新 processed。
 - **R6**：migration 分開 `completedBaselineReady`、`priceStartReady`、`enableReady`；歷史不明需求列 unknown-provenance，不以 `ready=true` 冒充可啟用。
 - **R8／回退**：logrotate 用 `daily + maxsize 10M`（14 份、delaycompress、rename+create、白名單）。`AIRCON_PRICE_QUERY_MODE=receive-only|normal`；正式遷移預設 receive-only，保留 completed receive 但禁止新 cycle／provider／force；normal 才可開查，舊 local 只限明示 fixture-local。
+
+
+## 附錄 L. 2026-10-22 Root 收據 Schema 與需求涵蓋修正（只追加）
+
+附錄 K 的文字不足以讓原 additionalProperties=false 接受新增欄位；以下明確追加獨立 v1.1 Schema，原六區塊、v1 sidecar 與 metadata extension bytes 保留。實際價格收據同時經 Draft 2020-12／format 及行為約束驗證。新需求只由經驗證 acquisition witness 證明涵蓋，不能以封裝時間代替。歷史需求若採用原執行窗口，須有另存、綁定原 run/head/bundle 的 query-window 收據；不新增或補造原始取得時間。缺新模式資料不回退 v2 健康。
+
+<!-- AIRCON:SCHEMA_EXTENSION:PRICE_STATUS_SCHEMA_V1_1:BEGIN -->
+```json
+{
+  "blockId": "AIRCON_PRICE_STATUS_SCHEMA_V1_1",
+  "schemaVersion": "1.1.0",
+  "supersedes": "AIRCON_PRICE_STATUS_SCHEMA_V1",
+  "compatibility": "optional typed evidence fields; independent sidecar; metadata unchanged",
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:aircon-compare:price-status-schema:1.1.0",
+    "type": "object",
+    "required": [
+      "schemaVersion",
+      "kind",
+      "determinedAt",
+      "status",
+      "safeReason",
+      "healthy",
+      "cycleId",
+      "stage",
+      "month",
+      "lastVerifiedProgressAt",
+      "nextEligibleAt",
+      "evidence",
+      "receiptHash"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "schemaVersion": {
+        "const": 1
+      },
+      "kind": {
+        "const": "aircon-price-status"
+      },
+      "determinedAt": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "status": {
+        "enum": [
+          "no-demand",
+          "month-completed",
+          "waiting-eligible",
+          "active",
+          "blocked"
+        ]
+      },
+      "safeReason": {
+        "type": "string",
+        "minLength": 1
+      },
+      "healthy": {
+        "type": "boolean"
+      },
+      "cycleId": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "stage": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 0,
+        "maximum": 7
+      },
+      "month": {
+        "type": "string",
+        "pattern": "^[0-9]{4}-[0-9]{2}$"
+      },
+      "lastVerifiedProgressAt": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "format": "date-time"
+      },
+      "nextEligibleAt": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "format": "date-time"
+      },
+      "evidence": {
+        "type": "object",
+        "required": [
+          "snapshotHash",
+          "metaHash",
+          "demandHash",
+          "biggoStatusHash",
+          "completedSyncHash",
+          "anchorHash",
+          "bundleHash",
+          "stageResultHash",
+          "pendingDemandCount"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "snapshotHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "metaHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "demandHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "biggoStatusHash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "completedSyncHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "anchorHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "bundleHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "stageResultHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "pendingDemandCount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "postStateHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "applyReceiptHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "cooldownHash": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "unknownDemandCount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        }
+      },
+      "receiptHash": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      }
+    }
+  }
+}
+```
+<!-- AIRCON:SCHEMA_EXTENSION:PRICE_STATUS_SCHEMA_V1_1:END -->
+
+
+#### Appendix L · Root legacy demand disposition（2026-10-22 追加）
+
+`price_cycle_migrate --quarantine-unknown` is an explicit, hash-bound `retain-unknown-ineligible` disposition. It retains every unknown ledger entry with no processed evidence and no pending trigger. It permits the verified monthly engine to remain available for genuinely new, timestamped EMSD demand; it never authorises an unknown legacy entry to start a query. Default migration continues to report enableReady=false for undisposed unknowns. A separate reviewed original-run query window may establish only the lower bound for legacy outcome coverage, never a fabricated exact acquisition time. The immutable original bundle and provider usage remain unchanged.

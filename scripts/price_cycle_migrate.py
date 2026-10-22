@@ -149,7 +149,8 @@ def _validate_stage_result(result, manifest, snapshot):
 def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
          stage_result, public_meta, private_meta, source_public,
          source_private, at=None, anchor_file=None, history_file=None,
-         transition_file=None, base_snapshot=None):
+         transition_file=None, base_snapshot=None, query_window=None,
+         quarantine_unknown=False):
     if isinstance(at, str):
         at = _dt.datetime.fromisoformat(at.replace('Z', '+00:00'))
     if at is not None and at.tzinfo is None:
@@ -284,10 +285,11 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
                 price_demand.empty(now), new_models_doc, now=now)
             demand_doc = price_demand.record_outcomes(
                 demand_doc, result, manifest, now=now,
-                allow_legacy_date=True)
+                allow_legacy_date=True,
+                legacy_query_window=_load(query_window) if query_window else None)
             demand_text = json.dumps(demand_doc, ensure_ascii=False,
                                      sort_keys=True, indent=2) + '\n'
-        except (price_demand.DemandError, ValueError) as e:
+        except (price_demand.DemandError, OSError, ValueError) as e:
             errors.append('demand-invalid:' + type(e).__name__)
     for stage in range(1, 7):
         missing_refs.append(f'snapshots/2026-10-10-{stage}-7/stage-result.json')
@@ -296,7 +298,20 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
     completed_baseline_ready = not errors and not baseline_errors
     unknown_demands = price_demand.unknown(demand_doc) if demand_doc else []
     pending_demands = price_demand.pending(demand_doc) if demand_doc else []
-    price_start_ready = bool(completed_baseline_ready and not unknown_demands
+    # A reviewed disposition retains legacy unknown entries as ineligible.
+    # It never marks them processed or authorises queries for these entries.
+    quarantine = None
+    if quarantine_unknown:
+        quarantine = {
+            'policy': 'retain-unknown-ineligible',
+            'demands': [{'key': entry['key'],
+                         'entryHash': sha256_id(canonical_json_bytes(entry))}
+                        for entry in sorted(unknown_demands,
+                                            key=lambda entry: entry['key'])],
+        }
+        quarantine['dispositionHash'] = sha256_id(canonical_json_bytes(quarantine))
+    price_start_ready = bool(completed_baseline_ready
+                             and (not unknown_demands or quarantine is not None)
                              and pending_demands is not None)
     demand_eligibility = []
     for entry in (demand_doc or {}).get('demands', []):
@@ -336,6 +351,7 @@ def plan(*, repo, prices_meta, snapshot, new_models, stage_manifest,
         'historyHash': sha256_id(history_bytes) if history_bytes else None,
         'demand': demand_doc,
         'demandEligibility': demand_eligibility,
+        'unknownDisposition': quarantine,
         'demandHash': sha256_id(demand_text.encode('utf-8')) if demand_text else None,
         'missingRefs': missing_refs,
         'notes': [
@@ -532,6 +548,9 @@ def main(argv=None):
     ap.add_argument('--stage-manifest', required=True)
     ap.add_argument('--stage-result', required=True)
     ap.add_argument('--base-snapshot', default=None)
+    ap.add_argument('--query-window', default=None)
+    ap.add_argument('--quarantine-unknown', action='store_true',
+                    help='retain reviewed legacy unknowns as ineligible; never query them')
     ap.add_argument('--public-meta', required=True)
     ap.add_argument('--private-meta', required=True)
     ap.add_argument('--source-public', required=True)
@@ -567,7 +586,8 @@ def main(argv=None):
         source_public=args.source_public,
         source_private=args.source_private,
         at=at, anchor_file=args.anchor_file if args.apply else None,
-        base_snapshot=args.base_snapshot,
+        base_snapshot=args.base_snapshot, query_window=args.query_window,
+        quarantine_unknown=args.quarantine_unknown,
         transition_file=args.transition_file,
         history_file=args.history_file)
     text = json.dumps(receipt, ensure_ascii=False, sort_keys=True, indent=2) + '\n'

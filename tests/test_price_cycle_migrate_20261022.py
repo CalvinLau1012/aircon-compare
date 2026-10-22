@@ -39,6 +39,12 @@ def _fixture(tmp_path, *, public_snapshot=None, private_snapshot=None):
           'postState': {'trackingHash': sha256_id(canonical_json_bytes({})),
                         'blacklistHash': sha256_id(canonical_json_bytes({}))}}
     sr['effectsHash'] = sha256_id(canonical_json_bytes(sr['effects']))
+    import biggo_acquisition
+    sr['outcomes'][0]['acquiredAt'] = '2026-10-20T20:15:33Z'
+    sr['acquisition'] = biggo_acquisition.build_block(
+        cycle_id=sr['cycleId'], stage=7, base_snapshot=base, new_snapshot=snap,
+        outcomes=sr['outcomes'], batch_started_at='2026-10-20T20:15:00Z',
+        generated_at=sr['generatedAt'], require_complete=True)
     manifest = {'schemaVersion': 2, 'cycleId': '2026-10-10:7/7', 'stage': 7,
                 'mode': 'price-batch', 'publishedAt': '2026-10-20T20:15:34Z',
                 'baseSnapshotHash': sha256_id(canonical_json_bytes(base)),

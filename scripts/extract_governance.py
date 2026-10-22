@@ -33,7 +33,8 @@ EXPECTED_BLOCKS = [
 ]
 # Independent, explicitly versioned extensions.  They are NOT additional
 # canonical blocks: extract_blocks() still returns exactly the six above.
-SCHEMA_EXTENSIONS = ['AIRCON_METADATA_SCHEMA_V1_1', 'AIRCON_PRICE_STATUS_SCHEMA_V1']
+SCHEMA_EXTENSIONS = ['AIRCON_METADATA_SCHEMA_V1_1', 'AIRCON_PRICE_STATUS_SCHEMA_V1',
+                     'AIRCON_PRICE_STATUS_SCHEMA_V1_1']
 
 
 class BlockError(Exception):
@@ -171,7 +172,9 @@ def extract_schema_extensions(text):
         obj = _parse_json_fence(seg, f'schema extension {bid}')
         if not isinstance(obj, dict) or obj.get('blockId') != bid:
             raise BlockError(f'schema extension {bid} blockId 唔匹配')
-        if obj.get('supersedes') not in EXPECTED_BLOCKS:
+        if obj.get('supersedes') not in EXPECTED_BLOCKS and not (
+                bid == 'AIRCON_PRICE_STATUS_SCHEMA_V1_1'
+                and obj.get('supersedes') == 'AIRCON_PRICE_STATUS_SCHEMA_V1'):
             raise BlockError(f'schema extension {bid} supersedes 唔係已知 canonical block')
         if not isinstance(obj.get('schema'), dict):
             raise BlockError(f'schema extension {bid} 缺少 schema object')
@@ -200,6 +203,24 @@ def metadata_schema(text=None):
             raise BlockError('metadata schema extension $id 唔符明確版本')
         return schema
     return blocks['AIRCON_METADATA_SCHEMA_V1']
+
+
+def price_status_schema(text=None):
+    """Select the independent price schema; never change metadata selection."""
+    if text is None:
+        with open(GOV_FILE, encoding='utf-8') as handle:
+            text = handle.read()
+    extensions = extract_schema_extensions(text)
+    ext = extensions.get('AIRCON_PRICE_STATUS_SCHEMA_V1_1')
+    if ext is not None:
+        if ext.get('supersedes') != 'AIRCON_PRICE_STATUS_SCHEMA_V1' or \
+                ext['schema'].get('$id') != 'urn:aircon-compare:price-status-schema:1.1.0':
+            raise BlockError('price status schema version binding invalid')
+        return ext['schema']
+    ext = extensions.get('AIRCON_PRICE_STATUS_SCHEMA_V1')
+    if ext is None:
+        raise BlockError('price status schema missing')
+    return ext['schema']
 
 
 def check_unique_ids(obj, path=''):

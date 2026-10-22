@@ -26,6 +26,7 @@ recomputing a self hash.
 from __future__ import annotations
 
 import argparse
+import functools
 import datetime as _dt
 import hashlib
 import json
@@ -61,6 +62,8 @@ _REASONS = {
         'snapshot-hash-mismatch', 'provider-failure', 'receive-failure',
         'invalid-cooldown', 'anchor-missing', 'anchor-invalid', 'anchor-mismatch',
         'anchor-not-completed', 'future-evidence', 'invalid-status-input',
+        'post-state-missing', 'apply-evidence-missing', 'cooldown-conflict',
+        'cooldown-cycle-mismatch', 'cooldown-time-invalid',
     },
 }
 _ACTIVE_STATUSES = ('completed', 'completed-idempotent-applied', 'completed-recovered')
@@ -472,11 +475,20 @@ def build_receipt(*, now=None, meta=None, demand=None, biggo=None,
     return body
 
 
+@functools.lru_cache(maxsize=1)
+def _schema_validator():
+    from jsonschema import Draft202012Validator, FormatChecker
+    from extract_governance import price_status_schema
+    return Draft202012Validator(price_status_schema(), format_checker=FormatChecker())
+
+
 def validate_receipt(receipt, *, now=None, max_age_hours=MAX_AGE_HOURS,
                      max_cooldown_seconds=MAX_COOLDOWN_SECONDS):
     """Structural/self-hash validation; use verify_receipt for live facts."""
     if not isinstance(receipt, dict):
         raise PriceStatusError('receipt must be an object')
+    if next(_schema_validator().iter_errors(receipt), None) is not None:
+        raise PriceStatusError('receipt does not conform to price status schema')
     expected = {'schemaVersion', 'kind', 'determinedAt', 'status', 'safeReason',
                 'healthy', 'cycleId', 'stage', 'month', 'lastVerifiedProgressAt',
                 'nextEligibleAt', 'evidence', 'receiptHash'}
