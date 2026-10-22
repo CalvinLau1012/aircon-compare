@@ -417,6 +417,13 @@ def validate_receipt(receipt, *, now=None, max_age_hours=MAX_AGE_HOURS,
             if nxt > now_dt + _dt.timedelta(
                     seconds=max_cooldown_seconds + max_age_hours * 3600):
                 raise PriceStatusError('active cooldown unbounded')
+        elif receipt.get('safeReason') == 'in-progress':
+            if progress is None or (now_dt - progress).total_seconds() > max_age_hours * 3600:
+                raise PriceStatusError('in-progress active is actually stale')
+            nxt = _parse(receipt.get('nextEligibleAt'))
+            want = progress + _dt.timedelta(hours=max_age_hours)
+            if nxt is None or abs((nxt - want).total_seconds()) > 60:
+                raise PriceStatusError('in-progress nextEligibleAt invalid')
     elif receipt['status'] == 'month-completed':
         if not isinstance(receipt.get('cycleId'), str) \
                 or not re.fullmatch(r'\d{4}-\d{2}-\d{2}:\d/7', receipt['cycleId']):

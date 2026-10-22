@@ -304,3 +304,23 @@ def test_v3_consumer_rejects_replayed_old_receipt_with_new_checkedAt():
     result = chs.evaluate(summary, now=NOW, max_age_hours=48)
     assert result['ok'] is False
     assert any('price-receipt-stale' in f for f in result['failures'])
+
+
+def test_forged_self_hash_active_in_progress_with_stale_progress_is_rejected():
+    old = price_status.build_receipt(
+        now=NOW - dt.timedelta(days=2), meta=_meta(),
+        demand=_demand(), biggo=_biggo(), completed_sync={},
+        snapshot_hash='sha256:' + 'a' * 64, anchor=None, shared=False)
+    forged = dict(old)
+    forged['status'] = 'active'
+    forged['safeReason'] = 'in-progress'
+    forged['cycleId'] = '2026-10-18:3/7'
+    forged['stage'] = 2
+    forged['nextEligibleAt'] = price_status._stamp(
+        dt.datetime.fromisoformat(old['lastVerifiedProgressAt'].replace('Z', '+00:00'))
+        + dt.timedelta(hours=36))
+    body = {k: v for k, v in forged.items() if k != 'receiptHash'}
+    from biggo_canonical import canonical_json_bytes, sha256_id
+    forged['receiptHash'] = sha256_id(canonical_json_bytes(body))
+    with pytest.raises(price_status.PriceStatusError):
+        price_status.validate_receipt(forged, now=NOW)
