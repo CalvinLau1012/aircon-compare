@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "queryMode": "normal",
+  "cycleEnabled": true,
+  "sharedCycle": true,
+  "sourceRevision": "cc48ed7557fdad6c94fe6835bb5bd255399062d8",
+  "writer": "github"
+}
