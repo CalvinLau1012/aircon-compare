@@ -1454,3 +1454,15 @@ Root 反例發現並補正：損壞 observation 結構須產生 unhealthy 收據
 - **遷移**：`scripts/price_cycle_migrate.py` 預設唯讀，`--apply` 只寫明確 fixture anchor store，永不寫正式 coordinator。以真實 stage7 manifest/result、新機、兩端 baseline 推導 transition／anchor／history；本月已完成事實保留；缺證據列 blocked；重跑 semantic no-op；source／repo 一端不匹配即停。正式 coordinator CAS 由 Root 在 review 後執行。
 - **取得時間**：沿用既有 `biggo_acquisition.py` witness 鏈，不新增第二套時間。新包由 provider response 驗證後記錄 acquiredAt／resultHash，經 stage-result→manifest→bundle→receiver→source status 傳遞；兩端各自 appliedAt 不同不影響相同 snapshot。legacy 仍 unknown；generatedAt／publishedAt／receivedAt／appliedAt 永不補造 acquisition；重接收不刷新。
 - **驗收邊界**：本輪零 BigGo token／search／smoke／diagnostic／provider，零正式 coordinator／lease／budget／anchor 寫入，零正式服務修改；只使用本地 fixture／fake coordinator／provider。Root 其後在 network-none Docker、live／browser 及正式部署驗收。正式部署次序必須先兼容 reader，再 producer；共享歷史出現後只停新查詢、保留接收，不倒退 coordinator／用量。
+
+## D41 · 2026-10-22：R2 返修（真入口、source pin、receive-only、證據交易；append-only）
+
+- **授權不變**：使用者已批准原方案；本輪是 Root 反例 R1–R9／R11 的返修，不重開方案。R10 已由 Root 更正為非缺陷（有效 terminal stage7 bundle 可 noop），本輪保留該正向。
+- **R11 transient 鎖**：`price_demand` 的持久 mutex／tmp 移入精確 ignore 的 `.locks/`，不再在 `price_demand.json.lock` 留下 allowlist 外檔案；真 `stage_artifacts` dry-run／stage／data child commit／checkout 回歸必須通過，lock 永不 stage，rsync／retention 保護 `.locks`。
+- **R5 source／config**：query mode、paired flags、source revision、writer 由同一非秘密部署配置提供；public workflow 的 price entry 與 provider runner 共用，private compose environment 由 updater 與唯讀 health cron 共用，mixed flags fail closed。公共 source pin 使用固定部署 ack revision，並逐 bytes 驗價格鏈程式／workflow closure；純資料 child commit 不失效，程式改變須新 ack。private 以 immutable image `.release-commit` 對 `/app`／`/opt/aircon-src` 同 bytes 驗證。
+- **R4／R1／R9 證據**：price receipt 只採與當前 cycle/stage/bundle 及實際 snapshot／post-state 匹配的持久 `appliedAt`；receiver `finishedAt`、monitor readAt、anchor.updatedAt、重複套用不再當進展。completed 必須有 current apply receipt 與 post-state；空／缺／矛盾不能 green。cooldown 必須有 `skip-cooldown` witness（cycle/stage、實際 `cooldownUntil`、合法時間）與可對齊 `blocked_until`；無 witness 的任意 bounded 時間 fail closed。producer 以第二次實際讀檔＋raw token 比較，racing 時保留舊 summary。
+- **R2／R3／R7 需求**：新需求需真 `firstSeenAt`；早於需求的結果不能處理，legacy 無時間者為 `unknown`（不授權 start、不可被舊包 processed）。canonicalKey 必須精確同品牌配對；demand key 必須等於 canonical brand/model。EMSD commit、demand writer、BigGO apply 共用 `.locks/price-demand.lock`；apply journal 在 metadata 前寫 demand pre/post 並可恢復；EMSD journal recovery 以 merge 保留較新 processed，不倒退。
+- **R6 migration**：分開 `completedBaselineReady`／`priceStartReady`／`enableReady`；歷史不明需求列 `unknown-provenance`，不得單獨觸發新查價。terminal stage7 可用真 manifest/base/new/result 及兩端 post-state 驗證；缺證只列 blocked／unknown，不重做 stage1–6，不猜已查。
+- **R8 logrotate**：`daily + maxsize 10M`，保留 14 份、delaycompress、rename+create、白名單；日期及大小兩條件均實測有效。
+- **回退**：新增 `AIRCON_PRICE_QUERY_MODE=receive-only|normal`；正式遷移預設 receive-only，允許 completed GET／驗證／套用但禁止新 cycle 及任何 provider／force；normal 必須 paired flags、source pin、transition／baseline、需求全部通過。舊 legacy local 只限 `fixture-local` 明示 fixture；正式不可自動退回本地開批次。共享 history／usage 絕不倒退。
+- **邊界**：本輪零真 BigGo provider／coordinator／lease／budget／正式服務寫入；Root 仍負責 network-none Docker、正式 CAS／部署／live。

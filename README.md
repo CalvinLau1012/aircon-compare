@@ -889,3 +889,11 @@ A full offline gate exposed a pre-existing intermittent CLI failure: repeating a
 - **遷移**：提供預設唯讀的 `scripts/price_cycle_migrate.py`，由真實 stage7／兩端 baseline／新機推導 transition、completed anchor、history 及 demand；缺證據 blocked，重跑 no-op，正式 coordinator CAS 只由 Root 執行。
 - **取得時間**：沿用既有 BigGo acquisition witness；新包兩端共享同一取得時間、各自保留真實套用時間；legacy 仍 unknown，重接收不刷新。
 - **邊界**：本輪零 BigGo provider／coordinator／lease／budget／正式資料或服務操作；未宣稱已部署。Root 需先部署兼容 reader、再 producer，並另行驗 network-none Docker、live／browser 及自然下一輪 daily。
+
+## 2026-10-22 R2 追加：真入口及只接收回退（未部署）
+
+Root 首輪反例後的本輪返修已完成隔離實作：價格需求鎖移入 `.locks/`，真 stage CLI 不再見到 allowlist 外的 lock；public／private 價格入口與 provider runner 使用同一 query mode、paired flags、固定 source pin 及 writer；private compose 的非秘密 flags 由 updater 與 health cron 共用。正式遷移預設 `receive-only`：仍接收已完成結果，但禁止新 cycle／provider／force；舊 local 只限明示 fixture。
+
+completed 價格收據現在要求與當前 cycle/stage/bundle、實際 snapshot／post-state 匹配的持久套用事實；receiver 時間、monitor 時間及 anchor audit 時間不再當進展；cooldown 必須有真 skip-cooldown witness。需求加入可信 `firstSeenAt`、精確 canonical 品牌配對及 shared lock／journal，避免舊包或 stale EMSD plan 倒退 processed 狀態。遷移分開 terminal baseline 可採納與新查價可啟動，歷史不明需求列 unknown-provenance。
+
+本節不宣稱部署；Root 仍需跑 network-none Docker、正式 CAS／部署、live／browser 及自然下一輪 daily。詳見 `docs/DECISIONS.md` D41。

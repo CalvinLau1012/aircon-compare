@@ -626,7 +626,11 @@ def validate_receipt(receipt, *, now=None, max_age_hours=MAX_AGE_HOURS,
 
 def verify_receipt(receipt, *, inputs, now=None, max_age_hours=MAX_AGE_HOURS,
                    max_cooldown_seconds=MAX_COOLDOWN_SECONDS):
-    """Re-read live inputs, rebuild, and require identical facts."""
+    """Rebuild from the supplied (caller re-read) inputs and require identity.
+
+    This function cannot know whether the caller reused an in-memory dict; the
+    monitor/CLI must perform a second actual disk read and pass that snapshot.
+    """
     validate_receipt(receipt, now=now, max_age_hours=max_age_hours,
                      max_cooldown_seconds=max_cooldown_seconds)
     when = _parse(receipt.get('determinedAt'))

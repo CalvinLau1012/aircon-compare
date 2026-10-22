@@ -1069,3 +1069,15 @@ Root 反例發現並補正：損壞 observation 結構須產生 unhealthy 收據
 - Changed：BigGo snapshot 套用／取得 age 不再以單一 36h 判 pipeline 故障；官網 queue 與價格啟動分離，`advance_queue` 只處理官網隊列；shared mode 使用 monthly-cycle-v2＋CAS，兩旗標必須成對。
 - Fixed：私人 runtime mkdir 鎖改 flock（busy 75、缺 flock fail closed、子程序持 fd）；aircon json-file 10m／3；update.log／update-cron.log／source-health.log 以獨立 flock＋logrotate 10MiB／14 份／delaycompress 輪替。
 - Evidence：新增 price status、demand、migration、true-entry acquisition 全鏈及 v1／v2／v3 相容／反例測試；候選只作離線 fixture／fake provider／fake coordinator 驗證。零正式 provider／coordinator／服務操作。
+
+## 2026-10-22 R2 — 真入口、只接收及證據交易返修（append-only；未部署）
+
+- Fixed：demand transient mutex／tmp 精確置於 `.locks/`，真 `stage_artifacts` 不再被 `price_demand.json.lock` 阻斷；ledger 可正常 stage／commit／跨 checkout 保存。
+- Fixed：public workflow price entry 與 provider runner 共用 query mode／flags／source pin／writer；private compose 非秘密配置供 updater／health cron 共用；mixed flags fail closed。
+- Fixed：固定 code revision pin 與精確價格鏈 closure；純資料 child commit 保持有效，程式／workflow 改變要求新 ack。
+- Fixed：completed 進展只採 current cycle/stage/bundle＋實際 post-state；receiver finishedAt／monitor readAt／anchor.updatedAt 不再刷新；completed 缺 apply/post-state 或空 sync 不可 green。
+- Fixed：cooldown 需真 skip-cooldown witness；任意 bounded `blocked_until` 不再令停滯批次健康。
+- Fixed：新 demand 需 `firstSeenAt`，舊結果不得清除；canonicalKey 精確品牌配對；EMSD／apply／direct writer 共用 demand lock；demand 寫入納入 apply journal 且在 metadata 前，journal recovery 保留較新 processed。
+- Fixed：migration 分開 `completedBaselineReady`／`priceStartReady`／`enableReady`；歷史不明列 unknown-provenance，不以 ready=true 冒充可啟用。
+- Fixed：logrotate `daily + maxsize 10M`，日期及大小兩條件生效。
+- Added：`AIRCON_PRICE_QUERY_MODE=receive-only|normal`；正式遷移預設 receive-only，禁止新 cycle／provider／force，保留 completed receive；舊 local 只限 fixture-local。

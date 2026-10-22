@@ -132,3 +132,19 @@ def test_source_pin_survives_data_child_commit_and_rejects_code_drift(tmp_path):
         assert 'image-source-mismatch' in str(e)
     else:
         raise AssertionError('image drift must fail')
+
+
+def test_receive_only_status_is_legal_source_status_idle(tmp_path):
+    import source_status
+    snap = {'A': {'price': '$1起'}}
+    from biggo_canonical import sha256_json
+    h = sha256_json(snap)
+    (tmp_path / 'emsd_空調能源標籤.csv').write_text('a\n', encoding='utf-8')
+    status = source_status.build_status(
+        metadata={'datasetDate': '2026-10-22', 'datasetHash': 'sha256:' + 'a' * 64},
+        prices_meta={'last_run': '2026-10-21', 'last_price_month': '2026-10',
+                     'appliedSnapshotHash': h, 'appliedBundleHash': 'sha256:' + 'b' * 64},
+        biggo_status={'status': 'skip-receive-only', 'at': '2026-10-22T00:00:00Z'},
+        biggo_snapshot_hash=h)
+    assert status['biggo']['status'] == 'ok'
+    assert status['biggo']['safeReason'] == 'no-fetch-needed'

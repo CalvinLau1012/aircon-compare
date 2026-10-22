@@ -2410,3 +2410,14 @@ Formal zero-provider repair run 39393716967 received and verified stage5 locally
 }
 ```
 <!-- AIRCON:SCHEMA_EXTENSION:PRICE_STATUS_SCHEMA_V1:END -->
+
+## 附錄 K. 2026-10-22 R2 返修：價格入口、只接收及證據交易（追加；非 canonical 區塊變更）
+
+> 本附錄只追加，六個 canonical 區塊及既有 Schema extension bytes 不變。R2 收據在 `evidence` 增加 `postStateHash`、`applyReceiptHash`、`cooldownHash`、`unknownDemandCount` 的 optional／status-dependent 事實；`receiptHash` 仍覆蓋整份 body。
+
+- **R11**：`price_demand` mutex／tmp 只存在精確 ignore 的 `.locks/`；真 `stage_artifacts` 不可見，ledger 仍可正常 stage／commit。白名單與 gitstatus 門禁不降低。
+- **R5**：價格入口、provider runner、health producer 共用非秘密 query mode／paired flags／source revision／writer。Public source pin 用固定 deployment ack revision 逐 bytes 驗價格鏈程式及 workflow closure；private 用 immutable image release 與 `/app`／`/opt/aircon-src` 驗證。純資料提交可沿用 ack，程式變更需新 ack。
+- **R4／R1／R9**：completed／active 進展只接受 current cycle/stage/bundle、實際 snapshot／post-state 匹配的持久 `appliedAt`；receiver finishedAt／monitor readAt／anchor.updatedAt／重複套用不刷新。completed 缺 apply／post-state 或空 sync fail closed。cooldown 只接受 `skip-cooldown` witness 及其合法 recovery time；無 witness 的 bounded `blocked_until` 不可延長。
+- **R2／R3／R7**：新 demand 需 `firstSeenAt`；早於 demand 的結果不可 processed；canonicalKey 精確品牌配對；legacy 無時間列 `unknown`，不授權 start。EMSD／apply／direct demand writer 共用 `.locks/price-demand.lock`；demand 寫入在 apply journal 內、metadata 前；journal recovery 保留較新 processed。
+- **R6**：migration 分開 `completedBaselineReady`、`priceStartReady`、`enableReady`；歷史不明需求列 unknown-provenance，不以 `ready=true` 冒充可啟用。
+- **R8／回退**：logrotate 用 `daily + maxsize 10M`（14 份、delaycompress、rename+create、白名單）。`AIRCON_PRICE_QUERY_MODE=receive-only|normal`；正式遷移預設 receive-only，保留 completed receive 但禁止新 cycle／provider／force；normal 才可開查，舊 local 只限明示 fixture-local。
