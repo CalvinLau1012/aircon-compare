@@ -1,6 +1,12 @@
 {
   "demands": [
     {
+      "aliases": [
+        {
+          "brand": "格力",
+          "model": "GEH53ZE/GEH53ZC"
+        }
+      ],
       "brand": "格力",
       "evidence": [],
       "firstSeen": "2026-09-07",
@@ -10,6 +16,12 @@
       "unknownReason": "missing-creation-time"
     },
     {
+      "aliases": [
+        {
+          "brand": "格力",
+          "model": "GEH35ZE/GEH35ZC"
+        }
+      ],
       "brand": "格力",
       "evidence": [],
       "firstSeen": "2026-09-07",
@@ -19,6 +31,12 @@
       "unknownReason": "missing-creation-time"
     },
     {
+      "aliases": [
+        {
+          "brand": "格力",
+          "model": "GEH26ZE/GEH26ZC"
+        }
+      ],
       "brand": "格力",
       "evidence": [],
       "firstSeen": "2026-09-07",
@@ -136,6 +154,12 @@
       "status": "processed"
     },
     {
+      "aliases": [
+        {
+          "brand": "PHILIPS",
+          "model": "FAC12VC-Eb3CBA1H"
+        }
+      ],
       "brand": "PHILIPS",
       "evidence": [],
       "firstSeen": "2026-09-15",
@@ -145,6 +169,12 @@
       "unknownReason": "missing-creation-time"
     },
     {
+      "aliases": [
+        {
+          "brand": "PHILIPS",
+          "model": "FAC09VC-Eb3CBA1H"
+        }
+      ],
       "brand": "PHILIPS",
       "evidence": [],
       "firstSeen": "2026-09-15",
@@ -388,6 +418,12 @@
       "status": "processed"
     },
     {
+      "aliases": [
+        {
+          "brand": "格力",
+          "model": "GEH63ZE/GEH63ZC"
+        }
+      ],
       "brand": "格力",
       "evidence": [],
       "firstSeen": "2026-10-16",
@@ -507,5 +543,5 @@
   ],
   "kind": "aircon-price-demand",
   "schemaVersion": 1,
-  "updatedAt": "2026-10-22T06:41:44Z"
+  "updatedAt": "2026-10-23T23:23:04Z"
 }
