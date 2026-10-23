@@ -1478,3 +1478,10 @@ Root 獨立重現後補正：需求合併必須更新實際 ledger list；需求
 ### 2026-10-22 Root 非秘密部署政策設定（追加）
 
 GitHub 管理憑證缺少 Secrets／Variables 管理權限；價格模式、成對旗標及固定程式 revision 並非秘密，改用版本管理的 price-policy.json，由嚴格白名單 loader 寫 GITHUB_ENV，entry 與 provider 共用。缺檔預設 receive-only；normal 必須成對啟用及完整 revision，仍須 source closure、雙端 transition、需求、baseline、lease／budget 等原有 guard。既有 Secrets 可明示覆蓋，並不新增或輸出憑證。政策檔是資料，程式 pin 不因資料 child commit 改變；政策不是取得查價權限的替代證據。回退可獨立把政策改 receive-only，shared usage／history 不倒退。
+
+
+### 2026-10-24 · 候選驗收與正式 daily 設定隔離（追加）
+
+正常 daily 在前置測試後載入價格政策，後置完整候選驗收卻繼承該正式 environment。官網隔離 fixture 因 normal/shared flags 誤進價格收據分支，前置通過而提交前失敗；本次並非正式日期被寫死。候選驗收現在只在子程序清除業務設定、provider／GitHub 憑證及 workflow 輸出路徑，保留工具依賴、CI 身份與明示的離線歷史證據。測試自行提供各自設定，父 daily 的 normal／shared 政策、source pin、lease／budget／cooldown／intent 不變。完整七門禁及非零阻斷不減少；失敗 gate 的安全證據目錄內日誌摘要直接印出，避免 shell 提前退出後只留下 FULL_ACCEPTANCE rc。
+
+以真 daily 非秘密設定在斷網隔離容器重現三個日期案例全部失敗，修正後同樣父設定的真子程序回歸通過；另驗證失敗 gate 仍為非零、machine report／日誌保存及父政策不被修改。這些只屬隔離驗證，正式部署與下一輪結果另追加。本次沒有為驗證呼叫 BigGo。

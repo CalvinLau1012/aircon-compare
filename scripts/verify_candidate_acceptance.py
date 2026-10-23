@@ -43,6 +43,53 @@ IGNORE = shutil.ignore_patterns('.git', '__pycache__', '.pytest_cache', '.venv',
                                 'node_modules', '.mypy_cache', '.ruff_cache', '*.pyc')
 
 
+def acceptance_environment(environ=None):
+    """Keep test/tool dependencies, excluding the calling daily's live policy.
+
+    Daily loads its price policy after the initial tests.  Those variables must
+    not activate a real workflow branch inside an unrelated test fixture at
+    precommit.  Tests explicitly provide their own business configuration.
+    The optional immutable offline recovery evidence remains available.
+    """
+    environ = os.environ if environ is None else environ
+    credentials = {
+        'GITHUB_TOKEN', 'GH_TOKEN', 'ACTIONS_RUNTIME_TOKEN',
+        'ACTIONS_ID_TOKEN_REQUEST_TOKEN', 'GITHUB_ENV', 'GITHUB_OUTPUT',
+        'GITHUB_STATE', 'GITHUB_STEP_SUMMARY',
+    }
+    return {
+        key: value for key, value in environ.items()
+        if key not in credentials
+        and (key == 'AIRCON_RECOVERY_EVIDENCE'
+             or not key.startswith(('AIRCON_', 'BIGGO_', 'PRICESAPI_')))
+    }
+
+
+def _print_failure_details(acceptance, log_dir):
+    """Expose failing gate evidence even when the caller exits before cat."""
+    if not isinstance(acceptance, dict):
+        return
+    root = os.path.realpath(log_dir)
+    for gate in acceptance.get('gates', []):
+        if not isinstance(gate, dict) or gate.get('returncode') == 0:
+            continue
+        print(f"❌ candidate gate {gate.get('id')}: rc={gate.get('returncode')}")
+        rel = gate.get('log')
+        if not isinstance(rel, str):
+            continue
+        path = os.path.realpath(os.path.join(root, rel))
+        if os.path.commonpath([root, path]) != root:
+            print('gate log is outside the acceptance directory; not displayed')
+            continue
+        try:
+            with open(path, encoding='utf-8', errors='replace') as f:
+                tail = f.read()[-12000:].splitlines()[-80:]
+        except OSError:
+            print('gate log is unavailable; see the machine report')
+        else:
+            print('\n'.join(tail))
+
+
 def _sha256(path):
     h = hashlib.sha256()
     with open(path, 'rb') as f:
@@ -86,7 +133,8 @@ def _copy_candidate(repo, dest):
 def _run(argv, cwd, log_path, timeout):
     started = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
     try:
-        proc = subprocess.run(argv, cwd=cwd, capture_output=True, timeout=timeout)
+        proc = subprocess.run(argv, cwd=cwd, capture_output=True, timeout=timeout,
+                              env=acceptance_environment())
         rc = proc.returncode
         payload = (proc.stdout or b'') + (b'\n' if proc.stdout and proc.stderr else b'') \
             + (proc.stderr or b'')
@@ -134,6 +182,7 @@ def main(argv=None):
         'sourceRepo': repo,
         'startedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
         'suite': args.suite,
+        'executionEnvironment': 'isolated-acceptance',
         'commands': [],
         'ok': False,
     }
@@ -204,6 +253,8 @@ def main(argv=None):
                 try:
                     with open(inner_report, encoding='utf-8') as f:
                         report['acceptance'] = json.load(f)
+                    if entry['returncode'] != 0:
+                        _print_failure_details(report['acceptance'], log_dir)
                 except (OSError, ValueError):
                     report['acceptance'] = {'error': 'unreadable'}
         else:

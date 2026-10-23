@@ -1099,3 +1099,10 @@ Root 獨立重現後補正：需求合併必須更新實際 ledger list；需求
 ### 2026-10-23 · 容器來源驗證一致性（追加）
 
 正常 nightly 的外層 image 驗證通過後，內層 entry 因 runtime 資料自己的 .git 目錄誤選 Git 驗證而中止。明確 AIRCON_PRICE_SOURCE_ROOT 現以 immutable image closure 為準；錯 marker、缺檔或 runtime 程式漂移仍 fail closed，不回退 Git。GitHub 未指定 image root 時仍走 Git 固定 commit 驗證。修正沒有開新價格 cycle、查價或重設協調歷史。
+
+
+### 2026-10-24 · daily 提交前候選驗收環境修正（追加）
+
+- 修正前置測試後載入的正式價格政策滲入候選驗收子程序，令官網 fixture 誤入價格分支的問題；正式 daily 政策保持不變。
+- 完整驗收失敗時直接顯示失敗 gate 與日誌摘要，同時保留原始非零退出及 machine evidence。
+- 增加帶真 daily 設定的隔離回歸、父環境不變、非零 gate 與日誌路徑邊界驗證；正式日期、來源新鮮度門檻及 BigGo 保護不變。
