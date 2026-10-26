@@ -1,5 +1,22 @@
 # 項目文件導覽
 
+> **2026-10-26 現行入口（append-only）**：本輪已同步網站更新日誌、部署／來源／BigGo／官網待核／測試驗收文件，並修正私人站文件導覽連結。最新 OBSERVED 事實見 [STATUS §32](STATUS.md#32-2026-10-26-現況同步append-only)；逐份文件的 action／理由見 [DOCS_SYNC_INVENTORY_20261026.json](DOCS_SYNC_INVENTORY_20261026.json)。以下 2026-10-01／09-23 段落保留為歷史，不代表現況。
+
+## 2026-10-26 權威來源與文件層級
+
+| 層級 | 文件 | 角色 |
+| --- | --- | --- |
+| 規範 | [AIRCON_COMPARE_GOVERNANCE.md](AIRCON_COMPARE_GOVERNANCE.md) | 唯一機器規範源；本輪無 Schema／Registry／門禁變更，故不改內文。 |
+| 現況 | [STATUS.md](STATUS.md) §32 | 指定觀察時間的 OBSERVED／UNKNOWN；不是即時監控。 |
+| 決策 | [DECISIONS.md](DECISIONS.md) D42 | 本輪文件、網站日誌、PDF 連結及 private 導覽決策；舊決策保留。 |
+| 需求 | [../需求摘要.md](../需求摘要.md) | 公開需求摘要；2026-10-26 追加節為最新同步。 |
+| 變更 | [../CHANGELOG.md](../CHANGELOG.md) | release／部署／文件變更索引；`[Unreleased]` 舊段保留歷史。 |
+| 網站日誌 | [../空調對比報告.md](../空調對比報告.md) | 網站 HTML／PDF 更新日誌的唯一內容來源；生成物不手改。 |
+| 歷史 | ADR、`architecture/2026-10-18-*`、`architecture/2026-10-19-*`、blacklist migration | 寫作當日快照；保留原文，不當現行狀態。 |
+
+**本輪網站連結政策**：私人站只服務四檔與 runtime JSON，不提供 repo `.md` 檔；因此站內文件導覽必須指向可公開解析的 GitHub 文件 URL，不可使用同源 `README.md`／`docs/*.md`。公開站與私人站共用生成器／報告來源，但各自用已部署 metadata 顯示資料日期。`scripts/check_site_links.py` 是同源內部連結回歸入口；外部 URL 只列清單，不因反爬或暫時錯誤當成內部壞鏈。
+
+
 > **本轮文件／版面已部署（2026-10-01）**：[PR #23](https://github.com/CalvinLau1012/aircon-compare/pull/23) 已合併；[重建 run 36817792681](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36817792681) 與 [Pages run 36817991532](https://github.com/CalvinLau1012/aircon-compare/actions/runs/36817991532) 均成功。 獨立線上 26/26 pass；最新完成狀態見 STATUS §29.5。元文件標題已採用「對比目的」；下方候選或舊核對基準保留為歷史。
 
 ## 最新閱讀入口（2026-10-01 追加）

@@ -43,3 +43,10 @@ flowchart TB
 ## 2026-10-18 reviewed current entry
 
 舊圖保留歷史；最新實際四檔鏈、caller 表及 machine audit 入口見 `2026-10-18-reviewed-models.md`（同目錄）。
+
+## 2026-10-26 雙端現況（append-only）
+
+- 公開端與私人端維持兩個獨立 daily 排程，固定的是 00:30 HKT 預定時刻，不是整體主備；資料日期由各自成功來源收據換算 HKT，不硬編。兩端共用 BigGo 價格協調，但各自保留來源狀態及發布收據。
+- 2026-10-26 當次：公開 metadata `B20261025.193.1`／artifact `d309644`／data commit `a445c0d`；私人 metadata `私人端現行 build（識別略）`／source `365b783`。兩端資料日期同為 2026-10-26，但 build／source 及排程紀錄分開，不能互相冒充。
+- 公開／私人網站都只以四檔作公開介面；私人站不提供 repo `.md`，所以文件導覽改指公開 GitHub URL。此為共同來源修正，不是 `/app/web` byte patch。
+- 本輪零 BigGo／EMSD／品牌 provider 請求、零 coordinator 寫入、零 Docker／正式部署；私人 container／receipt 未直接操作，只讀 live HTTPS metadata。正式部署及回退仍由 Root 驗收。

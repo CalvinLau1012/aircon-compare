@@ -1,5 +1,7 @@
 # 狀態核查 — 2026-09-23（v1.2.9 修復候選；PR #10／D3-A）
 
+> **2026-10-26 最新入口（append-only）**：現行公開／私人 metadata、Pages／freshness、BigGo baseline、網站日誌及連結修復見本文件末 **§32**；§1–§31 保留寫作當日歷史，不當今日狀態。
+
 > 本文件是指定快照的證據記錄，不取代 [治理要求](AIRCON_COMPARE_GOVERNANCE.md) 或生產 `metadata.json`。
 > **目前狀態**：v1.2.9 修復已實作並通過 E2（本機測試），PR #10 以 draft 形式 push；候選 branch 已
 > merge 最新 `origin/master`（be43b7c，2026-09-22 自動更新）同步生產資料；2026-09-23 已套用 D3-A
@@ -1755,3 +1757,73 @@ Production `source_status` keeps the current 8-target official gap `degraded`; t
 ### 2026-10-21 R2 correction (append-only)
 
 Partial-summary-v2/warning framework was withdrawn; v1 all-healthy/fail-closed is restored. Production current coverage gap stays degraded. The real sync main producer now emits canonical top-level witness facts, baseline witnesses must match the immutable stage-result, malformed provider envelopes are net errors without witness, and a new incomplete witness blocks before publish. Eight exact models still lack official full-spec originals; queue pending; no deployment.
+
+## 32. 2026-10-26 現況同步（append-only）
+
+> 觀察時間：2026-10-26 HKT。本節只追加；§1–§31 及更早的「候選／未部署／UNKNOWN」保留寫作當日語義。數值與 run 只作本次觀察證據，不宣稱今日或下一次 schedule 仍相同。
+
+### 32.1 基準與公開端 OBSERVED
+
+| 項目 | 值／證據 | 分類 |
+| --- | --- | --- |
+| GitHub 候選基準 | `CalvinLau1012/aircon-compare` master `a445c0d1fb0b9b6a86550dc78bdf513d9f39dd4a`（2026-10-25 自動更新）；本輪由 GitHub 重新 clone，非只信本地舊 bundle | OBSERVED |
+| 公開 metadata | v1.2.9／build `B20261025.193.1`／metadata commit `d309644f32c871e7c3963b1e6f6213b180a51d53`／data commit `a445c0d`／deployTime `2026-10-25T19:15:29Z`／datasetDate 2026-10-26／datasetRetrievedAt `2026-10-25T19:15:03Z`／datasetHash `sha256:dcbe0ca2d4e9e25f7f62b6fcff54afd40d280cb7679e77a660b67e132c45ed00`／1,782 登記／1,721 型號／releasePayloadHash `sha256:c978c2df9f8bbce1c1e155fa8d3fc51cb960edea63a6980c9e4bf601c7e508c9` | OBSERVED／E3–E4（當次） |
+| 公開 daily | [run 40224718377](https://github.com/CalvinLau1012/aircon-compare/actions/runs/40224718377)，schedule，success；head `d309644` | OBSERVED／E3（當次） |
+| 公開 Pages | [run 40225389793](https://github.com/CalvinLau1012/aircon-compare/actions/runs/40225389793)，repository_dispatch，success；build／deploy／GATE-08 全 success；head `a445c0d` | OBSERVED／E4（當次） |
+| 公開 freshness | [run 40319523637](https://github.com/CalvinLau1012/aircon-compare/actions/runs/40319523637)，schedule，success | OBSERVED／E4（當次） |
+| 2026-10-24 當次 | daily [40038875496](https://github.com/CalvinLau1012/aircon-compare/actions/runs/40038875496)（7 gates、1,410 tests、FULL_ACCEPTANCE rc=0、artifact `70774f9`／build `B20261023.191.1`）；Pages [40039671092](https://github.com/CalvinLau1012/aircon-compare/actions/runs/40039671092)（build／deploy／GATE-08、14 browser）；freshness [40040118399](https://github.com/CalvinLau1012/aircon-compare/actions/runs/40040118399)（configured=True、ok=True、failures=[]） | OBSERVED／E3–E4（當次；不冒充今日） |
+| Candidate acceptance 隔離 | PR #33 merge `d18a1bd238d78187b3684817d58e7140d2268865`；precommit candidate acceptance 子程序與正式 price policy／credentials／workflow output 隔離 | OBSERVED／E3；正式業務門檻不變 |
+
+### 32.2 私人端與共享價格 OBSERVED／UNKNOWN
+
+| 項目 | 值／證據 | 分類 |
+| --- | --- | --- |
+| 私人 live metadata | build `私人端現行 build（識別略）`／commit `365b783d72eb5679eee8b6b0be96019e722b05a9`／deployTime `2026-10-25T16:31:36Z`／datasetDate 2026-10-26／datasetRetrievedAt `2026-10-25T16:31:24Z`／1,782 登記／1,721 型號／`releasePayloadHash=sha256:775f1983937c79e993925ed36ad63317440071eecb01df2612ab688968ad3609` | OBSERVED（只讀 HTTPS metadata） |
+| 私人 daily | 2026-10-24 00:30 HKT 自然 daily 成功（15 artifact tests、私人端 build（識別略）、source `365b783`）；2026-10-25 16:31 HKT 發布 `私人端現行 build（識別略）`。本輪未重跑 daily | OBSERVED（當次）；container／receipt 未直接操作 |
+| 私人 container／receipt | 未以 Docker／SSH 直接讀取；依工作邊界只讀 live HTTPS metadata。`/emsd_receipt.json` 等 sidecar 在私人 web root 為 404，不能冒充已核對 | UNKNOWN／能力限制 |
+| 兩端資料日期 | 公開與私人 metadata 均為 datasetDate 2026-10-26（由成功來源收據實際 UTC 換算 HKT）；固定的是 00:30 HKT 預定時刻，不是日期 | OBSERVED |
+| BigGo 共享 baseline | completed cycle 2026-10-10 stage 7；token1/search145；無 active lease；公開 `lastAppliedAt=2026-10-20T20:15:41Z`、私人 `lastAppliedAt=2026-10-21T16:30:05Z`、兩端 `lastAcquiredAt=null`；snapshot `biggo-2026-10-10:7/7-stage7-85fb9d8aff0b` | 工作開始前已驗證基準；本輪零 provider／coordinator 寫入 |
+| 官網 pending | 公開／私人 `official.status=pending`／`safeReason=coverage-pending`；可信未刊登型號保留待核，不令 Actions 紅／不發故障 email；真正抓取／收據／hash／驗證錯誤仍 fail-closed | OBSERVED；不是已解 |
+
+### 32.3 網站日誌、PDF 與連結修復
+
+- **網站日誌來源**：`空調對比報告.md` 追加 2026-10-26 使用者版條目；`index.html`／PDF 只由生成器重建。公開端目前 live 仍是上一個產物，本輪候選未部署；私人端候選四檔另行生成及驗證，正式 `/app/web` 未改。
+- **私人站實際壞鏈**：首頁 r21 文件導覽五個同源 `.md`（`README.md`、`CHANGELOG.md`、`docs/STATUS.md`、`docs/AIRCON_COMPARE_GOVERNANCE.md`、`空調對比報告.md`）全部 404；私人 web root 只服務四檔及 runtime JSON。修正為公開 GitHub `blob/master/...` URL，並在共同報告來源／候選生成物套用；不是 patch `/app/web` bytes。
+- **PDF 連結**：`generate_pdf.py` 保留絕對 HTTP(S) 連結為可點 annotation；相對 repo 路徑及 fragment-only 只保留文字。舊 PDF 的純文字 URL／不可點問題由新測試覆蓋；新 PDF 仍需以候選 metadata 重建。
+- **回歸工具**：`scripts/check_docs_links.py`（repo 檔案／GitHub master 路徑／fragment；外部只列清單）、`scripts/check_site_links.py`（同源導覽／資產／四個下載檔／fragment；外部另列）、`tests/test_docs_links.py`、`tests/test_site_links.py`、`tests/test_pdf_links.py`。
+- **界線**：外部網站反爬／暫時錯誤不可當內部壞鏈；內部 4xx／5xx、缺 fragment、缺本地資產才是阻斷。時間敏感 run／build／測試數只作當次證據。
+
+### 32.4 本輪未執行／待 Root
+
+- 未 push／merge／deploy；未觸發 GitHub workflow；未重跑 daily；未呼叫 BigGo／EMSD／品牌 provider；未改 Secrets／Variables／排程／coordinator／正式資料；未用 Docker／SSH 操作私人 container。
+- Root 仍需：審核候選 commit、決定是否 merge／用 D31 重建公開四檔並核對 Pages／GATE-08；在私人端以候選源重建四檔、部署及爬正式 HTTPS；確認 BigGo 共享 protected state 在部署前後不變。
+- 本節不把候選本機通過寫成已上線；下一輪自然 schedule 仍須重新觀察。
+
+### 32.5 本輪候選驗證（append-only；2026-10-26）
+
+| 檢查 | 實際結果 |
+| --- | --- |
+| 公開完整 pytest（候選生成頁；排除 snapshot preflight） | 1385 passed、7 skipped、0 failed／0 error；JUnit tests=1392 |
+| 公開 snapshot preflight（clean source commit `f320d3b`） | 25 passed |
+| 含 preflight 的完整 pytest（同一候選生成頁） | 1407 passed、7 skipped、3 failed；3 個失敗只係候選 payload 未 finalize／worktree 非 clean 的 precondition；clean commit 的同一測試 25/25 pass |
+| 針對性 docs／site／PDF／changelog／hero | 17 passed |
+| `feature-check.py --run-tests` | 15 required、18 nodes 全 passed；無 skip／xfail |
+| `extract_governance.py`／`validate_data.py`／`validate_metadata.py` | 全部 rc=0；1,782 登記／1,721 型號；metadata v1.2.9／2026-10-26 |
+| `check_docs_links.py` | 24 Markdown、71 links、16 fragments、0 broken；52 external 另列 |
+| `check_public_privacy.py --mode worktree` | 0 命中 |
+| 公開／私人候選 `check_site_links.py` | 各 21 internal、0 broken、四檔 200、0 缺 fragment |
+| 私人修復前 live 鏡像 | 26 internal、5 broken（五個同源 `.md` 404），重現實際壞鏈 |
+| 私人針對性 pytest | 7 passed（site link + changelog） |
+| 私人 browser smoke responsive／tooltip | 2 passed（Firefox fixture） |
+| 私人完整 pytest（Firefox） | 1377 passed、7 skipped、17 failed；主要為舊 fixture 硬編 1,816／hero 高度、metadata twostage 對候選資料假設、preflight dirty／payload 未 finalize、PDF 舊「最後部署」字眼；未隱藏 |
+| Firefox 6 組合（375／768／1280 × light／dark） | 公開及私人均 0 水平溢出、0 JS error、changelog 首條 2026-10-26、比較 panel 可開關 |
+| 日誌一致性 | source／HTML／PDF 9 個類別全一致；兩端 metadata `releasePayloadHash` 與重算四檔 hash 相等；BigGo `lastAcquiredAt=null`、official pending |
+
+證據在 `本地 evidence 目錄（路徑不公開）`；完整報告 `reports/DOCS_CHANGELOG_LINKS_20261026.zh-Hant.md`。本輪仍屬候選，未正式部署。
+
+### 32.6 Root Chrome UI 與文件連結驗收補正（append-only；2026-10-26）
+
+- Root 發現首版 `check_docs_links.py` 將本 repo 的 GitHub `blob/master/...` URL 誤列為 external，故原「0 broken」未真正覆蓋五個 replacement URL。修正後只把本 repo `master` blob／tree／raw 映射到候選 tree，缺檔及缺 fragment fail；並修正路徑 containment 為 `Path.relative_to()`。新增反例後 docs/site/PDF/changelog/hero 針對性 Chromium 測試 19 passed，文件檢查為 25 Markdown／71 links／16 fragments／0 broken。
+- 本機 Playwright Chromium 的 SIGTRAP 根因為 `FONTCONFIG_FILE` 缺失（Skia FontConfig `Not implemented`），不是 `<select>` 或產品 UI 回歸。使用已保存的受控 Fontconfig 與 browser libs 後，公開候選精確 head `82749bb7aeae743a790af1038440de5f7b487215` 完整七門禁 rc=0；pytest 1,419 passed、0 failed／error／skipped。
+- 私人候選以其原生 1,816 登記／1,755 型號歷史 source fixture、無 `AIRCON_BROWSER_CANDIDATE` 污染及 Chromium 重跑：1,394 passed、7 skipped、0 failed/error；7 個 skip 全為未掛載真恢復證據，使用既有唯讀 `AIRCON_RECOVERY_EVIDENCE` 後 7/7 passed。前節 17 failures 來自將 current-public data candidate 強行餵入舊私人 source fixture及 Firefox量測，保留為失敗證據但被本節正式補正。
+- 此時仍未 push／merge／deploy；正式私人四檔必須以 runtime 正式資料生成，不能採用視覺候選 SITE。

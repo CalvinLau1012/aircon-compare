@@ -1485,3 +1485,21 @@ GitHub 管理憑證缺少 Secrets／Variables 管理權限；價格模式、成�
 正常 daily 在前置測試後載入價格政策，後置完整候選驗收卻繼承該正式 environment。官網隔離 fixture 因 normal/shared flags 誤進價格收據分支，前置通過而提交前失敗；本次並非正式日期被寫死。候選驗收現在只在子程序清除業務設定、provider／GitHub 憑證及 workflow 輸出路徑，保留工具依賴、CI 身份與明示的離線歷史證據。測試自行提供各自設定，父 daily 的 normal／shared 政策、source pin、lease／budget／cooldown／intent 不變。完整七門禁及非零阻斷不減少；失敗 gate 的安全證據目錄內日誌摘要直接印出，避免 shell 提前退出後只留下 FULL_ACCEPTANCE rc。
 
 以真 daily 非秘密設定在斷網隔離容器重現三個日期案例全部失敗，修正後同樣父設定的真子程序回歸通過；另驗證失敗 gate 仍為非零、machine report／日誌保存及父政策不被修改。這些只屬隔離驗證，正式部署與下一輪結果另追加。本次沒有為驗證呼叫 BigGo。
+
+## D42 · 2026-10-26：網站更新日誌、文件層級與私人站文件導覽（append-only）
+
+- **背景**：網站更新日誌停留在 2026-10-12（公開）／2026-10-03（私人），與兩端現行 metadata、2026-10-24 候選驗收隔離、Pages／freshness 及私人自然 daily 的已驗證事實脫節。私人站首頁的 r21 文件導覽以同源 `README.md`、`CHANGELOG.md`、`docs/STATUS.md`、`docs/AIRCON_COMPARE_GOVERNANCE.md`、`空調對比報告.md` 連結，但私人 web root 只服務四檔及 runtime JSON，實測五個連結全部 404。
+- **決策 A（網站日誌來源）**：`空調對比報告.md` 仍是網站更新日誌唯一內容來源；HTML／PDF 只可由生成器重建，不手改 `/app/web` 或 `index.html`。新日誌以使用者語言描述資料日期、來源狀態、官網可信 pending、BigGo 原始取得時間 unknown、共享接收、原子發布／候選門禁及當次證據界線；運維細節留在 repo docs。
+- **決策 B（權威層級）**：`docs/AIRCON_COMPARE_GOVERNANCE.md` 保持唯一規範源，本輪不改 Schema／Registry／門禁；`docs/STATUS.md` 記錄指定觀察時間的 OBSERVED／UNKNOWN；`docs/DECISIONS.md` 記錄決策；`需求摘要.md` 記錄公開需求；`CHANGELOG.md` 記錄 release／部署／文件變更；`空調對比報告.md` 記錄網站日誌。ADR、`docs/architecture/2026-10-18-*`、`2026-10-19-*` 及 blacklist migration 保留為歷史快照，不冒充現況。逐份文件 action／理由見 `docs/DOCS_SYNC_INVENTORY_20261026.json`。
+- **決策 C（私人站文件導覽）**：私人站不提供 repo `.md` 檔，因此站內文件導覽一律指向可公開解析的 GitHub `blob/master/...` URL；禁止同源 `.md` 相對連結。修正點在共同報告 md／生成來源，不是 patch 當前 `/app/web` bytes。公開站與私人站仍共用報告／生成器，各自用已部署 metadata 顯示資料日期。
+- **決策 D（PDF 連結）**：PDF 只輸出絕對 HTTP(S) 可點連結；相對 repo 路徑及 fragment-only 目錄連結只保留顯示文字，不產生不可點或錯誤 PDF URL。純文字 URL 由 `generate_pdf.py` linkify；同一 md／metadata 輸入仍要求 byte-for-byte 可重現。
+- **決策 E（回歸與界線）**：新增 repo docs link checker、site same-origin crawler 及 PDF link test。內部連結以 4xx/5xx、缺 fragment、缺本地資產為阻斷；外部 URL 只列清單，反爬／暫時錯誤不可當內部壞鏈。時間敏感 run／build／測試數只標「當次證據」，不宣稱今日仍必然相同。
+- **本輪安全界線**：零 BigGo／EMSD／品牌 provider 請求、零 coordinator cycle／lease／budget／usage／history 寫入、零 Secrets／Variables／排程變更、零 Docker／正式容器操作、零 daily 補跑。正式公開／私人部署仍由 Root 驗收；本決策不把候選通過寫成已上線。
+- **證據入口**：`reports/DOCS_CHANGELOG_LINKS_20261026.zh-Hant.md`；公開 run `40038875496`／`40039671092`／`40040118399`、`40224718377`／`40225389793`／`40319523637`；私人現行 metadata build `私人端現行 build（識別略）`／source `365b783`。舊決策與歷史文字全部保留。
+
+## D43 · 2026-10-26：文件／網站連結必須以 Chrome UI 及候選 tree 實證（append-only）
+
+- **決定**：本 repo `master` 的 GitHub blob／tree／raw 連結屬內部文件契約，離線檢查器必須映射到目前候選 tree；缺檔、逃逸路徑或缺 fragment 阻斷。歷史 ref 與其他 repo 只列 external，不用當前 tree 偽驗證。
+- **決定**：本輪 UI 正式本機證據使用 Playwright Chromium；必須帶已驗證 Fontconfig／browser library，缺設定引致的 Skia crash 是環境失敗，不能改用另一引擎冒充 Chrome 通過。
+- **決定**：私人 source suite 使用私人原生 fixture；正式部署候選必須使用 runtime 正式資料重建。任何把 public candidate data 注入私人 source suite 的結果只作錯誤環境證據，不作 release gate。
+- **驗收**：公開完整七門禁 rc=0、1,419 tests 零 failure/error/skip；私人 Chromium 1,394 pass，另 7 個真恢復證據案例掛載唯讀 evidence 後全部通過。正式發布結果仍需另行追加。
