@@ -1,5 +1,7 @@
 # 狀態核查 — 2026-09-23（v1.2.9 修復候選；PR #10／D3-A）
 
+> **2026-10-26 最新入口（append-only）**：現行公開／私人 metadata、Pages／freshness、BigGo baseline、網站日誌及連結修復見本文件末 **§32**；§1–§31 保留寫作當日歷史，不當今日狀態。
+
 > 本文件是指定快照的證據記錄，不取代 [治理要求](AIRCON_COMPARE_GOVERNANCE.md) 或生產 `metadata.json`。
 > **目前狀態**：v1.2.9 修復已實作並通過 E2（本機測試），PR #10 以 draft 形式 push；候選 branch 已
 > merge 最新 `origin/master`（be43b7c，2026-09-22 自動更新）同步生產資料；2026-09-23 已套用 D3-A
