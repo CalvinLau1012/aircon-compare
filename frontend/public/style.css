@@ -128,9 +128,10 @@ blockquote{margin:12px 0; padding:10px 16px; border-left:5px solid var(--accent)
   background:var(--blockquote-bg); border-radius:0 8px 8px 0; font-size:.92em;}
 blockquote p{margin:2px 0;}
 code{background:var(--code-bg); color:var(--text); padding:2px 6px; border-radius:4px; font-size:.9em;}
+blockquote code,p code,li code,td code{overflow-wrap:anywhere; word-break:break-word;}
 pre{background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
   border:1px solid var(--line); border-radius:8px; padding:12px;
-  overflow-x:auto; margin:12px 0;}
+  overflow-x:auto; max-width:100%; margin:12px 0;}
 ul,ol{margin:8px 0 8px 24px;}
 
 /* ===== 比較器 ===== */
@@ -154,7 +155,7 @@ ul,ol{margin:8px 0 8px 24px;}
   max-width:100%;}
 .model-list{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
   gap:8px; padding:10px 12px; max-height:340px; overflow-y:auto;}
-.mitem{display:flex; align-items:center; gap:10px; padding:9px 12px;
+.mitem{display:flex; align-items:center; gap:10px; padding:9px 12px; min-width:0;
   border:1px solid var(--line); border-radius:8px; background:var(--surface);
   backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); cursor:pointer;
   transition:border-color .15s, box-shadow .15s;}
@@ -252,13 +253,13 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
   .stats .n{font-size:1.6em;}
   section{margin:28px 0;}
   h2.sec{font-size:1.15em;}
-  .model-list{grid-template-columns:1fr;}
+  .model-list{grid-template-columns:minmax(0,1fr);}
   .compare-tools .filters{margin-left:0; width:100%;}
   .panel table{font-size:.8em;}
   .topnav a{padding:12px 10px; font-size:.8em;}
 }
-/* 平板寬度（721–999px）：絕對定位 tooltip 會撐出頁面水平滾動 → 同手機一致隱藏 */
-@media (max-width:999px){
+/* 平板／窄桌面（≤1024px）：絕對定位 tooltip 會撐出頁面水平滾動 → 同手機一致隱藏 */
+@media (max-width:1024px){
   .topnav a[data-tip]::after{display:none;}
 }
 @media (prefers-color-scheme: dark){

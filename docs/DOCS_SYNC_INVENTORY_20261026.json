@@ -1,0 +1,298 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-26",
+  "baseCommit": "a445c0d1fb0b9b6a86550dc78bdf513d9f39dd4a",
+  "scope": "public GitHub candidate plus authoritative local meta; private site identity omitted",
+  "actions": [
+    {
+      "path": "README.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "追加 2026-10-26 現況、網站日誌、文件入口；舊記錄保留。"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "追加 2026-10-26 文件／網站日誌／連結／PDF 變更及當次部署證據。"
+    },
+    {
+      "path": "AGENTS.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "追加現行文件入口、前端／私人站連結、PDF 連結及時間敏感證據規則。"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "追加 docs/site/PDF 連結回歸命令及當次證據要求。"
+    },
+    {
+      "path": "空調對比報告.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "網站更新日誌唯一內容來源；追加 2026-10-26 使用者版條目及現況行。"
+    },
+    {
+      "path": "需求摘要.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "追加本輪網站日誌／文件同步／連結修復／證據界線；舊需求保留。"
+    },
+    {
+      "path": ".github/copilot-instructions.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "追加 2026-10-26 現況、連結政策及時間敏感證據規則。"
+    },
+    {
+      "path": "docs/README.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "新增權威來源層級、現行入口及 inventory 指引。"
+    },
+    {
+      "path": "docs/STATUS.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "追加 §32 指定觀察時間的公開／私人／BigGo／連結／待 Root 狀態。"
+    },
+    {
+      "path": "docs/DECISIONS.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "追加 D42 網站日誌、文件層級、私人站連結、PDF 連結及回歸決策。"
+    },
+    {
+      "path": "docs/GOVERNANCE_MATRIX.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "追加 2026-10-26 證據 delta；舊矩陣保留。"
+    },
+    {
+      "path": "docs/architecture/2026-10-18-reviewed-models.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "追加現行四檔鏈、雙端獨立排程及連結回歸入口；舊圖保留。"
+    },
+    {
+      "path": "docs/architecture/2026-10-18-public-private.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "追加雙端現況及來源不互相冒充邊界；舊圖保留。"
+    },
+    {
+      "path": "docs/adr/ADR-002-official-batch-advance-policy.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "追加 2026-10-26 官網可信 pending 現況；原決策不變。"
+    },
+    {
+      "path": "docs/adr/ADR-003-pages-envelope-and-daily-handoff.md",
+      "type": "markdown",
+      "action": "updated",
+      "reason": "追加 2026-10-24／25 Pages／GATE-08 當次證據；原決策不變。"
+    },
+    {
+      "path": "generate_pdf.py",
+      "type": "python",
+      "action": "updated",
+      "reason": "絕對 HTTP(S) 連結可點；相對／fragment 不再輸出錯誤 URL；保留可重現性。"
+    },
+    {
+      "path": "scripts/check_docs_links.py",
+      "type": "python",
+      "action": "added",
+      "reason": "repo Markdown 檔案／GitHub master 路徑／fragment 檢查；外部只列清單。"
+    },
+    {
+      "path": "scripts/check_site_links.py",
+      "type": "python",
+      "action": "added",
+      "reason": "同源導覽／資產／四檔下載／fragment 檢查；外部另列。"
+    },
+    {
+      "path": "tests/test_docs_links.py",
+      "type": "python",
+      "action": "added",
+      "reason": "docs link checker 正向及缺失檔案／fragment 反例。"
+    },
+    {
+      "path": "tests/test_site_links.py",
+      "type": "python",
+      "action": "added",
+      "reason": "site crawler 正向及 404／缺 fragment 反例。"
+    },
+    {
+      "path": "tests/test_pdf_links.py",
+      "type": "python",
+      "action": "added",
+      "reason": "PDF 只輸出絕對可點連結；相對／fragment 不成錯誤 URL。"
+    },
+    {
+      "path": "docs/DOCS_SYNC_INVENTORY_20261026.json",
+      "type": "json",
+      "action": "added",
+      "reason": "本 machine-readable 文件 inventory。"
+    },
+    {
+      "path": "reports/DOCS_CHANGELOG_LINKS_20261026.zh-Hant.md",
+      "type": "markdown",
+      "action": "added",
+      "reason": "本輪完整交付、測試、限制及 Root 待辦報告。"
+    },
+    {
+      "path": "docs/AIRCON_COMPARE_GOVERNANCE.md",
+      "type": "markdown",
+      "action": "no-change",
+      "reason": "唯一機器規範源；本輪無 Schema／Registry／GATE 變更，避免把狀態寫入規範。"
+    },
+    {
+      "path": "docs/AIRCON_COMPARE_GOVERNANCE.zh-Hant.md",
+      "type": "markdown",
+      "action": "no-change",
+      "reason": "治理閱讀版；規範來源未變，無需改寫。"
+    },
+    {
+      "path": "docs/adr/ADR-001-raw-emsd-snapshot.md",
+      "type": "markdown",
+      "action": "historical-only",
+      "reason": "原始 EMSD snapshot 設計歷史；本輪未改資料抓取。"
+    },
+    {
+      "path": "docs/adr/ADR-004-pluggable-private-raw-sink.md",
+      "type": "markdown",
+      "action": "historical-only",
+      "reason": "私人 raw sink 歷史設計；本輪未改 sink。"
+    },
+    {
+      "path": "docs/PRIVATE_RAW_SINK_RUNBOOK.md",
+      "type": "markdown",
+      "action": "historical-only",
+      "reason": "私人 raw sink runbook；本輪未啟用／改動 sink。"
+    },
+    {
+      "path": "docs/blacklist-migration-2026-09.md",
+      "type": "markdown",
+      "action": "historical-only",
+      "reason": "2026-09 canonical key 遷移歷史；不得當最新停售數字。"
+    },
+    {
+      "path": "docs/architecture/2026-10-18-dataflow.md",
+      "type": "markdown",
+      "action": "historical-only",
+      "reason": "2026-10-18 資料流快照；現行入口為 reviewed-models + STATUS §32。"
+    },
+    {
+      "path": "docs/architecture/2026-10-18-modules.md",
+      "type": "markdown",
+      "action": "historical-only",
+      "reason": "2026-10-18 模塊快照；現行以 repo 實碼及 reviewed-models 為準。"
+    },
+    {
+      "path": "docs/architecture/2026-10-18-reuse-risks.md",
+      "type": "markdown",
+      "action": "historical-only",
+      "reason": "2026-10-18 重用風險快照；保留歷史。"
+    },
+    {
+      "path": "docs/architecture/2026-10-19-report-common.md",
+      "type": "markdown",
+      "action": "historical-only",
+      "reason": "2026-10-19 Stage 2 快照；現行 generator 已含後續變更。"
+    },
+    {
+      "path": "docs/architecture/2026-10-19-stage3-frontend.md",
+      "type": "markdown",
+      "action": "historical-only",
+      "reason": "2026-10-19 Stage 3 快照；現行前端資產以 frontend/public 為準。"
+    },
+    {
+      "path": "docs/architecture/architecture-audit-20261018.json",
+      "type": "json",
+      "action": "historical-only",
+      "reason": "2026-10-18 machine audit 快照；不重算舊輸出。"
+    },
+    {
+      "path": "docs/architecture/architecture-audit-20261019-stage3.json",
+      "type": "json",
+      "action": "historical-only",
+      "reason": "2026-10-19 Stage 3 machine audit 快照；不重算舊輸出。"
+    },
+    {
+      "path": "metadata.json",
+      "type": "data",
+      "action": "no-change",
+      "reason": "正式公開 metadata；由流水線生成，本輪未手改。"
+    },
+    {
+      "path": "deploy_payload.json",
+      "type": "data",
+      "action": "no-change",
+      "reason": "四檔 payload manifest；本輪未改封裝範圍。"
+    },
+    {
+      "path": "price-policy.json",
+      "type": "data",
+      "action": "no-change",
+      "reason": "正式非秘密價格政策；本輪零 provider，未改。"
+    },
+    {
+      "path": "price_demand.json",
+      "type": "data",
+      "action": "no-change",
+      "reason": "價格需求 ledger；本輪未改。"
+    },
+    {
+      "path": "prices_meta.json",
+      "type": "data",
+      "action": "no-change",
+      "reason": "BigGo 套用 metadata；本輪未改。"
+    },
+    {
+      "path": "official_batch_status.json",
+      "type": "data",
+      "action": "no-change",
+      "reason": "官網 pending 狀態；本輪未改。"
+    },
+    {
+      "path": "update_queue.json",
+      "type": "data",
+      "action": "no-change",
+      "reason": "官網 queue；本輪未改。"
+    },
+    {
+      "path": "biggo_prices.json",
+      "type": "data",
+      "action": "no-change",
+      "reason": "BigGo 價格快照；本輪未改。"
+    },
+    {
+      "path": "emsd_receipt.json",
+      "type": "data",
+      "action": "no-change",
+      "reason": "EMSD 來源收據；本輪未重抓。"
+    },
+    {
+      "path": "emsd_raw_receipt.json",
+      "type": "data",
+      "action": "no-change",
+      "reason": "EMSD raw 收據；本輪未重抓。"
+    },
+    {
+      "path": "docs-snapshot/ROOT-需求摘要.md",
+      "type": "markdown",
+      "action": "updated-append-only",
+      "reason": "權威元文件（本地 repo 外）；只在檔尾追加本輪報告與更正，不改舊記錄。"
+    }
+  ],
+  "counts": {
+    "updated": 16,
+    "added": 7,
+    "noChange": 12,
+    "historicalOnly": 11,
+    "updatedAppendOnly": 1,
+    "total": 47
+  }
+}

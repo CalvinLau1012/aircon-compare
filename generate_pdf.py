@@ -34,7 +34,11 @@ from generate_html import format_status, VERSION, expand_dynamic_sections  # noq
 
 
 class BlockExtractor(HTMLParser):
-    """markdown → HTML → block 列表：h1/h2/h3/p/table/blockquote"""
+    """markdown → HTML → block 列表：h1/h2/h3/p/table/blockquote。
+
+    只保留絕對 HTTP(S) 連結，並以 marker 交回 href；相對路徑／fragment 只保留
+    顯示文字，避免 PDF 出現不可點或指向錯誤 repo 路徑的 URL。
+    """
 
     def __init__(self):
         super().__init__()
@@ -44,6 +48,15 @@ class BlockExtractor(HTMLParser):
         self.table_rows = []
         self.cur_row = []
         self.cur_cell = None
+        self.links = []
+        self.link_href = None
+        self.link_buf = []
+
+    def _append_inline(self, text):
+        if self.in_table and self.cur_cell is not None:
+            self.cur_cell.append(text)
+        elif not self.in_table:
+            self.buf.append(text)
 
     def handle_starttag(self, tag, attrs):
         if tag == 'table':
@@ -53,15 +66,31 @@ class BlockExtractor(HTMLParser):
             self.cur_row = []
         elif tag in ('td', 'th') and self.in_table:
             self.cur_cell = []
+        elif tag == 'a':
+            href = (dict(attrs).get('href') or '').strip()
+            self.link_href = href if href.startswith(('http://', 'https://')) else None
+            self.link_buf = []
 
     def handle_data(self, data):
-        if self.in_table and self.cur_cell is not None:
+        if self.link_href is not None:
+            self.link_buf.append(data)
+        elif self.in_table and self.cur_cell is not None:
             self.cur_cell.append(data)
         elif not self.in_table:
             self.buf.append(data)
 
     def handle_endtag(self, tag):
-        if tag in ('td', 'th') and self.in_table:
+        if tag == 'a':
+            text = ''.join(self.link_buf)
+            if self.link_href is not None and text:
+                idx = len(self.links)
+                self.links.append(self.link_href)
+                self._append_inline(f'\x00LINK{idx}\x00{text}\x00ENDLINK{idx}\x00')
+            elif text:
+                self._append_inline(text)
+            self.link_href = None
+            self.link_buf = []
+        elif tag in ('td', 'th') and self.in_table:
             self.cur_row.append(''.join(self.cur_cell).strip())
             self.cur_cell = None
         elif tag == 'tr' and self.in_table:
@@ -124,6 +153,65 @@ def _normalize_pdf_bytes(data):
                   b'/ID [<00000000000000000000000000000000><00000000000000000000000000000000>]',
                   data)
     return data
+
+
+_BARE_URL_RE = re.compile(r"https?://[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%\-]+")
+
+
+def _linkify_plain(text):
+    """Escape text and turn bare HTTP(S) URLs into clickable ReportLab links."""
+    from xml.sax.saxutils import escape
+
+    out = []
+    pos = 0
+    for m in _BARE_URL_RE.finditer(text):
+        out.append(escape(text[pos:m.start()]))
+        url = m.group(0)
+        trail = ''
+        while url and url[-1] in '.,;:!?。，；：！？、':
+            trail = url[-1] + trail
+            url = url[:-1]
+        # Keep a balanced closing parenthesis inside the URL; drop an unmatched one.
+        while url.endswith(')') and url.count('(') < url.count(')'):
+            trail = ')' + trail
+            url = url[:-1]
+        while url and url[-1] in '）】」』》':
+            trail = url[-1] + trail
+            url = url[:-1]
+        if url:
+            out.append('<a href="%s">%s</a>' % (escape(url, {'"': '&quot;'}),
+                                                escape(url)))
+        if trail:
+            out.append(escape(trail))
+        pos = m.end()
+    out.append(escape(text[pos:]))
+    return ''.join(out)
+
+
+def _pdf_inline(text, links):
+    """Convert extracted inline text plus LINK markers to ReportLab Paragraph markup.
+
+    Only absolute HTTP(S) links are emitted. Relative repo paths/fragments are
+    intentionally rendered as plain text, so a PDF cannot contain a URL that
+    would resolve to the wrong location when the PDF is opened elsewhere.
+    """
+    from xml.sax.saxutils import escape
+
+    parts = []
+    pos = 0
+    for m in re.finditer(r'\x00LINK(\d+)\x00(.*?)\x00ENDLINK\1\x00', text, re.S):
+        parts.append(_linkify_plain(text[pos:m.start()]))
+        idx = int(m.group(1))
+        href = links[idx] if idx < len(links) else ''
+        label = m.group(2)
+        if href.startswith(('http://', 'https://')):
+            parts.append('<a href="%s">%s</a>' % (
+                escape(href, {'"': '&quot;'}), escape(label)))
+        else:
+            parts.append(escape(label))
+        pos = m.end()
+    parts.append(_linkify_plain(text[pos:]))
+    return ''.join(parts)
 
 
 def build_pdf(output_path=None, metadata_path=None, md_path=None, csv_path=None):
@@ -192,20 +280,21 @@ def build_pdf(output_path=None, metadata_path=None, md_path=None, csv_path=None)
 
     for kind, payload in ex.blocks:
         if kind == 'h1':
-            story.append(Paragraph(payload.replace('# ', ''), st_h1))
+            story.append(Paragraph(_pdf_inline(payload.replace('# ', ''), ex.links), st_h1))
         elif kind == 'h2':
-            story.append(Paragraph(payload, st_h2))
+            story.append(Paragraph(_pdf_inline(payload, ex.links), st_h2))
         elif kind == 'h3':
-            story.append(Paragraph(payload, st_h3))
+            story.append(Paragraph(_pdf_inline(payload, ex.links), st_h3))
         elif kind == 'blockquote':
-            story.append(Paragraph(payload, st_q))
+            story.append(Paragraph(_pdf_inline(payload, ex.links), st_q))
         elif kind == 'table':
             if not payload:
                 continue
             ncols = max(len(r) for r in payload)
             data = []
             for i, row in enumerate(payload):
-                cells = [Paragraph((cell[:120] + ('…' if len(cell) > 120 else '')),
+                cells = [Paragraph(_pdf_inline(cell[:120] + ('…' if len(cell) > 120 else ''),
+                                                ex.links),
                                    st_cellh if i == 0 else st_cell)
                          for cell in row[:ncols]]
                 while len(cells) < ncols:
@@ -225,7 +314,7 @@ def build_pdf(output_path=None, metadata_path=None, md_path=None, csv_path=None)
                 story.append(t)
                 story.append(Spacer(1, 6))
         else:
-            story.append(Paragraph(payload, st_p))
+            story.append(Paragraph(_pdf_inline(payload, ex.links), st_p))
 
     story.append(Spacer(1, 10))
     story.append(Paragraph('── 免責聲明 ──', st_h3))

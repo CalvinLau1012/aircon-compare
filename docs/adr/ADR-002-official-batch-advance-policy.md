@@ -50,3 +50,9 @@
 D1-B 已部署；PR #19／#20 修復實際 Frostar parser／receipt 及 coverage pending 身份。確認來源覆蓋缺口不 advance、不淘汰、不覆寫舊規格；網絡／parser／receipt 不可信仍 fail-closed。
 
 證據與剩餘 UNKNOWN 見 [STATUS §29](../STATUS.md)；原 ADR 決策與歷史文字全部保留。
+
+## 2026-10-26 現況補記（追加；不改原決策）
+
+- 官網「確實未刊登」的型號仍是可信 coverage pending：保留 queue／舊規格／待核標示，不 advance、不淘汰、不令 Actions 紅或發故障 email；真正抓取、TLS、parser、receipt、hash、queue／manifest 錯誤仍 fail-closed。
+- 2026-10-26 當次公開／私人 metadata 均為 `official.status=pending`／`safeReason=coverage-pending`，8 個待核型號原樣保留。這不是已解，也不是停售證據。
+- 本輪沒有新增官網抓取；網站更新日誌只如實說明「可信待核」，沒有把 pending 寫成已核實。證據入口見 `docs/STATUS.md` §32、`reports/DOCS_CHANGELOG_LINKS_20261026.zh-Hant.md`。

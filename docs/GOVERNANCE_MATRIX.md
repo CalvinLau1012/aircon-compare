@@ -217,3 +217,21 @@ PR #23 exact head `a8e5444` 的 CI runs `36817375237`／`36817375746` 成功；�
 | 排程語義 | GitHub 官方：schedule 可延遲甚至丟棄；00:30 係預定觸發 | 本項目未有延遲量測；唔會自動補跑或重複查價。 |
 
 REQUIREMENT 與成功標準不變；本輪只追加文件，未改 Schema／功能／cron／runner。詳細見 STATUS §31、DECISIONS D35。
+
+## 2026-10-26 現況證據 delta（append-only；不改舊矩陣）
+
+> 觀察時間：2026-10-26 HKT。以下只補目前 run／build／文件狀態；舊 §1–§10 的「候選、未部署、UNKNOWN」保持寫作當日語義。
+
+| 項目 | 2026-10-26 OBSERVED | 分類／界線 |
+| --- | --- | --- |
+| 公開 metadata | v1.2.9／build `B20261025.193.1`／artifact 來源 `d309644`／Pages data commit `a445c0d`／datasetDate 2026-10-26／1,782 登記／1,721 型號 | OBSERVED；時間敏感，當次證據 |
+| 公開 daily／Pages | daily `40224718377` success；Pages `40225389793` build／deploy／GATE-08 success；freshness `40319523637` success | E3／E4 當次；不保證下一次 schedule |
+| 2026-10-24 當次 | daily `40038875496` 7 gates／1,410 tests；Pages `40039671092` 14 browser checks；freshness `40040118399` configured=True ok=True failures=[] | E3／E4 當次；舊 run 不冒充今日 |
+| Candidate acceptance 隔離 | PR #33 merge `d18a1bd`；precommit acceptance 子程序與正式 price policy／credentials／workflow output 隔離；正式政策不變 | E3；正式業務門檻未降 |
+| 私人端 | 現行 metadata build `私人端現行 build（識別略）`／source `365b783`／datasetDate 2026-10-26；00:30 HKT 自然 daily 成功 | 只讀 live metadata；container／receipt 未直接操作（Docker 管理邊界） |
+| BigGo | completed cycle 2026-10-10 stage 7、token1/search145、無 active lease；`lastAcquiredAt=null`、私人 `lastAppliedAt=2026-10-21T16:30:05Z` | 工作開始前已驗證基準；本輪零 provider／coordinator 寫入；不以套用時間補造取得時間 |
+| 官網 pending | 公開／私人 metadata `official.status=pending`／`safeReason=coverage-pending`；可信未刊登型號不令 Actions 紅／不發故障 email | 真正抓取／收據／hash／驗證錯誤仍 fail-closed |
+| 文件／網站日誌 | README／CHANGELOG／STATUS／DECISIONS／GOVERNANCE_MATRIX／architecture／ADR／AGENTS／CONTRIBUTING／Copilot／需求摘要已追加；網站日誌源及 PDF 連結已修正 | 本輪候選；正式部署待 Root |
+| 內部連結 | repo docs checker、site same-origin crawler、PDF link test 已加入；私人站五個 `.md` 404 來源已改 GitHub URL | 候選測試證據見報告；外部 URL 另列 |
+
+**未變／未授權**：GATE 定義、Registry required 功能、Metadata Schema、BigGo 保護狀態、正式資料、Secrets／Variables／排程、Docker／container。任何候選通過都不等於正式上線。

@@ -1,3 +1,30 @@
+## 2026-10-26 — 文件、網站日誌與內部連結同步（append-only；未部署）
+
+### Added
+
+- `scripts/check_docs_links.py`／`tests/test_docs_links.py`：檢查 repo 內 Markdown 相對檔案、GitHub master 路徑及本地／跨檔 fragment；外部 URL 只列清單，不當內部壞鏈。
+- `scripts/check_site_links.py`／`tests/test_site_links.py`：由首頁同源爬查 `a[href]`、`link[href]`、`script[src]`、`img[src]`，逐一記錄 URL、HTTP 狀態、redirect、content-type 及 fragment；覆蓋四個主要下載檔（HTML／PDF／CSV／metadata），外部連結獨立列出。
+- `tests/test_pdf_links.py`：PDF 只可輸出絕對 HTTP(S) 可點連結；相對 repo 路徑及 fragment-only 目錄連結只保留文字，不產生錯誤 PDF URL。
+- `docs/DOCS_SYNC_INVENTORY_20261026.json`：逐份文件 action=updated／no-change／historical-only／added 及理由。
+- `reports/DOCS_CHANGELOG_LINKS_20261026.zh-Hant.md`：本輪完整交付、證據、限制及 Root 待辦。
+
+### Changed
+
+- `空調對比報告.md`／`README.md`：追加 2026-10-26 網站更新日誌，覆蓋兩端資料日期及來源狀態、官網可信 pending、BigGo 原始取得時間 unknown、共享接收及零重複請求、原子發布／候選門禁、日期不硬編、candidate acceptance 隔離，以及公開／私人當次驗證界線。
+- `generate_pdf.py`：保留 Markdown 絕對連結為 ReportLab 可點連結；純文字 URL 自動 linkify；相對路徑／fragment 不再輸出成不可點或錯誤 URL。PDF 仍以同輸入 byte-for-byte 可重現。
+- `AGENTS.md`／`CONTRIBUTING.md`／`.github/copilot-instructions.md`：追加現行文件入口、連結回歸及「時間敏感證據只作當次證據」規則；不刪舊指示。
+- `docs/README.md`／`docs/STATUS.md`／`docs/DECISIONS.md`／`docs/GOVERNANCE_MATRIX.md`：追加 2026-10-26 現況、D42 決策及權威／歷史文件層級。
+- `docs/architecture/2026-10-18-reviewed-models.md`／`2026-10-18-public-private.md`：追加現行四檔鏈、雙端獨立排程及來源 pin 邊界；舊圖保留歷史。
+- `docs/adr/ADR-002-official-batch-advance-policy.md`／`ADR-003-pages-envelope-and-daily-handoff.md`：追加現行 pending 政策及 Pages/GATE-08 證據；不改原決策。
+
+### Evidence
+
+- 公開 metadata：v1.2.9／build `B20261025.193.1`／artifact 來源 `d309644f32c871e7c3963b1e6f6213b180a51d53`／Pages data commit `a445c0d1fb0b9b6a86550dc78bdf513d9f39dd4a`／datasetDate 2026-10-26／1,782 登記／1,721 型號／`releasePayloadHash=sha256:c978c2df9f8bbce1c1e155fa8d3fc51cb960edea63a6980c9e4bf601c7e508c9`。
+- 公開 run：daily `40224718377` success；Pages `40225389793` build／deploy／GATE-08 success；freshness `40319523637` success。2026-10-24 當次：daily `40038875496`（7 gates、1,410 tests）、Pages `40039671092`（14 browser checks）、freshness `40040118399` 均 success。
+- 私人現行 metadata：build `私人端現行 build（識別略）`／source `365b783d72eb5679eee8b6b0be96019e722b05a9`／datasetDate 2026-10-26；BigGo `lastAcquiredAt=null`、`lastAppliedAt=2026-10-21T16:30:05Z`、snapshot `biggo-2026-10-10:7/7-stage7-85fb9d8aff0b`。
+- 本輪未重跑 daily、未呼叫 BigGo／EMSD／品牌 provider、未改 Secrets／Variables／排程／正式資料；共享價格 baseline 仍為已完成 cycle 2026-10-10 stage 7、token1/search145、無 active lease（工作開始前已驗證基準；本輪零操作）。
+- 公開端與私人端正式部署仍待 Root；本 commit 只屬候選，不宣稱已上線。
+
 ## Unreleased — 2026-10-21 R2 receiver contract / partial rollback
 
 - Withdrew the undeployed partial-summary-v2/warning framework and its synthetic tests; restored v1 all-healthy/fail-closed monitoring. Kept hard-axis issue titles, safe reasons, dependency diagnostics, UTC witness and apply-only Hero wording.

@@ -151,3 +151,10 @@ python scripts/architecture_audit.py --repo . --peer-root <peer>  # private revi
 
 ## 2026-10-19 Root Stage1 收據反例更正（追加）
 Root 在 review2 的 26 項既有反例通過後，額外重現：保留快照的 safeReason 可與 sourceStatusHash／BigGo hash 損壞同時出現，不能單憑原因碼聲稱快照已驗證。監控呈現改為「先前快照保留，核驗狀態見來源收據」，增加實際健康 producer→issue contract→呈現的損壞組合測試。原 review2 結果保留作歷史；此次不改 fingerprint、告警／恢復門禁、來源時間或任何供應商行為。正式發布仍須最終版本完整驗收。
+
+## 2026-10-26 現況入口（append-only）
+
+- 舊圖保留 2026-10-18 歷史；現行四檔仍是 `index.html`、`空調對比報告.pdf`、`emsd_空調能源標籤.csv`、`metadata.json`，payload manifest 仍只計前三者。公開 metadata build `B20261025.193.1`／artifact 來源 `d309644`／Pages data commit `a445c0d`；私人 metadata build `私人端現行 build（識別略）`／source `365b783`。
+- 兩端 daily 是獨立排程；私人端不是公開端的主備，亦不保證先後。共用協調只限 BigGo 價格 stage；本輪只接收已完成結果，零新 cycle／provider 請求。
+- 網站更新日誌由 `空調對比報告.md` 生成；私人站只服務四檔及 runtime JSON，文件導覽改指公開 GitHub URL。PDF 只輸出絕對可點 URL；相對／fragment 不輸出成錯誤 URL。回歸入口：`scripts/check_site_links.py`、`scripts/check_docs_links.py`、`tests/test_pdf_links.py`。
+- `generate_pdf.py --metadata metadata.core.json` 仍讀同一 run metadata core；HTML／PDF 共用報告 md／資料，不互相冒充。現行 OBSERVED 見 `docs/STATUS.md` §32。

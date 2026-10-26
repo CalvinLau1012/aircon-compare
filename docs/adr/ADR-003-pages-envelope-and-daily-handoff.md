@@ -74,3 +74,10 @@
 Pages Source 已切 Actions；daily→Pages exact artifact dispatch 及同 workflow E4 已 live 通過。PR #22 重建 run 36812197686 → Pages 36812428581 成功；merge 舊 payload 過渡 run 的 PDF 紅不能被說成已通過。
 
 證據與剩餘 UNKNOWN 見 [STATUS §29](../STATUS.md)；原 ADR 決策與歷史文字全部保留。
+
+## 2026-10-26 現況補記（追加；不改原決策）
+
+- 四檔 envelope 及 payload manifest 範圍不變：`deploy_payload.json` 仍只計 `index.html`／`空調對比報告.pdf`／`emsd_空調能源標籤.csv`；`metadata.json` 由 `deploy_envelope.json` requiredFiles 額外包含。
+- 2026-10-26 當次公開 Pages：run `40225389793` build／deploy／GATE-08 success；metadata build `B20261025.193.1`／artifact 來源 `d309644`／Pages data commit `a445c0d`。2026-10-24 當次 run `40039671092` build／deploy／GATE-08 及 14 browser checks 亦成功。
+- `metadata.commit` 是資料來源 commit，不是 merge／Pages data commit；兩者不可互相冒充。時間敏感 run／build 只作當次證據，下一次 schedule 仍須重新觀察。
+- daily→Pages 仍以 exact artifact／source run 綁定；PR 不 deploy。本輪零 daily 重跑、零 provider、零正式部署；Root 仍要做正式 merge／rebuild 驗收。

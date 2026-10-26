@@ -1,5 +1,9 @@
 # ❄️ 香港空調對比報告（網頁版） ![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fcalvinlau1012.github.io%2Faircon-compare%2Fmetadata.json&query=%24.version&label=version&prefix=v&color=2ea44f)
 
+> **2026-10-26 現況（append-only；當次證據）**：公開 metadata 為 v1.2.9／build `B20261025.193.1`／artifact 來源 `d309644`，資料日期 **2026-10-26**（1,782 筆登記／1,721 個型號）；Pages run `40225389793` 的 build／deploy／GATE-08 成功，最新 freshness run `40319523637` 成功。私人端現行 metadata 為 build `私人端現行 build（識別略）`／source `365b783`，同為 2026-10-26 資料日期。官網可信待核、BigGo 原始取得時間 unknown、兩端獨立排程及共享價格接收的政策不變；本輪零 provider 請求、零 coordinator 寫入、未重跑 daily。較舊的 run／build／數字屬歷史，時間敏感結果只作當次證據。
+> **文件入口**：現行文件清單、權威來源及 superseded 標註見 [docs/README.md](docs/README.md) 與 [文件同步 inventory](docs/DOCS_SYNC_INVENTORY_20261026.json)；工作流現況見 [docs/STATUS.md §32](docs/STATUS.md#32-2026-10-26-現況同步append-only)。
+
+
 > **2026-10-21 R2 追加**：撤回未被採納的 partial-summary-v2／warning 框架（保留 v1 all-healthy/fail-closed、hard-axis title、safe reasons、UTC 見證及 apply-only Hero）。修正真正 `sync_biggo_completed.main` producer 的 top-level witness、outer/inner 衝突 fail-closed、baseline 必須綁 immutable stage-result、malformed provider envelope → net_error、以及新 window 不完整 witness 在 publish 前阻斷。8 項官方 full-spec 原件仍未有，queue 保持 pending；未部署。
 
 
@@ -432,6 +436,20 @@ python fetch_rasonic.py        # 樂信官方網店價格
 | v0.1.0 | 2026-08-11 | 報告初版（29 型號統合對比） |
 
 ## 📅 更新日誌
+
+### 2026-10-26 — 資料日期、來源狀態與發布驗證同步（最新）
+
+| 類別 | 更新內容 |
+| --- | --- |
+| 🗓️ 資料日期 | 公開站與私人站各自讀取已部署的 metadata；本輪核對兩端資料日期均為 **2026-10-26**（由成功來源收據的實際 UTC 時間換算 HKT）。頁面不硬編日期；每日 00:30 HKT 只是預定檢查時刻，平台可能延遲，不會自動補跑。 |
+| 🏛️ 來源狀態 | 當次核對：EMSD **1,782 筆登記／1,721 個型號**；官網補充規格仍有已確認的待核項目。數字日後可能隨來源更新，應以頁面顯示的 metadata 為準。 |
+| 🏭 官網待核 | 經核實「官網確實未刊登」的型號屬可信待核：保留舊規格與待核標示，不令自動工作流變紅、不發故障郵件，也不推論停售。真正抓取、收據、驗證或 hash 錯誤仍會告警。 |
+| 🛒 價格時間 | BigGo 歷史快照的原始取得時間仍未記錄（unknown）；頁面只如實顯示「最近成功套用」，不會用套用、發布或封裝時間補造取得時間。本輪沒有新增價格查詢。 |
+| 🤝 共享接收 | 公開站與私人站是兩個獨立排程，只共用 BigGo 價格協調；本輪繼續接收已完成結果，沒有開新 cycle、沒有新增 provider 請求，亦沒有改動共享用量或歷史。 |
+| 🚦 發布門禁 | 自動更新先經完整測試、來源與候選驗收，再原子發布；候選驗收與正式業務設定分離，避免測試環境污染正式價格政策。任何一環失敗都不會把部分結果當成成功。 |
+| 🔗 文件導覽 | 修正網站上部分失效的文件導覽連結，改用可公開存取的 GitHub 文件位置；新增內部連結回歸檢查，覆蓋導覽、資產、四個主要下載檔及頁內 fragment。 |
+| ✅ 當次證據 | 公開端 2026-10-24 的自動更新（7 gates、1,410 tests）、Pages 部署（14 項瀏覽器檢查）及新鮮度監控均成功；2026-10-25 的自動更新與 Pages 部署亦成功。私人端 2026-10-24 及 2026-10-25 的 00:30 HKT 自然更新成功。以上均為當次證據，不代表未來每次必然相同。 |
+| ⚠️ 界線 | 本輪沒有重跑 daily、沒有呼叫 BigGo／EMSD／品牌官網，也沒有改動正式資料、排程或共享價格狀態；正式部署仍由維護者驗收。 |
 
 ### 2026-10-12 — Root98 精簡 hero 文案／排版（生成器來源候選；未部署）
 

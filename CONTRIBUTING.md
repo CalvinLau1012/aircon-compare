@@ -41,3 +41,17 @@ python generate_html.py
 - GitHub Actions schedule 係預定觸發；官方明示高負載可延遲甚至丟棄，00:30 HKT 唔係準時保證；本項目未有延遲量測，唔會自動補跑或重複查價。
 - daily 只可經 `scripts/biggo_stage_runner.py` 受控入口；inactive 零 provider；合法 `no-price` 唔等於網絡故障。手動診斷 `--check-coordinator`（唯讀）同 `--execute`（provider 測試）互斥。
 - 報告 md／HTML_TEMPLATE 文案改動先做隔離 fixture 驗證（D32），再由 D31 `rebuild_verified_snapshot=true`、`force_price_batch=false` 全量重生 `index.html`＋PDF＋metadata；未提交生成物之前唔可以宣稱已發布。
+
+## 2026-10-26 文件／連結回歸補充（追加）
+
+- 網站更新日誌只改 `空調對比報告.md` 內容來源；HTML／PDF 由生成器重建，不手改 `index.html` 或 `/app/web` 產物。私人站文件導覽用可公開解析的 GitHub URL，不用同源 `.md` 相對連結。
+- 提交前至少跑：
+
+```bash
+python scripts/check_docs_links.py
+python scripts/check_site_links.py --site-root <候選站根>
+python -m pytest tests/test_docs_links.py tests/test_site_links.py tests/test_pdf_links.py -q
+```
+
+- 內部 4xx／5xx、缺 fragment、缺本地資產是阻斷；外部網站反爬／暫時錯誤只另列，不當內部壞鏈。時間敏感 run／build／測試數標明「當次證據」，不宣稱今日仍相同。
+- 現行文件層級與逐份 action 見 `docs/README.md`、`docs/STATUS.md` §32、`docs/DOCS_SYNC_INVENTORY_20261026.json`。

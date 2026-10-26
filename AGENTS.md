@@ -121,3 +121,17 @@ python model_lifecycle.py         # 顯示停售黑名單
 - **BigGo 受控路徑**：daily 只可經 `scripts/biggo_stage_runner.py`；inactive／完成＝零 provider、零 coordinator；active 經 lease／budget／cooldown／冪等＋write-ahead intent；smoke 候選由 `biggo_candidate.select_candidate()` 動態揀（非固定清單）。手動診斷預設零流量；`--check-coordinator`（唯讀，≤1 GET）同 `--execute`（provider 測試）互斥、語義不可互換；合法 `no-price` 唔等於網絡故障。
 - **文件規則不變**：純文件改動只 commit 文檔；報告 md／HTML_TEMPLATE 文案改動先做隔離 fixture 驗證（D32），再由 D31 `rebuild_verified_snapshot=true`、`force_price_batch=false` 全量重生 `index.html`＋PDF＋metadata 並核對 Pages／GATE-08。metadata 日期唔會因文件更新而刷新。
 - **2026-10-12 更正**：上面 2026-10-01 節「私人 server 工作仍暫停」已過期；私人部署已恢復（獨立排程 00:30 HKT 運行中），原文保留作歷史。
+
+## 2026-10-26 現況與連結回歸補充（append-only；不改舊規則）
+
+- **現行文件入口**：`docs/README.md`（權威層級）、`docs/STATUS.md` §32（指定觀察時間）、`docs/DECISIONS.md` D42、`CHANGELOG.md` 2026-10-26、`docs/DOCS_SYNC_INVENTORY_20261026.json`（逐份 action／理由）。舊 STATUS／CHANGELOG／ADR／architecture 段落保留歷史，不當現況。
+- **網站日誌來源**：`空調對比報告.md` 是 HTML／PDF 更新日誌唯一內容來源；`index.html`／PDF 只可由 `generate_html.py`／`generate_pdf.py` 重建。純文檔／日誌改動仍按 D24 不手改 production metadata；如要即時上線，由 Root 用已驗證重建流程，不把候選當已部署。
+- **前端來源**：現行 CSS／JS 在 `frontend/public/`，由 `frontend_assets.py` 組裝；不要只在生成物改 UI。改 UI 後仍要跑 `python generate_html.py`、PDF／metadata 對應 gates 及手機／深色檢查。
+- **私人站文件導覽**：私人 web root 只服務四檔及 runtime JSON；站內文件導覽必須用可公開解析的 GitHub URL，不得用同源 `README.md`／`docs/*.md`。修正要改共同報告 md／生成來源，不可只 patch 當前 `/app/web` bytes。
+- **PDF 連結**：絕對 HTTP(S) 連結可點；相對 repo 路徑／fragment-only 只保留文字。`generate_pdf.py` 仍要求同輸入 byte-for-byte 可重現。
+- **新增檢查**：
+  - `python scripts/check_docs_links.py --report <repo 外 path>`：repo Markdown 檔案／GitHub master 路徑／fragment；外部 URL 只列清單。
+  - `python scripts/check_site_links.py --site-root <站根> --report <repo 外 path>`：同源導覽／資產／四個下載檔／fragment；外部連結獨立列出。
+  - `python -m pytest tests/test_docs_links.py tests/test_site_links.py tests/test_pdf_links.py -q`
+- **時間敏感證據**：run／build／測試數／metadata 只作當次證據；不要用舊 run 冒充今日狀態，也不要把候選本機通過寫成正式上線。兩端 daily 是獨立排程；00:30 HKT 只是預定時刻，資料日期由成功來源收據換算 HKT。
+- **BigGo／官網**：本輪零 provider 請求、零 coordinator 寫入、零 daily 補跑。官網確實未刊登的型號屬可信 pending，不令 Actions 紅／不發故障 email；真正抓取／收據／驗證錯誤仍 fail-closed。BigGo 原始取得時間未知時只顯示「最近成功套用」，不補造。
