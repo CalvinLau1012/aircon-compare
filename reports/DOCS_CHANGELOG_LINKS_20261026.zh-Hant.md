@@ -37,7 +37,7 @@
 | `/` | `docs/AIRCON_COMPARE_GOVERNANCE.md` | `/docs/AIRCON_COMPARE_GOVERNANCE.md` | 404 |
 | `/` | `空調對比報告.md` | `/空調對比報告.md` | 404 |
 
-原因：私人 web root 只服務四檔及 runtime JSON，不提供 repo `.md`。修正在共同報告來源把五個連結改為公開 GitHub `blob/master/...` URL；不是 patch 當前 `/app/web` bytes。候選私人站重爬：內部連結 21 個、0 個 4xx/5xx、0 個缺 fragment、0 個缺本地資產；四個下載檔全部 200。
+原因：私人 web root 只服務四檔及 runtime JSON，不提供 repo `.md`。修正在共同報告來源把五個連結改為公開 GitHub `blob/master/...` URL；不是 patch 當前 `/app/web` bytes。候選私人站重爬：內部連結 21 個、0 個 4xx/5xx、0 個缺 fragment、0 個缺本地資產；四個下載檔全部 200。五個 replacement GitHub URL 以 strict TLS GET 實測全部 200（README、CHANGELOG、docs/STATUS、治理、空調對比報告.md）。
 
 ### 1.4 PDF 連結與 mobile
 
@@ -82,6 +82,7 @@
 
 - 本地 evidence：`本地 evidence 目錄（路徑不公開）`。
 - 主要檔：`public-pytest-final.xml`／`.log`（`3f327c712e9c82ae9dfbf21f91038ec11c4990a343c14d0bb6ef9bea7166fd8c`／`6b8aaac49c366a5f9c62c5716700810f2937ed7e707c3fd13dc578678c4867d5`）、`private-pytest.xml`／`.log`、`private-live-before-links.json`（`1ed95d7c92bfa7a0bbd5e88cac63ac3bc66848bc8ca5bd54113069bcb459bb10`）、`private-candidate-links.json`（`af314f90c9cb44ac8183cae7090793eaf7e685737cb96b523b24ee8f154e8275`）、`public-candidate-links.json`（`a15f8f3eb9bd9c1bfe79b83cd42819f147567e35ab636f41771a2efce00fdc9d`）、`candidate-consistency-final.json`（`04c77b32f9355bfba6a6d0030528067a282e86d9c928017688931caf236bab2c`）、6×2 screenshots、`docs-links-after-commit.json`（`1259080239a77a522ccdb24f07de65f7735aecc36dd0a1ffc69782de2b46cb81`）。
+- 具體部署包：`public-deployment-candidate-20261026/`、`private-deployment-candidate-20261026/`（各含 `SITE/` 四檔、`source.patch`、`DEPLOY.md`、`ROLLBACK.md`、`SHA256SUMS`）；`SITE/metadata.json` 是候選 fixture，正式部署必須用正式 pipeline 重生。
 - 公開候選四檔：`public-candidate-site/`：
   - `index.html` `1e5bcd61649999e778f6af0ea6401f207fda29c78128b7a69ffe6eb3aa8fcf1b`
   - `空調對比報告.pdf` `9a32f24571d62be9b98dd787541852a2f58749869544bc013f6337bde1345eea`
