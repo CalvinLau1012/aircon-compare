@@ -1796,3 +1796,25 @@ Partial-summary-v2/warning framework was withdrawn; v1 all-healthy/fail-closed i
 - 未 push／merge／deploy；未觸發 GitHub workflow；未重跑 daily；未呼叫 BigGo／EMSD／品牌 provider；未改 Secrets／Variables／排程／coordinator／正式資料；未用 Docker／SSH 操作私人 container。
 - Root 仍需：審核候選 commit、決定是否 merge／用 D31 重建公開四檔並核對 Pages／GATE-08；在私人端以候選源重建四檔、部署及爬正式 HTTPS；確認 BigGo 共享 protected state 在部署前後不變。
 - 本節不把候選本機通過寫成已上線；下一輪自然 schedule 仍須重新觀察。
+
+### 32.5 本輪候選驗證（append-only；2026-10-26）
+
+| 檢查 | 實際結果 |
+| --- | --- |
+| 公開完整 pytest（候選生成頁；排除 snapshot preflight） | 1385 passed、7 skipped、0 failed／0 error；JUnit tests=1392 |
+| 公開 snapshot preflight（clean source commit `f320d3b`） | 25 passed |
+| 含 preflight 的完整 pytest（同一候選生成頁） | 1407 passed、7 skipped、3 failed；3 個失敗只係候選 payload 未 finalize／worktree 非 clean 的 precondition；clean commit 的同一測試 25/25 pass |
+| 針對性 docs／site／PDF／changelog／hero | 17 passed |
+| `feature-check.py --run-tests` | 15 required、18 nodes 全 passed；無 skip／xfail |
+| `extract_governance.py`／`validate_data.py`／`validate_metadata.py` | 全部 rc=0；1,782 登記／1,721 型號；metadata v1.2.9／2026-10-26 |
+| `check_docs_links.py` | 24 Markdown、71 links、16 fragments、0 broken；52 external 另列 |
+| `check_public_privacy.py --mode worktree` | 0 命中 |
+| 公開／私人候選 `check_site_links.py` | 各 21 internal、0 broken、四檔 200、0 缺 fragment |
+| 私人修復前 live 鏡像 | 26 internal、5 broken（五個同源 `.md` 404），重現實際壞鏈 |
+| 私人針對性 pytest | 7 passed（site link + changelog） |
+| 私人 browser smoke responsive／tooltip | 2 passed（Firefox fixture） |
+| 私人完整 pytest（Firefox） | 1377 passed、7 skipped、17 failed；主要為舊 fixture 硬編 1,816／hero 高度、metadata twostage 對候選資料假設、preflight dirty／payload 未 finalize、PDF 舊「最後部署」字眼；未隱藏 |
+| Firefox 6 組合（375／768／1280 × light／dark） | 公開及私人均 0 水平溢出、0 JS error、changelog 首條 2026-10-26、比較 panel 可開關 |
+| 日誌一致性 | source／HTML／PDF 9 個類別全一致；兩端 metadata `releasePayloadHash` 與重算四檔 hash 相等；BigGo `lastAcquiredAt=null`、official pending |
+
+證據在 `本地 evidence 目錄（路徑不公開）`；完整報告 `reports/DOCS_CHANGELOG_LINKS_20261026.zh-Hant.md`。本輪仍屬候選，未正式部署。
