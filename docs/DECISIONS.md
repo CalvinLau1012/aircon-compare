@@ -1496,3 +1496,10 @@ GitHub 管理憑證缺少 Secrets／Variables 管理權限；價格模式、成�
 - **決策 E（回歸與界線）**：新增 repo docs link checker、site same-origin crawler 及 PDF link test。內部連結以 4xx/5xx、缺 fragment、缺本地資產為阻斷；外部 URL 只列清單，反爬／暫時錯誤不可當內部壞鏈。時間敏感 run／build／測試數只標「當次證據」，不宣稱今日仍必然相同。
 - **本輪安全界線**：零 BigGo／EMSD／品牌 provider 請求、零 coordinator cycle／lease／budget／usage／history 寫入、零 Secrets／Variables／排程變更、零 Docker／正式容器操作、零 daily 補跑。正式公開／私人部署仍由 Root 驗收；本決策不把候選通過寫成已上線。
 - **證據入口**：`reports/DOCS_CHANGELOG_LINKS_20261026.zh-Hant.md`；公開 run `40038875496`／`40039671092`／`40040118399`、`40224718377`／`40225389793`／`40319523637`；私人現行 metadata build `私人端現行 build（識別略）`／source `365b783`。舊決策與歷史文字全部保留。
+
+## D43 · 2026-10-26：文件／網站連結必須以 Chrome UI 及候選 tree 實證（append-only）
+
+- **決定**：本 repo `master` 的 GitHub blob／tree／raw 連結屬內部文件契約，離線檢查器必須映射到目前候選 tree；缺檔、逃逸路徑或缺 fragment 阻斷。歷史 ref 與其他 repo 只列 external，不用當前 tree 偽驗證。
+- **決定**：本輪 UI 正式本機證據使用 Playwright Chromium；必須帶已驗證 Fontconfig／browser library，缺設定引致的 Skia crash 是環境失敗，不能改用另一引擎冒充 Chrome 通過。
+- **決定**：私人 source suite 使用私人原生 fixture；正式部署候選必須使用 runtime 正式資料重建。任何把 public candidate data 注入私人 source suite 的結果只作錯誤環境證據，不作 release gate。
+- **驗收**：公開完整七門禁 rc=0、1,419 tests 零 failure/error/skip；私人 Chromium 1,394 pass，另 7 個真恢復證據案例掛載唯讀 evidence 後全部通過。正式發布結果仍需另行追加。

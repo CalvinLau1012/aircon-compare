@@ -123,3 +123,13 @@
 - 文件：`README.md`、`CHANGELOG.md`、`AGENTS.md`、`CONTRIBUTING.md`、`.github/copilot-instructions.md`、`需求摘要.md`、`docs/README.md`、`docs/STATUS.md`、`docs/DECISIONS.md`、`docs/GOVERNANCE_MATRIX.md`、`docs/adr/ADR-002-official-batch-advance-policy.md`、`docs/adr/ADR-003-pages-envelope-and-daily-handoff.md`、`docs/architecture/2026-10-18-reviewed-models.md`、`docs/architecture/2026-10-18-public-private.md`。
 - 新增：`docs/DOCS_SYNC_INVENTORY_20261026.json`、`scripts/check_docs_links.py`、`scripts/check_site_links.py`、`tests/test_docs_links.py`、`tests/test_site_links.py`、`tests/test_pdf_links.py`、`reports/DOCS_CHANGELOG_LINKS_20261026.zh-Hant.md`。
 - 未改：`metadata.json`、`deploy_payload.json`、`price-policy.json`、`price_demand.json`、`prices_meta.json`、`official_batch_status.json`、`update_queue.json`、`biggo_prices.json`、`emsd_receipt.json`、`emsd_raw_receipt.json`、`index.html`（保留 production payload；由 D31 重建）。
+
+## 7. Root 獨立驗收補正（append-only；2026-10-26）
+
+首版交付未獲直接批准部署。Root 找到 `check_docs_links.py` 的 GitHub URL mapping 缺陷：本 repo `blob/master/...` 被錯列 external，故未真正驗 replacement path。修正後只將本 repo master blob／tree／raw 映射到候選 tree，採 `Path.relative_to()` 防路徑逃逸，並加入 missing master file／other ref 反例。
+
+使用者要求 Chrome UI。Root 以 Chromium 重現原 SIGTRAP，實際 stderr 為 Skia FontConfig `Not implemented`；補回既有 `FONTCONFIG_FILE` 及受控 browser libs 後，Chromium UI 正常，先前「`<select>` renderer crash」推論由此更正。
+
+- 公開精確候選 `82749bb7aeae743a790af1038440de5f7b487215`：完整七門禁 rc=0；pytest **1,419 passed／0 failure／0 error／0 skipped**；針對性 docs/site/PDF/changelog/hero **19 passed**；修正後 docs checker 25 Markdown／71 links／16 fragments／0 broken。
+- 私人候選以原生 source fixture、無 public deployment candidate 污染及 Chromium：**1,394 passed／7 skipped／0 failure／0 error**。七個 skip 全為未掛載真恢復證據；掛載既有唯讀 evidence 後 **7/7 passed**。前述 17 failures 保留為錯誤環境結果，由本節取代為正式候選判定。
+- 本節完成時仍未正式 push／merge／deploy；候選 SITE 仍不可直接作生產資料。正式 GitHub CI／Pages 及私人 runtime 重建／部署結果另行追加。

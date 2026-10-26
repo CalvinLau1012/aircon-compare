@@ -1133,3 +1133,10 @@ Root 獨立重現後補正：需求合併必須更新實際 ledger list；需求
 - 修正前置測試後載入的正式價格政策滲入候選驗收子程序，令官網 fixture 誤入價格分支的問題；正式 daily 政策保持不變。
 - 完整驗收失敗時直接顯示失敗 gate 與日誌摘要，同時保留原始非零退出及 machine evidence。
 - 增加帶真 daily 設定的隔離回歸、父環境不變、非零 gate 與日誌路徑邊界驗證；正式日期、來源新鮮度門檻及 BigGo 保護不變。
+
+## 2026-10-26 Root 驗收補正（append-only；仍未正式部署）
+
+- 修正新文件檢查器錯把本 repo `blob/master/...` URL 當外部連結的漏洞；現在會映射到候選 tree，缺檔／缺 fragment 必須失敗，非 master 歷史 ref 才保持外部。
+- 本機 Chromium 原先崩潰的實際原因是缺少 Fontconfig 設定，不是網站 `<select>` 回歸；使用既有受控字型設定後，完整公開七門禁通過（1,419 tests，零失敗／錯誤／跳過）。
+- 私人候選以原生私人資料及 Chromium 重跑：1,394 passed／7 recovery-evidence skipped；掛載既有唯讀恢復證據後該 7 項另行全部通過。先前 Firefox／公開候選資料混入所得 17 failures 保留為錯誤環境證據，不作正式驗收結論。
+- 本條仍為候選證據；GitHub merge、公開重建／Pages 及私人正式 runtime 重建／部署結果另行追加。

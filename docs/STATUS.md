@@ -1820,3 +1820,10 @@ Partial-summary-v2/warning framework was withdrawn; v1 all-healthy/fail-closed i
 | 日誌一致性 | source／HTML／PDF 9 個類別全一致；兩端 metadata `releasePayloadHash` 與重算四檔 hash 相等；BigGo `lastAcquiredAt=null`、official pending |
 
 證據在 `本地 evidence 目錄（路徑不公開）`；完整報告 `reports/DOCS_CHANGELOG_LINKS_20261026.zh-Hant.md`。本輪仍屬候選，未正式部署。
+
+### 32.6 Root Chrome UI 與文件連結驗收補正（append-only；2026-10-26）
+
+- Root 發現首版 `check_docs_links.py` 將本 repo 的 GitHub `blob/master/...` URL 誤列為 external，故原「0 broken」未真正覆蓋五個 replacement URL。修正後只把本 repo `master` blob／tree／raw 映射到候選 tree，缺檔及缺 fragment fail；並修正路徑 containment 為 `Path.relative_to()`。新增反例後 docs/site/PDF/changelog/hero 針對性 Chromium 測試 19 passed，文件檢查為 25 Markdown／71 links／16 fragments／0 broken。
+- 本機 Playwright Chromium 的 SIGTRAP 根因為 `FONTCONFIG_FILE` 缺失（Skia FontConfig `Not implemented`），不是 `<select>` 或產品 UI 回歸。使用已保存的受控 Fontconfig 與 browser libs 後，公開候選精確 head `82749bb7aeae743a790af1038440de5f7b487215` 完整七門禁 rc=0；pytest 1,419 passed、0 failed／error／skipped。
+- 私人候選以其原生 1,816 登記／1,755 型號歷史 source fixture、無 `AIRCON_BROWSER_CANDIDATE` 污染及 Chromium 重跑：1,394 passed、7 skipped、0 failed/error；7 個 skip 全為未掛載真恢復證據，使用既有唯讀 `AIRCON_RECOVERY_EVIDENCE` 後 7/7 passed。前節 17 failures 來自將 current-public data candidate 強行餵入舊私人 source fixture及 Firefox量測，保留為失敗證據但被本節正式補正。
+- 此時仍未 push／merge／deploy；正式私人四檔必須以 runtime 正式資料生成，不能採用視覺候選 SITE。
