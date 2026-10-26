@@ -67,16 +67,20 @@ def _markdown_files(root: Path) -> list[Path]:
 
 
 def _github_target(path: str) -> tuple[str, str] | None:
-    if path.startswith(f'/{REPO_SLUG}/'):
-        path = path[len(f'/{REPO_SLUG}/'):]
-    prefix = f'/{REPO_SLUG}/'
-    if not path.startswith(prefix):
+    """Map this repository's master blob/tree/raw URL to a local path.
+
+    Other refs remain external because their paths describe a historical tree,
+    not necessarily the candidate currently under test.
+    """
+    parts = path.strip('/').split('/')
+    owner, repo = REPO_SLUG.split('/', 1)
+    if len(parts) < 5 or parts[:2] != [owner, repo]:
         return None
-    rest = path[len(prefix):]
-    parts = rest.split('/', 2)
-    if len(parts) < 3 or parts[0] not in ('blob', 'tree', 'raw'):
+    mode, ref = parts[2:4]
+    if mode not in ('blob', 'tree', 'raw') or ref != 'master':
         return None
-    return parts[2], ''
+    rel = '/'.join(parts[4:])
+    return (rel, '') if rel else None
 
 
 def _check_anchor(fragment: str, anchors: set[str], generated: set[str]) -> bool:
@@ -135,7 +139,9 @@ def check(root: Path = ROOT) -> dict:
                 else:
                     target = (source.parent / unquote(u.path)).resolve() if u.path else source
                 checked += 1
-                if not str(target).startswith(str(root)):
+                try:
+                    target.relative_to(root)
+                except ValueError:
                     broken.append({'source': str(source.relative_to(root)), 'line': lineno,
                                    'target': raw, 'reason': 'escapes repository'})
                     continue
