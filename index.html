@@ -139,9 +139,10 @@ blockquote{margin:12px 0; padding:10px 16px; border-left:5px solid var(--accent)
   background:var(--blockquote-bg); border-radius:0 8px 8px 0; font-size:.92em;}
 blockquote p{margin:2px 0;}
 code{background:var(--code-bg); color:var(--text); padding:2px 6px; border-radius:4px; font-size:.9em;}
+blockquote code,p code,li code,td code{overflow-wrap:anywhere; word-break:break-word;}
 pre{background:var(--surface); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
   border:1px solid var(--line); border-radius:8px; padding:12px;
-  overflow-x:auto; margin:12px 0;}
+  overflow-x:auto; max-width:100%; margin:12px 0;}
 ul,ol{margin:8px 0 8px 24px;}
 
 /* ===== 比較器 ===== */
@@ -165,7 +166,7 @@ ul,ol{margin:8px 0 8px 24px;}
   max-width:100%;}
 .model-list{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
   gap:8px; padding:10px 12px; max-height:340px; overflow-y:auto;}
-.mitem{display:flex; align-items:center; gap:10px; padding:9px 12px;
+.mitem{display:flex; align-items:center; gap:10px; padding:9px 12px; min-width:0;
   border:1px solid var(--line); border-radius:8px; background:var(--surface);
   backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); cursor:pointer;
   transition:border-color .15s, box-shadow .15s;}
@@ -263,13 +264,13 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
   .stats .n{font-size:1.6em;}
   section{margin:28px 0;}
   h2.sec{font-size:1.15em;}
-  .model-list{grid-template-columns:1fr;}
+  .model-list{grid-template-columns:minmax(0,1fr);}
   .compare-tools .filters{margin-left:0; width:100%;}
   .panel table{font-size:.8em;}
   .topnav a{padding:12px 10px; font-size:.8em;}
 }
-/* 平板寬度（721–999px）：絕對定位 tooltip 會撐出頁面水平滾動 → 同手機一致隱藏 */
-@media (max-width:999px){
+/* 平板／窄桌面（≤1024px）：絕對定位 tooltip 會撐出頁面水平滾動 → 同手機一致隱藏 */
+@media (max-width:1024px){
   .topnav a[data-tip]::after{display:none;}
 }
 @media (prefers-color-scheme: dark){
@@ -416,7 +417,8 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <strong>自動更新</strong>：GitHub daily 每日預定 <strong>00:30 HKT</strong>，平台可能延遲；價格只按到期 active stage 與租約／預算執行。Price.com 不再爬取，僅保留歷史快照。
 <strong>2026-10-12 排程口徑（追加）</strong>：GitHub Actions schedule 屬預定觸發；官方明示高負載時可延遲甚至丟棄，00:30 HKT 並非準時保證，實際時間以 Actions 記錄為準（本項目未有延遲量測；唔會自動補跑或重複查價）。
 <strong>維護狀態</strong>：本次以已驗證快照整理日誌及重建頁面／PDF，不重新抓資料或查價。最新變更見下方「📅 更新日誌」，驗收與剩餘限制見 <a href="https://github.com/CalvinLau1012/aircon-compare/blob/master/docs/STATUS.md">STATUS</a>。
-<strong>2026-10-12 現況追加</strong>：PR #24 已合併（merge <code>742404b</code>）；現行不可變 payload 為 v1.2.9／build <code>B20261010.142.1</code>／artifact 來源 <code>7994e7b</code>（非 merge commit）；Pages run <code>38185435570</code> success，GATE-08 37 checks／14 browser；daily workflow <code>335052362</code> 已 active（首次恢復後定時完整批次待觀察）。</p>
+<strong>2026-10-12 現況追加</strong>：PR #24 已合併（merge <code>742404b</code>）；現行不可變 payload 為 v1.2.9／build <code>B20261010.142.1</code>／artifact 來源 <code>7994e7b</code>（非 merge commit）；Pages run <code>38185435570</code> success，GATE-08 37 checks／14 browser；daily workflow <code>335052362</code> 已 active（首次恢復後定時完整批次待觀察）。
+<strong>2026-10-26 現況追加（append-only）</strong>：兩端資料日期為 2026-10-26；公開端 10 月 24／25 日自動更新及 Pages 部署成功，私人端同期自然更新亦成功。官網可信待核與 BigGo 原始取得時間 unknown 的顯示政策不變；本輪沒有新增價格查詢。詳見下方最新日誌。</p>
 </blockquote>
 <details>
 <summary>2026-09-22 歷史報告說明（保留原文）</summary>
@@ -2375,6 +2377,53 @@ footer .ai{display:inline-block; margin-top:16px; padding:6px 14px;
 <p><strong>2026-09-24 更新（追加；上一段原文保留）</strong>：v1.2.9 已發布並上線，<code>datasetDate</code> 已由成功、hash-bound 嘅 <code>emsd_receipt.json</code> 實際 <code>retrievedAt</code>（UTC）轉 UTC+8 香港日期得出（<code>datasetDateBasis=retrieval-date-fallback</code> 只係 basis 名）；舊無 hash 收據會明確失敗，唔會補假日期。「最後部署」仍為封包時間（HKT），並非 Pages 完成時間。</p>
 </blockquote>
 <h2>📅 更新日誌</h2>
+<h3>2026-10-26 — 資料日期、來源狀態與發布驗證同步（最新）</h3>
+<table>
+<thead>
+<tr>
+<th>類別</th>
+<th>更新內容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>🗓️ 資料日期</td>
+<td>公開站與私人站各自讀取已部署的 metadata；本輪核對兩端資料日期均為 <strong>2026-10-26</strong>（由成功來源收據的實際 UTC 時間換算 HKT）。頁面不硬編日期；每日 00:30 HKT 只是預定檢查時刻，平台可能延遲，不會自動補跑。</td>
+</tr>
+<tr>
+<td>🏛️ 來源狀態</td>
+<td>當次核對：EMSD <strong>1,782 筆登記／1,721 個型號</strong>；官網補充規格仍有已確認的待核項目。數字日後可能隨來源更新，應以頁面顯示的 metadata 為準。</td>
+</tr>
+<tr>
+<td>🏭 官網待核</td>
+<td>經核實「官網確實未刊登」的型號屬可信待核：保留舊規格與待核標示，不令自動工作流變紅、不發故障郵件，也不推論停售。真正抓取、收據、驗證或 hash 錯誤仍會告警。</td>
+</tr>
+<tr>
+<td>🛒 價格時間</td>
+<td>BigGo 歷史快照的原始取得時間仍未記錄（unknown）；頁面只如實顯示「最近成功套用」，不會用套用、發布或封裝時間補造取得時間。本輪沒有新增價格查詢。</td>
+</tr>
+<tr>
+<td>🤝 共享接收</td>
+<td>公開站與私人站是兩個獨立排程，只共用 BigGo 價格協調；本輪繼續接收已完成結果，沒有開新 cycle、沒有新增 provider 請求，亦沒有改動共享用量或歷史。</td>
+</tr>
+<tr>
+<td>🚦 發布門禁</td>
+<td>自動更新先經完整測試、來源與候選驗收，再原子發布；候選驗收與正式業務設定分離，避免測試環境污染正式價格政策。任何一環失敗都不會把部分結果當成成功。</td>
+</tr>
+<tr>
+<td>🔗 文件導覽</td>
+<td>修正網站上部分失效的文件導覽連結，改用可公開存取的 GitHub 文件位置；新增內部連結回歸檢查，覆蓋導覽、資產、四個主要下載檔及頁內 fragment。</td>
+</tr>
+<tr>
+<td>✅ 當次證據</td>
+<td>公開端 2026-10-24 的自動更新（7 gates、1,410 tests）、Pages 部署（14 項瀏覽器檢查）及新鮮度監控均成功；2026-10-25 的自動更新與 Pages 部署亦成功。私人端 2026-10-24 及 2026-10-25 的 00:30 HKT 自然更新成功。以上均為當次證據，不代表未來每次必然相同。</td>
+</tr>
+<tr>
+<td>⚠️ 界線</td>
+<td>本輪沒有重跑 daily、沒有呼叫 BigGo／EMSD／品牌官網，也沒有改動正式資料、排程或共享價格狀態；正式部署仍由維護者驗收。</td>
+</tr>
+</tbody>
+</table>
 <h3>2026-10-12 — Root98 精簡 hero 文案／排版（生成器來源候選；未部署）</h3>
 <table>
 <thead>
