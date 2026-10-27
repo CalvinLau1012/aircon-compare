@@ -43,7 +43,7 @@
     "schemaVersion": 1,
     "kind": "aircon-official-coverage-observation",
     "decision": "queue-kept-pending-coverage",
-    "observedAt": "2026-10-26T21:13:01Z",
+    "observedAt": "2026-10-27T20:56:00Z",
     "observedAtKind": "batch-attempt",
     "stage": 1,
     "targetScoped": true,
@@ -118,7 +118,7 @@
     },
     "emsd": {
       "input": "emsd_空調能源標籤.csv",
-      "snapshotHash": "sha256:dcbe0ca2d4e9e25f7f62b6fcff54afd40d280cb7679e77a660b67e132c45ed00"
+      "snapshotHash": "sha256:605892afd756e2993c0d1d72a9174e194a3c830c00b67aefdfbbcbc716210c9c"
     },
     "routes": {
       "WRK07MIZH1": {
@@ -306,10 +306,10 @@
           "sourceAcquiredAt": null,
           "sourceAcquiredAtKind": "catalogue-only",
           "cataloguePagesFromCache": 0,
-          "catalogueObservedAt": "2026-10-26T21:13:01Z"
+          "catalogueObservedAt": "2026-10-27T20:56:00Z"
         },
         "staged": {
-          "sha256": "sha256:dc2080b94005342bd2dee402a1be8e4677ff7e38aed13a742998b1eeeb46d23c",
+          "sha256": "sha256:10663f9d40e58cb7555dfac0bd90e4adfcc4b47f657ceeb9eff539fe8528a1b2",
           "size": 4381,
           "validJson": true,
           "evidenceModels": [
@@ -345,8 +345,8 @@
       }
     ],
     "previousSnapshot": null,
-    "identityHash": "sha256:08f768f9d7d7c1fbf61a5901461a4d95af877959e6b4136d09cc13c5b48bd7e1"
+    "identityHash": "sha256:e83678424bcec9579a48dbd682ea15c0f514171fc833b1445ef035b6729cd71f"
   },
-  "generatedAt": "2026-10-26T21:13:01Z",
+  "generatedAt": "2026-10-27T20:56:00Z",
   "source": "run_official_batch.py"
 }

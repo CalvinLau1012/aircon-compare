@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "retrievedAt": "2026-10-26T21:12:47Z",
+  "retrievedAt": "2026-10-27T20:55:06Z",
   "sourceUrl": "https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50",
   "success": true,
   "pageCount": 36,
-  "totalRows": 1782,
+  "totalRows": 1778,
   "perPageRows": [
     50,
     50,
@@ -41,260 +41,260 @@
     50,
     50,
     50,
-    32
+    28
   ],
-  "datasetHash": "sha256:dcbe0ca2d4e9e25f7f62b6fcff54afd40d280cb7679e77a660b67e132c45ed00",
-  "archiveHash": "sha256:340dbfb10375dd8984ff77f1829aa32a1de5e7fe0e1244830ecc982c2da3397f",
+  "datasetHash": "sha256:605892afd756e2993c0d1d72a9174e194a3c830c00b67aefdfbbcbc716210c9c",
+  "archiveHash": "sha256:6e72d5869a2cffb6a2741238e7a215f4e84b13e032124902dbf3ae84ce86f9e2",
   "pages": [
     {
       "page": 1,
       "byteLength": 66061,
-      "sha256": "sha256:989f7dbe0992bde83850ab26d3f60985ecf0a5ca0d3820699260b1c007212a0e",
+      "sha256": "sha256:d14421422783bd1911bbe9798652c86c912e0e3b4e6782b7c326b754718ac5c4",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 2,
       "byteLength": 65912,
-      "sha256": "sha256:fcd200a834b3fa7bf1486324b4b245e05c6a256623ffa774f74cf37d94b67567",
+      "sha256": "sha256:d49de86c8d66ed0fe63c614f62fc067e1b536c88ee782db68a7a0800e6fdeadf",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 3,
       "byteLength": 65918,
-      "sha256": "sha256:c64ab1b4ed236f730d5808096d9ac11baddf228228bdf354c227a9e9a9fcb00c",
+      "sha256": "sha256:472fb83b1aa899bca20e9b740664f9471d3d073d4e31278f5341eca1805ee435",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 4,
       "byteLength": 65463,
-      "sha256": "sha256:38e6b6122eecefb9a69e61568521bc4c2a84c41e2ca4c5e4166fb455bd613dbf",
+      "sha256": "sha256:218c33efcece685c2154b4c4140b38e277d2fe2023730d0735c521b595e2bb29",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 5,
       "byteLength": 65581,
-      "sha256": "sha256:a279f5d4e1258c864100d5ea4c98bcaa2f70f83d7d005c1f31b259ac791589bc",
+      "sha256": "sha256:5cefd62c9d34618c5a8b6c1ffb29552b4ff50ae01c4a2d8817c85bc73d0bb78c",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 6,
       "byteLength": 65641,
-      "sha256": "sha256:c30236357331d96532f8bae680bcdb0b979fe2b9f9fb1b935d30c2ce00ddef58",
+      "sha256": "sha256:63da281a38d7ebd7b5ce1a31c3bea36a01a4a21b9c1c8f9d3fcfc0d6cee392c6",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 7,
       "byteLength": 65995,
-      "sha256": "sha256:b9947a3850a743e8d404bcf094baf709d84b86eb280efcf36a96b2e2ac7de476",
+      "sha256": "sha256:6e3418373f6b4828371760764ced6eb2bc83a1ad9fc7561bdbf257a8fcfe7004",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 8,
       "byteLength": 66079,
-      "sha256": "sha256:acb95c94f0d1cfb7fc91c9ee12ce7e6fc1f73fe977ca6dc3211d27872d842abb",
+      "sha256": "sha256:eea06b39d040d273391c99764dd31687126f52d80ee23003d365f11dced0eecc",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 9,
       "byteLength": 65925,
-      "sha256": "sha256:562c6fbe9ba3778a341298981f87f83ffec045c196db9b8e9c9511ffbd7c0d89",
+      "sha256": "sha256:f706bb06f1edb54a8663c115aa1c766b19dd26852bbbf92154909b2b4d5e33ed",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 10,
       "byteLength": 65846,
-      "sha256": "sha256:d89f78b4fb86ef2e3aa52b5b73a8807df1ca261bebe96029630b55433cebf403",
+      "sha256": "sha256:a084d4b4d868f5e3c2a25af2396cf86edb7f2e5c98054898b163c405205e94c1",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 11,
       "byteLength": 65969,
-      "sha256": "sha256:8183f82e92aa385a348c8b90f43b543a2e56d3d344144136997f4908d0538baa",
+      "sha256": "sha256:a6953dc15db98c35b46b18d64b40b7cd8b6b7463ff3cc14bccd1cc482e842f30",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 12,
       "byteLength": 64474,
-      "sha256": "sha256:054f14c9e2a3fb59dc0c610cf42551a5c6128cb48d223a5bec426883d01a07d6",
+      "sha256": "sha256:91a2cebbe99e398bef7b43cd1166f2d27f3a9ccb65c33fef34b37070f2657141",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 13,
       "byteLength": 65381,
-      "sha256": "sha256:1c7880ca0e3ebddb0ccce3dc1e3a498332f8d4c44e9379bcf874e210c046488f",
+      "sha256": "sha256:6b4f54c29ffc0fff1752c31cc71c17cdc3a55782c87902f20c9972d5f13afcc5",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 14,
       "byteLength": 60358,
-      "sha256": "sha256:07e8e2cd560a9ce07784d2fa23d799479ed0f69dc80597be1f9a19da9e3c9c4b",
+      "sha256": "sha256:3f187a2585d28b4a3ad0f370d8f7219b2a085c63221f9aab2164494998e0a49c",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 15,
       "byteLength": 57120,
-      "sha256": "sha256:3a656b74976bc8416fc6bb5d8a7de8fa4a550aab18feb666212ccf4070f4451f",
+      "sha256": "sha256:6986901ee742e26ceb66c694b038af6ae0484b8238de7995fed8d3cd497c13c4",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 16,
       "byteLength": 59645,
-      "sha256": "sha256:5e5fed1fe9f600ea247a33db77d26598b5d4ee66d820f32f780a4f3c402acd3d",
+      "sha256": "sha256:cbb5965f0c08e173eb77e123c9e9620fb0bc971947160b72e937c49082d576cc",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 17,
       "byteLength": 60418,
-      "sha256": "sha256:9df7dc62419581810877c57e8d0d5cf3980766fede906f72fd11113c40ed574e",
+      "sha256": "sha256:73bddc6bf5bbd7d6c240612a06713db3e2fe5af581a23b1d739f52a901d89da1",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 18,
       "byteLength": 58112,
-      "sha256": "sha256:63d59c59283f32fbd046a0c563168370b45261cba953be32bef30cd1cd357c8e",
+      "sha256": "sha256:2192587efe6c2feb11120d6f9ee4d9ef726017ff6f70a7a220874cae34dc2112",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 19,
       "byteLength": 65871,
-      "sha256": "sha256:8c85ca5a0e8aa49fce5a3afac455989f69ef86f67c1d630f37fdaf8cde95ee46",
+      "sha256": "sha256:b919fb19455c2d10d9329fc1df9d8dc5cd0895a754be0129c8bfee2af85a6b04",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 20,
       "byteLength": 66318,
-      "sha256": "sha256:ce1dc7e4b99cbc387cde54c23c785a311a68c1b6253213188bd61e795f14b47a",
+      "sha256": "sha256:f69f33b4429c300162b66017658f73e4c45a5f2ad14964ba0c68360d19a71eca",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 21,
       "byteLength": 66111,
-      "sha256": "sha256:ee369f2b9574a5aa73cbb0759e7a2b847f85fd854febd45636cf9e6b53773f61",
+      "sha256": "sha256:5fb58ee4c70adf62aed04648fb668f00e04b45899d063f715bdbf5c939ba8704",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 22,
       "byteLength": 66377,
-      "sha256": "sha256:9e8ba93c9fdc88593dc553e0d871f8272108228b53cde143d2ed091219d131a3",
+      "sha256": "sha256:f0f46eab7d02f18b1925949a0f53c67ede452330a6fc114ca0d937ad0ae74251",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 23,
       "byteLength": 66647,
-      "sha256": "sha256:86f6530bc6008d0d5fd03cbf16f53221b28345ef1cfa8c9363a6076a50215bc8",
+      "sha256": "sha256:05f3084911c147df30b01b739f04a4efb0bd90e7db02542f9b6a8dacafbcc723",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 24,
       "byteLength": 66052,
-      "sha256": "sha256:a3dc71379ebfd311676188896c38380b3b008a39467101f269ffefce00520b5a",
+      "sha256": "sha256:7ab60079950016c6be8e42fc14c251384afeb24601754fc13030521115b48644",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 25,
       "byteLength": 66075,
-      "sha256": "sha256:ece2116be61d4479b8256285f03d78d0068c78b2a2055ec75deb42d7647c8e17",
+      "sha256": "sha256:2a17ff465ae1bffe0923bfdb7d667dc9d5e0d29f56ccf9f2043b62a46a62b9ca",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 26,
       "byteLength": 66324,
-      "sha256": "sha256:15dc6a1f806eae11266130cf2679c29b3adade031438828c5ec87c1440435df5",
+      "sha256": "sha256:cc064117c5566589da16bd868ebc482d7074c891788764eef6b39ac6d24bafb7",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 27,
       "byteLength": 60481,
-      "sha256": "sha256:9162065c7fd356c621912d45a2950f5836c329860873935b36f9b297c6fc0b26",
+      "sha256": "sha256:b13df46347098ae1d18249093ae7adce5ca3240edb54dd3f6bad3fa5247fbd74",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 28,
       "byteLength": 62616,
-      "sha256": "sha256:65cdb8c4f7f003a8ebb9f506981fae7914549ae2bb5f77e1092b48a8a2310ce9",
+      "sha256": "sha256:0d99e1c9309dad7fe199e96f9c7c8ed06ba758c7a4b1ea59f355e4c92a8c9499",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 29,
       "byteLength": 63913,
-      "sha256": "sha256:e1f3c6b717093ef4da019959dd34d24f371d9b70a8f184251798cf0144a0765c",
+      "sha256": "sha256:d41f3a423da67e68a322d332ea0ade1c51b8cf01d677d428b380115e6d24a0ec",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 30,
-      "byteLength": 61579,
-      "sha256": "sha256:cb378f48fb9fcb935ca017b8a19f60325be12473274b25471e5aa1a31ae5e92f",
+      "byteLength": 61420,
+      "sha256": "sha256:231c0593a4ea7d039eb99363cd269c088b8d831f551e5b05cd8d28d15c74bff9",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 31,
-      "byteLength": 61510,
-      "sha256": "sha256:d673d073b3f1c091e3202e06835ac40287319b96a101660af696ffbccf6fc343",
+      "byteLength": 61054,
+      "sha256": "sha256:cc67dde4e9c9addaa02336868201547dd4d1f312de0e526113f7afb822857693",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 32,
-      "byteLength": 59408,
-      "sha256": "sha256:b1073af8b67798aa26c2b0e4b9609f170d14719ecd9d42e060535721289a0cc3",
+      "byteLength": 59363,
+      "sha256": "sha256:08fc0d699bd79eea1121625bbd15f7a66e2b50df05e2b9046c61f0416550bb6c",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 33,
-      "byteLength": 58218,
-      "sha256": "sha256:41780c13085e552f59a5ff1cb1119a14e63f3baa94fe0d11967e0d705edacc9a",
+      "byteLength": 58292,
+      "sha256": "sha256:3e4be41c4be9689734b0f792d6dccccca44ddb61d9468a9158daf40db7b74e30",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 34,
-      "byteLength": 57790,
-      "sha256": "sha256:ae199015f735e6fdb826f5d3af11aae29066b5bd8310978d499affd86e0c5f50",
+      "byteLength": 57728,
+      "sha256": "sha256:5667f783319ea7ff85758ae657d890d3b74d66862ca7e26b5e70d162c3ccf30c",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 35,
-      "byteLength": 57558,
-      "sha256": "sha256:67de71d533c96c68891074a19b2c8e4f138d687251b155b68d00098302642646",
+      "byteLength": 57538,
+      "sha256": "sha256:210fea3fd6422b1e3eae557b247f3a322156916547d83a69bedad7cb3d86ec23",
       "lastModified": null,
       "etag": null
     },
     {
       "page": 36,
-      "byteLength": 45709,
-      "sha256": "sha256:bd3447e025131f70f128098c8c417c8df83db3817b98df0880d61a3c107535ab",
+      "byteLength": 43113,
+      "sha256": "sha256:28f425fc6842cfcc9f4b7dba441396659d1aaf064d60b8dad76db71a0deb50f1",
       "lastModified": null,
       "etag": null
     }
@@ -303,7 +303,7 @@
   "privateArchive": {
     "persisted": true,
     "adapter": "github-release-asset",
-    "archiveHash": "sha256:340dbfb10375dd8984ff77f1829aa32a1de5e7fe0e1244830ecc982c2da3397f",
+    "archiveHash": "sha256:6e72d5869a2cffb6a2741238e7a215f4e84b13e032124902dbf3ae84ce86f9e2",
     "verified": true,
     "durableRemote": true,
     "retentionDays": 90
@@ -313,26 +313,26 @@
       "sourceKind": "emsd-energy-label-paginated",
       "persisted": true,
       "adapter": "github-release-asset",
-      "archiveHash": "sha256:340dbfb10375dd8984ff77f1829aa32a1de5e7fe0e1244830ecc982c2da3397f",
+      "archiveHash": "sha256:6e72d5869a2cffb6a2741238e7a215f4e84b13e032124902dbf3ae84ce86f9e2",
       "verified": true,
       "durableRemote": true,
       "retentionDays": 90,
       "sourceUrl": "https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50",
       "pageCount": 36,
-      "totalRows": 1782
+      "totalRows": 1778
     },
     {
       "sourceKind": "emsd-open-data-csv",
       "persisted": true,
       "adapter": "github-release-asset",
-      "archiveHash": "sha256:f411ca7ab1357ea0907340eeb514c74bee0ebf2b4bf1115e1047c674234db81b",
+      "archiveHash": "sha256:cb8ccc20a1ebca7dee5d3673d625b6547185b15ccd14e0a8cb3b12a53598c102",
       "verified": true,
       "durableRemote": true,
       "retentionDays": 90,
       "sourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
       "resolvedUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-      "byteLength": 900130,
-      "sha256": "sha256:25e1290204056aed9486c48849d3a5341bc35caee1b0de4fff4816f94c549cd6"
+      "byteLength": 900174,
+      "sha256": "sha256:0f8be95b1c8fd836b04ecd0f97fd43390a22e88ad40a08da0f748bf3ca13d07a"
     }
   ]
 }
