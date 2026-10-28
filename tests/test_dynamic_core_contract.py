@@ -9,7 +9,7 @@ def test_core_size_changes_without_fixed_expectation(monkeypatch, size):
     monkeypatch.setattr(g, 'MODELS', rows)
     result = g.energy_distribution_markdown()
     assert f'| **合計** | {size}' in result
-    assert '核心 29' not in result
+    assert f'核心 {size} 型號' in result
 
 
 def test_unknown_model_does_not_inherit_core_specifications(monkeypatch):

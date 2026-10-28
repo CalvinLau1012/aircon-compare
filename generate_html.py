@@ -245,7 +245,7 @@ def energy_distribution_markdown(csv_path=None):
         '核心清單為本報告精選型號；canonical model 按 `BRAND|NORM` 去重（同 `load_models`）；'
         'registration 為 EMSD 逐筆登記（同 `load_registrations`）。兩者語意唔同，唔可以互換或相加。',
         '',
-        '| 能源級別 | 核心精選型號 | 全量 canonical model | EMSD registration |',
+        f'| 能源級別 | 核心 {len(MODELS)} 型號 | 全量 canonical model | EMSD registration |',
         '| --- | ---: | ---: | ---: |',
     ]
     for lv in ENERGY_LEVELS:
