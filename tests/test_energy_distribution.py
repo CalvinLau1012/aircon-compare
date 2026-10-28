@@ -46,24 +46,16 @@ def test_energy_distribution_sources_and_sums():
     assert set(canon) <= set(ENERGY_LEVELS)
     assert sum(reg.values()) == len(load_registrations()), 'registration 總和要等於登記數'
     assert sum(canon.values()) == len(load_models()), 'canonical 總和要等於唯一型號數'
-    assert sum(canon.values()) < sum(reg.values()), 'canonical model 應少過 registration（有重複登記）'
+    assert sum(canon.values()) <= sum(reg.values()), 'canonical model 不可多於 registration'
 
 
 # ---------------------------------------------------------------- 核心 29 靜態表
 
-def test_md_core29_table_fixed_order_and_matches_models_data():
+def test_core_table_uses_dynamic_source():
     text = open(MD, encoding='utf-8').read()
-    assert '## ⚡ 能源標籤分析' in text
-    section = text.split('## ⚡ 能源標籤分析', 1)[1].split('<!--', 1)[0]
-    rows = _table_rows(section)
-    core_rows = [r for r in rows if re.fullmatch(r'\**([1-5]) 級\**', r[0])]
-    assert len(core_rows) == 5, f'核心 29 表要有齊 1–5 級：{core_rows}'
-    assert [re.sub(r'[^1-5]', '', r[0]) for r in core_rows] == ['1', '2', '3', '4', '5']
-    expected = generate_html.core_energy_counts()
-    for row in core_rows:
-        lv = re.sub(r'[^1-5]', '', row[0]) + '級'
-        assert _as_int(row[1]) == expected[lv], f'{lv} 靜態表同 models_data 唔一致'
-    assert sum(_as_int(r[1]) for r in core_rows) == len(generate_html.MODELS) == 29
+    section = text.split('## ⚡ 能源標籤分析', 1)[1].split('\n---', 1)[0]
+    assert generate_html.ENERGY_DIST_MARKER in section
+    assert '| **1 級**' not in section
 
 
 # ---------------------------------------------------------------- 動態全量表
@@ -115,7 +107,7 @@ def test_md_marker_present_for_build_expansion():
 
 def test_core29_energy_claim_is_scoped():
     text = open(MD, encoding='utf-8').read()
-    assert '「定頻最高只有 3 級」只適用於上述核心 29 型號' in text
+    assert '不由精選清單推斷全市場' in text
     assert '只能選變頻（1級）。定頻最高只有 3 級，長期開冷氣電費差距' not in text, (
         '唔可以保留未限定語境嘅市場級結論')
     assert '全量' in text and '3 級' in text

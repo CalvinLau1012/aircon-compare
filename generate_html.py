@@ -183,13 +183,13 @@ def apply_official(m):
 
 
 def apply_specs_override():
-    """用雙源確認嘅規格覆蓋 MODELS；預設機型/淨冷/遙控"""
+    """按逐型號資料覆蓋 MODELS；缺失規格保持待查"""
     for m in MODELS:
-        # 核心 29 型號全部係窗口式 + 淨冷型
-        m.setdefault('mount', '窗口式')
-        m.setdefault('mode', '淨冷')
-        # 遙控：TA-12EOG 已驗證無遙控，其餘都有（遙控已非硬性篩選條件，僅作標註）
-        m.setdefault('remote', '➖' if m['model'] == 'TA-12EOG' else '✅')
+        # 已知核心規格明確保存在 models_data；新增型號缺值不推定規格。
+        m.setdefault('mount', '待查')
+        m.setdefault('mode', '待查')
+        # 官網／逐型號核實資料可補充未知欄位。
+        m.setdefault('remote', '待查')
         ov = SPECS_OVERRIDE.get(m['model'])
         if ov:
             m.update(ov)
@@ -239,11 +239,13 @@ def energy_distribution_markdown(csv_path=None):
     tpl = '| {lv} | {c:,} | {m:,} | {r:,} |'
     rows = [
         '',
+        f'全量 {sum(reg.values()):,} 筆登記／{sum(canon.values()):,} 個 canonical model',
+        '',
         '> 📊 **全量 EMSD 能源級別分佈（建置時由實際快照動態生成）**：'
-        '核心 29 為本報告精選型號；canonical model 按 `BRAND|NORM` 去重（同 `load_models`）；'
+        '核心清單為本報告精選型號；canonical model 按 `BRAND|NORM` 去重（同 `load_models`）；'
         'registration 為 EMSD 逐筆登記（同 `load_registrations`）。兩者語意唔同，唔可以互換或相加。',
         '',
-        '| 能源級別 | 核心 29 型號 | 全量 canonical model | EMSD registration |',
+        '| 能源級別 | 核心精選型號 | 全量 canonical model | EMSD registration |',
         '| --- | ---: | ---: | ---: |',
     ]
     for lv in ENERGY_LEVELS:
@@ -644,6 +646,8 @@ def build_html():
                         .replace('__FOOT_STATUS__', foot_status) \
                         .replace('__NEW_HINT__', new_hint) \
                         .replace('__PENDING_HINT__', pending_hint) \
+                        .replace('__CORE_COUNT__', str(len(MODELS))) \
+                        .replace('__FIELD_COUNT__', str(len(COMPARE_FIELDS))) \
                         .replace('__TOTAL_MODELS__', f'{total_models:,}') \
                         .replace('__EMSD_REGISTRATIONS__', f'{emsd_registrations:,}') \
                         .replace('__MASCOT_IMG__', mascot_img) \
