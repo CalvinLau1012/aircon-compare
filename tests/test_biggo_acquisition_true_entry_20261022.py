@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import time
+from datetime import datetime, timezone
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path[:0] = [BASE, os.path.join(BASE, 'scripts')]
@@ -57,7 +58,10 @@ def test_true_entry_full_chain_and_receive_does_not_refresh(tmp_path, monkeypatc
     monkeypatch.setattr(model_lifecycle, 'BLACKLIST_PATH', str(root / 'model_blacklist.json'))
     monkeypatch.setattr(batch_utils_path(), 'META_PATH', str(root / 'prices_meta.json'))
 
-    now = time.time()
+    # Keep collector, witness and apply on one isolated clock; wall-clock
+    # second boundaries must not make this offline contract nondeterministic.
+    now = datetime(2026, 10, 20, tzinfo=timezone.utc).timestamp()
+    monkeypatch.setattr(time, 'time', lambda: now)
     fetch_biggo.reset_acquisitions()
     staged = fetch_biggo.run_price_batch()
     assert staged['status'] == 'completed', staged

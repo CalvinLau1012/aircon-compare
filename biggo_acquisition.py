@@ -42,7 +42,12 @@ class AcquisitionError(ValueError):
     pass
 
 
-def _now(now=None):
+def utc_stamp(now=None):
+    """Format an explicit realtime sample at the witness's one-second precision.
+
+    Always pass a timestamp to gmtime: its implicit clock can lag time.time()
+    at a second boundary and make a response appear older than batch start.
+    """
     return time.strftime('%Y-%m-%dT%H:%M:%SZ',
                          time.gmtime(time.time() if now is None else now))
 

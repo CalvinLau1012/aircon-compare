@@ -563,7 +563,7 @@ def _write_review_evidence(status_out, staged, stage_result=None, manifest_field
 
 
 def _build_stage_result(*, cycle_id, stage_no, mode, client, now_fn, staged):
-    generated_at = coord_mod.utc_stamp(now_fn())
+    generated_at = biggo_acquisition.utc_stamp(now_fn())
     stage_result = {
         'schemaVersion': coord_mod.STAGE_RESULT_SCHEMA_VERSION,
         'cycleId': cycle_id,

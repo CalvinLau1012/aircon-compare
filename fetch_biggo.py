@@ -505,7 +505,7 @@ def protected_models():
 
 def _record_acquisition(model, result):
     """Record the instant a validated provider result became available."""
-    stamp = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+    stamp = biggo_acquisition.utc_stamp()
     entry = {'acquiredAt': stamp,
              'resultHash': biggo_acquisition.result_hash(result)}
     with _ACQUISITION_LOCK:
@@ -989,8 +989,8 @@ def run_force_batch(limit=None, *, smoke=True, should_abort=None, exit_on_fail=T
     payload['metaFields'] = {'last_force_batch': time.strftime('%Y-%m-%d %H:%M:%S')}
     el = time.time() - t0
     payload['acquisitionWindow'] = {
-        'startedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(t0)),
-        'finishedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        'startedAt': biggo_acquisition.utc_stamp(t0),
+        'finishedAt': biggo_acquisition.utc_stamp(),
     }
     print(f'\n🏁 強行全量批次完成（{el:.0f}s）')
     print(f'  ✅ 得價：{len(got)} ｜ 📭 乾淨無報價：{len(clean_miss)} ｜ ⚠️ 網絡錯誤：{len(net_err)}')
@@ -1132,8 +1132,8 @@ def run_price_batch(should_abort=None):
         post_tracking=review['tracking'], post_black=review['blacklist'],
         brand_lookup=brand_lookup)
     payload['acquisitionWindow'] = {
-        'startedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(t0)),
-        'finishedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+        'startedAt': biggo_acquisition.utc_stamp(t0),
+        'finishedAt': biggo_acquisition.utc_stamp(),
     }
     return payload
 
