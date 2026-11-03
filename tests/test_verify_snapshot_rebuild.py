@@ -287,7 +287,7 @@ def test_preflight_rejects_receipt_failure_and_raw_binding(tmp_path):
 def test_preflight_rejects_raw_page_cardinality_and_shape(tmp_path):
     cases = {
         'perpage_short': lambda raw: raw.update(perPageRows=raw['perPageRows'][:-1]),
-        'page_duplicate': lambda raw: raw['pages'][1].update(page=raw['pages'][0]['page']),
+        'page_duplicate': lambda raw: raw['pages'].append(dict(raw['pages'][0])),
         'page_bool_length': lambda raw: raw['pages'][0].update(byteLength=True),
         'page_bad_hash': lambda raw: raw['pages'][0].update(sha256='sha256:zz'),
         'pagecount_mismatch': lambda raw: raw.update(pageCount=raw['pageCount'] + 1),
@@ -302,7 +302,7 @@ def test_preflight_rejects_raw_page_cardinality_and_shape(tmp_path):
 def test_preflight_rejects_raw_provenance_inconsistency(tmp_path):
     cases = {
         'missing_sources': lambda raw: raw.pop('sources'),
-        'not_durable': lambda raw: raw['sources'][1].update(durableRemote=False),
+        'not_durable': lambda raw: raw['sources'][-1].update(durableRemote=False),
         'archive_mismatch': lambda raw: raw['sources'][0].update(
             archiveHash='sha256:' + '3' * 64),
         'private_missing': lambda raw: raw.pop('privateArchive'),
@@ -312,7 +312,7 @@ def test_preflight_rejects_raw_provenance_inconsistency(tmp_path):
     for name, mutate in cases.items():
         root = _fixture(tmp_path, name=f'prov-{name}')
         if name == 'receipt_dual_missing':
-            _mutate_json(root, 'emsd_receipt.json', lambda r: r.pop('dualSource'))
+            _mutate_json(root, 'emsd_receipt.json', lambda r: r.pop('csvValidation' if r.get('sourceMode') == 'csv-only' else 'dualSource'))
         elif name == 'receipt_perpage_mismatch':
             _mutate_json(root, 'emsd_receipt.json',
                          lambda r: r.update(perPageRows=r['perPageRows'][:-1]))
