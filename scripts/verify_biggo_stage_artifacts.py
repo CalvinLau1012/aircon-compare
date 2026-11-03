@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import argparse
 import json
 import os
@@ -77,7 +78,34 @@ def _summary(status):
     }
 
 
-def run_guard(repo, status_path, expect_clean=False):
+def _verified_received_files(repo, path):
+    receipt = _load_status(path)
+    if not receipt or receipt.get('schemaVersion') != 2 or receipt.get('mode') != 'sync-completed':
+        return False
+    if receipt.get('ok') is not True or receipt.get('postStateVerified') is not True:
+        return False
+    if receipt.get('reason') not in ('applied', 'already-applied'):
+        return False
+    body = {k: v for k, v in receipt.items() if k != 'receiptId'}
+    expected = 'sha256:' + hashlib.sha256(json.dumps(
+        body, ensure_ascii=False, sort_keys=True).encode('utf-8')).hexdigest()
+    if receipt.get('receiptId') != expected:
+        return False
+    hashes = receipt.get('postFileHashes')
+    if not isinstance(hashes, dict) or set(hashes) != set(PATHS):
+        return False
+    try:
+        for name in PATHS:
+            with open(os.path.join(repo, name), 'rb') as stream:
+                actual = 'sha256:' + hashlib.sha256(stream.read()).hexdigest()
+            if hashes[name] != actual:
+                return False
+    except OSError:
+        return False
+    return True
+
+
+def run_guard(repo, status_path, expect_clean=False, completed_sync=None):
     changed = _changed_paths(repo)
     if expect_clean:
         if changed:
@@ -94,6 +122,11 @@ def run_guard(repo, status_path, expect_clean=False):
         return 1
     detail = _summary(status)
     print(f'BigGo guard：diff={changed} status={detail}')
+    if status.get('status') == 'skip-receive-only' and status.get('alert') is False \
+            and status.get('requests') == {'token': 0, 'search': 0} \
+            and _verified_received_files(repo, completed_sync):
+        print('✅ Received result: verified receipt and all four current file hashes match')
+        return 0
     if status.get('status') not in CONFIRMED_STATUSES:
         print(f"::error::BigGo diff 未確認（status={status.get('status')}）；阻止 push")
         return 1
@@ -180,6 +213,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description='BigGo stage artifact guard／alert')
     ap.add_argument('--repo', default='.')
     ap.add_argument('--status', default=None)
+    ap.add_argument('--completed-sync', default=None)
     ap.add_argument('--alert-only', action='store_true')
     ap.add_argument('--expected-run-id', default=None)
     ap.add_argument('--expected-head', default=None)
@@ -188,7 +222,8 @@ def main(argv=None):
     try:
         if args.alert_only:
             return run_alert(args.status, args.expected_run_id, args.expected_head)
-        return run_guard(args.repo, args.status, expect_clean=args.expect_clean)
+        return run_guard(args.repo, args.status, expect_clean=args.expect_clean,
+                         completed_sync=args.completed_sync)
     except RuntimeError as e:
         print(f'❌ guard 執行錯誤：{e}', file=sys.stderr)
         return 2

@@ -543,7 +543,8 @@ jobs:
         run: |
           python scripts/verify_biggo_stage_artifacts.py \
             --repo . \
-            --status "$RUNNER_TEMP/biggo-stage-status.json"
+            --status "$RUNNER_TEMP/biggo-stage-status.json" \
+            --completed-sync "$RUNNER_TEMP/biggo_completed_sync.json"
 
       - name: 建立 provider-skip status（repair/rebuild；零 provider／零 lease）
         if: >

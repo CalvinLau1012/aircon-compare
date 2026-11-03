@@ -138,3 +138,37 @@ def test_alert_blocked_stale_is_red(tmp_path):
     path = _status(tmp_path, {'status': 'blocked-stale', 'alert': True,
                               'rerun': 'prohibited'})
     assert guard.run_alert(path) == 1
+
+
+def test_received_result_requires_exact_four_file_proof(tmp_path, monkeypatch):
+    import hashlib
+    monkeypatch.setattr(guard, '_changed_paths', lambda repo: [' M biggo_prices.json'])
+    status = _status(tmp_path, {'status': 'skip-receive-only', 'alert': False,
+                              'requests': {'token': 0, 'search': 0}})
+    hashes = {}
+    for name in guard.PATHS:
+        (tmp_path / name).write_text('{}')
+        hashes[name] = 'sha256:' + hashlib.sha256(b'{}').hexdigest()
+    receipt = {'schemaVersion': 2, 'mode': 'sync-completed', 'ok': True,
+               'postStateVerified': True, 'reason': 'applied', 'postFileHashes': hashes}
+    path = tmp_path / 'receiver.json'
+    def save():
+        body = {k: v for k, v in receipt.items() if k != 'receiptId'}
+        receipt['receiptId'] = 'sha256:' + hashlib.sha256(json.dumps(
+            body, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+        path.write_text(json.dumps(receipt))
+    save()
+    assert guard.run_guard(str(tmp_path), status, completed_sync=str(path)) == 0
+    for name in guard.PATHS:
+        (tmp_path / name).write_text('{"changed":true}')
+        assert guard.run_guard(str(tmp_path), status, completed_sync=str(path)) == 1
+        (tmp_path / name).write_text('{}')
+    receipt['postStateVerified'] = False
+    save()
+    assert guard.run_guard(str(tmp_path), status, completed_sync=str(path)) == 1
+    receipt['postStateVerified'] = True
+    save()
+    receipt['receiptId'] = 'sha256:tampered'
+    path.write_text(json.dumps(receipt))
+    assert guard.run_guard(str(tmp_path), status, completed_sync=str(path)) == 1
+    assert guard.run_guard(str(tmp_path), status) == 1
