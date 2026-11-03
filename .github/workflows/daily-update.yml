@@ -278,6 +278,7 @@ jobs:
           AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR: ${{ secrets.AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR }}
           AIRCON_BIGGO_REPAIR_RECEIPT: ${{ secrets.AIRCON_BIGGO_REPAIR_RECEIPT }}
         run: |
+          python scripts/receive_completed_chain.py
           set +e
           python scripts/sync_biggo_completed.py --apply --degraded-exit-zero \
             --report "$RUNNER_TEMP/biggo_completed_sync.json"
