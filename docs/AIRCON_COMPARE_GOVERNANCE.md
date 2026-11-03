@@ -2626,3 +2626,12 @@ Formal zero-provider repair run 39393716967 received and verified stage5 locally
 #### Appendix L · Root legacy demand disposition（2026-10-22 追加）
 
 `price_cycle_migrate --quarantine-unknown` is an explicit, hash-bound `retain-unknown-ineligible` disposition. It retains every unknown ledger entry with no processed evidence and no pending trigger. It permits the verified monthly engine to remain available for genuinely new, timestamped EMSD demand; it never authorises an unknown legacy entry to start a query. Default migration continues to report enableReady=false for undisposed unknowns. A separate reviewed original-run query window may establish only the lower bound for legacy outcome coverage, never a fabricated exact acquisition time. The immutable original bundle and provider usage remain unchanged.
+
+
+## 2026-11-03 · EMSD 官方 CSV 作正式來源
+
+每日流程使用 DATA.GOV.HK 目錄解析的 EMSD 官方 CSV；分頁網頁只保留診斷用途，不再是發布前提。本決策取代早前雙來源必須相等的規則，歷史收據仍按原契約驗證。來源網址、TLS、欄位、供應狀態、唯一登記、必填規格、原始 bytes 與產物 hash 繼續驗證；不合格不發布。
+
+筆數取實際 CSV，不設歷史 1,700 筆下限。相對上一份可信 CSV，單次撤銷超過 20% 登記則阻擋待核（包括同筆數但大批身份被替換），正常增長及小幅撤銷可通過。此比例是明示的異常保護政策，並非官方產品總數。新收據標記 csv-only；相容 raw 收據中的 page/chunk 單位是 CSV 檔案，不代表抓取網頁。取得時間使用 HTTP 完成時間。
+
+人工 receive_only 選項只接收已完成共享價格結果，不發起 BigGo 請求；正常00:30 HKT排程及既定價格業務政策保持。

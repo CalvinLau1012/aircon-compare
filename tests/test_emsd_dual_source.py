@@ -375,7 +375,7 @@ def test_integration_mismatch_fail_closed_preserves_csv_and_writes_diff(tmp_path
     report_path = tmp_path / 'diff.json'
     monkeypatch.setenv('AIRCON_EMSD_DIFF_REPORT', str(report_path))
     with pytest.raises(SystemExit) as exc:
-        fetch.main()
+        fetch.legacy_dual_source_main()
     assert exc.value.code == 1
     assert old.read_bytes() == b'OLD-CSV', 'mismatch 唔可以覆寫生產 CSV'
     receipt = json.loads((env / 'emsd_receipt.json').read_text(encoding='utf-8'))
@@ -390,7 +390,7 @@ def test_integration_success_marks_dual_source_and_uses_csv_primary(tmp_path, mo
     env = _env(tmp_path, monkeypatch)
     pages, rows = _fake_pages()
     _wire(monkeypatch, pages, _rows(rows))
-    assert fetch.main() is None
+    assert fetch.legacy_dual_source_main() is None
     receipt = json.loads((env / 'emsd_receipt.json').read_text(encoding='utf-8'))
     assert receipt['success'] is True
     assert receipt['sourceKind'] == dual.SOURCE_KIND_CSV
@@ -410,7 +410,7 @@ def test_integration_raw_namespaces_distinct_for_both_sources(tmp_path, monkeypa
     monkeypatch.setenv('AIRCON_EMSD_REQUIRE_RAW_SINK', '1')
     pages, rows = _fake_pages()
     _wire(monkeypatch, pages, _rows(rows))
-    assert fetch.main() is None
+    assert fetch.legacy_dual_source_main() is None
     raw_receipt = json.loads((env / 'emsd_raw_receipt.json').read_text(encoding='utf-8'))
     kinds = {entry['sourceKind'] for entry in raw_receipt['sources']}
     assert kinds == {dual.SOURCE_KIND_CSV, dual.SOURCE_KIND_PAGINATED}
@@ -635,7 +635,7 @@ def test_integration_catalog_outage_uses_last_known_good_fresh_bytes(tmp_path, m
         return _resp(_rows(rows))
 
     fetch.fetch_csv_source = csv_source
-    assert fetch.main() is None
+    assert fetch.legacy_dual_source_main() is None
     assert calls['url'] == dual.CSV_URL, 'fallback 只可以用批准 direct URL 重新抓 bytes'
     receipt = json.loads((env / 'emsd_receipt.json').read_text(encoding='utf-8'))
     assert receipt['success'] is True
@@ -661,7 +661,7 @@ def test_integration_catalog_invalid_url_fails_closed_no_fallback(tmp_path, monk
     fetch.resolve_csv_source = resolver
     fetch.fetch_csv_source = csv_source
     with pytest.raises(SystemExit) as exc:
-        fetch.main()
+        fetch.legacy_dual_source_main()
     assert exc.value.code == 1
     assert called['csv'] is False, 'catalog 提供 invalid URL 時唔可以有 silent fallback'
     assert old.read_bytes() == b'OLD-CSV', 'fail-closed 保留上一生產 CSV'
