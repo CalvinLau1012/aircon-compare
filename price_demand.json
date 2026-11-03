@@ -541,6 +541,12 @@
       "status": "processed"
     },
     {
+      "aliases": [
+        {
+          "brand": "格力",
+          "model": "GWA2107BR"
+        }
+      ],
       "brand": "格力",
       "evidence": [],
       "firstSeen": "2026-11-03",
@@ -550,6 +556,12 @@
       "status": "pending"
     },
     {
+      "aliases": [
+        {
+          "brand": "格力",
+          "model": "GWA2109BR"
+        }
+      ],
       "brand": "格力",
       "evidence": [],
       "firstSeen": "2026-11-03",
@@ -559,6 +571,12 @@
       "status": "pending"
     },
     {
+      "aliases": [
+        {
+          "brand": "格力",
+          "model": "GWA2112BR"
+        }
+      ],
       "brand": "格力",
       "evidence": [],
       "firstSeen": "2026-11-03",
@@ -568,6 +586,12 @@
       "status": "pending"
     },
     {
+      "aliases": [
+        {
+          "brand": "格力",
+          "model": "GWA2118BR"
+        }
+      ],
       "brand": "格力",
       "evidence": [],
       "firstSeen": "2026-11-03",
@@ -577,6 +601,12 @@
       "status": "pending"
     },
     {
+      "aliases": [
+        {
+          "brand": "格力",
+          "model": "GWA2124BR"
+        }
+      ],
       "brand": "格力",
       "evidence": [],
       "firstSeen": "2026-11-03",
@@ -588,5 +618,5 @@
   ],
   "kind": "aircon-price-demand",
   "schemaVersion": 1,
-  "updatedAt": "2026-11-03T05:45:08Z"
+  "updatedAt": "2026-11-03T12:36:36Z"
 }

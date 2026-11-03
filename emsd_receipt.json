@@ -1,5 +1,5 @@
 {
-  "retrievedAt": "2026-11-03T05:45:08Z",
+  "retrievedAt": "2026-11-03T12:36:36Z",
   "sourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
   "success": true,
   "pagesExpected": 1,
@@ -24,7 +24,7 @@
       "notModified": false,
       "byteLength": 899604,
       "sha256": "sha256:4fe9bb69409057f6eb08bfa5a94d9bdabe4c1dceb2991c56490fe09b3d1e8602",
-      "fetchedAt": "2026-11-03T05:45:08Z",
+      "fetchedAt": "2026-11-03T12:36:36Z",
       "lastModified": "Mon, 02 Nov 2026 05:42:34 GMT",
       "etag": null,
       "encoding": "utf-8-sig",
@@ -37,15 +37,15 @@
         "catalogApiUrl": "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-emsd-emsd1-meels-listed-models",
         "datasetPageUrl": "https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models",
         "resolvedCsvUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-        "resolvedAt": "2026-11-03T05:45:05Z",
+        "resolvedAt": "2026-11-03T12:36:34Z",
         "fallbackReason": null
       }
     },
     "rowCount": 1760,
     "excludedRowCount": 1425,
     "baseline": {
-      "registrationCount": 1778,
-      "withdrawnCount": 23,
+      "registrationCount": 1760,
+      "withdrawnCount": 0,
       "maxWithdrawalFraction": 0.2
     }
   },
@@ -59,9 +59,9 @@
     "catalogApiUrl": "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-emsd-emsd1-meels-listed-models",
     "datasetPageUrl": "https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models",
     "resolvedCsvUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-    "resolvedAt": "2026-11-03T05:45:05Z",
-    "catalogFetchedAt": "2026-11-03T05:45:05Z"
+    "resolvedAt": "2026-11-03T12:36:34Z",
+    "catalogFetchedAt": "2026-11-03T12:36:34Z"
   },
   "datasetHash": "sha256:cc31b85fe028b525287ce64deeac76495ffd810415a7f72c0a10965421037e7a",
-  "rawReceiptHash": "sha256:7c807134a0d5e4b74446dcb92677b41ee286c6c5330fa1f73cecf69bcdaaadb5"
+  "rawReceiptHash": "sha256:50bb6bac1209957ff5cec014e56b605f7e3a36b506f1c1c08936ba39a21ed167"
 }
