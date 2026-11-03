@@ -30,6 +30,7 @@ CODE_PATHS = (
     'biggo_smoke_result.py', 'biggo_acquisition.py',
     'scripts/biggo_apply.py', 'scripts/biggo_coordinator.py', 'price_demand.py',
     'scripts/biggo_stage_runner.py', 'scripts/sync_biggo_completed.py',
+    'scripts/receive_completed_chain.py', 'scripts/verify_biggo_stage_artifacts.py',
     'scripts/price_status.py', 'scripts/price_cycle.py',
     'scripts/price_cycle_entry.py', 'scripts/price_demand_entry.py',
     'scripts/price_cycle_migrate.py', 'scripts/price_runtime.py',
