@@ -16,6 +16,11 @@ on:
         description: '強行一次過跑晒全部型號嘅 BigGo 價錢批次 + 淘汰確認（一次性測試）'
         required: false
         default: 'false'
+      receive_only:
+        description: '只接收共享價格結果，不發起 BigGo 請求（本次手動執行）'
+        required: false
+        default: false
+        type: boolean
       rebuild_verified_snapshot:
         description: 'RELEASE REBUILD：重用現有 72h 內 hash-bound EMSD 快照重建 payload（不抓取來源）'
         required: false
@@ -415,7 +420,7 @@ jobs:
           github.event.inputs.rebuild_verified_snapshot != 'true' &&
           github.event.inputs.repair_release != 'true'
         env:
-          AIRCON_PRICE_QUERY_MODE: ${{ secrets.AIRCON_PRICE_QUERY_MODE || env.AIRCON_PRICE_QUERY_MODE }}
+          AIRCON_PRICE_QUERY_MODE: ${{ github.event.inputs.receive_only == 'true' && 'receive-only' || secrets.AIRCON_PRICE_QUERY_MODE || env.AIRCON_PRICE_QUERY_MODE }}
           AIRCON_PRICE_SOURCE_REVISION: ${{ secrets.AIRCON_PRICE_SOURCE_REVISION || env.AIRCON_PRICE_SOURCE_REVISION }}
         run: |
           if [ "${AIRCON_PRICE_QUERY_MODE:-receive-only}" = "normal" ]; then
@@ -430,7 +435,7 @@ jobs:
           github.event.inputs.rebuild_verified_snapshot != 'true' &&
           github.event.inputs.repair_release != 'true'
         env:
-          AIRCON_PRICE_QUERY_MODE: ${{ secrets.AIRCON_PRICE_QUERY_MODE || env.AIRCON_PRICE_QUERY_MODE || 'receive-only' }}
+          AIRCON_PRICE_QUERY_MODE: ${{ github.event.inputs.receive_only == 'true' && 'receive-only' || secrets.AIRCON_PRICE_QUERY_MODE || env.AIRCON_PRICE_QUERY_MODE || 'receive-only' }}
           AIRCON_PRICE_CYCLE_ENABLED: ${{ secrets.AIRCON_PRICE_CYCLE_ENABLED || env.AIRCON_PRICE_CYCLE_ENABLED }}
           AIRCON_PRICE_SHARED_CYCLE: ${{ secrets.AIRCON_PRICE_SHARED_CYCLE || env.AIRCON_PRICE_SHARED_CYCLE }}
           AIRCON_PRICE_SOURCE_REVISION: ${{ secrets.AIRCON_PRICE_SOURCE_REVISION || env.AIRCON_PRICE_SOURCE_REVISION }}
@@ -466,7 +471,7 @@ jobs:
         env:
           BIGGO_CLIENT_ID: ${{ secrets.BIGGO_CLIENT_ID }}
           BIGGO_CLIENT_SECRET: ${{ secrets.BIGGO_CLIENT_SECRET }}
-          AIRCON_PRICE_QUERY_MODE: ${{ secrets.AIRCON_PRICE_QUERY_MODE || env.AIRCON_PRICE_QUERY_MODE || 'receive-only' }}
+          AIRCON_PRICE_QUERY_MODE: ${{ github.event.inputs.receive_only == 'true' && 'receive-only' || secrets.AIRCON_PRICE_QUERY_MODE || env.AIRCON_PRICE_QUERY_MODE || 'receive-only' }}
           AIRCON_PRICE_CYCLE_ENABLED: ${{ secrets.AIRCON_PRICE_CYCLE_ENABLED || env.AIRCON_PRICE_CYCLE_ENABLED }}
           AIRCON_PRICE_SHARED_CYCLE: ${{ secrets.AIRCON_PRICE_SHARED_CYCLE || env.AIRCON_PRICE_SHARED_CYCLE }}
           AIRCON_PRICE_SOURCE_REVISION: ${{ secrets.AIRCON_PRICE_SOURCE_REVISION || env.AIRCON_PRICE_SOURCE_REVISION }}

@@ -404,7 +404,8 @@ def _check_receipts(args, metadata):
     # ---- durable source provenance（paginated + CSV 兩條記錄）----
     by_kind = {}
     sources = raw.get('sources')
-    if not isinstance(sources, list) or len(sources) != 2:
+    csv_only = receipt.get('sourceMode') == 'csv-only'
+    if not isinstance(sources, list) or len(sources) != (1 if csv_only else 2):
         errors.append('raw receipt sources 必須有兩條 durable source 記錄')
     else:
         for source in sources:
@@ -412,7 +413,7 @@ def _check_receipts(args, metadata):
                 errors.append('raw receipt source 記錄唔係 object')
                 continue
             kind = source.get('sourceKind')
-            if kind not in (SOURCE_KIND_PAGINATED, SOURCE_KIND_CSV) or kind in by_kind:
+            if kind not in ((SOURCE_KIND_CSV,) if csv_only else (SOURCE_KIND_PAGINATED, SOURCE_KIND_CSV)) or kind in by_kind:
                 errors.append(f'raw receipt sourceKind 唔符合／重複：{kind!r}')
                 continue
             by_kind[kind] = source
@@ -426,7 +427,7 @@ def _check_receipts(args, metadata):
                 errors.append(f'raw receipt {kind} source retentionDays 唔合格')
             if not _is_sha256(source.get('archiveHash')):
                 errors.append(f'raw receipt {kind} source archiveHash 唔合格')
-        for kind in (SOURCE_KIND_PAGINATED, SOURCE_KIND_CSV):
+        for kind in ((SOURCE_KIND_CSV,) if csv_only else (SOURCE_KIND_PAGINATED, SOURCE_KIND_CSV)):
             if kind not in by_kind:
                 errors.append(f'raw receipt 缺少 {kind} source 記錄')
 
@@ -463,6 +464,30 @@ def _check_receipts(args, metadata):
             errors.append('privateArchive archiveHash 同 raw receipt archiveHash 唔一致')
         if not _is_pos_int(private.get('retentionDays')):
             errors.append('privateArchive retentionDays 唔合格')
+
+    if csv_only:
+        src = (receipt.get('csvValidation') or {}).get('source') or {}
+        if (raw.get('sourceMode') != 'csv-only' or raw.get('transportUnits') != 'csv-files'
+                or raw.get('sourceKind') != SOURCE_KIND_CSV
+                or raw.get('sourceUrl') != receipt.get('sourceUrl')
+                or raw.get('pageCount') != 1 or not pages_ok or len(pages) != 1):
+            errors.append('CSV-only raw receipt identity/chunks invalid')
+        if (not csv_source or src.get('sha256') != csv_source.get('sha256')
+                or src.get('byteLength') != csv_source.get('byteLength')
+                or csv_source.get('archiveHash') != raw.get('archiveHash')):
+            errors.append('CSV-only source/archive binding mismatch')
+        if pages_ok and len(pages) == 1 and (
+                pages[0].get('sha256') != src.get('sha256')
+                or pages[0].get('byteLength') != src.get('byteLength')):
+            errors.append('CSV-only raw bytes/chunk binding mismatch')
+        # Validate the CSV-only rule, timestamp and exact dataset bytes through
+        # the same receipt consumer used by a normal build.
+        try:
+            gen = _load_module('csv_only_receipt_rebuild', os.path.join(SCRIPTS, 'gen-metadata.py'))
+            gen.receipt_facts(args.receipt, os.path.join(args.files_root, args.csv_rel))
+        except Exception as exc:
+            errors.append(f'CSV-only receipt facts invalid: {exc}')
+        return errors
 
     # ---- receipt.dualSource 同 raw sources 互相 binding ----
     dual = receipt.get('dualSource')

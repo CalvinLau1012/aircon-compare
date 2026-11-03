@@ -308,7 +308,7 @@ def test_fetch_emsd_remote_adapter_wiring_and_token_never_in_public_files(tmp_pa
 
     fetch.fetch_page = fake_fetch
     _patch_csv(pages)
-    assert fetch.main() is None
+    assert fetch.legacy_dual_source_main() is None
     raw = json.loads((tmp_path / 'emsd_raw_receipt.json').read_text(encoding='utf-8'))
     success = json.loads((tmp_path / 'emsd_receipt.json').read_text(encoding='utf-8'))
     assert raw['privateArchive']['adapter'] == 'github-release-asset'
@@ -345,7 +345,7 @@ def test_fetch_emsd_remote_failure_writes_no_success_receipt(tmp_path, monkeypat
     fetch.fetch_page = fake_fetch
     _patch_csv(pages)
     with pytest.raises(SystemExit) as e:
-        fetch.main()
+        fetch.legacy_dual_source_main()
     assert e.value.code == 1
     assert not (tmp_path / 'emsd_receipt.json').exists()
     assert not (tmp_path / 'emsd_raw_receipt.json').exists()

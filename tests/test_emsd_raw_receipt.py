@@ -81,7 +81,7 @@ def _run_main(pages):
         'datasetPageUrl': emsd_dual_source.CATALOG_DATASET_PAGE,
         'resolvedCsvUrl': emsd_dual_source.CSV_URL, 'resolvedAt': '2026-09-22T00:00:00Z'}
     try:
-        fetch.main()
+        fetch.legacy_dual_source_main()
         return 0
     except SystemExit as e:
         return e.code
@@ -186,7 +186,7 @@ def test_partial_fetch_writes_no_success_raw_receipt(env, monkeypatch):
 
     fetch.fetch_page = fake_fetch
     with pytest.raises(SystemExit) as e:
-        fetch.main()
+        fetch.legacy_dual_source_main()
     assert e.value.code == 1
     assert not (env / 'emsd_raw_receipt.json').exists()
 

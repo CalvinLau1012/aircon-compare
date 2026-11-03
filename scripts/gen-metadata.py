@@ -184,6 +184,25 @@ def receipt_facts(path, csv_path, now=None):
         raise ValueError('EMSD receipt source 唔可以有 userinfo')
     if source.port is not None:
         raise ValueError('EMSD receipt source 唔可以有非標準 port')
+    if receipt.get('sourceMode') not in (None, 'csv-only'):
+        raise ValueError('Unknown EMSD sourceMode')
+    if receipt.get('sourceMode') == 'csv-only':
+        cv = receipt.get('csvValidation')
+        if (receipt.get('sourceKind') != 'emsd-open-data-csv' or not csv_path_ok
+                or receipt.get('transportUnits') != 'csv-files'
+                or not isinstance(cv, dict) or cv.get('schemaVersion') != 1
+                or cv.get('rule') != 'official-csv-v1'
+                or cv.get('rowCount') != receipt.get('totalRows')
+                or len(counts) != 1 or receipt.get('dualSource') is not None):
+            raise ValueError('Invalid CSV-only validation receipt')
+        src = cv.get('source') or {}
+        if (src.get('sourceUrl') != receipt['sourceUrl']
+                or src.get('status') != 200 or src.get('notModified') is not False
+                or src.get('rowCount') != cv['rowCount']
+                or not re.fullmatch(r'sha256:[0-9a-f]{64}', str(src.get('sha256', '')))
+                or type(src.get('byteLength')) is not int or src['byteLength'] <= 0
+                or src.get('fetchedAt') != receipt['retrievedAt']):
+            raise ValueError('Invalid CSV-only source binding')
     # 雙來源收據（B）驗證：兩個 sourceKind／sourceUrl 必須齊全、相等，且 primary 係 CSV 路徑。
     if receipt.get('dualSource') is not None:
         ds = receipt.get('dualSource')

@@ -24,7 +24,7 @@ REV_RE = re.compile(r'^[0-9a-f]{40}$')
 # used by collection, canonicalisation, demand, cycle, apply, coordination,
 # receiving or the price/provider workflow entries.
 CODE_PATHS = (
-    'fetch_biggo.py', 'fetch_emsd.py', 'batch_utils.py', 'price_utils.py',
+    'fetch_biggo.py', 'fetch_emsd.py', 'emsd_dual_source.py', 'batch_utils.py', 'price_utils.py',
     'queue_utils.py', 'crawl_utils.py', 'model_lifecycle.py',
     'biggo_canonical.py', 'biggo_limiter.py', 'biggo_candidate.py',
     'biggo_smoke_result.py', 'biggo_acquisition.py',

@@ -91,7 +91,7 @@ def _run_main(pages, csv_bytes=None):
         headers={'Last-Modified': 'Wed, 01 Jan 2026 00:00:00 GMT'},
         fetchedAt='2026-09-20T18:59:57Z')
     try:
-        fetch_emsd.main()
+        fetch_emsd.legacy_dual_source_main()
         return 0
     except SystemExit as e:
         return e.code
@@ -236,7 +236,7 @@ def test_403_writes_failure_receipt_then_exits(env, monkeypatch):
 
     monkeypatch.setattr(fetch_emsd, 'fetch_page', forbidden)
     with pytest.raises(SystemExit):
-        fetch_emsd.main()
+        fetch_emsd.legacy_dual_source_main()
     r = _receipt(env / 'emsd_receipt.json')
     assert r['success'] is False and r['aborted'] is True
     assert '403' in r['error'] and r['pagesFetched'] == 0
@@ -255,7 +255,7 @@ def test_partial_fetch_keeps_old_csv_and_failure_receipt(env):
     old = env / 'emsd_空調能源標籤.csv'
     old.write_text('OLD-CSV', encoding='utf-8')
     with pytest.raises(SystemExit) as exc:
-        fetch_emsd.main()
+        fetch_emsd.legacy_dual_source_main()
     assert exc.value.code == 1
     assert old.read_text(encoding='utf-8') == 'OLD-CSV'
     r = _receipt(env / 'emsd_receipt.json')
@@ -270,7 +270,7 @@ def test_help_does_not_fetch_or_touch_data(env, monkeypatch, capsys):
 
     monkeypatch.setattr(fetch_emsd, 'fetch_page', boom)
     monkeypatch.setattr(fetch_emsd.sys, 'argv', ['fetch_emsd.py', '--help'])
-    fetch_emsd.main()
+    fetch_emsd.legacy_dual_source_main()
     out = capsys.readouterr().out
     assert '用法' in out
     assert not (env / 'emsd_receipt.json').exists()

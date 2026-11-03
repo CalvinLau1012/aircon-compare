@@ -569,7 +569,7 @@ def write_csv(header, rows, path):
     _atomic_write_bytes(path, _build_csv_bytes(header, rows))
 
 
-def main():
+def legacy_dual_source_main():
     # Windows 控制台編碼保護（cp950 無法輸出部分字元）
     for _stream in (sys.stdout, sys.stderr):
         if hasattr(_stream, 'reconfigure'):
@@ -879,6 +879,73 @@ def main():
     print(f'📦 抓取證據：{RECEIPT_PATH}（雙來源核對 pages '
           f'{outcome["pagesFetched"]}/{outcome["pagesExpected"]}，retrievedAt={retrieved_at}）')
 
+
+
+# CSV-only is the normal entry. The old collector remains an offline regression
+# reference; production never falls back to paginated data or a mixed snapshot.
+def main():
+    if '--help' in sys.argv or '-h' in sys.argv:
+        print('python fetch_emsd.py: retrieve and validate the official CSV; no web pagination')
+        return
+    recover_commit_journal()
+    out = os.path.join(BASE_DIR, 'emsd_空調能源標籤.csv')
+    stamp = None
+    summary = None
+    try:
+        try:
+            resolution = resolve_csv_source(now=time.time())
+        except dual.CatalogUnavailable as exc:
+            resolution = dual.last_known_good_resolution(reason=exc.kind, now=time.time())
+        response = fetch_csv_source(url=resolution['resolvedCsvUrl'])
+        stamp = response.fetchedAt
+        verified = dual.verify_csv_only(response, baseline_path=out)
+        rows = verified['rows']
+        summary = dual.csv_summary(response, verified, resolution=resolution)
+        validation = {'schemaVersion': 1, 'rule': 'official-csv-v1',
+                      'source': summary, 'rowCount': len(rows),
+                      'excludedRowCount': verified['excludedRowCount'],
+                      'baseline': verified['baseline']}
+        plan = plan_new_models(rows, retrieved_at=stamp)
+        records = [{'page': 1, 'sourceKind': dual.SOURCE_KIND_CSV,
+                    'byteLength': len(response.body), 'sha256': summary['sha256'],
+                    'lastModified': response.headers.get('Last-Modified'),
+                    'etag': response.headers.get('ETag'), '_raw': response.body}]
+        # Preserve the actual CSV before changing the dataset. A configured
+        # archive failure must not leave half of a new snapshot in production.
+        sink = persist_raw_archive(records,
+                    require=os.environ.get('AIRCON_EMSD_REQUIRE_RAW_SINK') == '1',
+                    source_kind=dual.SOURCE_KIND_CSV)
+        commit_dataset(list(dual.CANONICAL_HEADER), rows, out, plan)
+        raw_hash = None
+        if sink.get('persisted'):
+            raw = build_raw_receipt(records, 'sha256:' + hashlib.sha256(open(out, 'rb').read()).hexdigest(),
+                                    stamp, summary['sourceUrl'], len(rows), [len(rows)])
+            archive = {k: sink.get(k) for k in ('persisted', 'adapter', 'archiveHash',
+                       'verified', 'durableRemote', 'retentionDays')}
+            raw.update(sourceMode='csv-only', sourceKind=dual.SOURCE_KIND_CSV,
+                       transportUnits='csv-files', privateArchive=archive,
+                       sources=[dict(archive, sourceKind=dual.SOURCE_KIND_CSV,
+                                     sourceUrl=summary['sourceUrl'], resolvedUrl=summary['resolvedUrl'],
+                                     byteLength=len(response.body), sha256=summary['sha256'])])
+            write_raw_receipt_atomic(raw)
+            raw_hash = 'sha256:' + hashlib.sha256(open(RAW_RECEIPT_PATH, 'rb').read()).hexdigest()
+        outcome = dict(success=True, aborted=False, error=None, pagesExpected=1,
+                       pagesFetched=1, totalRows=len(rows))
+        write_receipt(outcome, [len(rows)], out, retrieved_at=stamp, raw_receipt_hash=raw_hash,
+                      source_url=summary['sourceUrl'], extra={
+                          'sourceMode': 'csv-only', 'transportUnits': 'csv-files',
+                          'sourceKind': dual.SOURCE_KIND_CSV, 'csvValidation': validation,
+                          'catalog': resolution})
+        print(f'✅ official CSV: registrations={len(rows)}; models={len({dual.model_key_of(row) for row in rows})}; '
+              f'new={len(plan["added"])}; retrievedAt={stamp}; pagination not used')
+    except Exception as exc:
+        # Never give a previous successful receipt to a failed attempt.
+        outcome = dict(success=False, aborted=True, error=f'{type(exc).__name__}: {exc}',
+                       pagesExpected=1, pagesFetched=0, totalRows=0)
+        write_receipt(outcome, [], retrieved_at=stamp, source_url=dual.CSV_URL,
+                      extra={'sourceMode': 'csv-only', 'sourceKind': dual.SOURCE_KIND_CSV})
+        print(f'❌ official CSV failed: {exc}', file=sys.stderr)
+        raise SystemExit(1) from exc
 
 if __name__ == '__main__':
     main()

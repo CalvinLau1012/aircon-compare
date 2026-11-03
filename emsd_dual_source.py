@@ -839,3 +839,56 @@ def verify_dual_source(*, paginated_rows, paginated_raw_records, retrieved_at,
     return {'rows': parsed['rows'], 'csv': csv_sum, 'paginated': pag_sum,
             'comparison': comparison, 'rawResponse': resp, 'parsed': parsed,
             'resolution': resolution or {}}
+
+
+# CSV primary policy v1. Bounds are a relative anomaly policy, not a historical
+# product count. This accepts ordinary registration growth and withdrawals.
+MAX_WITHDRAWAL_FRACTION = 0.20
+
+
+def verify_csv_only(response, *, baseline_path=None):
+    """Validate one complete official response; never consult web pagination."""
+    if response.status != 200 or response.notModified:
+        raise SourceSchemaError('CSV must be a fresh complete HTTP 200 response')
+    validate_official_csv_url(response.url)
+    validate_official_csv_url(response.finalUrl or response.url)
+    text, _ = _decode_csv(response.body)
+    records = list(csv.reader(io.StringIO(text), strict=True))
+    if len(records) < 2 or any(len(r) != len(records[0]) for r in records[1:] if r):
+        raise SourceSchemaError('CSV empty or ragged/truncated record')
+    parsed = parse_open_data_csv(response.body)
+    rows = parsed['rows']
+    if not rows:
+        raise SourceSchemaError('CSV has no supplied registrations')
+    seen = set()
+    for row in rows:
+        n = normalize_row(row)
+        if any(not n[i] for i in (0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 14)):
+            raise SourceSchemaError('CSV missing required identity or cooling data')
+        if n[2] in seen:
+            raise SourceSchemaError('CSV duplicate registration number')
+        seen.add(n[2])
+        try:
+            from decimal import Decimal
+            if Decimal(n[3]) != int(Decimal(n[3])) or not 1 <= Decimal(n[4]) <= 5:
+                raise ValueError('year or grade')
+            for i in (5, 6, 7):
+                if not Decimal(n[i]).is_finite() or Decimal(n[i]) <= 0:
+                    raise ValueError('cooling value')
+        except Exception as exc:
+            raise SourceSchemaError('CSV invalid year, grade or cooling values') from exc
+    baseline = {'registrationCount': None, 'withdrawnCount': 0,
+                'maxWithdrawalFraction': MAX_WITHDRAWAL_FRACTION}
+    if baseline_path and os.path.exists(baseline_path):
+        with open(baseline_path, encoding='utf-8-sig', newline='') as fh:
+            old = list(csv.reader(fh, strict=True))
+        if not old or tuple(old[0]) != CANONICAL_HEADER or any(len(r) != 15 for r in old):
+            raise SourceSchemaError('Invalid baseline CSV; cannot check changes')
+        old_ids = [normalize_value('registrationNo', r[2]) for r in old[1:]]
+        if not old_ids or len(set(old_ids)) != len(old_ids) or any(not v for v in old_ids):
+            raise SourceSchemaError('Invalid baseline registration identities')
+        withdrawn = len(set(old_ids) - seen)
+        baseline.update(registrationCount=len(old_ids), withdrawnCount=withdrawn)
+        if withdrawn / len(old_ids) > MAX_WITHDRAWAL_FRACTION:
+            raise SourceSchemaError('CSV registration withdrawals exceed relative anomaly policy')
+    return dict(parsed, baseline=baseline)
