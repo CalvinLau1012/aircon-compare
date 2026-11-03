@@ -1,338 +1,49 @@
 {
   "schemaVersion": 1,
-  "retrievedAt": "2026-11-01T20:46:17Z",
-  "sourceUrl": "https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50",
+  "retrievedAt": "2026-11-03T05:45:08Z",
+  "sourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
   "success": true,
-  "pageCount": 36,
-  "totalRows": 1778,
+  "pageCount": 1,
+  "totalRows": 1760,
   "perPageRows": [
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    28
+    1760
   ],
-  "datasetHash": "sha256:605892afd756e2993c0d1d72a9174e194a3c830c00b67aefdfbbcbc716210c9c",
-  "archiveHash": "sha256:6e72d5869a2cffb6a2741238e7a215f4e84b13e032124902dbf3ae84ce86f9e2",
+  "datasetHash": "sha256:cc31b85fe028b525287ce64deeac76495ffd810415a7f72c0a10965421037e7a",
+  "archiveHash": "sha256:70604144e4a3e54558a85855ef2b71a7fa180bb505a4cbfce4e6e2d13498bb8e",
   "pages": [
     {
       "page": 1,
-      "byteLength": 66061,
-      "sha256": "sha256:d14421422783bd1911bbe9798652c86c912e0e3b4e6782b7c326b754718ac5c4",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 2,
-      "byteLength": 65912,
-      "sha256": "sha256:d49de86c8d66ed0fe63c614f62fc067e1b536c88ee782db68a7a0800e6fdeadf",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 3,
-      "byteLength": 65918,
-      "sha256": "sha256:472fb83b1aa899bca20e9b740664f9471d3d073d4e31278f5341eca1805ee435",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 4,
-      "byteLength": 65463,
-      "sha256": "sha256:218c33efcece685c2154b4c4140b38e277d2fe2023730d0735c521b595e2bb29",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 5,
-      "byteLength": 65581,
-      "sha256": "sha256:5cefd62c9d34618c5a8b6c1ffb29552b4ff50ae01c4a2d8817c85bc73d0bb78c",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 6,
-      "byteLength": 65641,
-      "sha256": "sha256:63da281a38d7ebd7b5ce1a31c3bea36a01a4a21b9c1c8f9d3fcfc0d6cee392c6",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 7,
-      "byteLength": 65995,
-      "sha256": "sha256:6e3418373f6b4828371760764ced6eb2bc83a1ad9fc7561bdbf257a8fcfe7004",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 8,
-      "byteLength": 66079,
-      "sha256": "sha256:eea06b39d040d273391c99764dd31687126f52d80ee23003d365f11dced0eecc",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 9,
-      "byteLength": 65925,
-      "sha256": "sha256:f706bb06f1edb54a8663c115aa1c766b19dd26852bbbf92154909b2b4d5e33ed",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 10,
-      "byteLength": 65846,
-      "sha256": "sha256:a084d4b4d868f5e3c2a25af2396cf86edb7f2e5c98054898b163c405205e94c1",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 11,
-      "byteLength": 65969,
-      "sha256": "sha256:a6953dc15db98c35b46b18d64b40b7cd8b6b7463ff3cc14bccd1cc482e842f30",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 12,
-      "byteLength": 64474,
-      "sha256": "sha256:91a2cebbe99e398bef7b43cd1166f2d27f3a9ccb65c33fef34b37070f2657141",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 13,
-      "byteLength": 65381,
-      "sha256": "sha256:6b4f54c29ffc0fff1752c31cc71c17cdc3a55782c87902f20c9972d5f13afcc5",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 14,
-      "byteLength": 60358,
-      "sha256": "sha256:3f187a2585d28b4a3ad0f370d8f7219b2a085c63221f9aab2164494998e0a49c",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 15,
-      "byteLength": 57120,
-      "sha256": "sha256:6986901ee742e26ceb66c694b038af6ae0484b8238de7995fed8d3cd497c13c4",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 16,
-      "byteLength": 59645,
-      "sha256": "sha256:cbb5965f0c08e173eb77e123c9e9620fb0bc971947160b72e937c49082d576cc",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 17,
-      "byteLength": 60418,
-      "sha256": "sha256:73bddc6bf5bbd7d6c240612a06713db3e2fe5af581a23b1d739f52a901d89da1",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 18,
-      "byteLength": 58112,
-      "sha256": "sha256:2192587efe6c2feb11120d6f9ee4d9ef726017ff6f70a7a220874cae34dc2112",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 19,
-      "byteLength": 65871,
-      "sha256": "sha256:b919fb19455c2d10d9329fc1df9d8dc5cd0895a754be0129c8bfee2af85a6b04",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 20,
-      "byteLength": 66318,
-      "sha256": "sha256:f69f33b4429c300162b66017658f73e4c45a5f2ad14964ba0c68360d19a71eca",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 21,
-      "byteLength": 66111,
-      "sha256": "sha256:5fb58ee4c70adf62aed04648fb668f00e04b45899d063f715bdbf5c939ba8704",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 22,
-      "byteLength": 66377,
-      "sha256": "sha256:f0f46eab7d02f18b1925949a0f53c67ede452330a6fc114ca0d937ad0ae74251",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 23,
-      "byteLength": 66647,
-      "sha256": "sha256:05f3084911c147df30b01b739f04a4efb0bd90e7db02542f9b6a8dacafbcc723",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 24,
-      "byteLength": 66052,
-      "sha256": "sha256:7ab60079950016c6be8e42fc14c251384afeb24601754fc13030521115b48644",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 25,
-      "byteLength": 66075,
-      "sha256": "sha256:2a17ff465ae1bffe0923bfdb7d667dc9d5e0d29f56ccf9f2043b62a46a62b9ca",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 26,
-      "byteLength": 66324,
-      "sha256": "sha256:cc064117c5566589da16bd868ebc482d7074c891788764eef6b39ac6d24bafb7",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 27,
-      "byteLength": 60481,
-      "sha256": "sha256:b13df46347098ae1d18249093ae7adce5ca3240edb54dd3f6bad3fa5247fbd74",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 28,
-      "byteLength": 62616,
-      "sha256": "sha256:0d99e1c9309dad7fe199e96f9c7c8ed06ba758c7a4b1ea59f355e4c92a8c9499",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 29,
-      "byteLength": 63913,
-      "sha256": "sha256:d41f3a423da67e68a322d332ea0ade1c51b8cf01d677d428b380115e6d24a0ec",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 30,
-      "byteLength": 61420,
-      "sha256": "sha256:231c0593a4ea7d039eb99363cd269c088b8d831f551e5b05cd8d28d15c74bff9",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 31,
-      "byteLength": 61054,
-      "sha256": "sha256:cc67dde4e9c9addaa02336868201547dd4d1f312de0e526113f7afb822857693",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 32,
-      "byteLength": 59363,
-      "sha256": "sha256:08fc0d699bd79eea1121625bbd15f7a66e2b50df05e2b9046c61f0416550bb6c",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 33,
-      "byteLength": 58292,
-      "sha256": "sha256:3e4be41c4be9689734b0f792d6dccccca44ddb61d9468a9158daf40db7b74e30",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 34,
-      "byteLength": 57728,
-      "sha256": "sha256:5667f783319ea7ff85758ae657d890d3b74d66862ca7e26b5e70d162c3ccf30c",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 35,
-      "byteLength": 57538,
-      "sha256": "sha256:210fea3fd6422b1e3eae557b247f3a322156916547d83a69bedad7cb3d86ec23",
-      "lastModified": null,
-      "etag": null
-    },
-    {
-      "page": 36,
-      "byteLength": 43113,
-      "sha256": "sha256:28f425fc6842cfcc9f4b7dba441396659d1aaf064d60b8dad76db71a0deb50f1",
-      "lastModified": null,
+      "sourceKind": "emsd-open-data-csv",
+      "byteLength": 899604,
+      "sha256": "sha256:4fe9bb69409057f6eb08bfa5a94d9bdabe4c1dceb2991c56490fe09b3d1e8602",
+      "lastModified": "Mon, 02 Nov 2026 05:42:34 GMT",
       "etag": null
     }
   ],
-  "sourceKind": "emsd-energy-label-paginated",
+  "sourceMode": "csv-only",
+  "sourceKind": "emsd-open-data-csv",
+  "transportUnits": "csv-files",
   "privateArchive": {
     "persisted": true,
     "adapter": "github-release-asset",
-    "archiveHash": "sha256:6e72d5869a2cffb6a2741238e7a215f4e84b13e032124902dbf3ae84ce86f9e2",
+    "archiveHash": "sha256:70604144e4a3e54558a85855ef2b71a7fa180bb505a4cbfce4e6e2d13498bb8e",
     "verified": true,
     "durableRemote": true,
     "retentionDays": 90
   },
   "sources": [
     {
-      "sourceKind": "emsd-energy-label-paginated",
       "persisted": true,
       "adapter": "github-release-asset",
-      "archiveHash": "sha256:6e72d5869a2cffb6a2741238e7a215f4e84b13e032124902dbf3ae84ce86f9e2",
+      "archiveHash": "sha256:70604144e4a3e54558a85855ef2b71a7fa180bb505a4cbfce4e6e2d13498bb8e",
       "verified": true,
       "durableRemote": true,
       "retentionDays": 90,
-      "sourceUrl": "https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50",
-      "pageCount": 36,
-      "totalRows": 1778
-    },
-    {
       "sourceKind": "emsd-open-data-csv",
-      "persisted": true,
-      "adapter": "github-release-asset",
-      "archiveHash": "sha256:cb8ccc20a1ebca7dee5d3673d625b6547185b15ccd14e0a8cb3b12a53598c102",
-      "verified": true,
-      "durableRemote": true,
-      "retentionDays": 90,
       "sourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
       "resolvedUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-      "byteLength": 900174,
-      "sha256": "sha256:0f8be95b1c8fd836b04ecd0f97fd43390a22e88ad40a08da0f748bf3ca13d07a"
+      "byteLength": 899604,
+      "sha256": "sha256:4fe9bb69409057f6eb08bfa5a94d9bdabe4c1dceb2991c56490fe09b3d1e8602"
     }
   ]
 }

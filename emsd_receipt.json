@@ -1,144 +1,67 @@
 {
-  "retrievedAt": "2026-11-01T20:46:17Z",
+  "retrievedAt": "2026-11-03T05:45:08Z",
   "sourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
   "success": true,
-  "pagesExpected": 36,
-  "pagesFetched": 36,
-  "totalRows": 1778,
+  "pagesExpected": 1,
+  "pagesFetched": 1,
+  "totalRows": 1760,
   "aborted": false,
   "error": null,
   "perPageRows": [
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    50,
-    28
+    1760
   ],
+  "sourceMode": "csv-only",
+  "transportUnits": "csv-files",
   "sourceKind": "emsd-open-data-csv",
-  "dualSource": {
+  "csvValidation": {
     "schemaVersion": 1,
-    "primary": "emsd-open-data-csv",
-    "crossCheck": "emsd-energy-label-paginated",
-    "equal": true,
-    "retrievedAt": "2026-11-01T20:46:17Z",
-    "sources": {
-      "emsd-open-data-csv": {
-        "sourceKind": "emsd-open-data-csv",
-        "sourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-        "resolvedUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-        "status": 200,
-        "notModified": false,
-        "byteLength": 900174,
-        "sha256": "sha256:0f8be95b1c8fd836b04ecd0f97fd43390a22e88ad40a08da0f748bf3ca13d07a",
-        "fetchedAt": "2026-11-01T20:46:17Z",
-        "lastModified": "Tue, 27 Oct 2026 07:22:14 GMT",
-        "etag": null,
-        "encoding": "utf-8-sig",
-        "rowCount": 1778,
-        "minRowsGate": 1700,
-        "catalog": {
-          "mode": "catalog",
-          "datasetId": "hk-emsd-emsd1-meels-listed-models",
-          "resourceId": "2944ffac-4bb3-4240-a5f8-d902d0531b20",
-          "resourceName": "Room Air Conditioners",
-          "catalogApiUrl": "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-emsd-emsd1-meels-listed-models",
-          "datasetPageUrl": "https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models",
-          "resolvedCsvUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-          "resolvedAt": "2026-11-01T20:46:17Z",
-          "fallbackReason": null
-        },
-        "archive": {
-          "persisted": true,
-          "adapter": "github-release-asset",
-          "archiveHash": "sha256:cb8ccc20a1ebca7dee5d3673d625b6547185b15ccd14e0a8cb3b12a53598c102",
-          "verified": true,
-          "durableRemote": true,
-          "retentionDays": 90
-        }
-      },
-      "emsd-energy-label-paginated": {
-        "sourceKind": "emsd-energy-label-paginated",
-        "sourceUrl": "https://www.emsd.gov.hk/energylabel/tc/households/rac/select_ac_result.php?type=all&searchR=50",
-        "pageCount": 36,
-        "totalRows": 1778,
-        "archiveHash": null,
-        "fetchedAt": "2026-11-01T20:46:17Z",
-        "archive": {
-          "persisted": true,
-          "adapter": "github-release-asset",
-          "archiveHash": "sha256:6e72d5869a2cffb6a2741238e7a215f4e84b13e032124902dbf3ae84ce86f9e2",
-          "verified": true,
-          "durableRemote": true,
-          "retentionDays": 90
-        }
+    "rule": "official-csv-v1",
+    "source": {
+      "sourceKind": "emsd-open-data-csv",
+      "sourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
+      "resolvedUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
+      "status": 200,
+      "notModified": false,
+      "byteLength": 899604,
+      "sha256": "sha256:4fe9bb69409057f6eb08bfa5a94d9bdabe4c1dceb2991c56490fe09b3d1e8602",
+      "fetchedAt": "2026-11-03T05:45:08Z",
+      "lastModified": "Mon, 02 Nov 2026 05:42:34 GMT",
+      "etag": null,
+      "encoding": "utf-8-sig",
+      "rowCount": 1760,
+      "catalog": {
+        "mode": "catalog",
+        "datasetId": "hk-emsd-emsd1-meels-listed-models",
+        "resourceId": "2944ffac-4bb3-4240-a5f8-d902d0531b20",
+        "resourceName": "Room Air Conditioners",
+        "catalogApiUrl": "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-emsd-emsd1-meels-listed-models",
+        "datasetPageUrl": "https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models",
+        "resolvedCsvUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
+        "resolvedAt": "2026-11-03T05:45:05Z",
+        "fallbackReason": null
       }
     },
-    "counts": {
-      "csv": {
-        "registrationCount": 1778,
-        "uniqueRegistrationKeys": 1778,
-        "modelCount": 1717
-      },
-      "paginated": {
-        "registrationCount": 1778,
-        "uniqueRegistrationKeys": 1778,
-        "modelCount": 1717
-      }
-    },
-    "catalog": {
-      "mode": "catalog",
-      "datasetId": "hk-emsd-emsd1-meels-listed-models",
-      "resourceId": "2944ffac-4bb3-4240-a5f8-d902d0531b20",
-      "resourceName": "Room Air Conditioners",
-      "catalogApiUrl": "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-emsd-emsd1-meels-listed-models",
-      "datasetPageUrl": "https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models",
-      "resolvedCsvUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-      "resolvedAt": "2026-11-01T20:46:17Z",
-      "fallbackReason": null
+    "rowCount": 1760,
+    "excludedRowCount": 1425,
+    "baseline": {
+      "registrationCount": 1778,
+      "withdrawnCount": 23,
+      "maxWithdrawalFraction": 0.2
     }
   },
   "catalog": {
+    "schemaVersion": 1,
     "mode": "catalog",
     "datasetId": "hk-emsd-emsd1-meels-listed-models",
     "resourceId": "2944ffac-4bb3-4240-a5f8-d902d0531b20",
     "resourceName": "Room Air Conditioners",
+    "resourceFormat": "CSV",
     "catalogApiUrl": "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-emsd-emsd1-meels-listed-models",
     "datasetPageUrl": "https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models",
     "resolvedCsvUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-    "resolvedAt": "2026-11-01T20:46:17Z",
-    "fallbackReason": null
+    "resolvedAt": "2026-11-03T05:45:05Z",
+    "catalogFetchedAt": "2026-11-03T05:45:05Z"
   },
-  "datasetHash": "sha256:605892afd756e2993c0d1d72a9174e194a3c830c00b67aefdfbbcbc716210c9c",
-  "rawReceiptHash": "sha256:5257205a3f9f556114a09223765130ed993dcabf4a0e22d2646905def2583008"
+  "datasetHash": "sha256:cc31b85fe028b525287ce64deeac76495ffd810415a7f72c0a10965421037e7a",
+  "rawReceiptHash": "sha256:7c807134a0d5e4b74446dcb92677b41ee286c6c5330fa1f73cecf69bcdaaadb5"
 }
