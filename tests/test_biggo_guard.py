@@ -172,3 +172,25 @@ def test_received_result_requires_exact_four_file_proof(tmp_path, monkeypatch):
     path.write_text(json.dumps(receipt))
     assert guard.run_guard(str(tmp_path), status, completed_sync=str(path)) == 1
     assert guard.run_guard(str(tmp_path), status) == 1
+
+
+def test_receiver_identity_envelope_preserves_original_hash(tmp_path, monkeypatch):
+    import hashlib
+    from sync_biggo_completed import _write_report
+    import augment_sync_report
+    hashes = {}
+    for name in guard.PATHS:
+        (tmp_path / name).write_bytes(b'{}')
+        hashes[name] = 'sha256:' + hashlib.sha256(b'{}').hexdigest()
+    p = tmp_path / 'receipt.json'
+    _write_report(str(p), {'schemaVersion': 2, 'mode': 'sync-completed',
+        'ok': True, 'postStateVerified': True, 'reason': 'already-applied',
+        'postFileHashes': hashes})
+    assert augment_sync_report.main(['--report', str(p), '--run-id', '123',
+        '--head', 'a' * 40, '--event', 'workflow_dispatch']) == 0
+    monkeypatch.setenv('GITHUB_RUN_ID', '123')
+    monkeypatch.setenv('GITHUB_SHA', 'a' * 40)
+    monkeypatch.setenv('GITHUB_EVENT_NAME', 'workflow_dispatch')
+    assert guard._verified_received_files(str(tmp_path), str(p))
+    monkeypatch.setenv('GITHUB_RUN_ID', '124')
+    assert not guard._verified_received_files(str(tmp_path), str(p))

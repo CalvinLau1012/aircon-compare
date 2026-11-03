@@ -86,7 +86,17 @@ def _verified_received_files(repo, path):
         return False
     if receipt.get('reason') not in ('applied', 'already-applied'):
         return False
-    body = {k: v for k, v in receipt.items() if k != 'receiptId'}
+    # augment_sync_report adds run identity without rewriting the receiver's
+    # original content hash. Verify that envelope separately, then its body.
+    identity = ('sourceRunId', 'headSha', 'sourceEvent')
+    if any(k in receipt for k in identity):
+        if (not all(k in receipt for k in identity)
+                or str(receipt['sourceRunId']) != os.environ.get('GITHUB_RUN_ID')
+                or receipt['headSha'] != os.environ.get('GITHUB_SHA')
+                or receipt['sourceEvent'] != os.environ.get('GITHUB_EVENT_NAME')):
+            return False
+    body = {k: v for k, v in receipt.items()
+            if k not in ('receiptId', *identity)}
     expected = 'sha256:' + hashlib.sha256(json.dumps(
         body, ensure_ascii=False, sort_keys=True).encode('utf-8')).hexdigest()
     if receipt.get('receiptId') != expected:
