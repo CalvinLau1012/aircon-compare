@@ -26,7 +26,7 @@ def published_root(state):
             or posixpath.basename(parent) != coord.cycle_slug(state['cycleId'])):
         raise ValueError('inconsistent published bundle references')
     root = posixpath.dirname(parent)
-    if not root:
+    if not root or any(c in root for c in ('\n', '\r', '\x00')):
         raise ValueError('missing published bundle root')
     return root
 
@@ -49,6 +49,11 @@ def main():
     anchor, _, transition = price_cycle._read_store(store)
     if anchor['cycle'] != state['cycleId'] or anchor['stage'] != state['stage']:
         raise ValueError('terminal state and monthly anchor disagree')
+    cfg.snapshot_dir = published_root(state)
+    output = os.environ.get('GITHUB_OUTPUT')
+    if output:
+        with open(output, 'a', encoding='utf-8') as stream:
+            stream.write('snapshot_dir=' + cfg.snapshot_dir + '\n')
     meta = batch_utils.load_meta(str(ROOT / 'prices_meta.json'))
     if meta.get('appliedBundleHash') == state.get('bundleHash'):
         print('chain receiver: already at terminal bundle; normal receiver verifies files')
@@ -57,7 +62,6 @@ def main():
     policy = json.loads((ROOT / 'price-policy.json').read_text())
     revision = policy['sourceRevision']
     verify_price_source_pin.verify_git(str(ROOT), revision)
-    cfg.snapshot_dir = published_root(state)
     client = coord.CoordinatorClient(contents, owner='read-only-chain-receiver')
     result = price_cycle.reconcile_shared(
         meta, anchor, transition, store, client, str(ROOT),

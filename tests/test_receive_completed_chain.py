@@ -47,6 +47,8 @@ def test_cooldown_does_not_block_completed_receiving(tmp_path, monkeypatch):
     monkeypatch.setattr(receiver.coord, 'CoordinatorClient', type('NoProviderClient', (), {
         '__init__': lambda self, *a, **kw: None,
         '_safe_published_path': lambda self, v: v}))
+    output = tmp_path / 'outputs'
+    monkeypatch.setenv('GITHUB_OUTPUT', str(output))
     received = []
     def reconcile(*args, **kwargs):
         received.append(cfg.snapshot_dir)
@@ -54,4 +56,16 @@ def test_cooldown_does_not_block_completed_receiving(tmp_path, monkeypatch):
     monkeypatch.setattr(receiver.price_cycle, 'reconcile_shared', reconcile)
     receiver.main()
     assert received == ['coordinator/snapshots']
+    assert output.read_text() == 'snapshot_dir=coordinator/snapshots\n'
     assert doc['cooldownUntil'] == 9999999999
+
+
+def test_workflow_propagates_verified_archive_to_normal_entry_and_runner():
+    text = (Path(__file__).resolve().parents[1] / '.github/workflows/daily-update.yml').read_text()
+    assert text.count('steps.completed_sync.outputs.snapshot_dir || secrets.AIRCON_BIGGO_COORDINATOR_SNAPSHOT_DIR') == 2
+
+
+@pytest.mark.parametrize('root', ['unsafe\nkey=value', 'unsafe\rkey=value'])
+def test_output_path_cannot_inject_workflow_outputs(root):
+    with pytest.raises(ValueError):
+        receiver.published_root(state(root))
