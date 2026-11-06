@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "retrievedAt": "2026-11-05T22:14:14Z",
+  "retrievedAt": "2026-11-06T21:44:59Z",
   "sourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
   "success": true,
   "pageCount": 1,
@@ -16,7 +16,7 @@
       "sourceKind": "emsd-open-data-csv",
       "byteLength": 899604,
       "sha256": "sha256:4fe9bb69409057f6eb08bfa5a94d9bdabe4c1dceb2991c56490fe09b3d1e8602",
-      "lastModified": "Mon, 02 Nov 2026 05:42:34 GMT",
+      "lastModified": "Mon, 02 Nov 2026 05:42:35 GMT",
       "etag": null
     }
   ],
