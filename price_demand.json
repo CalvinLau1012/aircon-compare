@@ -614,9 +614,36 @@
       "key": "GREE|GWA2124BR",
       "model": "GWA2124BR",
       "status": "pending"
+    },
+    {
+      "brand": "海信",
+      "evidence": [],
+      "firstSeen": "2026-11-10",
+      "firstSeenAt": "2026-11-10T21:55:27Z",
+      "key": "海信|HW07TR",
+      "model": "HW-07TR",
+      "status": "pending"
+    },
+    {
+      "brand": "海信",
+      "evidence": [],
+      "firstSeen": "2026-11-10",
+      "firstSeenAt": "2026-11-10T21:55:27Z",
+      "key": "海信|HW09TR",
+      "model": "HW-09TR",
+      "status": "pending"
+    },
+    {
+      "brand": "海信",
+      "evidence": [],
+      "firstSeen": "2026-11-10",
+      "firstSeenAt": "2026-11-10T21:55:27Z",
+      "key": "海信|HW12TR",
+      "model": "HW-12TR",
+      "status": "pending"
     }
   ],
   "kind": "aircon-price-demand",
   "schemaVersion": 1,
-  "updatedAt": "2026-11-03T12:36:36Z"
+  "updatedAt": "2026-11-10T21:55:27Z"
 }

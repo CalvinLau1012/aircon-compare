@@ -1,22 +1,22 @@
 {
   "schemaVersion": 1,
-  "retrievedAt": "2026-11-10T00:24:04Z",
+  "retrievedAt": "2026-11-10T21:55:27Z",
   "sourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
   "success": true,
   "pageCount": 1,
-  "totalRows": 1760,
+  "totalRows": 1763,
   "perPageRows": [
-    1760
+    1763
   ],
-  "datasetHash": "sha256:cc31b85fe028b525287ce64deeac76495ffd810415a7f72c0a10965421037e7a",
-  "archiveHash": "sha256:70604144e4a3e54558a85855ef2b71a7fa180bb505a4cbfce4e6e2d13498bb8e",
+  "datasetHash": "sha256:f5afd67729832131f6112bf992078ddc275aa0288668314233cec9bbf7f662ee",
+  "archiveHash": "sha256:073d372110ea38dd4069e41ea1d3c58d11447b9feb04b8348f5e3dea42269805",
   "pages": [
     {
       "page": 1,
       "sourceKind": "emsd-open-data-csv",
-      "byteLength": 899604,
-      "sha256": "sha256:4fe9bb69409057f6eb08bfa5a94d9bdabe4c1dceb2991c56490fe09b3d1e8602",
-      "lastModified": "Mon, 02 Nov 2026 05:42:35 GMT",
+      "byteLength": 900348,
+      "sha256": "sha256:bf7e2d77d4199de96590b78e4939e0616e7141738eeaf027881c0322ed1d086f",
+      "lastModified": "Tue, 10 Nov 2026 01:44:49 GMT",
       "etag": null
     }
   ],
@@ -26,7 +26,7 @@
   "privateArchive": {
     "persisted": true,
     "adapter": "github-release-asset",
-    "archiveHash": "sha256:70604144e4a3e54558a85855ef2b71a7fa180bb505a4cbfce4e6e2d13498bb8e",
+    "archiveHash": "sha256:073d372110ea38dd4069e41ea1d3c58d11447b9feb04b8348f5e3dea42269805",
     "verified": true,
     "durableRemote": true,
     "retentionDays": 90
@@ -35,15 +35,15 @@
     {
       "persisted": true,
       "adapter": "github-release-asset",
-      "archiveHash": "sha256:70604144e4a3e54558a85855ef2b71a7fa180bb505a4cbfce4e6e2d13498bb8e",
+      "archiveHash": "sha256:073d372110ea38dd4069e41ea1d3c58d11447b9feb04b8348f5e3dea42269805",
       "verified": true,
       "durableRemote": true,
       "retentionDays": 90,
       "sourceKind": "emsd-open-data-csv",
       "sourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
       "resolvedUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-      "byteLength": 899604,
-      "sha256": "sha256:4fe9bb69409057f6eb08bfa5a94d9bdabe4c1dceb2991c56490fe09b3d1e8602"
+      "byteLength": 900348,
+      "sha256": "sha256:bf7e2d77d4199de96590b78e4939e0616e7141738eeaf027881c0322ed1d086f"
     }
   ]
 }

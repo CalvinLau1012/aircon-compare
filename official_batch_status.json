@@ -22,7 +22,10 @@
     "GWA2109BR",
     "GWA2112BR",
     "GWA2118BR",
-    "GWA2124BR"
+    "GWA2124BR",
+    "HW-07TR",
+    "HW-09TR",
+    "HW-12TR"
   ],
   "missingCanonicalModels": [
     "WRK07MIZH1",
@@ -37,7 +40,10 @@
     "GWA2109BR",
     "GWA2112BR",
     "GWA2118BR",
-    "GWA2124BR"
+    "GWA2124BR",
+    "HW07TR",
+    "HW09TR",
+    "HW12TR"
   ],
   "coveragePendingReasons": {
     "CWV-24CRFN9-AD5": "target-not-in-configured-comfee-list",
@@ -50,6 +56,9 @@
     "GWT07ES": "stage-source-did-not-cover-target",
     "GWT09ES": "stage-source-did-not-cover-target",
     "GWT12ES": "stage-source-did-not-cover-target",
+    "HW-07TR": "source-route-not-configured",
+    "HW-09TR": "source-route-not-configured",
+    "HW-12TR": "source-route-not-configured",
     "WRK07MIZH1": "stage-source-did-not-cover-target",
     "WRK09MIZH1": "stage-source-did-not-cover-target",
     "WRK18MIZH1": "stage-source-did-not-cover-target"
@@ -58,7 +67,7 @@
     "schemaVersion": 1,
     "kind": "aircon-official-coverage-observation",
     "decision": "queue-kept-pending-coverage",
-    "observedAt": "2026-11-10T00:24:13Z",
+    "observedAt": "2026-11-10T21:55:40Z",
     "observedAtKind": "batch-attempt",
     "stage": 1,
     "targetScoped": true,
@@ -84,7 +93,10 @@
         "GWA2109BR",
         "GWA2112BR",
         "GWA2118BR",
-        "GWA2124BR"
+        "GWA2124BR",
+        "HW-07TR",
+        "HW-09TR",
+        "HW-12TR"
       ],
       "canonicalModels": [
         "WRK07MIZH1",
@@ -106,9 +118,12 @@
         "GWA2109BR",
         "GWA2112BR",
         "GWA2118BR",
-        "GWA2124BR"
+        "GWA2124BR",
+        "HW07TR",
+        "HW09TR",
+        "HW12TR"
       ],
-      "hash": "sha256:4e66d2308cfa469fd0cade5af24727a4158477795b5fad18bd9a69c9a06821a7",
+      "hash": "sha256:38c30ff00b5affd211081a8f5b8f350e0ea3dddc804c926bbe760e99fd8ac800",
       "missingModels": [
         "WRK07MIZH1",
         "WRK09MIZH1",
@@ -122,7 +137,10 @@
         "GWA2109BR",
         "GWA2112BR",
         "GWA2118BR",
-        "GWA2124BR"
+        "GWA2124BR",
+        "HW-07TR",
+        "HW-09TR",
+        "HW-12TR"
       ],
       "missingCanonicalModels": [
         "WRK07MIZH1",
@@ -137,7 +155,10 @@
         "GWA2109BR",
         "GWA2112BR",
         "GWA2118BR",
-        "GWA2124BR"
+        "GWA2124BR",
+        "HW07TR",
+        "HW09TR",
+        "HW12TR"
       ],
       "scriptCoveragePending": [],
       "reasons": {
@@ -151,6 +172,9 @@
         "GWT07ES": "stage-source-did-not-cover-target",
         "GWT09ES": "stage-source-did-not-cover-target",
         "GWT12ES": "stage-source-did-not-cover-target",
+        "HW-07TR": "source-route-not-configured",
+        "HW-09TR": "source-route-not-configured",
+        "HW-12TR": "source-route-not-configured",
         "WRK07MIZH1": "stage-source-did-not-cover-target",
         "WRK09MIZH1": "stage-source-did-not-cover-target",
         "WRK18MIZH1": "stage-source-did-not-cover-target"
@@ -158,7 +182,7 @@
     },
     "emsd": {
       "input": "emsd_空調能源標籤.csv",
-      "snapshotHash": "sha256:cc31b85fe028b525287ce64deeac76495ffd810415a7f72c0a10965421037e7a"
+      "snapshotHash": "sha256:f5afd67729832131f6112bf992078ddc275aa0288668314233cec9bbf7f662ee"
     },
     "routes": {
       "WRK07MIZH1": {
@@ -300,6 +324,27 @@
         "source": null,
         "reason": "source-route-not-configured",
         "supported": false
+      },
+      "HW-07TR": {
+        "brand": null,
+        "stage": null,
+        "source": null,
+        "reason": "source-route-not-configured",
+        "supported": false
+      },
+      "HW-09TR": {
+        "brand": null,
+        "stage": null,
+        "source": null,
+        "reason": "source-route-not-configured",
+        "supported": false
+      },
+      "HW-12TR": {
+        "brand": null,
+        "stage": null,
+        "source": null,
+        "reason": "source-route-not-configured",
+        "supported": false
       }
     },
     "scripts": [
@@ -381,10 +426,10 @@
           "sourceAcquiredAt": null,
           "sourceAcquiredAtKind": "catalogue-only",
           "cataloguePagesFromCache": 0,
-          "catalogueObservedAt": "2026-11-10T00:24:13Z"
+          "catalogueObservedAt": "2026-11-10T21:55:40Z"
         },
         "staged": {
-          "sha256": "sha256:98216dd19c85a8ef4e26e3d40215001b3ff6fbd012114800e241c605e30eebd6",
+          "sha256": "sha256:06716622c178803f664627d43282c31fcf9c5f001812b59b870da825ad281a29",
           "size": 4381,
           "validJson": true,
           "evidenceModels": [
@@ -420,8 +465,8 @@
       }
     ],
     "previousSnapshot": null,
-    "identityHash": "sha256:2289449403857db78e803fb141d27d03abe12869f1cc8264c1b33775e24d27f6"
+    "identityHash": "sha256:3224ce7f40682e7f486cf421c493148ec74f4b11311111edddfc319fd4dffc44"
   },
-  "generatedAt": "2026-11-10T00:24:13Z",
+  "generatedAt": "2026-11-10T21:55:40Z",
   "source": "run_official_batch.py"
 }
