@@ -1,5 +1,5 @@
 {
-  "retrievedAt": "2026-11-10T21:55:27Z",
+  "retrievedAt": "2026-11-11T22:57:26Z",
   "sourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
   "success": true,
   "pagesExpected": 1,
@@ -24,7 +24,7 @@
       "notModified": false,
       "byteLength": 900348,
       "sha256": "sha256:bf7e2d77d4199de96590b78e4939e0616e7141738eeaf027881c0322ed1d086f",
-      "fetchedAt": "2026-11-10T21:55:27Z",
+      "fetchedAt": "2026-11-11T22:57:26Z",
       "lastModified": "Tue, 10 Nov 2026 01:44:49 GMT",
       "etag": null,
       "encoding": "utf-8-sig",
@@ -37,14 +37,14 @@
         "catalogApiUrl": "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-emsd-emsd1-meels-listed-models",
         "datasetPageUrl": "https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models",
         "resolvedCsvUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-        "resolvedAt": "2026-11-10T21:55:24Z",
+        "resolvedAt": "2026-11-11T22:57:20Z",
         "fallbackReason": null
       }
     },
     "rowCount": 1763,
     "excludedRowCount": 1425,
     "baseline": {
-      "registrationCount": 1760,
+      "registrationCount": 1763,
       "withdrawnCount": 0,
       "maxWithdrawalFraction": 0.2
     }
@@ -59,9 +59,9 @@
     "catalogApiUrl": "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-emsd-emsd1-meels-listed-models",
     "datasetPageUrl": "https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models",
     "resolvedCsvUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-    "resolvedAt": "2026-11-10T21:55:24Z",
-    "catalogFetchedAt": "2026-11-10T21:55:24Z"
+    "resolvedAt": "2026-11-11T22:57:20Z",
+    "catalogFetchedAt": "2026-11-11T22:57:20Z"
   },
   "datasetHash": "sha256:f5afd67729832131f6112bf992078ddc275aa0288668314233cec9bbf7f662ee",
-  "rawReceiptHash": "sha256:30459b20ebbfebd104a3b7d0ad15dc49f1ba14998c6a5136d9a45e742217c33f"
+  "rawReceiptHash": "sha256:4c0e44266d3c2c9078c6ae6587f9395f06958eb01cc04eea26f3bf13f614d59a"
 }

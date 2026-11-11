@@ -616,6 +616,12 @@
       "status": "pending"
     },
     {
+      "aliases": [
+        {
+          "brand": "海信",
+          "model": "HW-07TR"
+        }
+      ],
       "brand": "海信",
       "evidence": [],
       "firstSeen": "2026-11-10",
@@ -625,6 +631,12 @@
       "status": "pending"
     },
     {
+      "aliases": [
+        {
+          "brand": "海信",
+          "model": "HW-09TR"
+        }
+      ],
       "brand": "海信",
       "evidence": [],
       "firstSeen": "2026-11-10",
@@ -634,6 +646,12 @@
       "status": "pending"
     },
     {
+      "aliases": [
+        {
+          "brand": "海信",
+          "model": "HW-12TR"
+        }
+      ],
       "brand": "海信",
       "evidence": [],
       "firstSeen": "2026-11-10",
@@ -645,5 +663,5 @@
   ],
   "kind": "aircon-price-demand",
   "schemaVersion": 1,
-  "updatedAt": "2026-11-10T21:55:27Z"
+  "updatedAt": "2026-11-11T22:57:26Z"
 }
