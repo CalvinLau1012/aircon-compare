@@ -659,9 +659,63 @@
       "key": "海信|HW12TR",
       "model": "HW-12TR",
       "status": "pending"
+    },
+    {
+      "brand": "海信",
+      "evidence": [],
+      "firstSeen": "2026-11-17",
+      "firstSeenAt": "2026-11-17T00:25:20Z",
+      "key": "海信|HW18TR",
+      "model": "HW-18TR",
+      "status": "pending"
+    },
+    {
+      "brand": "海信",
+      "evidence": [],
+      "firstSeen": "2026-11-17",
+      "firstSeenAt": "2026-11-17T00:25:20Z",
+      "key": "海信|HW24TR",
+      "model": "HW-24TR",
+      "status": "pending"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [],
+      "firstSeen": "2026-11-17",
+      "firstSeenAt": "2026-11-17T00:25:20Z",
+      "key": "MITSUBISHIHEAVY|WRK12MIC1",
+      "model": "WRK12MIC1",
+      "status": "pending"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [],
+      "firstSeen": "2026-11-17",
+      "firstSeenAt": "2026-11-17T00:25:20Z",
+      "key": "MITSUBISHIHEAVY|WRK12MIH1",
+      "model": "WRK12MIH1",
+      "status": "pending"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [],
+      "firstSeen": "2026-11-17",
+      "firstSeenAt": "2026-11-17T00:25:20Z",
+      "key": "MITSUBISHIHEAVY|WRK12MIZC1",
+      "model": "WRK12MIZC1",
+      "status": "pending"
+    },
+    {
+      "brand": "三菱重工",
+      "evidence": [],
+      "firstSeen": "2026-11-17",
+      "firstSeenAt": "2026-11-17T00:25:20Z",
+      "key": "MITSUBISHIHEAVY|WRK12MIZH1",
+      "model": "WRK12MIZH1",
+      "status": "pending"
     }
   ],
   "kind": "aircon-price-demand",
   "schemaVersion": 1,
-  "updatedAt": "2026-11-11T22:57:26Z"
+  "updatedAt": "2026-11-17T00:25:20Z"
 }

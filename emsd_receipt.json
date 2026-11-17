@@ -1,14 +1,14 @@
 {
-  "retrievedAt": "2026-11-15T21:11:41Z",
+  "retrievedAt": "2026-11-17T00:25:20Z",
   "sourceUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
   "success": true,
   "pagesExpected": 1,
   "pagesFetched": 1,
-  "totalRows": 1763,
+  "totalRows": 1769,
   "aborted": false,
   "error": null,
   "perPageRows": [
-    1763
+    1769
   ],
   "sourceMode": "csv-only",
   "transportUnits": "csv-files",
@@ -22,13 +22,13 @@
       "resolvedUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
       "status": 200,
       "notModified": false,
-      "byteLength": 900348,
-      "sha256": "sha256:bf7e2d77d4199de96590b78e4939e0616e7141738eeaf027881c0322ed1d086f",
-      "fetchedAt": "2026-11-15T21:11:41Z",
-      "lastModified": "Tue, 10 Nov 2026 01:44:49 GMT",
+      "byteLength": 902164,
+      "sha256": "sha256:89dbf8c5a253b62c560a5dca4f86aff53fa139ae80dd472ed2b47129e3fe2870",
+      "fetchedAt": "2026-11-17T00:25:20Z",
+      "lastModified": "Mon, 16 Nov 2026 09:28:33 GMT",
       "etag": null,
       "encoding": "utf-8-sig",
-      "rowCount": 1763,
+      "rowCount": 1769,
       "catalog": {
         "mode": "catalog",
         "datasetId": "hk-emsd-emsd1-meels-listed-models",
@@ -37,11 +37,11 @@
         "catalogApiUrl": "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-emsd-emsd1-meels-listed-models",
         "datasetPageUrl": "https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models",
         "resolvedCsvUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-        "resolvedAt": "2026-11-15T21:11:39Z",
+        "resolvedAt": "2026-11-17T00:24:48Z",
         "fallbackReason": null
       }
     },
-    "rowCount": 1763,
+    "rowCount": 1769,
     "excludedRowCount": 1425,
     "baseline": {
       "registrationCount": 1763,
@@ -59,9 +59,9 @@
     "catalogApiUrl": "https://data.gov.hk/en-data/api/3/action/package_show?id=hk-emsd-emsd1-meels-listed-models",
     "datasetPageUrl": "https://data.gov.hk/en-data/dataset/hk-emsd-emsd1-meels-listed-models",
     "resolvedCsvUrl": "https://www.emsd.gov.hk/energylabel/files/meels_rac.csv",
-    "resolvedAt": "2026-11-15T21:11:39Z",
-    "catalogFetchedAt": "2026-11-15T21:11:39Z"
+    "resolvedAt": "2026-11-17T00:24:48Z",
+    "catalogFetchedAt": "2026-11-17T00:24:48Z"
   },
-  "datasetHash": "sha256:f5afd67729832131f6112bf992078ddc275aa0288668314233cec9bbf7f662ee",
-  "rawReceiptHash": "sha256:d6695abc4b6387e5621b5f3cb42db2e582f577c04985744694241a287a8deab9"
+  "datasetHash": "sha256:c52b6aa70d5b19980e3cb23c5346dcb1ba800ecfa3f72a0b13e203f2c60a47ac",
+  "rawReceiptHash": "sha256:15b4fe749db4a63c9bd72ddd75a707443affdde3044541d0b409318aad19a5f3"
 }

@@ -25,7 +25,13 @@
     "GWA2124BR",
     "HW-07TR",
     "HW-09TR",
-    "HW-12TR"
+    "HW-12TR",
+    "HW-18TR",
+    "HW-24TR",
+    "WRK12MIC1",
+    "WRK12MIH1",
+    "WRK12MIZC1",
+    "WRK12MIZH1"
   ],
   "missingCanonicalModels": [
     "WRK07MIZH1",
@@ -43,7 +49,13 @@
     "GWA2124BR",
     "HW07TR",
     "HW09TR",
-    "HW12TR"
+    "HW12TR",
+    "HW18TR",
+    "HW24TR",
+    "WRK12MIC1",
+    "WRK12MIH1",
+    "WRK12MIZC1",
+    "WRK12MIZH1"
   ],
   "coveragePendingReasons": {
     "CWV-24CRFN9-AD5": "target-not-in-configured-comfee-list",
@@ -59,15 +71,21 @@
     "HW-07TR": "source-route-not-configured",
     "HW-09TR": "source-route-not-configured",
     "HW-12TR": "source-route-not-configured",
+    "HW-18TR": "source-route-not-configured",
+    "HW-24TR": "source-route-not-configured",
     "WRK07MIZH1": "stage-source-did-not-cover-target",
     "WRK09MIZH1": "stage-source-did-not-cover-target",
+    "WRK12MIC1": "source-route-not-configured",
+    "WRK12MIH1": "source-route-not-configured",
+    "WRK12MIZC1": "source-route-not-configured",
+    "WRK12MIZH1": "source-route-not-configured",
     "WRK18MIZH1": "stage-source-did-not-cover-target"
   },
   "coverageObservation": {
     "schemaVersion": 1,
     "kind": "aircon-official-coverage-observation",
     "decision": "queue-kept-pending-coverage",
-    "observedAt": "2026-11-15T21:11:48Z",
+    "observedAt": "2026-11-17T00:25:29Z",
     "observedAtKind": "batch-attempt",
     "stage": 1,
     "targetScoped": true,
@@ -96,7 +114,13 @@
         "GWA2124BR",
         "HW-07TR",
         "HW-09TR",
-        "HW-12TR"
+        "HW-12TR",
+        "HW-18TR",
+        "HW-24TR",
+        "WRK12MIC1",
+        "WRK12MIH1",
+        "WRK12MIZC1",
+        "WRK12MIZH1"
       ],
       "canonicalModels": [
         "WRK07MIZH1",
@@ -121,9 +145,15 @@
         "GWA2124BR",
         "HW07TR",
         "HW09TR",
-        "HW12TR"
+        "HW12TR",
+        "HW18TR",
+        "HW24TR",
+        "WRK12MIC1",
+        "WRK12MIH1",
+        "WRK12MIZC1",
+        "WRK12MIZH1"
       ],
-      "hash": "sha256:38c30ff00b5affd211081a8f5b8f350e0ea3dddc804c926bbe760e99fd8ac800",
+      "hash": "sha256:850dfdc3c9c41c74611654bddd2a86b840ee30bd4fa3c196436e4b9dbd2dbf0c",
       "missingModels": [
         "WRK07MIZH1",
         "WRK09MIZH1",
@@ -140,7 +170,13 @@
         "GWA2124BR",
         "HW-07TR",
         "HW-09TR",
-        "HW-12TR"
+        "HW-12TR",
+        "HW-18TR",
+        "HW-24TR",
+        "WRK12MIC1",
+        "WRK12MIH1",
+        "WRK12MIZC1",
+        "WRK12MIZH1"
       ],
       "missingCanonicalModels": [
         "WRK07MIZH1",
@@ -158,7 +194,13 @@
         "GWA2124BR",
         "HW07TR",
         "HW09TR",
-        "HW12TR"
+        "HW12TR",
+        "HW18TR",
+        "HW24TR",
+        "WRK12MIC1",
+        "WRK12MIH1",
+        "WRK12MIZC1",
+        "WRK12MIZH1"
       ],
       "scriptCoveragePending": [],
       "reasons": {
@@ -175,14 +217,20 @@
         "HW-07TR": "source-route-not-configured",
         "HW-09TR": "source-route-not-configured",
         "HW-12TR": "source-route-not-configured",
+        "HW-18TR": "source-route-not-configured",
+        "HW-24TR": "source-route-not-configured",
         "WRK07MIZH1": "stage-source-did-not-cover-target",
         "WRK09MIZH1": "stage-source-did-not-cover-target",
+        "WRK12MIC1": "source-route-not-configured",
+        "WRK12MIH1": "source-route-not-configured",
+        "WRK12MIZC1": "source-route-not-configured",
+        "WRK12MIZH1": "source-route-not-configured",
         "WRK18MIZH1": "stage-source-did-not-cover-target"
       }
     },
     "emsd": {
       "input": "emsd_空調能源標籤.csv",
-      "snapshotHash": "sha256:f5afd67729832131f6112bf992078ddc275aa0288668314233cec9bbf7f662ee"
+      "snapshotHash": "sha256:c52b6aa70d5b19980e3cb23c5346dcb1ba800ecfa3f72a0b13e203f2c60a47ac"
     },
     "routes": {
       "WRK07MIZH1": {
@@ -345,6 +393,48 @@
         "source": null,
         "reason": "source-route-not-configured",
         "supported": false
+      },
+      "HW-18TR": {
+        "brand": null,
+        "stage": null,
+        "source": null,
+        "reason": "source-route-not-configured",
+        "supported": false
+      },
+      "HW-24TR": {
+        "brand": null,
+        "stage": null,
+        "source": null,
+        "reason": "source-route-not-configured",
+        "supported": false
+      },
+      "WRK12MIC1": {
+        "brand": null,
+        "stage": null,
+        "source": null,
+        "reason": "source-route-not-configured",
+        "supported": false
+      },
+      "WRK12MIH1": {
+        "brand": null,
+        "stage": null,
+        "source": null,
+        "reason": "source-route-not-configured",
+        "supported": false
+      },
+      "WRK12MIZC1": {
+        "brand": null,
+        "stage": null,
+        "source": null,
+        "reason": "source-route-not-configured",
+        "supported": false
+      },
+      "WRK12MIZH1": {
+        "brand": null,
+        "stage": null,
+        "source": null,
+        "reason": "source-route-not-configured",
+        "supported": false
       }
     },
     "scripts": [
@@ -426,10 +516,10 @@
           "sourceAcquiredAt": null,
           "sourceAcquiredAtKind": "catalogue-only",
           "cataloguePagesFromCache": 0,
-          "catalogueObservedAt": "2026-11-15T21:11:48Z"
+          "catalogueObservedAt": "2026-11-17T00:25:29Z"
         },
         "staged": {
-          "sha256": "sha256:38fc5e523d107764583ab042c3ab81fa6031adc08ee552d1eb809565be00b786",
+          "sha256": "sha256:b30164d671a533152cee554a3d5bc8f4ae71cdf59e56c8dc7dbe5c97b3acb870",
           "size": 4381,
           "validJson": true,
           "evidenceModels": [
@@ -465,8 +555,8 @@
       }
     ],
     "previousSnapshot": null,
-    "identityHash": "sha256:fe51c9c1f0cf8d570752afd2e99cc0c7d3bed109fbae83b763b1a73dfbe17ea9"
+    "identityHash": "sha256:fecd2060797aaa2fd924e8a8b753024b878bf5ca80019e68f1afc894bad12491"
   },
-  "generatedAt": "2026-11-15T21:11:48Z",
+  "generatedAt": "2026-11-17T00:25:29Z",
   "source": "run_official_batch.py"
 }
