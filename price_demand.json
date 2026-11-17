@@ -661,6 +661,12 @@
       "status": "pending"
     },
     {
+      "aliases": [
+        {
+          "brand": "海信",
+          "model": "HW-18TR"
+        }
+      ],
       "brand": "海信",
       "evidence": [],
       "firstSeen": "2026-11-17",
@@ -670,6 +676,12 @@
       "status": "pending"
     },
     {
+      "aliases": [
+        {
+          "brand": "海信",
+          "model": "HW-24TR"
+        }
+      ],
       "brand": "海信",
       "evidence": [],
       "firstSeen": "2026-11-17",
@@ -679,6 +691,12 @@
       "status": "pending"
     },
     {
+      "aliases": [
+        {
+          "brand": "三菱重工",
+          "model": "WRK12MIC1"
+        }
+      ],
       "brand": "三菱重工",
       "evidence": [],
       "firstSeen": "2026-11-17",
@@ -688,6 +706,12 @@
       "status": "pending"
     },
     {
+      "aliases": [
+        {
+          "brand": "三菱重工",
+          "model": "WRK12MIH1"
+        }
+      ],
       "brand": "三菱重工",
       "evidence": [],
       "firstSeen": "2026-11-17",
@@ -697,6 +721,12 @@
       "status": "pending"
     },
     {
+      "aliases": [
+        {
+          "brand": "三菱重工",
+          "model": "WRK12MIZC1"
+        }
+      ],
       "brand": "三菱重工",
       "evidence": [],
       "firstSeen": "2026-11-17",
@@ -706,6 +736,12 @@
       "status": "pending"
     },
     {
+      "aliases": [
+        {
+          "brand": "三菱重工",
+          "model": "WRK12MIZH1"
+        }
+      ],
       "brand": "三菱重工",
       "evidence": [],
       "firstSeen": "2026-11-17",
@@ -717,5 +753,5 @@
   ],
   "kind": "aircon-price-demand",
   "schemaVersion": 1,
-  "updatedAt": "2026-11-17T00:25:20Z"
+  "updatedAt": "2026-11-17T23:39:11Z"
 }
