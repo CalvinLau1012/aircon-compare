@@ -749,9 +749,18 @@
       "key": "MITSUBISHIHEAVY|WRK12MIZH1",
       "model": "WRK12MIZH1",
       "status": "pending"
+    },
+    {
+      "brand": "格力",
+      "evidence": [],
+      "firstSeen": "2026-11-19",
+      "firstSeenAt": "2026-11-19T23:11:26Z",
+      "key": "GREE|GWL63RZ",
+      "model": "GWL63RZ",
+      "status": "pending"
     }
   ],
   "kind": "aircon-price-demand",
   "schemaVersion": 1,
-  "updatedAt": "2026-11-17T23:39:11Z"
+  "updatedAt": "2026-11-19T23:11:26Z"
 }

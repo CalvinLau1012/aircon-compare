@@ -31,7 +31,8 @@
     "WRK12MIC1",
     "WRK12MIH1",
     "WRK12MIZC1",
-    "WRK12MIZH1"
+    "WRK12MIZH1",
+    "GWL63RZ"
   ],
   "missingCanonicalModels": [
     "WRK07MIZH1",
@@ -55,7 +56,8 @@
     "WRK12MIC1",
     "WRK12MIH1",
     "WRK12MIZC1",
-    "WRK12MIZH1"
+    "WRK12MIZH1",
+    "GWL63RZ"
   ],
   "coveragePendingReasons": {
     "CWV-24CRFN9-AD5": "target-not-in-configured-comfee-list",
@@ -65,6 +67,7 @@
     "GWA2112BR": "source-route-not-configured",
     "GWA2118BR": "source-route-not-configured",
     "GWA2124BR": "source-route-not-configured",
+    "GWL63RZ": "source-route-not-configured",
     "GWT07ES": "stage-source-did-not-cover-target",
     "GWT09ES": "stage-source-did-not-cover-target",
     "GWT12ES": "stage-source-did-not-cover-target",
@@ -85,7 +88,7 @@
     "schemaVersion": 1,
     "kind": "aircon-official-coverage-observation",
     "decision": "queue-kept-pending-coverage",
-    "observedAt": "2026-11-18T23:03:00Z",
+    "observedAt": "2026-11-19T23:11:37Z",
     "observedAtKind": "batch-attempt",
     "stage": 1,
     "targetScoped": true,
@@ -120,7 +123,8 @@
         "WRK12MIC1",
         "WRK12MIH1",
         "WRK12MIZC1",
-        "WRK12MIZH1"
+        "WRK12MIZH1",
+        "GWL63RZ"
       ],
       "canonicalModels": [
         "WRK07MIZH1",
@@ -151,9 +155,10 @@
         "WRK12MIC1",
         "WRK12MIH1",
         "WRK12MIZC1",
-        "WRK12MIZH1"
+        "WRK12MIZH1",
+        "GWL63RZ"
       ],
-      "hash": "sha256:850dfdc3c9c41c74611654bddd2a86b840ee30bd4fa3c196436e4b9dbd2dbf0c",
+      "hash": "sha256:0b3644c8552b119b689aef4b3a3de3197afccc7f1dc692f80565582e3a9fdd6d",
       "missingModels": [
         "WRK07MIZH1",
         "WRK09MIZH1",
@@ -176,7 +181,8 @@
         "WRK12MIC1",
         "WRK12MIH1",
         "WRK12MIZC1",
-        "WRK12MIZH1"
+        "WRK12MIZH1",
+        "GWL63RZ"
       ],
       "missingCanonicalModels": [
         "WRK07MIZH1",
@@ -200,7 +206,8 @@
         "WRK12MIC1",
         "WRK12MIH1",
         "WRK12MIZC1",
-        "WRK12MIZH1"
+        "WRK12MIZH1",
+        "GWL63RZ"
       ],
       "scriptCoveragePending": [],
       "reasons": {
@@ -211,6 +218,7 @@
         "GWA2112BR": "source-route-not-configured",
         "GWA2118BR": "source-route-not-configured",
         "GWA2124BR": "source-route-not-configured",
+        "GWL63RZ": "source-route-not-configured",
         "GWT07ES": "stage-source-did-not-cover-target",
         "GWT09ES": "stage-source-did-not-cover-target",
         "GWT12ES": "stage-source-did-not-cover-target",
@@ -230,7 +238,7 @@
     },
     "emsd": {
       "input": "emsd_空調能源標籤.csv",
-      "snapshotHash": "sha256:c52b6aa70d5b19980e3cb23c5346dcb1ba800ecfa3f72a0b13e203f2c60a47ac"
+      "snapshotHash": "sha256:a3eb704b2b9daa5537325d8e501619c849645c0970d1533466f2de2071d1b542"
     },
     "routes": {
       "WRK07MIZH1": {
@@ -435,6 +443,13 @@
         "source": null,
         "reason": "source-route-not-configured",
         "supported": false
+      },
+      "GWL63RZ": {
+        "brand": null,
+        "stage": null,
+        "source": null,
+        "reason": "source-route-not-configured",
+        "supported": false
       }
     },
     "scripts": [
@@ -516,10 +531,10 @@
           "sourceAcquiredAt": null,
           "sourceAcquiredAtKind": "catalogue-only",
           "cataloguePagesFromCache": 0,
-          "catalogueObservedAt": "2026-11-18T23:03:00Z"
+          "catalogueObservedAt": "2026-11-19T23:11:37Z"
         },
         "staged": {
-          "sha256": "sha256:ca47791a4f2712ef2695cf6c3fe89e1c2dd449959dd23e3272703e70fb819946",
+          "sha256": "sha256:e0cb8ef22f2eb75083eeafbe2412b4df7124f5553a68b86ccdb5639c3078904c",
           "size": 4381,
           "validJson": true,
           "evidenceModels": [
@@ -555,8 +570,8 @@
       }
     ],
     "previousSnapshot": null,
-    "identityHash": "sha256:45322a39063fd46f79c67be12cbb0d5dd238f9f2f8c9f3abef0895a9b73d84d8"
+    "identityHash": "sha256:0a7937e2e4aa3bd5cd8733e283e65aeadf16bcc14343aaf5473db6bd9fc45c88"
   },
-  "generatedAt": "2026-11-18T23:03:00Z",
+  "generatedAt": "2026-11-19T23:11:37Z",
   "source": "run_official_batch.py"
 }
