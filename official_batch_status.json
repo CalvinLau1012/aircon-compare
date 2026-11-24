@@ -88,7 +88,7 @@
     "schemaVersion": 1,
     "kind": "aircon-official-coverage-observation",
     "decision": "queue-kept-pending-coverage",
-    "observedAt": "2026-11-22T21:59:11Z",
+    "observedAt": "2026-11-24T03:09:11Z",
     "observedAtKind": "batch-attempt",
     "stage": 1,
     "targetScoped": true,
@@ -531,10 +531,10 @@
           "sourceAcquiredAt": null,
           "sourceAcquiredAtKind": "catalogue-only",
           "cataloguePagesFromCache": 0,
-          "catalogueObservedAt": "2026-11-22T21:59:11Z"
+          "catalogueObservedAt": "2026-11-24T03:09:11Z"
         },
         "staged": {
-          "sha256": "sha256:bc0f1aaabe9e651b3bdd343554be81f113fbea4184da675afdf256caea8402bd",
+          "sha256": "sha256:525547fe1aaa874ce94ba503e3a91d62c992259b2435dee83782afa5b087edba",
           "size": 4381,
           "validJson": true,
           "evidenceModels": [
@@ -570,8 +570,8 @@
       }
     ],
     "previousSnapshot": null,
-    "identityHash": "sha256:4686fc8ebd6999c004186374e7129641d873cde0ef5a28ea3e81531788c4abac"
+    "identityHash": "sha256:4865b8985d246c86d08a065ec125d6b4e9d08ce036c18d62661450a4ef29bbba"
   },
-  "generatedAt": "2026-11-22T21:59:11Z",
+  "generatedAt": "2026-11-24T03:09:11Z",
   "source": "run_official_batch.py"
 }
